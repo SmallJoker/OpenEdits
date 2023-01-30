@@ -1,15 +1,42 @@
 #include "packet.h"
 
+#include <enet/enet.h>
 #include <stdexcept>
 #include <string.h> // memcpy
 
-Packet::Packet(const char *data, size_t len)
+Packet::Packet()
 {
-	m_data = std::vector<uint8_t>(len);
-	memcpy(&m_data[0], data, len);
+	m_data = enet_packet_create(nullptr, 200, 0);
 }
 
+Packet::Packet(const char *data, size_t len)
+{
+	m_data = enet_packet_create(data, len, 0);
+	m_write_offset = len;
+}
+
+Packet::Packet(_ENetPacket **pkt)
+{
+	m_data = *pkt;
+	m_write_offset = m_data->dataLength;
+
+	*pkt = nullptr;
+}
+
+Packet::~Packet()
+{
+	enet_packet_destroy(m_data);
+}
+
+
 // -------------- Public members -------------
+
+_ENetPacket *Packet::data()
+{
+	m_data->dataLength = m_write_offset;
+	return m_data;
+}
+
 
 template <typename T>
 T Packet::read()
@@ -18,7 +45,7 @@ T Packet::read()
 
 	size_t offset = m_read_offset;
 	m_read_offset += sizeof(T);
-	return *(T *)&m_data[offset];
+	return *(T *)&m_data->data[offset];
 }
 
 template <typename T>
@@ -26,7 +53,7 @@ void Packet::write(T v)
 {
 	ensureCapacity(sizeof(T));
 
-	T *dst = (T *)&m_data[m_write_offset];
+	T *dst = (T *)&m_data->data[m_write_offset];
 	*dst = v;
 
 	m_write_offset += sizeof(T);
@@ -50,7 +77,7 @@ std::string Packet::readStr16()
 	size_t offset = m_read_offset;
 	m_read_offset += len;
 
-	std::string str((const char *)&m_data[offset], len);
+	std::string str((const char *)&m_data->data[offset], len);
 	return str;
 }
 
@@ -62,7 +89,7 @@ void Packet::writeStr16(const std::string &str)
 	ensureCapacity(2 + str.size());
 
 	write<uint16_t>(str.size());
-	memcpy(&m_data[m_write_offset], str.c_str(), str.size());
+	memcpy(&m_data->data[m_write_offset], str.c_str(), str.size());
 
 	m_write_offset += str.size();
 }
@@ -71,12 +98,12 @@ void Packet::writeStr16(const std::string &str)
 
 void Packet::ensureCapacity(size_t nbytes)
 {
-	if (m_write_offset + nbytes > m_data.capacity())
-		m_data.resize(m_write_offset + nbytes);
+	if (m_write_offset + nbytes > size())
+		enet_packet_resize(m_data, (m_write_offset + nbytes) * 2);
 }
 
 void Packet::checkLength(size_t nbytes)
 {
-	if (m_read_offset + nbytes > m_data.size())
+	if (m_read_offset + nbytes > size())
 		throw std::out_of_range("Packet has no leftover data");
 }
