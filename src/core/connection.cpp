@@ -6,6 +6,12 @@
 #include <pthread.h>
 #include <string.h> // strerror
 
+#if 0
+	#define LOGME(...) printf(__VA_ARGS__)
+#else
+	#define LOGME(...) /* SILENCE */
+#endif
+
 const uint16_t CON_PORT = 0xC014;
 const size_t CON_CLIENTS = 32; // server only
 const size_t CON_CHANNELS = 2;
@@ -29,7 +35,7 @@ struct enet_init {
 Connection::Connection(Connection::ConnectionType type)
 {
 	if (type == TYPE_CLIENT) {
-		printf("--- ENet: Initializing client\n");
+		LOGME("--- ENet: Initializing client\n");
 		m_host = enet_host_create(
 			NULL,
 			1, // == server
@@ -44,7 +50,7 @@ Connection::Connection(Connection::ConnectionType type)
 		address.host = ENET_HOST_ANY;
 		address.port = CON_PORT;
 
-		printf("--- ENet: Starting server on port %d\n", address.port);
+		LOGME("--- ENet: Starting server on port %d\n", address.port);
 		m_host = enet_host_create(
 			&address,
 			CON_CLIENTS,
@@ -134,7 +140,6 @@ void Connection::disconnect(peer_t peer_id)
 
 void Connection::send(peer_t peer_id, uint16_t flags, Packet &pkt)
 {
-	auto peer = findPeer(peer_id);
 	uint8_t channel = flags & FLAG_MASK_CHANNEL;
 
 	// Most of it should be reliable
@@ -142,12 +147,20 @@ void Connection::send(peer_t peer_id, uint16_t flags, Packet &pkt)
 	if (!(flags & FLAG_UNRELIABLE))
 		pkt.data()->flags |= ENET_PACKET_FLAG_RELIABLE;
 
-	if (flags & FLAG_BROADCAST)
-		enet_host_broadcast(m_host, channel, pkt.data());
-	else
-		enet_peer_send(peer, channel, pkt.data());
+	// The data must yet not be freed. It's done in the Packet class' destructor when we no longer need it
+	pkt.data()->referenceCount++;
 
-	printf("--- ENet: packet sent. peer_id=%u, len=%zu\n", peer->connectID, pkt.size());
+	if (flags & FLAG_BROADCAST) {
+		peer_id = 0;
+		enet_host_broadcast(m_host, channel, pkt.data());
+	} else {
+		auto peer = findPeer(peer_id);
+		peer_id = peer->connectID;
+		enet_peer_send(peer, channel, pkt.data());
+	}
+
+	LOGME("--- ENet: packet sent. peer_id=%u, channel=%d, len=%zu\n",
+		peer_id, (int)channel, pkt.size());
 }
 
 // -------------- Private members -------------
@@ -159,10 +172,12 @@ void *Connection::recvAsync(void *con_p)
 	int shutdown_seen = 0;
 	ENetEvent event;
 
+	std::vector<peer_t> peer_id_list(con->m_host->peerCount, 0);
+
 	while (true) {
 		if (!con->m_running && shutdown_seen == 0) {
 			shutdown_seen++;
-			printf("--- ENet: Shutdown requested\n");
+			LOGME("--- ENet: Shutdown requested\n");
 
 			// Lazy disconnect
 			MutexLock lock(con->m_peers_lock);
@@ -170,7 +185,7 @@ void *Connection::recvAsync(void *con_p)
 				enet_peer_disconnect_later(&con->m_host->peers[i], 0);
 		}
 
-		if (enet_host_service(con->m_host, &event, 1000) <= 0) {
+		if (enet_host_service(con->m_host, &event, 500) <= 0) {
 			// Abort after 2 * 1000 ms
 			if (shutdown_seen > 0) {
 				if (++shutdown_seen > 2)
@@ -183,26 +198,32 @@ void *Connection::recvAsync(void *con_p)
 		switch (event.type) {
 			case ENET_EVENT_TYPE_CONNECT:
 				{
-					printf("--- ENet: New peer ID %u\n", event.peer->connectID);
+					peer_t peer_id = event.peer->connectID;
+					LOGME("--- ENet: New peer ID %u\n", peer_id);
+					peer_id_list[event.peer - con->m_host->peers] = peer_id;
+					con->m_processor->onPeerConnected(peer_id);
 				}
 				break;
 			case ENET_EVENT_TYPE_RECEIVE:
 				{
-					printf("--- ENet: Got packet peer_id=%u, channel=%d, len=%zu\n",
-						event.peer->connectID,
+					peer_t peer_id = event.peer->connectID;
+					LOGME("--- ENet: Got packet peer_id=%u, channel=%d, len=%zu\n",
+						peer_id,
 						(int)event.channelID,
 						event.packet->dataLength
 					);
 
 					Packet pkt(&event.packet);
 					MutexLock lock(con->m_processor_lock);
-					con->m_processor->packetProcess(pkt);
+					con->m_processor->processPacket(peer_id, pkt);
 				}
 				break;
 			case ENET_EVENT_TYPE_DISCONNECT:
 				{
+					peer_t peer_id = peer_id_list.at(event.peer - con->m_host->peers);
 					// event.peer->connectID is always 0
-					printf("--- ENet: Peer disconnected\n");
+					LOGME("--- ENet: Peer %u disconnected\n", peer_id);
+					con->m_processor->onPeerDisconnected(peer_id);
 				}
 				break;
 			case ENET_EVENT_TYPE_NONE:
@@ -221,8 +242,11 @@ _ENetPeer *Connection::findPeer(peer_t peer_id)
 	MutexLock lock(m_peers_lock);
 
 	for (size_t i = 0; i < m_host->peerCount; ++i) {
+		if (m_host->peers[i].state != ENET_PEER_STATE_CONNECTED)
+			continue;
+
 		peer_t current = m_host->peers[i].connectID;
-		if (current == peer_id || peer_id == PEER_ID_SERVER)
+		if (current == peer_id || peer_id == PEER_ID_FIRST)
 			return &m_host->peers[i];
 	}
 

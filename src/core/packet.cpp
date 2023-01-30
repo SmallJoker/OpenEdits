@@ -64,6 +64,8 @@ void Packet::write(T v)
 	template void Packet::write<TYPE>(TYPE);
 
 DEFINE_PACKET_TYPES(uint8_t)
+DEFINE_PACKET_TYPES(int16_t)
+DEFINE_PACKET_TYPES(uint16_t)
 DEFINE_PACKET_TYPES(int32_t)
 DEFINE_PACKET_TYPES(uint32_t)
 DEFINE_PACKET_TYPES(float)

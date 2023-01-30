@@ -13,7 +13,7 @@ void sleep_ms(long delay)
 
 class DummyProcessor : public PacketProcessor {
 public:
-	void packetProcess(Packet &pkt) override
+	void processPacket(peer_t peer_id, Packet &pkt) override
 	{
 		printf("... processing packet len=%zu\n", pkt.size());
 		last_size = pkt.size();
@@ -41,12 +41,30 @@ void unittest_connection()
 		pkt.write<int32_t>(3253252);
 		pkt.writeStr16("hello world");
 
+		for (int i = 0; i < 2; ++i) {
+			// Attempt to re-send (e.g. for another peer...?)
+
+			proc.last_size = 0;
+			client.send(0, 0, pkt);
+
+			while (proc.last_size == 0)
+				sleep_ms(100);
+
+			CHECK(proc.last_size == 4 + 2 + 11);
+		}
+	}
+
+	{
+		// Broadcast to clients on channel 1
+		Packet pkt;
+		pkt.writeStr16("test");
+
 		proc.last_size = 0;
-		client.send(Connection::PEER_ID_SERVER, 0, pkt);
+		server.send(0, 1 | Connection::FLAG_BROADCAST, pkt);
 
 		while (proc.last_size == 0)
 			sleep_ms(100);
 
-		CHECK(proc.last_size == 4 + 2 + 11);
+		CHECK(proc.last_size == 2 + 4);
 	}
 }

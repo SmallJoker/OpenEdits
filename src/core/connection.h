@@ -3,6 +3,9 @@
 #include "macros.h"
 #include <cstdint>
 
+const uint16_t PROTOCOL_VERSION = 1;
+const uint16_t PROTOCOL_VERSION_MIN = 1;
+
 typedef uint32_t peer_t; // same as in ENetPeer
 
 struct _ENetHost;
@@ -30,7 +33,8 @@ public:
 	void listenAsync(PacketProcessor &proc);
 	void disconnect(peer_t peer_id);
 
-	static const peer_t PEER_ID_SERVER = UINT16_MAX;
+	// use only on single connections
+	static const peer_t PEER_ID_FIRST = 0;
 	enum PacketFlags {
 		FLAG_MASK_CHANNEL = 0x00FF, // internal
 		FLAG_BROADCAST = 0x0100,
@@ -57,5 +61,7 @@ private:
 // abstract
 class PacketProcessor {
 public:
-	virtual void packetProcess(Packet &pkt) = 0;
+	virtual void onPeerConnected(peer_t peer_id) {}
+	virtual void onPeerDisconnected(peer_t peer_id) {}
+	virtual void processPacket(peer_t peer_id, Packet &pkt) = 0;
 };
