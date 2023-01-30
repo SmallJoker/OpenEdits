@@ -1,0 +1,14 @@
+# Development directories
+build/
+bin/
+
+# Development files
+*.patch
+*.diff
+*.sh
+*.bat
+
+# IDEs
+.kdev4/
+*.kdev4
+*.tmp
