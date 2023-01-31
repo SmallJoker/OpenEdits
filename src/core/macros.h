@@ -6,9 +6,9 @@
 	T(const T &) = delete; \
 	T &operator=(const T &) = delete;
 
-#define FATAL_ERROR_IF(cond, msg) \
+#define ASSERT_FORCED(cond, msg) \
 	if (!(cond)) { \
-		fprintf(stderr, "Assertion failed: %s\n", msg); \
+		fprintf(stderr, "Assertion ( %s ) failed: %s\n", #cond, msg); \
 		exit(EXIT_FAILURE); \
 	}
 

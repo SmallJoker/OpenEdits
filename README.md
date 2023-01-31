@@ -6,9 +6,10 @@ Code structure inspired by Minetest practices.
 
 ## Dependencies
 
- * CMake
+ * CMake (cmake-gui recommended for desktops)
  * [Irrlicht-Mt](https://github.com/minetest/irrlicht) : GUI/rendering library
  * [enet](http://enet.bespin.org/) : networking library
+ * Threads (phthread?)
 
 
 ## Compiling
@@ -24,4 +25,10 @@ Project compiling:
 
 ## Licenses
 
-License: LGPL 2.1+
+Code: LGPL 2.1+
+
+### Fonts
+
+DejaVu Sans bitmaps (Bitstream Vera license, extended MIT)
+
+ * Converted with https://github.com/kahrl/irrtum
