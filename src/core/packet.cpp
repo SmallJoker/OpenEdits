@@ -43,9 +43,10 @@ T Packet::read()
 {
 	checkLength(sizeof(T));
 
-	size_t offset = m_read_offset;
+	T ret;
+	memcpy(&ret, &m_data->data[m_read_offset], sizeof(T));
 	m_read_offset += sizeof(T);
-	return *(T *)&m_data->data[offset];
+	return ret;
 }
 
 template <typename T>
@@ -53,9 +54,7 @@ void Packet::write(T v)
 {
 	ensureCapacity(sizeof(T));
 
-	T *dst = (T *)&m_data->data[m_write_offset];
-	*dst = v;
-
+	memcpy(&m_data->data[m_write_offset], &v, sizeof(T));
 	m_write_offset += sizeof(T);
 }
 

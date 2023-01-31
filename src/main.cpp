@@ -4,14 +4,15 @@
 #include "gui/render.h"
 
 void unittest();
-void lobby_gui();
 
 int main(int argc, char *argv[])
 {
-	//unittest();
-	lobby_gui();
-	Render render;
+	if (argc >= 2 && strcmp(argv[1], "--unittest") == 0) {
+		unittest();
+	}
 
+	Render render;
+	render.run();
 
 	puts("Hello World");
 	return EXIT_SUCCESS;

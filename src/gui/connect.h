@@ -7,8 +7,8 @@ class SceneHandlerConnect : public SceneHandler {
 public:
 	SceneHandlerConnect();
 
-	SceneHandlerType runPre(float dtime) override;
-	void runPost() override;
+	void draw() override;
+	SceneHandlerType step(float dtime) override;
 	bool OnEvent(const SEvent &e) override;
 
 private:

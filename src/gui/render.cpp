@@ -9,7 +9,7 @@ using namespace irr;
 
 Render::Render()
 {
-	IrrlichtDevice *device = createDevice(video::EDT_OPENGL,
+	device = createDevice(video::EDT_OPENGL,
 		core::dimension2d<u32>(640, 480), 16,
 		false, false, true /* vsync */, this);
 
@@ -19,40 +19,15 @@ Render::Render()
 
 	scene = device->getSceneManager();
 	gui = device->getGUIEnvironment();
-	video::IVideoDriver *driver = device->getVideoDriver();
-
 	font = gui->getFont("assets/fonts/DejaVuSans_15pt.png");
 
 	{
 		// Scene handler registration
 		registerHandler(SceneHandlerType::Connect, new SceneHandlerConnect());
-		m_initialized = true;
 	}
 
 	m_type = SceneHandlerType::Connect;
-	auto t_last = std::chrono::steady_clock::now();
-
-	while (device->run() && m_type != SceneHandlerType::QUIT) {
-		auto t_now = std::chrono::steady_clock::now();
-		float dtime = std::chrono::duration<float>(t_now - t_last).count();
-		t_last = t_now;
-
-		driver->beginScene(true, true, video::SColor(0xFF000000));
-
-		auto it = m_handlers.find(m_type);
-		ASSERT_FORCED(it != m_handlers.end(), "Unknown handler");
-
-		SceneHandlerType type_next = it->second->runPre(dtime);
-		if (type_next != SceneHandlerType::KEEP_PREVIOUS)
-			m_type = type_next;
-
-		scene->drawAll();
-		gui->drawAll();
-
-		it->second->runPost();
-
-		driver->endScene();
-	}
+	m_initialized = true;
 }
 
 Render::~Render()
@@ -62,6 +37,48 @@ Render::~Render()
 }
 
 // -------------- Public members -------------
+
+void Render::run()
+{
+	video::IVideoDriver *driver = device->getVideoDriver();
+	auto t_last = std::chrono::steady_clock::now();
+
+	bool is_new_screen = true;
+	while (device->run() && m_type != SceneHandlerType::CTRL_QUIT) {
+		// Measure precise timings
+		auto t_now = std::chrono::steady_clock::now();
+		float dtime = std::chrono::duration<float>(t_now - t_last).count();
+		t_last = t_now;
+
+		if (is_new_screen) {
+			// Clear GUI elements
+			scene->clear();
+			gui->clear();
+		}
+
+		driver->beginScene(true, true, video::SColor(0xFF000000));
+
+		auto it = m_handlers.find(m_type);
+		ASSERT_FORCED(it != m_handlers.end(), "Unknown handler");
+
+		if (is_new_screen)
+			it->second->draw();
+
+		scene->drawAll();
+		gui->drawAll();
+
+		SceneHandlerType type_next = it->second->step(dtime);
+		if (type_next != SceneHandlerType::CTRL_NOOP) {
+			is_new_screen = (type_next != m_type);
+			m_type = type_next;
+		} else {
+			is_new_screen = false;
+		}
+
+		driver->endScene();
+	}
+}
+
 
 bool Render::OnEvent(const SEvent &event)
 {
@@ -80,4 +97,3 @@ void Render::registerHandler(SceneHandlerType type, SceneHandler *handler)
 	m_handlers.insert({type, handler});
 	handler->init(this);
 }
-

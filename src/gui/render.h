@@ -23,14 +23,17 @@ enum class SceneHandlerType {
 	Connect,
 	Lobby,
 	World,
-	QUIT,
-	KEEP_PREVIOUS
+	CTRL_QUIT,
+	CTRL_RENEW,
+	CTRL_NOOP
 };
 
 class Render : public IEventReceiver {
 public:
 	Render();
 	~Render();
+
+	void run();
 
 	bool OnEvent(const SEvent &event) override;
 
@@ -55,8 +58,8 @@ public:
 
 	void init(Render *render) { m_render = render; }
 
-	virtual SceneHandlerType runPre(float dtime) = 0;
-	virtual void runPost() {}
+	virtual void draw() = 0;
+	virtual SceneHandlerType step(float dtime) = 0;
 
 protected:
 	SceneHandler() = default;

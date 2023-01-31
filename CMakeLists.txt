@@ -31,6 +31,7 @@ endif()
 ### Compiler options
 
 if (NOT MSVC)
+	# -fsanitize=address,undefined
 	# -O3 is default for release
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -g")
 
