@@ -3,16 +3,15 @@
 #include "gui.h"
 #include <string>
 
-class SceneLobby : public SceneHandler {
+class SceneGameplay : public SceneHandler {
 public:
-	SceneLobby();
+	SceneGameplay();
 
 	void draw() override;
 	void step(float dtime) override;
 	bool OnEvent(const SEvent &e) override;
 	bool OnEvent(const GameEvent &e) override;
 
-	core::stringw worldid = L"";
-
 private:
 };
+

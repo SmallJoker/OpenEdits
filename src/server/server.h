@@ -4,7 +4,7 @@
 #include "remoteplayer.h"
 #include <map>
 
-enum class EventType;
+//enum class EventType;
 struct ServerPacketAction;
 
 

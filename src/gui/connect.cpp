@@ -8,18 +8,19 @@
 
 enum ElementId : int {
 	ID_BoxNickname = 101,
-	ID_BoxAddress = 101,
-	ID_BtnConnect = 102
+	ID_BoxAddress,
+	ID_BtnConnect = 110,
+	ID_BtnHost
 };
 
-SceneHandlerConnect::SceneHandlerConnect()
+SceneConnect::SceneConnect()
 {
 
 }
 
 // -------------- Public members -------------
 
-void SceneHandlerConnect::draw()
+void SceneConnect::draw()
 {
 	core::recti rect_1(
 		core::vector2di(100, 100),
@@ -28,84 +29,90 @@ void SceneHandlerConnect::draw()
 	core::recti rect_2 = rect_1 + core::vector2di(120, -5);
 
 	{
-		auto text_a = m_render->gui->addStaticText(L"Username", rect_1, false, false);
-		text_a->setOverrideColor(0xFFFFFFFF);
-		text_a->setOverrideFont(m_render->font);
+		auto rect = rect_2 + core::vector2di(180, 0);
 
-		auto box_a = m_render->gui->addEditBox(
-			L"Guest420", rect_2, true, nullptr, ID_BoxNickname);
-		box_a->setOverrideFont(m_render->font);
+		m_gui->gui->addButton(
+			rect, nullptr, ID_BtnConnect, L"Host");
+	}
+
+	{
+		auto text_a = m_gui->gui->addStaticText(L"Username", rect_1, false, false);
+		text_a->setOverrideColor(0xFFFFFFFF);
+
+		m_gui->gui->addEditBox(
+			nickname.c_str(), rect_2, true, nullptr, ID_BoxNickname);
 
 		rect_1 += core::vector2di(0, 50);
 		rect_2 += core::vector2di(0, 50);
 	}
 
 	{
-		auto text_a = m_render->gui->addStaticText(L"Address", rect_1, false, false);
+		auto text_a = m_gui->gui->addStaticText(L"Address", rect_1, false, false);
 		text_a->setOverrideColor(0xFFFFFFFF);
-		text_a->setOverrideFont(m_render->font);
 
-		auto box_a = m_render->gui->addEditBox(
-			L"127.0.0.1", rect_2, true, nullptr, ID_BoxAddress);
-		box_a->setOverrideFont(m_render->font);
+		core::stringw str;
+
+		m_gui->gui->addEditBox(
+			address.c_str(), rect_2, true, nullptr, ID_BoxAddress);
 
 		rect_1 += core::vector2di(0, 50);
 		rect_2 += core::vector2di(0, 50);
 	}
 
-	auto btn_c = m_render->gui->addButton(
+	m_gui->gui->addButton(
 		rect_2, nullptr, ID_BtnConnect, L"Connect");
-	btn_c->setOverrideFont(m_render->font);
-
-
 }
 
-SceneHandlerType SceneHandlerConnect::step(float dtime)
+void SceneConnect::step(float dtime)
 {
 	core::recti rect(200, 10, 200, 30);
 	video::SColor color(0xFFFFFFFF);
 	video::SColor red(0xFFFF0000);
 
-	m_render->font->draw(L"Hello world", rect, color);
-	if (x >= 0 && 0) {
-		core::recti rect(x + 2, y, 200, 30);;
-		m_render->font->draw(L"MOUSE", rect, red);
+	m_gui->font->draw(L"Hello world", rect, color);
+	if (x >= 0) {
+		core::recti rect(x - 6, y - 10, 200, 30);;
+		m_gui->font->draw(L"X", rect, red);
 	}
-
-	return SceneHandlerType::CTRL_NOOP;
 }
 
-bool SceneHandlerConnect::OnEvent(const SEvent &e)
+bool SceneConnect::OnEvent(const SEvent &e)
 {
 	if (e.EventType == EET_GUI_EVENT) {
-		if (e.GUIEvent.EventType == gui::EGET_ELEMENT_FOCUSED) {
-			core::stringc str;
-			wStringToMultibyte(str, e.GUIEvent.Caller->getText());
-			printf("Focus: %s\n", str.c_str());
-		}
-		if (e.GUIEvent.EventType == gui::EGET_EDITBOX_ENTER) {
-			core::stringc str;
-			wStringToMultibyte(str, e.GUIEvent.Caller->getText());
-			printf("Input: %s\n", str.c_str());
+		switch (e.GUIEvent.EventType) {
+			case gui::EGET_BUTTON_CLICKED:
+				onSubmit(e.GUIEvent.Caller->getID());
+				return true;
+			default: break;
 		}
 	}
 	if (e.EventType == irr::EET_MOUSE_INPUT_EVENT) {
 		switch (e.MouseInput.Event) {
-			case EMIE_LMOUSE_PRESSED_DOWN:
+			case EMIE_MOUSE_MOVED:
 				x = e.MouseInput.X;
 				y = e.MouseInput.Y;
-			break;
-
-			case EMIE_LMOUSE_LEFT_UP:
-
-			break;
-
-			case EMIE_MOUSE_MOVED:
-
-			break;
-
+				break;
 			default: break;
 		}
 	}
 	return false;
 }
+
+bool SceneConnect::OnEvent(const GameEvent &e)
+{
+	return false;
+}
+
+
+void SceneConnect::onSubmit(int elementid)
+{
+	auto root = m_gui->gui->getRootGUIElement();
+
+	nickname = root->getElementFromId(ID_BoxNickname)->getText();
+	address = root->getElementFromId(ID_BoxAddress)->getText();
+
+	start_localhost = (elementid == ID_BtnHost);
+
+	m_gui->connect(this);
+}
+

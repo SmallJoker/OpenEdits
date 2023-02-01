@@ -1,13 +1,14 @@
 #pragma once
 
-#include "core/connection.h"
-#include <string>
+#include "core/macros.h"
+#include "core/player.h"
 
-class RemotePlayer {
+class RemotePlayer : public Player {
 public:
+	RemotePlayer(peer_t peer_id);
+
 	const peer_t peer_id;
 
-	std::string name;
 	void *world_id;
 private:
 };

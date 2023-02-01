@@ -1,7 +1,8 @@
 #include <iostream>
 #include "core/connection.h"
 #include "core/packet.h"
-#include "gui/render.h"
+#include "gui/gui.h"
+#include <string.h>
 
 void unittest();
 
@@ -11,8 +12,8 @@ int main(int argc, char *argv[])
 		unittest();
 	}
 
-	Render render;
-	render.run();
+	Gui gui;
+	gui.run();
 
 	puts("Hello World");
 	return EXIT_SUCCESS;

@@ -6,8 +6,6 @@
 const uint16_t PROTOCOL_VERSION = 1;
 const uint16_t PROTOCOL_VERSION_MIN = 1;
 
-typedef uint32_t peer_t; // same as in ENetPeer
-
 struct _ENetHost;
 struct _ENetPeer;
 class Packet;

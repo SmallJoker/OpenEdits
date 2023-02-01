@@ -1,6 +1,24 @@
-#include <iostream>
-#include "core/macros.h"
+#include "lobby.h"
 
-void lobby_gui()
+SceneLobby::SceneLobby()
 {
+}
+
+void SceneLobby::draw()
+{
+	m_gui->joinWorld(this);
+}
+
+void SceneLobby::step(float dtime)
+{
+}
+
+bool SceneLobby::OnEvent(const SEvent &e)
+{
+	return false;
+}
+
+bool SceneLobby::OnEvent(const GameEvent &e)
+{
+	return false;
 }

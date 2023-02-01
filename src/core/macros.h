@@ -14,3 +14,5 @@
 
 typedef std::unique_lock<std::recursive_mutex> MutexLockR;
 typedef std::unique_lock<std::mutex> MutexLock;
+
+typedef uint32_t peer_t; // same as in ENetPeer
