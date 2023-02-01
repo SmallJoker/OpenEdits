@@ -1,36 +1,39 @@
 #pragma once
 
-#include "core/connection.h"
-#include "remoteplayer.h"
+#include "core/environment.h"
 #include <map>
 
-//enum class EventType;
-struct ServerPacketAction;
+class RemotePlayer;
+struct ServerPacketHandler;
 
 
-class Server : public PacketProcessor {
+class Server : public Environment {
 public:
 	Server();
+	~Server();
+
+	// ----------- Utility functions -----------
+	RemotePlayer *getPlayer(peer_t peer_id);
 
 	// ----------- Networking -----------
 	void onPeerConnected(peer_t peer_id) override;
 	void onPeerDisconnected(peer_t peer_id) override;
 	void processPacket(peer_t peer_id, Packet &pkt) override;
 
-	void pkt_Hello(RemotePlayer &player, Packet &pkt);
-	void pkt_Join(RemotePlayer &player, Packet &pkt);
-	void pkt_Leave(RemotePlayer &player, Packet &pkt);
-	void pkt_Move(RemotePlayer &player, Packet &pkt);
-	void pkt_Deprecated(RemotePlayer &player, Packet &pkt);
+	void pkt_Hello(peer_t peer_id, Packet &pkt);
+	void pkt_Join(peer_t peer_id, Packet &pkt);
+	void pkt_Leave(peer_t peer_id, Packet &pkt);
+	void pkt_Move(peer_t peer_id, Packet &pkt);
+	void pkt_Deprecated(peer_t peer_id, Packet &pkt);
 
 private:
-	static const ServerPacketAction packet_actions[];
-	Connection m_con;
+	static const ServerPacketHandler packet_actions[];
 
-	std::map<peer_t, RemotePlayer> m_players;
+	std::map<worldid_t, World *> m_worlds;
 };
 
-struct ServerPacketAction {
-	int event;
-	void (Server::*handler)(RemotePlayer &player, Packet &pkt);
+struct ServerPacketHandler {
+	int action;
+	bool needs_player;
+	void (Server::*func)(peer_t peer_id, Packet &pkt);
 };

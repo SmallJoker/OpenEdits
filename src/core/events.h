@@ -12,8 +12,9 @@ struct GameEvent {
 		GE_PLAYER_LEAVE,
 		GE_PLAYER_SAY,
 		GE_MAP_ADD_BLOCK,
-		GE_MAP_REMOVE_BLOCK
-	} event;
+		GE_MAP_REMOVE_BLOCK,
+		GE_WORLD_LEAVE
+	} type;
 
 	Player *player;
 	std::string str;

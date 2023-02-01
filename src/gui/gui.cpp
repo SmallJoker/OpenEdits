@@ -9,8 +9,6 @@
 #include "lobby.h"
 #include "gameplay.h"
 
-using namespace irr;
-
 Gui::Gui()
 {
 	m_window_size = core::dimension2du(700, 500);
@@ -24,6 +22,7 @@ Gui::Gui()
 
 	scenemgr = device->getSceneManager();
 	gui = device->getGUIEnvironment();
+	driver = device->getVideoDriver();
 
 	{
 		// Styling
@@ -58,7 +57,6 @@ Gui::~Gui()
 
 void Gui::run()
 {
-	video::IVideoDriver *driver = device->getVideoDriver();
 	auto t_last = std::chrono::steady_clock::now();
 
 	while (device->run() && m_scenetype_next != SceneHandlerType::CTRL_QUIT) {

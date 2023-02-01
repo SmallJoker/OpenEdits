@@ -2,6 +2,7 @@
 
 #include "macros.h"
 #include <cstdint>
+#include <vector>
 
 const uint16_t PROTOCOL_VERSION = 1;
 const uint16_t PROTOCOL_VERSION_MIN = 1;
@@ -26,7 +27,7 @@ public:
 	void connect(const char *hostname);
 
 	void flush(); // for debugging
-	size_t getPeerCount() const;
+	size_t getPeerIDs(std::vector<peer_t> *fill) const;
 
 	void listenAsync(PacketProcessor &proc);
 	void disconnect(peer_t peer_id);

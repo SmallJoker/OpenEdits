@@ -1,10 +1,5 @@
 #include "gameplay.h"
-#include <IGUIButton.h>
-#include <IGUIEditBox.h>
-#include <IGUIEnvironment.h>
-#include <IGUIFont.h>
-#include <IGUIStaticText.h>
-#include <vector2d.h>
+#include <irrlicht.h>
 
 enum ElementId : int {
 	ID_BoxChat = 101,
@@ -13,7 +8,12 @@ enum ElementId : int {
 
 SceneGameplay::SceneGameplay()
 {
+	camera_pos = core::vector2df(0, 0);
 
+	draw_area = core::recti(
+		core::vector2di(0, 60),
+		core::dimension2di(500, 300)
+	);
 }
 
 // -------------- Public members -------------
@@ -45,6 +45,8 @@ void SceneGameplay::step(float dtime)
 	video::SColor color(0xFFFFFFFF);
 
 	m_gui->font->draw(L"Gameplay", rect, color);
+
+	drawWorld();
 }
 
 bool SceneGameplay::OnEvent(const SEvent &e)
@@ -71,5 +73,23 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 bool SceneGameplay::OnEvent(const GameEvent &e)
 {
 	return false;
+}
+
+void SceneGameplay::drawWorld()
+{
+	//World *world = m_gui->getClient()->getWorld();
+	video::ITexture *image = m_gui->driver->getTexture("assets/textures/dummy.png");
+    m_gui->driver->makeColorKeyTexture(image, core::position2di(0,0));
+
+	//auto extent = draw_area.getSize() / 2;
+	auto size = image->getSize();
+
+	for (s32 y = draw_area.UpperLeftCorner.Y; y < draw_area.LowerRightCorner.Y; y += size.Height)
+	for (s32 x = draw_area.UpperLeftCorner.X; x < draw_area.LowerRightCorner.X; x += size.Width) {
+		int pos_x = (x - draw_area.UpperLeftCorner.X) / size.Width;
+		int pos_y = (y - draw_area.UpperLeftCorner.Y) / size.Height;
+
+		m_gui->driver->draw2DImage(image, core::position2di(x, y), false);
+	}
 }
 

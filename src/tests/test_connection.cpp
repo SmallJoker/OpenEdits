@@ -32,7 +32,7 @@ void unittest_connection()
 	client.connect("127.0.0.1");
 	client.listenAsync(proc);
 
-	while (client.getPeerCount() != 1)
+	while (client.getPeerIDs(nullptr) != 1)
 		sleep_ms(100);
 
 	{

@@ -13,5 +13,9 @@ public:
 	bool OnEvent(const GameEvent &e) override;
 
 private:
+	void drawWorld();
+
+	core::vector2df camera_pos;
+	core::recti draw_area;
 };
 

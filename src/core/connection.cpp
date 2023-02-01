@@ -106,12 +106,18 @@ void Connection::flush()
 	enet_host_flush(m_host);
 }
 
-size_t Connection::getPeerCount() const
+size_t Connection::getPeerIDs(std::vector<peer_t> *fill) const
 {
+	if (fill)
+		fill->clear();
+
 	size_t count = 0;
 	for (size_t i = 0; i < m_host->peerCount; ++i) {
-		if (m_host->peers[i].state == ENET_PEER_STATE_CONNECTED)
+		if (m_host->peers[i].state == ENET_PEER_STATE_CONNECTED) {
+			if (fill)
+				fill->push_back(m_host->peers[i].connectID);
 			count++;
+		}
 	}
 	return count;
 }

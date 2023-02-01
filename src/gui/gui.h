@@ -16,6 +16,9 @@ namespace irr {
 	namespace scene {
 		class ISceneManager;
 	}
+	namespace video {
+		class IVideoDriver;
+	}
 }
 
 using namespace irr;
@@ -51,6 +54,7 @@ public:
 
 	// Helpers for SceneHandler
 	SceneHandler *getHandler(SceneHandlerType type);
+	Client *getClient() { return m_client; }
 
 	// Actions to perform
 	void connect(SceneConnect *sc);
@@ -66,6 +70,7 @@ public:
 	scene::ISceneManager *scenemgr = nullptr;
 	gui::IGUIEnvironment *gui = nullptr;
 	gui::IGUIFont *font = nullptr;
+	video::IVideoDriver *driver = nullptr; // 2D images
 
 private:
 	inline void setNextScene(SceneHandlerType type) { m_scenetype_next = type; }

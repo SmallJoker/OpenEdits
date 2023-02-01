@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/world.h"
 #include <irrTypes.h>
 #include <string>
 
@@ -10,14 +11,6 @@ namespace irr {
 using namespace irr;
 
 class Player;
-
-
-struct BlockProperties {
-	u32 color;
-
-	void onCollide() {}
-	void step(float dtime) {}
-};
 
 struct BlockPackData {
 	std::string imagepath;
