@@ -9,6 +9,8 @@
 #include "lobby.h"
 #include "gameplay.h"
 
+void sleep_ms(long delay);
+
 Gui::Gui()
 {
 	m_window_size = core::dimension2du(700, 500);
@@ -162,7 +164,20 @@ void Gui::connect(SceneConnect *sc)
 
 	m_client = new Client(init);
 
-	setNextScene(SceneHandlerType::Lobby);
+	for (int i = 0; i < 10 && !m_client->isConnected(); ++i) {
+		sleep_ms(200);
+	}
+
+	if (m_client->isConnected()) {
+		setNextScene(SceneHandlerType::Lobby);
+	} else {
+		puts("Wait timed out.");
+		delete m_client;
+		m_client = nullptr;
+
+		delete m_server;
+		m_server = nullptr;
+	}
 }
 
 void Gui::disconnect()

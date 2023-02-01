@@ -6,7 +6,7 @@
 #include <pthread.h>
 #include <string.h> // strerror
 
-#if 0
+#if 1
 	#define LOGME(...) printf(__VA_ARGS__)
 #else
 	#define LOGME(...) /* SILENCE */
@@ -152,9 +152,6 @@ void Connection::send(peer_t peer_id, uint16_t flags, Packet &pkt)
 	// TODO: test ENET_PACKET_FLAG_UNSEQUENCED
 	if (!(flags & FLAG_UNRELIABLE))
 		pkt.data()->flags |= ENET_PACKET_FLAG_RELIABLE;
-
-	// The data must yet not be freed. It's done in the Packet class' destructor when we no longer need it
-	pkt.data()->referenceCount++;
 
 	if (flags & FLAG_BROADCAST) {
 		peer_id = 0;

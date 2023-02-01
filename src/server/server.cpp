@@ -6,6 +6,7 @@ static uint16_t PACKET_ACTIONS_MAX; // initialized in ctor
 
 Server::Server()
 {
+	puts("Server: startup");
 	m_con = new Connection(Connection::TYPE_SERVER);
 	m_con->listenAsync(*this);
 
@@ -19,6 +20,8 @@ Server::Server()
 
 Server::~Server()
 {
+	puts("Server: stopping...");
+
 	for (auto it : m_players)
 		delete it.second;
 	m_players.clear();
@@ -37,8 +40,19 @@ RemotePlayer *Server::getPlayer(peer_t peer_id)
 
 void Server::onPeerConnected(peer_t peer_id)
 {
-	auto player = new RemotePlayer(peer_id);
-	m_players.insert({peer_id, player});
+	{
+		Packet pkt;
+		pkt.write<Packet2Client>(Packet2Client::Quack);
+		pkt.writeStr16("hello world");
+		m_con->send(peer_id, 0, pkt);
+	}
+
+	{
+		Packet pkt;
+		pkt.write<Packet2Client>(Packet2Client::Error);
+		pkt.writeStr16("No error. Everything's fine");
+		m_con->send(peer_id, 0, pkt);
+	}
 }
 
 void Server::onPeerDisconnected(peer_t peer_id)
@@ -48,9 +62,9 @@ void Server::onPeerDisconnected(peer_t peer_id)
 void Server::processPacket(peer_t peer_id, Packet &pkt)
 {
 	// one server instance, multiple worlds
-	uint16_t action = pkt.read<uint16_t>();
+	int action = (int)pkt.read<Packet2Server>();
 	if (action >= PACKET_ACTIONS_MAX) {
-		puts("Packet action out of range");
+		printf("Server: Packet action %u out of range\n", action);
 		return;
 	}
 
@@ -59,7 +73,7 @@ void Server::processPacket(peer_t peer_id, Packet &pkt)
 	if (handler.needs_player) {
 		RemotePlayer *player = getPlayer(peer_id);
 		if (!player) {
-			puts("Player not found");
+			printf("Server: Player peer_id= %d not found.\n", peer_id);
 			return;
 		}
 	}
@@ -67,8 +81,8 @@ void Server::processPacket(peer_t peer_id, Packet &pkt)
 	try {
 		(this->*handler.func)(peer_id, pkt);
 	} catch (std::out_of_range &e) {
-		printf("Action %d parsing error: %s\n", action, e.what());
+		printf("Server: Action %d parsing error: %s\n", action, e.what());
 	} catch (std::exception &e) {
-		printf("Action %d general error: %s\n", action, e.what());
+		printf("Server: Action %d general error: %s\n", action, e.what());
 	}
 }

@@ -24,19 +24,24 @@ public:
 
 	// ----------- Utility functions -----------
 	LocalPlayer *getPlayer(peer_t peer_id);
+	bool isConnected() { return m_is_connected; }
 
 	// ----------- Networking -----------
 	void onPeerConnected(peer_t peer_id) override;
 	void onPeerDisconnected(peer_t peer_id) override;
 	void processPacket(peer_t peer_id, Packet &pkt) override;
 
+	void pkt_Quack(peer_t peer_id, Packet &pkt);
 	void pkt_Hello(peer_t peer_id, Packet &pkt);
+	void pkt_Error(peer_t peer_id, Packet &pkt);
 	void pkt_Join(peer_t peer_id, Packet &pkt);
 	void pkt_Leave(peer_t peer_id, Packet &pkt);
 	void pkt_Move(peer_t peer_id, Packet &pkt);
 	void pkt_Deprecated(peer_t peer_id, Packet &pkt);
 
 protected:
+	bool m_is_connected = false;
+
 	World *m_world = nullptr;
 
 	std::string m_world_hash = "foobar";
@@ -49,7 +54,6 @@ private:
 };
 
 struct ClientPacketHandler {
-	int action;
-	bool needs_player;
+	signed char needs_player; // -1 indicates end
 	void (Client::*func)(peer_t peer_id, Packet &pkt);
 };

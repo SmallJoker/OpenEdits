@@ -32,7 +32,7 @@ void SceneConnect::draw()
 		auto rect = rect_2 + core::vector2di(180, 0);
 
 		m_gui->gui->addButton(
-			rect, nullptr, ID_BtnConnect, L"Host");
+			rect, nullptr, ID_BtnHost, L"Host");
 	}
 
 	{

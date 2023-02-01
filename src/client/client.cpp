@@ -8,8 +8,10 @@ static uint16_t PACKET_ACTIONS_MAX; // initialized in ctor
 
 Client::Client(ClientStartData &init)
 {
+	puts("Client: startup");
 	m_con = new Connection(Connection::TYPE_CLIENT);
 	m_con->connect(init.address.c_str());
+	m_con->listenAsync(*this);
 
 	PACKET_ACTIONS_MAX = 0;
 	const ClientPacketHandler *handler = packet_actions;
@@ -22,6 +24,8 @@ Client::Client(ClientStartData &init)
 
 Client::~Client()
 {
+	puts("Client: stopping...");
+
 	for (auto it : m_players)
 		delete it.second;
 	m_players.clear();
@@ -41,11 +45,14 @@ LocalPlayer *Client::getPlayer(peer_t peer_id)
 
 void Client::onPeerConnected(peer_t peer_id)
 {
+	m_is_connected = true;
 	puts("Client: hello server!");
 }
 
 void Client::onPeerDisconnected(peer_t peer_id)
 {
+	m_is_connected = false;
+
 	// send event for client destruction
 	if (m_handler) {
 		GameEvent e;
@@ -58,28 +65,28 @@ void Client::onPeerDisconnected(peer_t peer_id)
 void Client::processPacket(peer_t peer_id, Packet &pkt)
 {
 	// one server instance, multiple worlds
-	uint16_t action = pkt.read<uint16_t>();
+	int action = (int)pkt.read<Packet2Client>();
 	if (action >= PACKET_ACTIONS_MAX) {
-		puts("Packet action out of range");
+		printf("Client: Packet action %u out of range: %s\n", action, pkt.dump(20).c_str());
 		return;
 	}
 
 	const ClientPacketHandler &handler = packet_actions[action];
 
-	if (handler.needs_player) {
+	/*if (handler.needs_player) {
 		LocalPlayer *player = getPlayer(peer_id);
 		if (!player) {
-			puts("Player not found");
+			printf("%s: Player not found.\n", __func__);
 			return;
 		}
-	}
+	}*/
 
 	try {
 		(this->*handler.func)(peer_id, pkt);
 	} catch (std::out_of_range &e) {
-		printf("Action %d parsing error: %s\n", action, e.what());
+		printf("Client: Action %d parsing error: %s\n", action, e.what());
 	} catch (std::exception &e) {
-		printf("Action %d general error: %s\n", action, e.what());
+		printf("Client: Action %d general error: %s\n", action, e.what());
 	}
 }
 

@@ -3,15 +3,23 @@
 #include <enet/enet.h>
 #include <stdexcept>
 #include <string.h> // memcpy
+#include <sstream>
+
+// We cannot be sure enough...
+static_assert(sizeof(Packet2Client) == 2, "");
+static_assert(sizeof(Packet2Server) == 2, "");
 
 Packet::Packet()
 {
 	m_data = enet_packet_create(nullptr, 200, 0);
+	m_data->referenceCount++; // until ~Packet
 }
 
 Packet::Packet(const char *data, size_t len)
 {
 	m_data = enet_packet_create(data, len, 0);
+	m_data->referenceCount++; // until ~Packet
+
 	m_write_offset = len;
 }
 
@@ -25,11 +33,39 @@ Packet::Packet(_ENetPacket **pkt)
 
 Packet::~Packet()
 {
-	enet_packet_destroy(m_data);
+	ASSERT_FORCED(m_data->referenceCount != 1, "Counting is difficult");
+	if ((--m_data->referenceCount) == 0)
+		enet_packet_destroy(m_data);
 }
 
 
 // -------------- Public members -------------
+
+std::string Packet::dump(size_t n)
+{
+	n = std::min(n, m_write_offset);
+
+	std::stringstream ss;
+	ss << "[len=" << size() <<" : ";
+
+	char buf[4];
+	for (size_t i = 0; i < n; i++) {
+		sprintf(buf, "%02X ", m_data->data[i]);
+		ss << buf;
+		// make groups of 8
+		if ((i & 0x07) == 0x07)
+			ss << ". ";
+	}
+	ss << "| \"";
+	for (size_t i = 0; i < n; i++) {
+		char c = m_data->data[i];
+		ss << (std::isalnum(c) ? c : '.');
+	}
+	ss << "\"]";
+
+	return ss.str();
+}
+
 
 _ENetPacket *Packet::data()
 {
@@ -68,6 +104,8 @@ DEFINE_PACKET_TYPES(uint16_t)
 DEFINE_PACKET_TYPES(int32_t)
 DEFINE_PACKET_TYPES(uint32_t)
 DEFINE_PACKET_TYPES(float)
+DEFINE_PACKET_TYPES(Packet2Client)
+DEFINE_PACKET_TYPES(Packet2Server)
 
 #undef DEFINE_PACKET_TYPES
 

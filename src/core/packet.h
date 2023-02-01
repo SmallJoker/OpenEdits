@@ -20,6 +20,8 @@ public:
 	size_t getRemainingBytes() { return size() - m_read_offset; }
 	inline size_t size() const { return m_write_offset; }
 
+	std::string dump(size_t n = 10);
+
 	// For network sending
 	_ENetPacket *data();
 
@@ -39,4 +41,23 @@ private:
 	size_t m_read_offset = 0;
 	size_t m_write_offset = 0;
 	_ENetPacket *m_data = nullptr;
+};
+
+// In sync with client_packethandler.cpp
+enum class Packet2Client : uint16_t {
+	Quack = 0,
+	Hello,
+	Error,
+	Join,
+	Leave,
+	Move
+};
+
+// In sync with server_packethandler.cpp
+enum class Packet2Server : uint16_t {
+	Quack = 0,
+	Hello,
+	Join,
+	Leave,
+	Move
 };

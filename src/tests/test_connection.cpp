@@ -2,20 +2,14 @@
 #include "core/connection.h"
 #include "core/packet.h"
 
-#include <chrono>
-#include <thread>
-
-void sleep_ms(long delay)
-{
-	std::this_thread::sleep_for(std::chrono::milliseconds(delay));
-}
+void sleep_ms(long delay);
 
 
 class DummyProcessor : public PacketProcessor {
 public:
 	void processPacket(peer_t peer_id, Packet &pkt) override
 	{
-		printf("... processing packet len=%zu\n", pkt.size());
+		printf("... processing packet %s\n", pkt.dump().c_str());
 		last_size = pkt.size();
 	}
 	size_t last_size = 0;
@@ -38,7 +32,7 @@ void unittest_connection()
 	{
 		// From client to server, reliable packet
 		Packet pkt;
-		pkt.write<int32_t>(3253252);
+		pkt.write<int32_t>(0x50EFBE); // BEEFS
 		pkt.writeStr16("hello world");
 
 		for (int i = 0; i < 2; ++i) {
