@@ -2,13 +2,15 @@
 #include "remoteplayer.h"
 #include "core/packet.h"
 
+// in sync with core/packet.h
 const ServerPacketHandler Server::packet_actions[] = {
-	{ false, &Server::pkt_Quack }, // 0
-	{ false, &Server::pkt_Hello },
-	{ true,  &Server::pkt_Join },
-	{ true,  &Server::pkt_Leave },
-	{ true,  &Server::pkt_Move },
-	{ false, 0 }
+	{ RemotePlayerState::Invalid,   &Server::pkt_Quack }, // 0
+	{ RemotePlayerState::Invalid,   &Server::pkt_Hello },
+	{ RemotePlayerState::Idle,      &Server::pkt_GetLobby },
+	{ RemotePlayerState::Idle,      &Server::pkt_Join },
+	{ RemotePlayerState::WorldJoin, &Server::pkt_Leave },
+	{ RemotePlayerState::WorldPlay, &Server::pkt_Move },
+	{ RemotePlayerState::Invalid, 0 }
 };
 
 void Server::pkt_Quack(peer_t peer_id, Packet &pkt)
@@ -49,10 +51,26 @@ void Server::pkt_Hello(peer_t peer_id, Packet &pkt)
 	m_players.emplace(peer_id, player);
 
 	player->name = name;
+	player->state = RemotePlayerState::Idle;
+
+	{
+		// Confirm
+		Packet reply;
+		reply.write<Packet2Client>(Packet2Client::Hello);
+		reply.write<peer_t>(peer_id);
+
+		m_con->send(peer_id, 0, reply);
+	}
+
 
 	// TODO player state tracking
 	// TODO name duplication/validation check
 	printf("Hello from %s, proto_ver=%d\n", player->name.c_str(), player->protocol_version);
+}
+
+void Server::pkt_GetLobby(peer_t peer_id, Packet &pkt)
+{
+
 }
 
 void Server::pkt_Join(peer_t peer_id, Packet &pkt)

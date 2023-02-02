@@ -19,17 +19,16 @@ public:
 		TYPE_SERVER
 	};
 
-
-	Connection(ConnectionType type);
+	Connection(ConnectionType type, const char *name);
 	~Connection();
 	DISABLE_COPY(Connection)
 
-	void connect(const char *hostname);
+	bool connect(const char *hostname);
 
 	void flush(); // for debugging
 	size_t getPeerIDs(std::vector<peer_t> *fill) const;
 
-	void listenAsync(PacketProcessor &proc);
+	bool listenAsync(PacketProcessor &proc);
 	void disconnect(peer_t peer_id);
 
 	// use only on single connections
@@ -44,16 +43,16 @@ public:
 
 private:
 	static void *recvAsync(void *con);
+	void recvAsyncInternal();
 	_ENetPeer *findPeer(peer_t peer_id);
 
+	const char *m_name = "";
 	pthread_t m_thread = 0;
 	bool m_running = false;
 
 	_ENetHost *m_host = nullptr;
 
 	std::mutex m_peers_lock;
-
-	std::mutex m_processor_lock;
 	PacketProcessor *m_processor = nullptr;
 };
 

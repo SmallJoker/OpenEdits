@@ -26,8 +26,10 @@ bool World::getBlock(blockpos_t pos, Block *block)
 
 void World::createDummy(blockpos_t size)
 {
-	ASSERT_FORCED(size.X > 0 && size.Y > 0, "Invalid size")
-	ASSERT_FORCED(m_data, "Already created")
+	if (size.X == 0 || size.Y == 0)
+		throw std::length_error("Invalid size");
+	if (m_data)
+		throw std::runtime_error("Already created");
 
 	m_size = size;
 	m_data = new Block[m_size.X * m_size.Y]; // *2

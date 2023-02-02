@@ -5,12 +5,14 @@
 #include <iostream>
 #include <pthread.h>
 #include <string.h> // strerror
+#include <sstream>
 
-#if 1
-	#define LOGME(...) printf(__VA_ARGS__)
+#if 0
+	#define DEBUGLOG(...) printf(__VA_ARGS__)
 #else
-	#define LOGME(...) /* SILENCE */
+	#define DEBUGLOG(...) /* SILENCE */
 #endif
+#define ERRORLOG(...) fprintf(stderr, __VA_ARGS__)
 
 const uint16_t CON_PORT = 0xC014;
 const size_t CON_CLIENTS = 32; // server only
@@ -19,10 +21,9 @@ const size_t CON_CHANNELS = 2;
 struct enet_init {
 	enet_init()
 	{
-		if (enet_initialize() != 0) {
-			fprintf(stderr, "An error occurred while initializing ENet.\n");
-			exit(EXIT_FAILURE);
-		}
+		if (enet_initialize() != 0)
+			std::terminate();
+
 		puts("--> ENet start");
 	}
 	~enet_init()
@@ -32,10 +33,13 @@ struct enet_init {
 	}
 } ENET_INIT;
 
-Connection::Connection(Connection::ConnectionType type)
+Connection::Connection(Connection::ConnectionType type, const char *name)
 {
+	if (name)
+		m_name = name;
+
 	if (type == TYPE_CLIENT) {
-		LOGME("--- ENet: Initializing client\n");
+		DEBUGLOG("--- ENet %s: Initializing client\n", m_name);
 		m_host = enet_host_create(
 			NULL,
 			1, // == server
@@ -50,7 +54,7 @@ Connection::Connection(Connection::ConnectionType type)
 		address.host = ENET_HOST_ANY;
 		address.port = CON_PORT;
 
-		LOGME("--- ENet: Starting server on port %d\n", address.port);
+		DEBUGLOG("--- ENet %s: Starting server on port %d\n", m_name, address.port);
 		m_host = enet_host_create(
 			&address,
 			CON_CLIENTS,
@@ -61,7 +65,7 @@ Connection::Connection(Connection::ConnectionType type)
 	}
 
 	if (!m_host) {
-		fprintf(stderr, "-!- ENet: Failed to initialite instance\n");
+		ERRORLOG("-!- ENet %s: Failed to initialize instance\n", m_name);
 	}
 }
 
@@ -83,7 +87,7 @@ Connection::~Connection()
 
 // -------------- Public members -------------
 
-void Connection::connect(const char *hostname)
+bool Connection::connect(const char *hostname)
 {
 	ENetAddress address;
 	enet_address_set_host(&address, hostname);
@@ -91,13 +95,14 @@ void Connection::connect(const char *hostname)
 
 	ENetPeer *peer = enet_host_connect(m_host, &address, 2, 0);
 	if (!peer) {
-		fprintf(stderr, "-!- ENet: No free peers\n");
-		return;
+		ERRORLOG("-!- ENet: No free peers\n");
+		return false;
 	}
 
 	char name[100];
 	enet_address_get_host(&address, name, sizeof(name));
 	printf("--- ENet: Connected to %s:%u\n", name, address.port);
+	return true;
 }
 
 
@@ -122,7 +127,7 @@ size_t Connection::getPeerIDs(std::vector<peer_t> *fill) const
 	return count;
 }
 
-void Connection::listenAsync(PacketProcessor &proc)
+bool Connection::listenAsync(PacketProcessor &proc)
 {
 	m_running = true;
 
@@ -130,11 +135,12 @@ void Connection::listenAsync(PacketProcessor &proc)
 
 	if (status != 0) {
 		m_running = false;
-		fprintf(stderr, "-!- ENet: Failed to start pthread: %s\n", strerror(status));
-		return;
+		ERRORLOG("-!- ENet: Failed to start pthread: %s\n", strerror(status));
+		return false;
 	}
 
 	m_processor = &proc;
+	return m_running;
 }
 
 void Connection::disconnect(peer_t peer_id)
@@ -162,8 +168,8 @@ void Connection::send(peer_t peer_id, uint16_t flags, Packet &pkt)
 		enet_peer_send(peer, channel, pkt.data());
 	}
 
-	LOGME("--- ENet: packet sent. peer_id=%u, channel=%d, len=%zu\n",
-		peer_id, (int)channel, pkt.size());
+	DEBUGLOG("--- ENet: packet sent. peer_id=%u, channel=%d, dump=%s\n",
+		peer_id, (int)channel, pkt.dump().c_str());
 }
 
 // -------------- Private members -------------
@@ -171,24 +177,31 @@ void Connection::send(peer_t peer_id, uint16_t flags, Packet &pkt)
 void *Connection::recvAsync(void *con_p)
 {
 	Connection *con = (Connection *)con_p;
+	con->recvAsyncInternal();
 
+	printf("<-- ENet: Thread stop\n");
+	return nullptr;
+}
+
+void Connection::recvAsyncInternal()
+{
 	int shutdown_seen = 0;
 	ENetEvent event;
 
-	std::vector<peer_t> peer_id_list(con->m_host->peerCount, 0);
+	std::vector<peer_t> peer_id_list(m_host->peerCount, 0);
 
 	while (true) {
-		if (!con->m_running && shutdown_seen == 0) {
+		if (!m_running && shutdown_seen == 0) {
 			shutdown_seen++;
-			LOGME("--- ENet: Shutdown requested\n");
+			DEBUGLOG("--- ENet: Shutdown requested\n");
 
 			// Lazy disconnect
-			MutexLock lock(con->m_peers_lock);
-			for (size_t i = 0; i < con->m_host->peerCount; ++i)
-				enet_peer_disconnect_later(&con->m_host->peers[i], 0);
+			MutexLock lock(m_peers_lock);
+			for (size_t i = 0; i < m_host->peerCount; ++i)
+				enet_peer_disconnect_later(&m_host->peers[i], 0);
 		}
 
-		if (enet_host_service(con->m_host, &event, 500) <= 0) {
+		if (enet_host_service(m_host, &event, 500) <= 0) {
 			// Abort after 2 * 1000 ms
 			if (shutdown_seen > 0) {
 				if (++shutdown_seen > 2)
@@ -202,31 +215,35 @@ void *Connection::recvAsync(void *con_p)
 			case ENET_EVENT_TYPE_CONNECT:
 				{
 					peer_t peer_id = event.peer->connectID;
-					LOGME("--- ENet: New peer ID %u\n", peer_id);
-					peer_id_list[event.peer - con->m_host->peers] = peer_id;
-					con->m_processor->onPeerConnected(peer_id);
+					DEBUGLOG("--- ENet %s: New peer ID %u\n", m_name, peer_id);
+					peer_id_list[event.peer - m_host->peers] = peer_id;
+					m_processor->onPeerConnected(peer_id);
 				}
 				break;
 			case ENET_EVENT_TYPE_RECEIVE:
 				{
 					peer_t peer_id = event.peer->connectID;
-					LOGME("--- ENet: Got packet peer_id=%u, channel=%d, len=%zu\n",
-						peer_id,
+					DEBUGLOG("--- ENet %s: Got packet peer_id=%u, channel=%d, len=%zu\n",
+						m_name, peer_id,
 						(int)event.channelID,
 						event.packet->dataLength
 					);
 
 					Packet pkt(&event.packet);
-					MutexLock lock(con->m_processor_lock);
-					con->m_processor->processPacket(peer_id, pkt);
+					try {
+						m_processor->processPacket(peer_id, pkt);
+					} catch (std::exception &e) {
+						ERRORLOG("--- ENet %s: Unhandled exception while processing packet %s: %s\n",
+							m_name, pkt.dump().c_str(), e.what());
+					}
 				}
 				break;
 			case ENET_EVENT_TYPE_DISCONNECT:
 				{
-					peer_t peer_id = peer_id_list.at(event.peer - con->m_host->peers);
-					// event.peer->connectID is always 0
-					LOGME("--- ENet: Peer %u disconnected\n", peer_id);
-					con->m_processor->onPeerDisconnected(peer_id);
+					// event.peer->connectID is always 0. Need to cache it.
+					peer_t peer_id = peer_id_list.at(event.peer - m_host->peers);
+					DEBUGLOG("--- ENet %s: Peer %u disconnected\n", m_name, peer_id);
+					m_processor->onPeerDisconnected(peer_id);
 				}
 				break;
 			case ENET_EVENT_TYPE_NONE:
@@ -234,11 +251,7 @@ void *Connection::recvAsync(void *con_p)
 				break;
 		}
 	}
-
-	printf("<-- ENet: Thread stop\n");
-	return nullptr;
 }
-
 
 _ENetPeer *Connection::findPeer(peer_t peer_id)
 {
@@ -253,8 +266,6 @@ _ENetPeer *Connection::findPeer(peer_t peer_id)
 			return &m_host->peers[i];
 	}
 
-	std::string v("Cannot find Peer ID ");
-	v.append(std::to_string(peer_id));
-	throw std::runtime_error(v);
+	throw std::runtime_error((std::stringstream() << "Cannot find peer_id=" << peer_id).str());
 }
 

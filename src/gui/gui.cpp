@@ -70,6 +70,13 @@ void Gui::run()
 			t_last = t_now;
 		}
 
+		if (m_client) {
+			m_client->step(dtime);
+		}
+		if (m_server) {
+			m_server->step(dtime);
+		}
+
 		bool is_new_screen = (m_scenetype_next != m_scenetype);
 
 		if (m_scenetype_next == SceneHandlerType::CTRL_RENEW)

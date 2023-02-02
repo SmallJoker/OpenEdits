@@ -9,17 +9,21 @@ static uint16_t PACKET_ACTIONS_MAX; // initialized in ctor
 Client::Client(ClientStartData &init)
 {
 	puts("Client: startup");
-	m_con = new Connection(Connection::TYPE_CLIENT);
+
+	m_con = new Connection(Connection::TYPE_CLIENT, "Client");
 	m_con->connect(init.address.c_str());
 	m_con->listenAsync(*this);
 
-	PACKET_ACTIONS_MAX = 0;
-	const ClientPacketHandler *handler = packet_actions;
-	while (handler->func)
-		handler++;
+	{
+		PACKET_ACTIONS_MAX = 0;
+		const ClientPacketHandler *handler = packet_actions;
+		while (handler->func)
+			handler++;
 
-	PACKET_ACTIONS_MAX = handler - packet_actions;
-	// auth, etc.
+		PACKET_ACTIONS_MAX = handler - packet_actions;
+	}
+
+	m_nickname = init.nickname;
 }
 
 Client::~Client()
@@ -35,6 +39,13 @@ Client::~Client()
 
 // -------------- Public members -------------
 
+void Client::step(float dtime)
+{
+	// run player physics
+	// process user inputs
+}
+
+
 LocalPlayer *Client::getPlayer(peer_t peer_id)
 {
 	// It's not really a "peer" ID but player ID
@@ -47,6 +58,13 @@ void Client::onPeerConnected(peer_t peer_id)
 {
 	m_is_connected = true;
 	puts("Client: hello server!");
+
+	Packet pkt;
+	pkt.write(Packet2Server::Hello);
+	pkt.write(PROTOCOL_VERSION);
+	pkt.write(PROTOCOL_VERSION_MIN);
+	pkt.writeStr16(m_nickname);
+	m_con->send(0, 0, pkt);
 }
 
 void Client::onPeerDisconnected(peer_t peer_id)
@@ -73,16 +91,8 @@ void Client::processPacket(peer_t peer_id, Packet &pkt)
 
 	const ClientPacketHandler &handler = packet_actions[action];
 
-	/*if (handler.needs_player) {
-		LocalPlayer *player = getPlayer(peer_id);
-		if (!player) {
-			printf("%s: Player not found.\n", __func__);
-			return;
-		}
-	}*/
-
 	try {
-		(this->*handler.func)(peer_id, pkt);
+		(this->*handler.func)(pkt);
 	} catch (std::out_of_range &e) {
 		printf("Client: Action %d parsing error: %s\n", action, e.what());
 	} catch (std::exception &e) {

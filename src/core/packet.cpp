@@ -26,15 +26,20 @@ Packet::Packet(const char *data, size_t len)
 Packet::Packet(_ENetPacket **pkt)
 {
 	m_data = *pkt;
-	m_write_offset = m_data->dataLength;
+	m_data->referenceCount++; // until ~Packet
 
+	m_write_offset = m_data->dataLength;
 	*pkt = nullptr;
 }
 
 Packet::~Packet()
 {
-	ASSERT_FORCED(m_data->referenceCount != 1, "Counting is difficult");
-	if ((--m_data->referenceCount) == 0)
+	if (m_data->referenceCount < 1)
+		std::terminate(); //fprintf(stderr, "Counting is difficult %s\n", dump().c_str());
+	else
+		m_data->referenceCount--;
+
+	if (m_data->referenceCount == 0)
 		enet_packet_destroy(m_data);
 }
 

@@ -19,10 +19,10 @@ void unittest_connection()
 {
 	DummyProcessor proc;
 
-	Connection server(Connection::TYPE_SERVER);
+	Connection server(Connection::TYPE_SERVER, "TestServer");
 	server.listenAsync(proc);
 
-	Connection client(Connection::TYPE_CLIENT);
+	Connection client(Connection::TYPE_CLIENT, "TestClient");
 	client.connect("127.0.0.1");
 	client.listenAsync(proc);
 

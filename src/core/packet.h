@@ -57,6 +57,7 @@ enum class Packet2Client : uint16_t {
 enum class Packet2Server : uint16_t {
 	Quack = 0,
 	Hello,
+	GetLobby,
 	Join,
 	Leave,
 	Move

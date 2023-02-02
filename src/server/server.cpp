@@ -7,7 +7,7 @@ static uint16_t PACKET_ACTIONS_MAX; // initialized in ctor
 Server::Server()
 {
 	puts("Server: startup");
-	m_con = new Connection(Connection::TYPE_SERVER);
+	m_con = new Connection(Connection::TYPE_SERVER, "Server");
 	m_con->listenAsync(*this);
 
 	PACKET_ACTIONS_MAX = 0;
@@ -31,6 +31,12 @@ Server::~Server()
 
 
 // -------------- Public members -------------
+
+void Server::step(float dtime)
+{
+	// maybe run player physics?
+}
+
 
 RemotePlayer *Server::getPlayer(peer_t peer_id)
 {
@@ -70,10 +76,14 @@ void Server::processPacket(peer_t peer_id, Packet &pkt)
 
 	const ServerPacketHandler &handler = packet_actions[action];
 
-	if (handler.needs_player) {
+	if (handler.min_player_state != RemotePlayerState::Invalid) {
 		RemotePlayer *player = getPlayer(peer_id);
 		if (!player) {
-			printf("Server: Player peer_id= %d not found.\n", peer_id);
+			printf("Server: Player peer_id=%d not found.\n", peer_id);
+			return;
+		}
+		if ((int)handler.min_player_state > (int)player->state) {
+			printf("Server: peer_id=%d is not ready for action=%d.\n", peer_id, action);
 			return;
 		}
 	}

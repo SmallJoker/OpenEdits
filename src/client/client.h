@@ -20,6 +20,8 @@ public:
 	Client(ClientStartData &init);
 	~Client();
 
+	void step(float dtime) override;
+
 	void setEventHandler(GameEventHandler *gui) { m_handler = gui; }
 
 	// ----------- Utility functions -----------
@@ -31,13 +33,13 @@ public:
 	void onPeerDisconnected(peer_t peer_id) override;
 	void processPacket(peer_t peer_id, Packet &pkt) override;
 
-	void pkt_Quack(peer_t peer_id, Packet &pkt);
-	void pkt_Hello(peer_t peer_id, Packet &pkt);
-	void pkt_Error(peer_t peer_id, Packet &pkt);
-	void pkt_Join(peer_t peer_id, Packet &pkt);
-	void pkt_Leave(peer_t peer_id, Packet &pkt);
-	void pkt_Move(peer_t peer_id, Packet &pkt);
-	void pkt_Deprecated(peer_t peer_id, Packet &pkt);
+	void pkt_Quack(Packet &pkt);
+	void pkt_Hello(Packet &pkt);
+	void pkt_Error(Packet &pkt);
+	void pkt_Join(Packet &pkt);
+	void pkt_Leave(Packet &pkt);
+	void pkt_Move(Packet &pkt);
+	void pkt_Deprecated(Packet &pkt);
 
 protected:
 	bool m_is_connected = false;
@@ -45,7 +47,8 @@ protected:
 	World *m_world = nullptr;
 
 	std::string m_world_hash = "foobar";
-	peer_t m_local_peer = 0;
+	std::string m_nickname;
+	peer_t m_my_peer_id = 0;
 
 	GameEventHandler *m_handler = nullptr;
 
@@ -54,6 +57,6 @@ private:
 };
 
 struct ClientPacketHandler {
-	signed char needs_player; // -1 indicates end
-	void (Client::*func)(peer_t peer_id, Packet &pkt);
+	signed char needs_player;
+	void (Client::*func)(Packet &pkt);
 };
