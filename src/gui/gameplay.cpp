@@ -1,4 +1,5 @@
 #include "gameplay.h"
+#include "client/client.h"
 #include <irrlicht.h>
 
 enum ElementId : int {
@@ -60,9 +61,33 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 			default: break;
 		}
 	}
-	if (e.EventType == irr::EET_MOUSE_INPUT_EVENT) {
+	if (e.EventType == EET_MOUSE_INPUT_EVENT) {
 		switch (e.MouseInput.Event) {
 			case EMIE_MOUSE_MOVED:
+				break;
+			default: break;
+		}
+	}
+	if (e.EventType == EET_KEY_INPUT_EVENT) {
+		auto &controls = m_gui->getClient()->getControls();
+		bool down = e.KeyInput.PressedDown;
+
+		// The Client performs physics of all players, including ours.
+		switch (e.KeyInput.Key) {
+			case KEY_LEFT:
+				controls.direction.X = down ? -1 : 0;
+				break;
+			case KEY_RIGHT:
+				controls.direction.X = down ? 1 : 0;
+				break;
+			case KEY_UP:
+				controls.direction.Y = down ? 1 : 0;
+				break;
+			case KEY_DOWN:
+				controls.direction.Y = down ? -1 : 0;
+				break;
+			case KEY_SPACE:
+				controls.jump = down;
 				break;
 			default: break;
 		}
@@ -70,7 +95,7 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 	return false;
 }
 
-bool SceneGameplay::OnEvent(const GameEvent &e)
+bool SceneGameplay::OnEvent(GameEvent &e)
 {
 	return false;
 }

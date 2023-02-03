@@ -98,7 +98,7 @@ bool SceneConnect::OnEvent(const SEvent &e)
 	return false;
 }
 
-bool SceneConnect::OnEvent(const GameEvent &e)
+bool SceneConnect::OnEvent(GameEvent &e)
 {
 	return false;
 }

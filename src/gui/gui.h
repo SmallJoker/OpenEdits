@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/events.h"
+#include "client/gameevent.h"
 #include "core/macros.h"
 #include <IEventReceiver.h>
 #include <rect.h>
@@ -48,7 +48,7 @@ public:
 
 	// Global callbacks
 	bool OnEvent(const SEvent &event) override;
-	bool OnEvent(const GameEvent &e) override;
+	bool OnEvent(GameEvent &e) override;
 
 	void registerHandler(SceneHandlerType type, SceneHandler *handler);
 
@@ -89,7 +89,7 @@ private:
 	Server *m_server = nullptr;
 };
 
-class SceneHandler : public IEventReceiver, public GameEventHandler {
+class SceneHandler {
 public:
 	virtual ~SceneHandler() {}
 	DISABLE_COPY(SceneHandler)
@@ -99,7 +99,7 @@ public:
 	virtual void draw() = 0;
 	virtual void step(float dtime) = 0;
 	virtual bool OnEvent(const SEvent &e) = 0;
-	virtual bool OnEvent(const GameEvent &e) = 0;
+	virtual bool OnEvent(GameEvent &e) = 0;
 
 protected:
 	SceneHandler() = default;

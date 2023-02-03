@@ -146,6 +146,9 @@ bool Connection::listenAsync(PacketProcessor &proc)
 void Connection::disconnect(peer_t peer_id)
 {
 	auto peer = findPeer(peer_id);
+	if (!peer)
+		return;
+
 	enet_peer_disconnect(peer, 0);
 	// Actual handling done in async event handler
 }
@@ -196,7 +199,7 @@ void Connection::recvAsyncInternal()
 			DEBUGLOG("--- ENet: Shutdown requested\n");
 
 			// Lazy disconnect
-			MutexLock lock(m_peers_lock);
+			SimpleLock lock(m_peers_lock);
 			for (size_t i = 0; i < m_host->peerCount; ++i)
 				enet_peer_disconnect_later(&m_host->peers[i], 0);
 		}
@@ -255,7 +258,7 @@ void Connection::recvAsyncInternal()
 
 _ENetPeer *Connection::findPeer(peer_t peer_id)
 {
-	MutexLock lock(m_peers_lock);
+	SimpleLock lock(m_peers_lock);
 
 	for (size_t i = 0; i < m_host->peerCount; ++i) {
 		if (m_host->peers[i].state != ENET_PEER_STATE_CONNECTED)

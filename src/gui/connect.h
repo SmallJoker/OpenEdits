@@ -10,7 +10,7 @@ public:
 	void draw() override;
 	void step(float dtime) override;
 	bool OnEvent(const SEvent &e) override;
-	bool OnEvent(const GameEvent &e) override;
+	bool OnEvent(GameEvent &e) override;
 
 	core::stringw nickname = L"Guest420";
 	core::stringw address = L"127.0.0.1";

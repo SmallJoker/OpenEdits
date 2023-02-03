@@ -123,7 +123,7 @@ bool Gui::OnEvent(const SEvent &event)
 	return getHandler(m_scenetype)->OnEvent(event);
 }
 
-bool Gui::OnEvent(const GameEvent &e)
+bool Gui::OnEvent(GameEvent &e)
 {
 	if (!m_initialized)
 		return false;

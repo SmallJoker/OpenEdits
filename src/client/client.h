@@ -1,11 +1,11 @@
 #pragma once
 
 #include "core/environment.h"
+#include "gameevent.h"
 #include <string>
 
 class LocalPlayer;
 class Connection;
-class GameEventHandler;
 
 struct ClientPacketHandler;
 
@@ -14,17 +14,25 @@ struct ClientStartData {
 	std::string nickname;
 };
 
+struct PlayerControls {
+	core::vector2di direction;
+	bool jump = false;
+	bool shift = false;
+};
+
 // Abstract for inheritance
-class Client : public Environment {
+class Client : public Environment, public GameEventHandler {
 public:
 	Client(ClientStartData &init);
 	~Client();
 
 	void step(float dtime) override;
-
-	void setEventHandler(GameEventHandler *gui) { m_handler = gui; }
+	bool OnEvent(GameEvent &e) override;
 
 	// ----------- Utility functions -----------
+	inline LocalPlayer *getMyPlayer() { return getPlayer(m_my_peer_id); }
+	PlayerControls &getControls() { return m_controls; }
+
 	LocalPlayer *getPlayer(peer_t peer_id);
 	bool isConnected() { return m_is_connected; }
 
@@ -45,12 +53,11 @@ protected:
 	bool m_is_connected = false;
 
 	World *m_world = nullptr;
+	PlayerControls m_controls;
 
 	std::string m_world_hash = "foobar";
 	std::string m_nickname;
 	peer_t m_my_peer_id = 0;
-
-	GameEventHandler *m_handler = nullptr;
 
 private:
 	static const ClientPacketHandler packet_actions[];

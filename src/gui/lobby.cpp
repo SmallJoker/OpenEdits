@@ -18,7 +18,7 @@ bool SceneLobby::OnEvent(const SEvent &e)
 	return false;
 }
 
-bool SceneLobby::OnEvent(const GameEvent &e)
+bool SceneLobby::OnEvent(GameEvent &e)
 {
 	return false;
 }

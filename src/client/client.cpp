@@ -1,7 +1,6 @@
 #include "client.h"
 #include "localplayer.h"
 #include "core/connection.h"
-#include "core/events.h"
 #include "core/packet.h"
 
 static uint16_t PACKET_ACTIONS_MAX; // initialized in ctor
@@ -45,6 +44,25 @@ void Client::step(float dtime)
 	// process user inputs
 }
 
+bool Client::OnEvent(GameEvent &e)
+{
+	using E = GameEvent::G2C_Enum;
+
+	switch (e.type_g2c) {
+		case E::G2C_INVALID:
+			return false;
+		case E::G2C_CHAT:
+			delete e.text;
+			return true;
+		case E::G2C_LEAVE:
+			m_con->disconnect(0);
+			return true;
+		case E::G2C_SET_BLOCK:
+			return true;
+	}
+	return false;
+}
+
 
 LocalPlayer *Client::getPlayer(peer_t peer_id)
 {
@@ -72,11 +90,13 @@ void Client::onPeerDisconnected(peer_t peer_id)
 	m_is_connected = false;
 
 	// send event for client destruction
-	if (m_handler) {
-		GameEvent e;
-		e.type = GameEvent::GE_WORLD_LEAVE;
-		e.str = "Server disconnected";
-		m_handler->OnEvent(e);
+	if (m_eventhandler) {
+		GameEvent e(GameEvent::C2G_DIALOG);
+		e.text = new std::string("Server disconnected");
+		sendNewEvent(e);
+
+		GameEvent e2(GameEvent::C2G_DISCONNECT);
+		sendNewEvent(e2);
 	}
 }
 
