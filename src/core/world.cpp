@@ -1,7 +1,8 @@
 #include "world.h"
 #include "macros.h"
 
-World::World()
+World::World(BlockManager &blockmgr) :
+	m_blockmgr(blockmgr)
 {
 }
 
@@ -15,12 +16,12 @@ bool World::getBlock(blockpos_t pos, Block *block)
 	if (pos.X >= m_size.X || pos.Y >= m_size.Y)
 		return false;
 
-	auto props = getBlockProperties(block->id);
+	auto props = m_blockmgr.getProps(block->id);
 	if (!props)
 		return false;
 
 	if (block)
-		*block = getBlockRefNoCheck(pos, props->type == BlockProperties::BT_BACKGROUND);
+		*block = getBlockRefNoCheck(pos, props->type == BlockDrawType::Background);
 	return true;
 }
 
@@ -44,18 +45,10 @@ bool World::setBlock(blockpos_t pos, Block block)
 	if (pos.X >= m_size.X || pos.Y >= m_size.Y)
 		return false;
 
-	auto props = getBlockProperties(block.id);
+	auto props = m_blockmgr.getProps(block.id);
 	if (!props)
 		return false;
 
-	setBlockNoCheck(pos, props->type == BlockProperties::BT_BACKGROUND, block);
+	setBlockNoCheck(pos, props->type == BlockDrawType::Background, block);
 	return true;
 }
-
-BlockProperties *World::getBlockProperties(bid_t block_id)
-{
-	auto it = m_props.find(block_id);
-	return it != m_props.end() ? &it->second : nullptr;
-}
-
-

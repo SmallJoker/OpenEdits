@@ -20,7 +20,4 @@ public:
 	const uint16_t protocol_version;
 
 	RemotePlayerState state = RemotePlayerState::Invalid;
-
-	worldid_t world_id = 0;
-private:
 };

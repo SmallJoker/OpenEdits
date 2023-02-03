@@ -11,7 +11,7 @@ struct _ENetPacket;
 
 class Packet {
 public:
-	Packet();
+	Packet(size_t n_prealloc = 200);
 	Packet(const char *data, size_t len);
 	Packet(_ENetPacket **pkt); // takes ownership
 	~Packet();

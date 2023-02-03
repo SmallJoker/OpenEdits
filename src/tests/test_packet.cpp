@@ -23,5 +23,16 @@ void unittest_packet()
 		pkt.read<uint8_t>();
 		CHECK(false);
 	} catch (std::exception &e) {}
+
+	{
+		// Dangerous shorthand for variables
+		Packet p2;
+		p2.write(val_u8);
+		p2.write(val_s32);
+		p2.write(val_f32);
+		p2.writeStr16(val_str);
+
+		CHECK(p2.size() == pkt.size());
+	}
 }
 

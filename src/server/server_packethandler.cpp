@@ -27,6 +27,7 @@ void Server::pkt_Hello(peer_t peer_id, Packet &pkt)
 	if (protocol_ver < protocol_min || protocol_ver < PROTOCOL_VERSION_MIN) {
 		printf("Old peer_id=%u tried to connect\n", peer_id);
 		m_con->disconnect(peer_id);
+		return;
 	}
 
 	std::string name(pkt.readStr16());
@@ -56,21 +57,23 @@ void Server::pkt_Hello(peer_t peer_id, Packet &pkt)
 	{
 		// Confirm
 		Packet reply;
-		reply.write<Packet2Client>(Packet2Client::Hello);
-		reply.write<peer_t>(peer_id);
+		reply.write(Packet2Client::Hello);
+		reply.write(player->protocol_version);
+		reply.write(player->peer_id);
 
 		m_con->send(peer_id, 0, reply);
 	}
 
-
-	// TODO player state tracking
-	// TODO name duplication/validation check
 	printf("Hello from %s, proto_ver=%d\n", player->name.c_str(), player->protocol_version);
 }
 
 void Server::pkt_GetLobby(peer_t peer_id, Packet &pkt)
 {
+	Packet out;
+	for (auto it : m_worlds) {
 
+	}
+	out.write<uint16_t>(m_worlds.size());
 }
 
 void Server::pkt_Join(peer_t peer_id, Packet &pkt)

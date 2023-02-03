@@ -44,13 +44,16 @@ public:
 	void pkt_Quack(Packet &pkt);
 	void pkt_Hello(Packet &pkt);
 	void pkt_Error(Packet &pkt);
+	void pkt_GotLobby(Packet &pkt);
 	void pkt_Join(Packet &pkt);
 	void pkt_Leave(Packet &pkt);
 	void pkt_Move(Packet &pkt);
+	void pkt_Chat(Packet &pkt);
 	void pkt_Deprecated(Packet &pkt);
 
 protected:
 	bool m_is_connected = false;
+	uint16_t m_protocol_version = 0;
 
 	World *m_world = nullptr;
 	PlayerControls m_controls;

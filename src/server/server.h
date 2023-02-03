@@ -37,7 +37,7 @@ public:
 private:
 	static const ServerPacketHandler packet_actions[];
 
-	std::map<worldid_t, World *> m_worlds;
+	std::map<std::string, World *> m_worlds;
 };
 
 

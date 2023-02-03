@@ -1,24 +1,28 @@
 #pragma once
 
-#include <map>
+#include "blockmanager.h"
+#include <string>
 #include <irrTypes.h>
 #include <vector2d.h>
 
 using namespace irr;
 
 typedef core::vector2d<u16> blockpos_t;
-typedef uint16_t bid_t;
-
-struct BlockProperties;
 
 struct Block {
 	bid_t id;
-	u8 param1; // rotation?
+	uint8_t param1; // rotation?
+};
+
+struct WorldMeta {
+	std::string key;
+	bool is_public = true;
+	u32 plays = 0;
 };
 
 class World {
 public:
-	World();
+	World(BlockManager &blockmgr);
 	virtual ~World();
 
 	void createDummy(blockpos_t size);
@@ -26,7 +30,7 @@ public:
 	bool getBlock(blockpos_t pos, Block *block);
 	virtual bool setBlock(blockpos_t pos, Block block);
 
-	BlockProperties *getBlockProperties(bid_t block_id);
+	WorldMeta &getMeta() { return m_meta; }
 
 protected:
 	inline Block &getBlockRefNoCheck(blockpos_t pos, char layer)
@@ -39,21 +43,9 @@ protected:
 	}
 
 	blockpos_t m_size;
+	WorldMeta m_meta;
 	Block *m_data = nullptr;
-	std::map<bid_t, BlockProperties> m_props;
 
 private:
-};
-
-struct BlockProperties {
-	enum {
-		BT_BACKGROUND,
-		BT_SOLID,
-		BT_ACTION,
-		BT_DECORATION
-	} type;
-	u32 color; // minimap
-
-	void onCollide(World &world) {}
-	void step(float dtime) {}
+	BlockManager &m_blockmgr;
 };

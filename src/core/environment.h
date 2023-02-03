@@ -6,8 +6,6 @@
 class Player;
 class World;
 
-typedef uint8_t worldid_t;
-
 class Environment : public PacketProcessor {
 public:
 	virtual ~Environment() {}

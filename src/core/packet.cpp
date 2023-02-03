@@ -9,9 +9,9 @@
 static_assert(sizeof(Packet2Client) == 2, "");
 static_assert(sizeof(Packet2Server) == 2, "");
 
-Packet::Packet()
+Packet::Packet(size_t n_prealloc)
 {
-	m_data = enet_packet_create(nullptr, 200, 0);
+	m_data = enet_packet_create(nullptr, n_prealloc, 0);
 	m_data->referenceCount++; // until ~Packet
 }
 
