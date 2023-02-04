@@ -44,6 +44,10 @@ Gui::Gui()
 
 	m_scenetype = SceneHandlerType::Connect;
 	m_scenetype_next = SceneHandlerType::CTRL_RENEW;
+
+	ASSERT_FORCED(g_blockmanager, "Missing BlockManager");
+	g_blockmanager->populateTextures(driver);
+
 	m_initialized = true;
 }
 

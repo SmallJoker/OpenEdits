@@ -17,6 +17,8 @@ using namespace irr;
 
 class Player;
 class World;
+class BlockManager;
+struct CollisionData;
 
 constexpr size_t TEXTURE_SIZE = 32;
 
@@ -28,7 +30,11 @@ enum BlockDrawType {
 	Decoration
 };
 
+extern BlockManager *g_blockmanager;
+
 struct BlockPack {
+	BlockPack(const std::string &name) :
+		name(name) {}
 	std::string imagepath;
 	std::string name;
 
@@ -48,7 +54,7 @@ struct BlockProperties {
 	BlockPack *pack = nullptr;
 
 	// Callback when a player intersects with the block
-	void (*step)(float dtime, World &world, Player &player) = nullptr;
+	void (*step)(float dtime, CollisionData &c) = nullptr;
 };
 
 class BlockManager {
@@ -56,10 +62,8 @@ public:
 	BlockManager();
 	~BlockManager();
 
-	void init(video::IVideoDriver *driver) { m_driver = driver; }
-
-	void addNewPack(BlockPack *pack);
-	BlockProperties *addToPack(BlockPack *pack, bid_t block_id, const std::string &imagepath);
+	void registerPack(BlockPack *pack);
+	void populateTextures(video::IVideoDriver *driver);
 
 	BlockProperties *getProps(bid_t block_id);
 	BlockPack *getPack(const std::string &name);
@@ -68,7 +72,7 @@ private:
 	void ensurePropsSize(size_t n);
 
 	// This is probably a bad idea for headless servers
-	video::IVideoDriver *m_driver = nullptr;
+	video::ITexture *m_missing_texture = nullptr;
 
 	std::vector<BlockProperties *> m_props;
 	std::vector<BlockPack *> m_packs;

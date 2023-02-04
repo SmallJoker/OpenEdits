@@ -1,28 +1,14 @@
 #include "world.h"
 #include "macros.h"
 
-World::World(BlockManager &blockmgr) :
-	m_blockmgr(blockmgr)
+World::World()
 {
+	ASSERT_FORCED(g_blockmanager, "BlockManager is required");
 }
 
 World::~World()
 {
 	delete[] m_data;
-}
-
-bool World::getBlock(blockpos_t pos, Block *block)
-{
-	if (pos.X >= m_size.X || pos.Y >= m_size.Y)
-		return false;
-
-	auto props = m_blockmgr.getProps(block->id);
-	if (!props)
-		return false;
-
-	if (block)
-		*block = getBlockRefNoCheck(pos, props->type == BlockDrawType::Background);
-	return true;
 }
 
 void World::createDummy(blockpos_t size)
@@ -40,12 +26,26 @@ void World::createDummy(blockpos_t size)
 	}
 }
 
+bool World::getBlock(blockpos_t pos, Block *block) const
+{
+	if (pos.X >= m_size.X || pos.Y >= m_size.Y)
+		return false;
+
+	auto props = g_blockmanager->getProps(block->id);
+	if (!props)
+		return false;
+
+	if (block)
+		*block = getBlockRefNoCheck(pos, props->type == BlockDrawType::Background);
+	return true;
+}
+
 bool World::setBlock(blockpos_t pos, Block block)
 {
 	if (pos.X >= m_size.X || pos.Y >= m_size.Y)
 		return false;
 
-	auto props = m_blockmgr.getProps(block.id);
+	auto props = g_blockmanager->getProps(block.id);
 	if (!props)
 		return false;
 
