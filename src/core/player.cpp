@@ -1,4 +1,5 @@
 #include "player.h"
+#include "packet.h"
 #include "world.h"
 
 constexpr float DISTANCE_STEP = 0.3f;
@@ -12,12 +13,54 @@ inline static float get_sign(float f)
 	return 0;
 }
 
+void Player::joinWorld(World *world)
+{
+	m_world = world;
+	m_world->getMeta().online++;
+
+	pos = core::vector2df();
+	vel = core::vector2df();
+	acc = core::vector2df();
+}
+
+void Player::leaveWorld()
+{
+	m_world->getMeta().online--;
+	m_world = nullptr;
+}
+
+void Player::readPhysics(Packet &pkt)
+{
+	pkt.read(pos.X);
+	pkt.read(pos.Y);
+
+	pkt.read(vel.X);
+	pkt.read(vel.Y);
+
+	pkt.read(acc.X);
+	pkt.read(acc.Y);
+}
+
+void Player::writePhysics(Packet &pkt)
+{
+	pkt.write(pos.X);
+	pkt.write(pos.Y);
+
+	pkt.write(vel.X);
+	pkt.write(vel.Y);
+
+	pkt.write(acc.X);
+	pkt.write(acc.Y);
+}
+
+
 void Player::step(float dtime)
 {
 	if (!m_world)
 		return;
 
 	float distance = (((0.5f * acc * dtime) + vel) * dtime).getLength();
+
 	if (distance > DISTANCE_STEP) {
 		printf("step(): distance was %f\n", distance);
 
@@ -91,16 +134,23 @@ void Player::step(float dtime)
 		if (!props || props->type != BlockDrawType::Solid)
 			continue;
 
-		float time = ((core::vector2df(bp2.X, bp2.Y) - pos) / vel).getLength();
-		if (time < nearest_time) {
+		// Calculate time needed to reach his block
+		auto time = (core::vector2df(bp2.X, bp2.Y) - pos) / vel;
+		if (time.X < nearest_time || time.Y < nearest_time) {
 			nearest_bp = bp;
-			nearest_time = time;
+			nearest_time = std::min(time.X, time.Y);
 		}
+	}
+
+	if (nearest_bp == bp) {
+		// free falling?
+		return;
 	}
 
 	// Do collision handling
 	ok = m_world->getBlock(nearest_bp, &block);
 	props = g_blockmanager->getProps(block.id);
+	// maybe run a callback here to check for actual collisions or one-way-gates
 
 	bool collided = false;
 	if (vel.X > 0) {

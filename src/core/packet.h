@@ -29,6 +29,9 @@ public:
 	T read();
 
 	template<typename T>
+	inline void read(T &v) { v = read<T>(); }
+
+	template<typename T>
 	void write(T v);
 
 	std::string readStr16();
@@ -48,9 +51,13 @@ enum class Packet2Client : uint16_t {
 	Quack = 0,
 	Hello,
 	Error,
+	Lobby,
+	WorldData,
 	Join,
 	Leave,
-	Move
+	Move,
+	Chat,
+	MAX_END
 };
 
 // In sync with server_packethandler.cpp
@@ -60,5 +67,7 @@ enum class Packet2Server : uint16_t {
 	GetLobby,
 	Join,
 	Leave,
-	Move
+	Move,
+	Chat,
+	MAX_END
 };

@@ -9,6 +9,15 @@ class Connection;
 
 struct ClientPacketHandler;
 
+// Similar to RemotePlayerState
+enum class ClientState {
+	Uninitialized,
+	Connected,
+	LobbyIdle,
+	WorldJoin,
+	WorldPlay
+};
+
 struct ClientStartData {
 	std::string address;
 	std::string nickname;
@@ -18,6 +27,10 @@ struct PlayerControls {
 	core::vector2di direction;
 	bool jump = false;
 	bool shift = false;
+};
+
+struct LobbyWorld : public WorldMeta {
+	blockpos_t size;
 };
 
 // Abstract for inheritance
@@ -34,7 +47,7 @@ public:
 	PlayerControls &getControls() { return m_controls; }
 
 	LocalPlayer *getPlayer(peer_t peer_id);
-	bool isConnected() { return m_is_connected; }
+	ClientState getState() { return m_state; }
 
 	// ----------- Networking -----------
 	void onPeerConnected(peer_t peer_id) override;
@@ -44,15 +57,18 @@ public:
 	void pkt_Quack(Packet &pkt);
 	void pkt_Hello(Packet &pkt);
 	void pkt_Error(Packet &pkt);
-	void pkt_GotLobby(Packet &pkt);
+	void pkt_Lobby(Packet &pkt);
+	void pkt_WorldData(Packet &pkt);
 	void pkt_Join(Packet &pkt);
 	void pkt_Leave(Packet &pkt);
 	void pkt_Move(Packet &pkt);
 	void pkt_Chat(Packet &pkt);
 	void pkt_Deprecated(Packet &pkt);
 
+	std::map<std::string, LobbyWorld> world_list;
+
 protected:
-	bool m_is_connected = false;
+	ClientState m_state = ClientState::Uninitialized;
 	uint16_t m_protocol_version = 0;
 
 	World *m_world = nullptr;

@@ -175,11 +175,12 @@ void Gui::connect(SceneConnect *sc)
 
 	m_client = new Client(init);
 
-	for (int i = 0; i < 10 && !m_client->isConnected(); ++i) {
+	for (int i = 0; i < 10 && m_client->getState() != ClientState::LobbyIdle; ++i) {
 		sleep_ms(200);
 	}
 
-	if (m_client->isConnected()) {
+	if (m_client->getState() == ClientState::LobbyIdle) {
+		m_client->setEventHandler(this);
 		setNextScene(SceneHandlerType::Lobby);
 	} else {
 		puts("Wait timed out.");

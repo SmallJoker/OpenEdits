@@ -1,5 +1,6 @@
 #include "gameplay.h"
 #include "client/client.h"
+#include "core/player.h"
 #include <irrlicht.h>
 
 enum ElementId : int {
@@ -48,6 +49,12 @@ void SceneGameplay::step(float dtime)
 	m_gui->font->draw(L"Gameplay", rect, color);
 
 	drawWorld();
+
+	if (m_gui->getClient()->getState() == ClientState::LobbyIdle) {
+		GameEvent e(GameEvent::G2C_JOIN);
+		e.text = new std::string("dummyworld");
+		m_gui->sendNewEvent(e);
+	}
 }
 
 bool SceneGameplay::OnEvent(const SEvent &e)
@@ -58,6 +65,21 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 				if (e.GUIEvent.Caller->getID() == ID_BtnBack)
 					m_gui->leaveWorld();
 				break;
+			case gui::EGET_EDITBOX_ENTER:
+				if (e.GUIEvent.Caller->getID() == ID_BoxChat) {
+					auto textw = e.GUIEvent.Caller->getText();
+
+					core::stringc textc;
+					core::wStringToMultibyte(textc, textw);
+
+					{
+						GameEvent e(GameEvent::G2C_CHAT);
+						e.text = new std::string(textc.c_str());
+						m_gui->sendNewEvent(e);
+					}
+
+					e.GUIEvent.Caller->setText(L"");
+				}
 			default: break;
 		}
 	}
@@ -97,6 +119,30 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 
 bool SceneGameplay::OnEvent(GameEvent &e)
 {
+	using E = GameEvent::C2G_Enum;
+
+	switch (e.type_c2g) {
+		case E::C2G_MAP_UPDATE:
+			printf(" * Map update\n");
+			break;
+		case E::C2G_PLAYER_JOIN:
+			printf(" * Player %s joined\n",
+				e.player->name.c_str()
+			);
+			break;
+		case E::C2G_PLAYER_LEAVE:
+			printf(" * Player %s left\n",
+				e.player->name.c_str()
+			);
+			break;
+		case E::C2G_PLAYER_CHAT:
+			printf(" * <%s> %s\n",
+				e.player_chat->player->name.c_str(),
+				e.player_chat->message.c_str()
+			);
+			break;
+		default: break;
+	}
 	return false;
 }
 

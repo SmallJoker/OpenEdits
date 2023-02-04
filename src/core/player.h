@@ -5,13 +5,19 @@
 
 using namespace irr;
 
+class Packet;
 class World;
 
 class Player {
 public:
 	virtual ~Player() {}
 
-	void init(World *world) { m_world = world; }
+	void joinWorld(World *world);
+	void leaveWorld();
+	inline World *getWorld() { return m_world; }
+
+	void readPhysics(Packet &pkt);
+	void writePhysics(Packet &pkt);
 
 	virtual void step(float dtime);
 
@@ -25,7 +31,6 @@ public:
 protected:
 	Player() = default;
 
+	// Currently active world (nullptr if lobby)
 	World *m_world = nullptr;
-
-private:
 };

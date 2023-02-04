@@ -7,7 +7,7 @@
 #include <string.h> // strerror
 #include <sstream>
 
-#if 0
+#if 1
 	#define DEBUGLOG(...) printf(__VA_ARGS__)
 #else
 	#define DEBUGLOG(...) /* SILENCE */
@@ -95,13 +95,13 @@ bool Connection::connect(const char *hostname)
 
 	ENetPeer *peer = enet_host_connect(m_host, &address, 2, 0);
 	if (!peer) {
-		ERRORLOG("-!- ENet: No free peers\n");
+		ERRORLOG("-!- ENet %s: No free peers\n", m_name);
 		return false;
 	}
 
 	char name[100];
 	enet_address_get_host(&address, name, sizeof(name));
-	printf("--- ENet: Connected to %s:%u\n", name, address.port);
+	printf("--- ENet %s: Connected to %s:%u\n", m_name, name, address.port);
 	return true;
 }
 
@@ -135,7 +135,8 @@ bool Connection::listenAsync(PacketProcessor &proc)
 
 	if (status != 0) {
 		m_running = false;
-		ERRORLOG("-!- ENet: Failed to start pthread: %s\n", strerror(status));
+		ERRORLOG("-!- ENet %s: Failed to start pthread: %s\n",
+			m_name, strerror(status));
 		return false;
 	}
 
@@ -155,6 +156,10 @@ void Connection::disconnect(peer_t peer_id)
 
 void Connection::send(peer_t peer_id, uint16_t flags, Packet &pkt)
 {
+	if (pkt.size() - pkt.getRemainingBytes() > 0) {
+		ERRORLOG("-!-Enet %s: Tried to send packet that is partially read back\n", m_name);
+		return;
+	}
 	uint8_t channel = flags & FLAG_MASK_CHANNEL;
 
 	// Most of it should be reliable
@@ -171,8 +176,8 @@ void Connection::send(peer_t peer_id, uint16_t flags, Packet &pkt)
 		enet_peer_send(peer, channel, pkt.data());
 	}
 
-	DEBUGLOG("--- ENet: packet sent. peer_id=%u, channel=%d, dump=%s\n",
-		peer_id, (int)channel, pkt.dump().c_str());
+	DEBUGLOG("--- ENet %s: packet sent. peer_id=%u, channel=%d, dump=%s\n",
+		m_name, peer_id, (int)channel, pkt.dump().c_str());
 }
 
 // -------------- Private members -------------
@@ -182,7 +187,7 @@ void *Connection::recvAsync(void *con_p)
 	Connection *con = (Connection *)con_p;
 	con->recvAsyncInternal();
 
-	printf("<-- ENet: Thread stop\n");
+	printf("<-- ENet %s: Thread stop\n", con->m_name);
 	return nullptr;
 }
 
@@ -196,7 +201,7 @@ void Connection::recvAsyncInternal()
 	while (true) {
 		if (!m_running && shutdown_seen == 0) {
 			shutdown_seen++;
-			DEBUGLOG("--- ENet: Shutdown requested\n");
+			DEBUGLOG("--- ENet %s: Shutdown requested\n", m_name);
 
 			// Lazy disconnect
 			SimpleLock lock(m_peers_lock);

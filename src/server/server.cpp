@@ -10,12 +10,15 @@ Server::Server()
 	m_con = new Connection(Connection::TYPE_SERVER, "Server");
 	m_con->listenAsync(*this);
 
-	PACKET_ACTIONS_MAX = 0;
-	const ServerPacketHandler *handler = packet_actions;
-	while (handler->func)
-		handler++;
+	{
+		PACKET_ACTIONS_MAX = 0;
+		const ServerPacketHandler *handler = packet_actions;
+		while (handler->func)
+			handler++;
 
-	PACKET_ACTIONS_MAX = handler - packet_actions;
+		PACKET_ACTIONS_MAX = handler - packet_actions;
+		ASSERT_FORCED(PACKET_ACTIONS_MAX == (int)Packet2Server::MAX_END, "Packet handler mismatch");
+	}
 }
 
 Server::~Server()
@@ -46,14 +49,14 @@ RemotePlayer *Server::getPlayer(peer_t peer_id)
 
 void Server::onPeerConnected(peer_t peer_id)
 {
-	{
+	if (0) {
 		Packet pkt;
 		pkt.write<Packet2Client>(Packet2Client::Quack);
 		pkt.writeStr16("hello world");
 		m_con->send(peer_id, 0, pkt);
 	}
 
-	{
+	if (0) {
 		Packet pkt;
 		pkt.write<Packet2Client>(Packet2Client::Error);
 		pkt.writeStr16("No error. Everything's fine");

@@ -16,8 +16,9 @@ struct GameEvent {
 	// GUI --> Client
 	enum G2C_Enum {
 		G2C_INVALID,
-		G2C_CHAT,
+		G2C_JOIN,
 		G2C_LEAVE,
+		G2C_CHAT,
 		G2C_SET_BLOCK
 	} type_g2c = G2C_INVALID;
 
@@ -37,7 +38,7 @@ struct GameEvent {
 
 	struct PlayerChat {
 		Player *player;
-		std::string text;
+		std::string message;
 	};
 
 	struct BlockData {

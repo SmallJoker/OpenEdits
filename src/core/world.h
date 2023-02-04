@@ -24,7 +24,10 @@ struct Block {
 
 struct WorldMeta {
 	std::string key;
+	std::string title;
+	std::string owner;
 	bool is_public = true;
+	u16 online = 0;
 	u32 plays = 0;
 };
 

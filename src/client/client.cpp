@@ -20,6 +20,7 @@ Client::Client(ClientStartData &init)
 			handler++;
 
 		PACKET_ACTIONS_MAX = handler - packet_actions;
+		ASSERT_FORCED(PACKET_ACTIONS_MAX == (int)Packet2Client::MAX_END, "Packet handler mismatch");
 	}
 
 	m_nickname = init.nickname;
@@ -51,11 +52,26 @@ bool Client::OnEvent(GameEvent &e)
 	switch (e.type_g2c) {
 		case E::G2C_INVALID:
 			return false;
-		case E::G2C_CHAT:
-			delete e.text;
+		case E::G2C_JOIN:
+			{
+				m_state = ClientState::WorldJoin;
+
+				Packet pkt;
+				pkt.write(Packet2Server::Join);
+				pkt.writeStr16(*e.text);
+				m_con->send(0, 0, pkt);
+			}
 			return true;
 		case E::G2C_LEAVE:
 			m_con->disconnect(0);
+			return true;
+		case E::G2C_CHAT:
+			{
+				Packet pkt;
+				pkt.write(Packet2Server::Chat);
+				pkt.writeStr16(*e.text);
+				m_con->send(0, 0, pkt);
+			}
 			return true;
 		case E::G2C_SET_BLOCK:
 			return true;
@@ -74,7 +90,7 @@ LocalPlayer *Client::getPlayer(peer_t peer_id)
 
 void Client::onPeerConnected(peer_t peer_id)
 {
-	m_is_connected = true;
+	m_state = ClientState::Connected;
 	puts("Client: hello server!");
 
 	Packet pkt;
@@ -87,7 +103,7 @@ void Client::onPeerConnected(peer_t peer_id)
 
 void Client::onPeerDisconnected(peer_t peer_id)
 {
-	m_is_connected = false;
+	m_state = ClientState::Uninitialized;
 
 	// send event for client destruction
 	if (m_eventhandler) {

@@ -40,6 +40,7 @@ bool GameEventHandler::sendNewEvent(GameEvent &e)
 
 	using G = GameEvent::G2C_Enum;
 	switch (e.type_g2c) {
+		case G::G2C_JOIN:
 		case G::G2C_CHAT:
 			delete e.text;
 			break;
