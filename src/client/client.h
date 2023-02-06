@@ -46,6 +46,7 @@ public:
 	// ----------- Utility functions -----------
 	PtrLock<LocalPlayer> getMyPlayer();
 	PlayerControls &getControls() { return m_controls; }
+	World *getWorld() { return m_world; }
 
 	LocalPlayer *getPlayerNoLock(peer_t peer_id);
 	ClientState getState() { return m_state; }

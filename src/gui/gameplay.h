@@ -3,6 +3,13 @@
 #include "gui.h"
 #include <string>
 
+namespace irr {
+	namespace scene {
+		class IBillboardSceneNode;
+		class ICameraSceneNode;
+	}
+}
+
 class SceneGameplay : public SceneHandler {
 public:
 	SceneGameplay();
@@ -15,7 +22,11 @@ public:
 private:
 	void drawWorld();
 
+	bool m_need_mesh_update = false;
 	core::vector2df camera_pos;
 	core::recti draw_area;
+
+	scene::IBillboardSceneNode *m_bb = nullptr;
+	scene::ICameraSceneNode *m_camera = nullptr;
 };
 

@@ -39,6 +39,19 @@ void SceneGameplay::draw()
 	m_gui->gui->addEditBox(
 		L"", rect_2, true, nullptr, ID_BoxChat);
 
+	m_need_mesh_update = true;
+
+	auto smgr = m_gui->scenemgr;
+
+	m_bb = smgr->addBillboardSceneNode(nullptr, core::dimension2d<f32>(10, 10));
+	m_bb->setMaterialFlag(video::EMF_LIGHTING, false);
+	m_bb->setMaterialFlag(video::EMF_ZWRITE_ENABLE, false);
+	m_bb->setMaterialTexture(0, m_gui->driver->getTexture("assets/textures/dummy.png"));
+	m_bb->setPosition(core::vector3df(0,0,0));
+
+	m_camera = smgr->addCameraSceneNode();
+	m_camera->setFOV(5);
+	m_camera->setPosition(core::vector3df(0,0,-100));
 }
 
 void SceneGameplay::step(float dtime)
@@ -69,12 +82,10 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 				if (e.GUIEvent.Caller->getID() == ID_BoxChat) {
 					auto textw = e.GUIEvent.Caller->getText();
 
-					core::stringc textc;
-					core::wStringToMultibyte(textc, textw);
-
 					{
 						GameEvent e(GameEvent::G2C_CHAT);
-						e.text = new std::string(textc.c_str());
+						e.text = new std::string();
+						wStringToMultibyte(*e.text, textw);
 						m_gui->sendNewEvent(e);
 					}
 
@@ -113,6 +124,10 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 				break;
 			default: break;
 		}
+		auto pos = m_camera->getPosition();
+		pos.X += controls.direction.X * 20;
+		pos.Y += controls.direction.Y * 20;
+		m_camera->setPosition(pos);
 	}
 	return false;
 }
@@ -124,6 +139,7 @@ bool SceneGameplay::OnEvent(GameEvent &e)
 	switch (e.type_c2g) {
 		case E::C2G_MAP_UPDATE:
 			printf(" * Map update\n");
+			m_need_mesh_update = true;
 			break;
 		case E::C2G_PLAYER_JOIN:
 			printf(" * Player %s joined\n",
@@ -148,7 +164,13 @@ bool SceneGameplay::OnEvent(GameEvent &e)
 
 void SceneGameplay::drawWorld()
 {
-	//World *world = m_gui->getClient()->getWorld();
+	if (true)
+		return;
+
+	World *world = m_gui->getClient()->getWorld();
+	if (!world || !m_need_mesh_update)
+		return;
+
 	video::ITexture *image = m_gui->driver->getTexture("assets/textures/dummy.png");
     m_gui->driver->makeColorKeyTexture(image, core::position2di(0,0));
 

@@ -11,7 +11,6 @@ public:
 	virtual ~Environment() {}
 
 	virtual void step(float dtime) = 0;
-	virtual World *getWorld(Player *who) { return nullptr; }
 
 protected:
 	Connection *m_con = nullptr;

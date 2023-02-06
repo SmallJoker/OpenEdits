@@ -114,6 +114,13 @@ void Gui::run()
 
 		handler->step(dtime);
 
+		{
+			int fps = driver->getFPS();
+			core::stringw str;
+			core::multibyteToWString(str, std::to_string(fps).c_str());
+			font->draw(str, core::recti(600, 5, 650, 20), 0xFFFFFF00);
+		}
+
 		driver->endScene();
 
 		if (m_client)
@@ -253,3 +260,10 @@ void Gui::displaceRect(core::recti &rect, core::vector2df pos_perc)
 	rect += disp;
 }
 
+void wStringToMultibyte(std::string &dst, const wchar_t *src)
+{
+	size_t length = wcslen(src);
+	dst.resize(length);
+
+	wcstombs(&dst[0], src, length);
+}

@@ -39,12 +39,13 @@ struct WorldMeta {
 class World {
 public:
 	World();
-	virtual ~World();
+	~World();
 
+	void createEmpty(blockpos_t size);
 	void createDummy(blockpos_t size);
 
-	bool getBlock(blockpos_t pos, Block *block) const;
-	virtual bool setBlock(blockpos_t pos, Block block);
+	bool getBlock(blockpos_t pos, Block *block, char layer = 0) const;
+	bool setBlock(blockpos_t pos, Block block, char layer = 0);
 
 	blockpos_t getSize() const { return m_size; }
 	WorldMeta &getMeta() { return m_meta; }

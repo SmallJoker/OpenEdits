@@ -39,6 +39,8 @@ enum class SceneHandlerType {
 	CTRL_RENEW
 };
 
+void wStringToMultibyte(std::string &dst, const wchar_t *src);
+
 class Gui : public IEventReceiver, public GameEventHandler {
 public:
 	Gui();

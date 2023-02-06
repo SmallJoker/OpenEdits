@@ -21,23 +21,33 @@ static void exit_cleanup()
 
 static void register_packs()
 {
-	BlockPack *pack = new BlockPack("action");
-	pack->default_type = BlockDrawType::Action;
-	pack->block_ids = { 0, 1, 2, 3 };
-	g_blockmanager->registerPack(pack);
+	{
+		BlockPack *pack = new BlockPack("action");
+		pack->default_type = BlockDrawType::Action;
+		pack->block_ids = { 0, 1, 2, 3 };
+		g_blockmanager->registerPack(pack);
+	}
+
+	{
+		BlockPack *pack = new BlockPack("basic");
+		pack->default_type = BlockDrawType::Solid;
+		pack->block_ids = { 9, 10, 11, 12, 13, 14 };
+		g_blockmanager->registerPack(pack);
+	}
+
 }
 
 int main(int argc, char *argv[])
 {
-	if (argc >= 2 && strcmp(argv[1], "--unittest") == 0) {
-		unittest();
-		return EXIT_SUCCESS;
-	}
-
 	atexit(exit_cleanup);
 
 	g_blockmanager = new BlockManager();
 	register_packs();
+
+	if (argc >= 2 && strcmp(argv[1], "--unittest") == 0) {
+		unittest();
+		return EXIT_SUCCESS;
+	}
 
 	Gui gui;
 	gui.run();
