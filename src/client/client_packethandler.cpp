@@ -3,16 +3,17 @@
 #include "core/packet.h"
 
 const ClientPacketHandler Client::packet_actions[] = {
-	{ false, &Client::pkt_Quack }, // 0
-	{ false, &Client::pkt_Hello },
-	{ false, &Client::pkt_Error },
-	{ false, &Client::pkt_Lobby },
-	{ true,  &Client::pkt_WorldData },
-	{ true,  &Client::pkt_Join }, // 5
-	{ true,  &Client::pkt_Leave },
-	{ true,  &Client::pkt_Move },
-	{ true,  &Client::pkt_Chat },
-	{ false, 0 }
+	{ ClientState::None,      &Client::pkt_Quack }, // 0
+	{ ClientState::None,      &Client::pkt_Hello },
+	{ ClientState::None,      &Client::pkt_Error },
+	{ ClientState::Connected, &Client::pkt_Lobby },
+	{ ClientState::WorldJoin, &Client::pkt_WorldData },
+	{ ClientState::WorldJoin, &Client::pkt_Join }, // 5
+	{ ClientState::WorldJoin, &Client::pkt_Leave },
+	{ ClientState::WorldPlay, &Client::pkt_Move },
+	{ ClientState::WorldPlay, &Client::pkt_Chat },
+	{ ClientState::WorldPlay, &Client::pkt_PlaceBlock },
+	{ ClientState::Invalid, 0 }
 };
 
 void Client::pkt_Quack(Packet &pkt)
@@ -99,14 +100,16 @@ void Client::pkt_WorldData(Packet &pkt)
 
 void Client::pkt_Join(Packet &pkt)
 {
-	peer_t peer_id = pkt.read<peer_t>();
+	SimpleLock lock(m_players_lock);
 
-	LocalPlayer *player = getPlayer(peer_id);
+	peer_t peer_id = pkt.read<peer_t>();
+	LocalPlayer *player = getPlayerNoLock(peer_id);
+
 	if (!player) {
 		// normal case. player should yet not exist!
 		m_players.emplace(peer_id, new LocalPlayer(peer_id));
 	}
-	player = getPlayer(peer_id);
+	player = getPlayerNoLock(peer_id);
 
 	player->name = pkt.readStr16();
 	player->readPhysics(pkt);
@@ -118,8 +121,10 @@ void Client::pkt_Join(Packet &pkt)
 
 void Client::pkt_Leave(Packet &pkt)
 {
+	SimpleLock lock(m_players_lock);
+
 	peer_t peer_id = pkt.read<peer_t>();
-	LocalPlayer *player = getPlayer(peer_id);
+	LocalPlayer *player = getPlayerNoLock(peer_id);
 
 	m_players.erase(peer_id);
 
@@ -142,13 +147,15 @@ void Client::pkt_Leave(Packet &pkt)
 
 void Client::pkt_Move(Packet &pkt)
 {
+	SimpleLock lock(m_players_lock);
+
 	while (true) {
 		bool is_ok = pkt.read<u8>();
 		if (!is_ok)
 			break;
 
 		peer_t peer_id = pkt.read<peer_t>();
-		LocalPlayer *player = getPlayer(peer_id);
+		LocalPlayer *player = getPlayerNoLock(peer_id);
 		if (!player || peer_id == m_my_peer_id) {
 			// don't care
 			continue;
@@ -161,8 +168,10 @@ void Client::pkt_Move(Packet &pkt)
 
 void Client::pkt_Chat(Packet &pkt)
 {
+	SimpleLock lock(m_players_lock);
+
 	peer_t peer_id = pkt.read<peer_t>();
-	LocalPlayer *player = getPlayer(peer_id);
+	LocalPlayer *player = getPlayerNoLock(peer_id);
 	if (!player)
 		return;
 
@@ -175,6 +184,37 @@ void Client::pkt_Chat(Packet &pkt)
 	};
 	sendNewEvent(e);
 }
+
+void Client::pkt_PlaceBlock(Packet &pkt)
+{
+	if (!m_world)
+		throw std::runtime_error("Got block but the world is not ready");
+
+	SimpleLock lock(m_world->mutex);
+
+	while (true) {
+		bool is_ok = pkt.read<u8>();
+		if (!is_ok)
+			break;
+
+		pkt.read<peer_t>(); // peer_id ... nothing to do?
+
+		blockpos_t pos;
+		pkt.read(pos.X);
+		pkt.read(pos.Y);
+		Block b;
+		pkt.read(b.id);
+		pkt.read(b.param1);
+
+		m_world->setBlock(pos, b);
+	}
+
+	lock.unlock();
+
+	GameEvent e(GameEvent::C2G_MAP_UPDATE);
+	sendNewEvent(e);
+}
+
 
 void Client::pkt_Deprecated(Packet &pkt)
 {

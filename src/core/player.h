@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/macros.h"
 #include <string>
 #include <vector2d.h>
 
@@ -21,6 +22,7 @@ public:
 
 	virtual void step(float dtime);
 
+	const peer_t peer_id;
 	std::string name;
 	core::vector2df pos;
 	core::vector2df vel;
@@ -29,7 +31,8 @@ public:
 	bool is_physical = true;
 
 protected:
-	Player() = default;
+	Player(peer_t peer_id) :
+		peer_id(peer_id) {}
 
 	// Currently active world (nullptr if lobby)
 	World *m_world = nullptr;

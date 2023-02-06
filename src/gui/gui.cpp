@@ -115,6 +115,11 @@ void Gui::run()
 		handler->step(dtime);
 
 		driver->endScene();
+
+		if (m_client)
+			m_client->step(dtime);
+		if (m_server)
+			m_server->step(dtime);
 	}
 }
 

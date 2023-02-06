@@ -17,6 +17,7 @@
 const uint16_t CON_PORT = 0xC014;
 const size_t CON_CLIENTS = 32; // server only
 const size_t CON_CHANNELS = 2;
+size_t CONNECTION_MTU;
 
 struct enet_init {
 	enet_init()
@@ -204,7 +205,6 @@ void Connection::recvAsyncInternal()
 			DEBUGLOG("--- ENet %s: Shutdown requested\n", m_name);
 
 			// Lazy disconnect
-			SimpleLock lock(m_peers_lock);
 			for (size_t i = 0; i < m_host->peerCount; ++i)
 				enet_peer_disconnect_later(&m_host->peers[i], 0);
 		}
@@ -217,6 +217,22 @@ void Connection::recvAsyncInternal()
 			}
 
 			continue;
+		}
+
+		{
+			// Update MTU
+			size_t new_mtu = ENET_PROTOCOL_MAXIMUM_MTU;
+			for (size_t i = 0; i < m_host->peerCount; ++i) {
+				auto &peer = m_host->peers[i];
+				if (peer.state != ENET_PEER_STATE_CONNECTED)
+					continue;
+
+				if (peer.mtu && peer.mtu < new_mtu) {
+					new_mtu = peer.mtu;
+				}
+			}
+
+			CONNECTION_MTU = new_mtu - 200;
 		}
 
 		switch (event.type) {
@@ -263,7 +279,7 @@ void Connection::recvAsyncInternal()
 
 _ENetPeer *Connection::findPeer(peer_t peer_id)
 {
-	SimpleLock lock(m_peers_lock);
+	// m_host->peers is a simple array. Thread locks are not important.
 
 	for (size_t i = 0; i < m_host->peerCount; ++i) {
 		if (m_host->peers[i].state != ENET_PEER_STATE_CONNECTED)

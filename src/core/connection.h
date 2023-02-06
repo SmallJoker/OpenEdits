@@ -6,6 +6,7 @@
 
 const uint16_t PROTOCOL_VERSION = 1;
 const uint16_t PROTOCOL_VERSION_MIN = 1;
+extern size_t CONNECTION_MTU;
 
 struct _ENetHost;
 struct _ENetPeer;
@@ -52,7 +53,6 @@ private:
 
 	_ENetHost *m_host = nullptr;
 
-	std::mutex m_peers_lock;
 	PacketProcessor *m_processor = nullptr;
 };
 

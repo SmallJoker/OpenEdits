@@ -3,6 +3,17 @@
 #include "core/packet.h"
 #include "core/world.h"
 
+namespace irr {
+	namespace core {
+		// For std::map insertions
+		template <>
+		inline u16 roundingError()
+		{
+			return 0;
+		}
+	}
+}
+
 // in sync with core/packet.h
 const ServerPacketHandler Server::packet_actions[] = {
 	{ RemotePlayerState::Invalid,   &Server::pkt_Quack }, // 0
@@ -12,6 +23,7 @@ const ServerPacketHandler Server::packet_actions[] = {
 	{ RemotePlayerState::WorldJoin, &Server::pkt_Leave },
 	{ RemotePlayerState::WorldPlay, &Server::pkt_Move }, // 5
 	{ RemotePlayerState::WorldPlay, &Server::pkt_Chat },
+	{ RemotePlayerState::WorldPlay, &Server::pkt_PlaceBlock },
 	{ RemotePlayerState::Invalid, 0 }
 };
 
@@ -98,7 +110,7 @@ void Server::pkt_GetLobby(peer_t peer_id, Packet &)
 
 void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 {
-	RemotePlayer *player = getPlayer(peer_id);
+	RemotePlayer *player = getPlayerNoLock(peer_id);
 	std::string world_id(pkt.readStr16());
 
 	// query database for existing world
@@ -170,7 +182,7 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 
 void Server::pkt_Leave(peer_t peer_id, Packet &pkt)
 {
-	RemotePlayer *player = getPlayer(peer_id);
+	RemotePlayer *player = getPlayerNoLock(peer_id);
 	World *world = player->getWorld();
 	if (!world)
 		return; // ???
@@ -187,7 +199,7 @@ void Server::pkt_Leave(peer_t peer_id, Packet &pkt)
 
 void Server::pkt_Move(peer_t peer_id, Packet &pkt)
 {
-	RemotePlayer *player = getPlayer(peer_id);
+	RemotePlayer *player = getPlayerNoLock(peer_id);
 	ASSERT_FORCED(player, "Player required!");
 
 	// TODO: Anticheat test here
@@ -235,7 +247,7 @@ void Server::pkt_Chat(peer_t peer_id, Packet &pkt)
 		return;
 	}
 
-	RemotePlayer *player = getPlayer(peer_id);
+	RemotePlayer *player = getPlayerNoLock(peer_id);
 
 	Packet out;
 	out.write(Packet2Client::Chat);
@@ -245,11 +257,44 @@ void Server::pkt_Chat(peer_t peer_id, Packet &pkt)
 	broadcastInWorld(player, 1, out);
 }
 
+void Server::pkt_PlaceBlock(peer_t peer_id, Packet &pkt)
+{
+	RemotePlayer *player = getPlayerNoLock(peer_id);
+
+	World *world = player->getWorld();
+	SimpleLock lock(world->mutex);
+
+	while (true) {
+		bool is_ok = pkt.read<u8>();
+		if (!is_ok)
+			break;
+
+		blockpos_t pos;
+		pkt.read(pos.X);
+		pkt.read(pos.Y);
+		BlockUpdate b;
+		pkt.read(b.id);
+		pkt.read(b.param1);
+		b.peer_id = peer_id;
+
+		bool ok = world->setBlock(pos, b);
+		if (!ok) {
+			// out of range?
+			continue;
+		}
+
+		// Put into queue to keep the world lock as short as possible
+		world->proc_queue.emplace(pos, b);
+	}
+	lock.unlock();
+}
+
+
 void Server::pkt_Deprecated(peer_t peer_id, Packet &pkt)
 {
 	std::string name = "??";
 
-	auto player = getPlayer(peer_id);
+	auto player = getPlayerNoLock(peer_id);
 	if (player)
 		name = player->name;
 
@@ -267,6 +312,9 @@ void Server::sendError(peer_t peer_id, const std::string &text)
 
 void Server::broadcastInWorld(Player *player, int flags, Packet &pkt)
 {
+	if (!player)
+		return;
+
 	World *world = player->getWorld();
 	if (!world)
 		return;

@@ -16,3 +16,33 @@ typedef std::unique_lock<std::mutex> SimpleLock;
 
 typedef uint32_t peer_t; // same as in ENetPeer
 
+// Auto-unlock wrapper for larger operations
+template<typename T>
+class PtrLock {
+public:
+	// Mutex be locked before!
+	PtrLock(std::mutex &m, T *ptr) :
+		m_mutex(m), m_ptr(ptr)
+	{
+		if (!ptr)
+			m.unlock();
+	}
+
+	~PtrLock()
+	{
+		if (m_ptr)
+			m_mutex.unlock();
+	}
+
+	DISABLE_COPY(PtrLock)
+
+	// Synthetic sugar
+	inline operator T *() const { return m_ptr; }
+	inline T *operator->() const { return m_ptr; }
+	// Validation check
+	inline bool operator!() const { return !!m_ptr; }
+
+private:
+	std::mutex &m_mutex;
+	T *m_ptr;
+};

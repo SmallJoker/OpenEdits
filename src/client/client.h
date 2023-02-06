@@ -11,7 +11,8 @@ struct ClientPacketHandler;
 
 // Similar to RemotePlayerState
 enum class ClientState {
-	Uninitialized,
+	Invalid,
+	None,
 	Connected,
 	LobbyIdle,
 	WorldJoin,
@@ -43,10 +44,10 @@ public:
 	bool OnEvent(GameEvent &e) override;
 
 	// ----------- Utility functions -----------
-	inline LocalPlayer *getMyPlayer() { return getPlayer(m_my_peer_id); }
+	PtrLock<LocalPlayer> getMyPlayer();
 	PlayerControls &getControls() { return m_controls; }
 
-	LocalPlayer *getPlayer(peer_t peer_id);
+	LocalPlayer *getPlayerNoLock(peer_t peer_id);
 	ClientState getState() { return m_state; }
 
 	// ----------- Networking -----------
@@ -63,12 +64,13 @@ public:
 	void pkt_Leave(Packet &pkt);
 	void pkt_Move(Packet &pkt);
 	void pkt_Chat(Packet &pkt);
+	void pkt_PlaceBlock(Packet &pkt);
 	void pkt_Deprecated(Packet &pkt);
 
 	std::map<std::string, LobbyWorld> world_list;
 
 protected:
-	ClientState m_state = ClientState::Uninitialized;
+	ClientState m_state = ClientState::None;
 	uint16_t m_protocol_version = 0;
 
 	World *m_world = nullptr;
@@ -83,6 +85,6 @@ private:
 };
 
 struct ClientPacketHandler {
-	signed char needs_player;
+	ClientState min_player_state;
 	void (Client::*func)(Packet &pkt);
 };

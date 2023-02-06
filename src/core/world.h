@@ -1,6 +1,7 @@
 #pragma once
 
 #include "blockmanager.h"
+#include "core/macros.h"
 #include <string>
 #include <irrTypes.h>
 #include <vector2d.h>
@@ -20,6 +21,10 @@ struct CollisionData {
 struct Block {
 	bid_t id;
 	uint8_t param1; // rotation?
+};
+
+struct BlockUpdate : public Block {
+	peer_t peer_id;
 };
 
 struct WorldMeta {
@@ -43,6 +48,9 @@ public:
 
 	blockpos_t getSize() const { return m_size; }
 	WorldMeta &getMeta() { return m_meta; }
+
+	std::mutex mutex; // used by Server/Client
+	std::map<blockpos_t, BlockUpdate> proc_queue; // for networking
 
 protected:
 	inline Block &getBlockRefNoCheck(blockpos_t pos, char layer) const

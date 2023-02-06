@@ -57,6 +57,7 @@ enum class Packet2Client : uint16_t {
 	Leave,
 	Move,
 	Chat,
+	PlaceBlock,
 	MAX_END
 };
 
@@ -69,5 +70,6 @@ enum class Packet2Server : uint16_t {
 	Leave,
 	Move,
 	Chat,
+	PlaceBlock,
 	MAX_END
 };

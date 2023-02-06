@@ -1,6 +1,7 @@
 #include "server.h"
 #include "remoteplayer.h"
 #include "core/packet.h"
+#include "core/world.h"
 
 static uint16_t PACKET_ACTIONS_MAX; // initialized in ctor
 
@@ -38,10 +39,54 @@ Server::~Server()
 void Server::step(float dtime)
 {
 	// maybe run player physics?
+
+	// always player lock first, world lock after.
+	SimpleLock players_lock(m_players_lock);
+	for (auto world_it : m_worlds) {
+		SimpleLock world_lock(world_it.second->mutex);
+		auto &queue = world_it.second->proc_queue;
+
+		if (queue.empty())
+			return;
+
+		Packet out;
+		out.write(Packet2Client::PlaceBlock);
+
+		for (auto it = queue.cbegin(); it != queue.cend();) {
+			// Distribute valid changes to players
+
+			out.write<u8>(true); // begin
+			out.write(it->second.peer_id);
+			// blockpos_t
+			out.write(it->first.X);
+			out.write(it->first.Y);
+			// Block
+			out.write(it->second.id);
+			out.write(it->second.param1);
+
+			printf("Server: sending block x=%d,y=%d,id=%d\n",
+				it->first.X, it->first.Y, it->second.id);
+
+			it = queue.erase(it);
+
+			// Fit everything into an MTU
+			if (out.size() > CONNECTION_MTU)
+				break;
+		}
+		out.write<u8>(false); // end
+
+		// Distribute to players within this world
+		for (auto it : m_players) {
+			if (it.second->getWorld() != world_it.second)
+				continue;
+
+			m_con->send(it.first, 0, out);
+		}
+	}
 }
 
 
-RemotePlayer *Server::getPlayer(peer_t peer_id)
+RemotePlayer *Server::getPlayerNoLock(peer_t peer_id)
 {
 	auto it = m_players.find(peer_id);
 	return it != m_players.end() ? dynamic_cast<RemotePlayer *>(it->second) : nullptr;
@@ -79,8 +124,10 @@ void Server::processPacket(peer_t peer_id, Packet &pkt)
 
 	const ServerPacketHandler &handler = packet_actions[action];
 
+	SimpleLock lock(m_players_lock);
+
 	if (handler.min_player_state != RemotePlayerState::Invalid) {
-		RemotePlayer *player = getPlayer(peer_id);
+		RemotePlayer *player = getPlayerNoLock(peer_id);
 		if (!player) {
 			printf("Server: Player peer_id=%d not found.\n", peer_id);
 			return;

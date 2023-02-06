@@ -30,9 +30,13 @@ Client::~Client()
 {
 	puts("Client: stopping...");
 
-	for (auto it : m_players)
-		delete it.second;
-	m_players.clear();
+	{
+		SimpleLock lock(m_players_lock);
+
+		for (auto it : m_players)
+			delete it.second;
+		m_players.clear();
+	}
 
 	delete m_con;
 }
@@ -79,8 +83,13 @@ bool Client::OnEvent(GameEvent &e)
 	return false;
 }
 
+PtrLock<LocalPlayer> Client::getMyPlayer()
+{
+	m_players_lock.lock();
+	return PtrLock<LocalPlayer>(m_players_lock, getPlayerNoLock(m_my_peer_id));
+}
 
-LocalPlayer *Client::getPlayer(peer_t peer_id)
+LocalPlayer *Client::getPlayerNoLock(peer_t peer_id)
 {
 	// It's not really a "peer" ID but player ID
 	auto it = m_players.find(peer_id);
@@ -103,7 +112,7 @@ void Client::onPeerConnected(peer_t peer_id)
 
 void Client::onPeerDisconnected(peer_t peer_id)
 {
-	m_state = ClientState::Uninitialized;
+	m_state = ClientState::None;
 
 	// send event for client destruction
 	if (m_eventhandler) {
@@ -126,6 +135,10 @@ void Client::processPacket(peer_t peer_id, Packet &pkt)
 	}
 
 	const ClientPacketHandler &handler = packet_actions[action];
+	if ((int)handler.min_player_state > (int)m_state) {
+		printf("Client: not ready for action=%d.\n", action);
+		return;
+	}
 
 	try {
 		(this->*handler.func)(pkt);
