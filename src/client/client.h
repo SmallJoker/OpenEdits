@@ -47,6 +47,7 @@ public:
 	PtrLock<LocalPlayer> getMyPlayer();
 	PlayerControls &getControls() { return m_controls; }
 	World *getWorld() { return m_world; }
+	bool setBlock(blockpos_t pos, Block block, char layer = 0);
 
 	LocalPlayer *getPlayerNoLock(peer_t peer_id);
 	ClientState getState() { return m_state; }

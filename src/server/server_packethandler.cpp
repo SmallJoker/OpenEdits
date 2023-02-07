@@ -3,17 +3,6 @@
 #include "core/packet.h"
 #include "core/world.h"
 
-namespace irr {
-	namespace core {
-		// For std::map insertions
-		template <>
-		inline u16 roundingError()
-		{
-			return 0;
-		}
-	}
-}
-
 // in sync with core/packet.h
 const ServerPacketHandler Server::packet_actions[] = {
 	{ RemotePlayerState::Invalid,   &Server::pkt_Quack }, // 0

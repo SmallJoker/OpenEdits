@@ -18,6 +18,19 @@ SceneGameplay::SceneGameplay()
 	);
 }
 
+static std::string dump_val(const core::vector2df vec)
+{
+	return "x=" + std::to_string(vec.X)
+		+ ", y=" + std::to_string(vec.Y);
+}
+
+static std::string dump_val(const core::vector3df vec)
+{
+	return "x=" + std::to_string(vec.X)
+		+ ", y=" + std::to_string(vec.Y)
+		+ ", z=" + std::to_string(vec.Z);
+}
+
 // -------------- Public members -------------
 
 void SceneGameplay::draw()
@@ -46,7 +59,7 @@ void SceneGameplay::draw()
 	// Main node to keep track of all children
 	auto stage = smgr->addBillboardSceneNode(nullptr,
 		core::dimension2d<f32>(10, 10),
-		core::vector3df(0, 0, -10)
+		core::vector3df(0, 0, 0)
 	);
 	stage->setMaterialFlag(video::EMF_LIGHTING, false);
 	stage->setMaterialFlag(video::EMF_ZWRITE_ENABLE, true);
@@ -55,15 +68,14 @@ void SceneGameplay::draw()
 
 	// Set up camera
 	m_camera = smgr->addCameraSceneNode(nullptr);
-	if (1) {
+	if (0) {
 		core::matrix4 ortho;
-		ortho.buildProjectionMatrixOrthoLH(400 * 0.7f, 300 * 0.7f, 0.1f, 1000.0f);
+		ortho.buildProjectionMatrixOrthoLH(400 * 0.9f, 300 * 0.9f, 0.1f, 1000.0f);
 		m_camera->setProjectionMatrix(ortho, true);
 		//m_camera->setAspectRatio((float)draw_area.getWidth() / (float)draw_area.getHeight());
 	}
 
-	setCamera({0,0,-70.0f});
-	//printf("x=%f,y=%f,z=%f\n", vec.X, vec.Y, vec.Z);
+	setCamera({60,-60,-200.0f}); // values don't matter
 }
 
 void SceneGameplay::step(float dtime)
@@ -109,6 +121,7 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 
 					e.GUIEvent.Caller->setText(L"");
 				}
+				break;
 			default: break;
 		}
 	}
@@ -119,18 +132,39 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 				break;
 			case EMIE_MOUSE_WHEEL:
 				{
-					if (e.MouseInput.Wheel > 0)
-						m_camera->setFOV(m_camera->getFOV() / 1.05f);
-					else
-						m_camera->setFOV(m_camera->getFOV() * 1.05f);
+					float dir = e.MouseInput.Wheel > 0 ? 1 : -1;
 
-					/*float dir = e.MouseInput.Wheel > 0 ? 1 : -1;
+					auto pos = m_camera->getPosition();
+					pos.Z += dir * 30;
+					m_camera->setPosition(pos);
+				}
+				break;
+			case EMIE_LMOUSE_PRESSED_DOWN:
+				{
+					core::vector2di pos(e.MouseInput.X, e.MouseInput.Y);
 
-					auto &mat = m_bb->getMaterial(0).getTextureMatrix(0);
-					float x, y;
-					mat.getTextureTranslate(x, y);
-					x += dir / 7.0f;
-					mat.setTextureTranslate(x, 0);*/
+					auto shootline = m_gui->scenemgr
+							->getSceneCollisionManager()
+							->getRayFromScreenCoordinates(pos, m_camera);
+
+					// find clicked element
+					for (auto c : m_stage->getChildren()) {
+						auto bb = c->getBoundingBox();
+						auto abspos = c->getAbsolutePosition();
+						bb.MinEdge += abspos;
+						bb.MaxEdge += abspos;
+						if (bb.intersectsWithLine(shootline)) {
+							core::vector3df pos = c->getPosition();
+
+							blockpos_t bp(pos.X / 10.0f, -pos.Y / 10.0f);
+							Block b;
+							b.id = 11;
+
+							m_gui->getClient()->setBlock(bp, b, 0);
+							printf("clicked %s\n", dump_val(pos).c_str());
+							break;
+						}
+					}
 				}
 				break;
 			default: break;
@@ -225,9 +259,10 @@ void SceneGameplay::drawWorld()
 		if (!props)
 			continue;
 
+		// Note: Position is relative to its parent
 		auto bb = smgr->addBillboardSceneNode(m_stage,
 			core::dimension2d<f32>(10, 10),
-			core::vector3df(x * 10, -y * 10, 0)
+			core::vector3df(x * 10, -y * 10, 1)
 		);
 		bb->setMaterialFlag(video::EMF_LIGHTING, false);
 		bb->setMaterialFlag(video::EMF_ZWRITE_ENABLE, true);

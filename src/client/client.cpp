@@ -47,6 +47,40 @@ void Client::step(float dtime)
 {
 	// run player physics
 	// process user inputs
+	while (m_world) {
+		SimpleLock lock(m_world->mutex);
+		auto &queue = m_world->proc_queue;
+		if (queue.empty())
+			break;
+
+		Packet out;
+		out.write(Packet2Server::PlaceBlock);
+
+		// Almost identical to the queue processing in Server::step()
+		for (auto it = queue.cbegin(); it != queue.cend();) {
+
+			out.write<u8>(true); // begin
+			// blockpos_t
+			out.write(it->first.X);
+			out.write(it->first.Y);
+			// Block
+			out.write(it->second.id);
+			out.write(it->second.param1);
+
+			printf("Client: sending block x=%d,y=%d,id=%d\n",
+				it->first.X, it->first.Y, it->second.id);
+
+			it = queue.erase(it);
+
+			// Fit everything into an MTU
+			if (out.size() > CONNECTION_MTU)
+				break;
+		}
+		out.write<u8>(false);
+
+		m_con->send(0, 0, out);
+		break;
+	}
 }
 
 bool Client::OnEvent(GameEvent &e)
@@ -94,6 +128,25 @@ LocalPlayer *Client::getPlayerNoLock(peer_t peer_id)
 	// It's not really a "peer" ID but player ID
 	auto it = m_players.find(peer_id);
 	return it != m_players.end() ? dynamic_cast<LocalPlayer *>(it->second) : nullptr;
+}
+
+bool Client::setBlock(blockpos_t pos, Block block, char layer)
+{
+	if (!m_world)
+		return false;
+
+	SimpleLock lock(m_world->mutex);
+
+	bool is_ok = m_world->setBlock(pos, block, layer);
+	if (!is_ok)
+		return false;
+
+	BlockUpdate bu;
+	bu.id = block.id;
+	bu.param1 = block.param1;
+
+	m_world->proc_queue.emplace(pos, bu);
+	return true;
 }
 
 

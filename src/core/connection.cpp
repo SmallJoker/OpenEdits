@@ -209,10 +209,10 @@ void Connection::recvAsyncInternal()
 				enet_peer_disconnect_later(&m_host->peers[i], 0);
 		}
 
-		if (enet_host_service(m_host, &event, 500) <= 0) {
-			// Abort after 2 * 1000 ms
+		if (enet_host_service(m_host, &event, 50) <= 0) {
+			// Abort after 20 * 50 ms
 			if (shutdown_seen > 0) {
-				if (++shutdown_seen > 2)
+				if (++shutdown_seen > 20)
 					break;
 			}
 
