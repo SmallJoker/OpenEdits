@@ -31,7 +31,7 @@ static void register_packs()
 	{
 		BlockPack *pack = new BlockPack("basic");
 		pack->default_type = BlockDrawType::Solid;
-		pack->block_ids = { 9, 10, 11, 12, 13, 14 };
+		pack->block_ids = { 9, 10, 11, 12, 13, 14, 15 };
 		g_blockmanager->registerPack(pack);
 	}
 

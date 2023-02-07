@@ -23,7 +23,7 @@ SceneGameplay::SceneGameplay()
 void SceneGameplay::draw()
 {
 	core::recti rect_1(
-		core::vector2di(10, 10),
+		core::vector2di(10, 460),
 		core::dimension2du(100, 30)
 	);
 
@@ -32,7 +32,7 @@ void SceneGameplay::draw()
 
 	// Bottom row
 	core::recti rect_2(
-		core::vector2di(100, 400),
+		core::vector2di(150, 460),
 		core::dimension2du(300, 30)
 	);
 
@@ -43,15 +43,36 @@ void SceneGameplay::draw()
 
 	auto smgr = m_gui->scenemgr;
 
-	m_bb = smgr->addBillboardSceneNode(nullptr, core::dimension2d<f32>(10, 10));
+	for (int x = -3; x <= 3; x++)
+	for (int y = -3; y <= 3; y++) {
+		auto stage = smgr->addBillboardSceneNode(nullptr, core::dimension2d<f32>(10, 10));
+		stage->setMaterialFlag(video::EMF_LIGHTING, false);
+		stage->setMaterialTexture(0, m_gui->driver->getTexture("assets/textures/dummy.png"));
+		stage->setPosition(core::vector3df(x * 10, y * 10, 20));
+	}
+
+	m_bb = smgr->addBillboardSceneNode(nullptr, core::dimension2d<f32>(35, 35));
 	m_bb->setMaterialFlag(video::EMF_LIGHTING, false);
-	m_bb->setMaterialFlag(video::EMF_ZWRITE_ENABLE, false);
-	m_bb->setMaterialTexture(0, m_gui->driver->getTexture("assets/textures/dummy.png"));
+	m_bb->setMaterialFlag(video::EMF_ZWRITE_ENABLE, true);
+	m_bb->setMaterialTexture(0, m_gui->driver->getTexture("assets/textures/pack_basic.png"));
+	auto &mat = m_bb->getMaterial(0).getTextureMatrix(0);
+	mat.setTextureTranslate(1.0f / 7, 0);
+	mat.setTextureScale(1.0f / 7, 1);
+
 	m_bb->setPosition(core::vector3df(0,0,0));
 
-	m_camera = smgr->addCameraSceneNode();
-	m_camera->setFOV(5);
-	m_camera->setPosition(core::vector3df(0,0,-100));
+	m_camera = smgr->addCameraSceneNode(nullptr);
+
+	if (1) {
+		core::matrix4 ortho;
+		ortho.buildProjectionMatrixOrthoLH(400 * 0.7f, 300 * 0.7f, 0.1f, 1000.0f);
+		m_camera->setProjectionMatrix(ortho, true);
+		//m_camera->setAspectRatio((float)draw_area.getWidth() / (float)draw_area.getHeight());
+	}
+
+	m_camera->setPosition({0,0,-50.0f});
+	m_camera->setTarget({0,0,1E6});
+	//printf("x=%f,y=%f,z=%f\n", vec.X, vec.Y, vec.Z);
 }
 
 void SceneGameplay::step(float dtime)
@@ -68,6 +89,13 @@ void SceneGameplay::step(float dtime)
 		e.text = new std::string("dummyworld");
 		m_gui->sendNewEvent(e);
 	}
+
+	auto &controls = m_gui->getClient()->getControls();
+	auto pos = m_camera->getPosition();
+	pos.X += controls.direction.X * 500 * dtime;
+	pos.Y += controls.direction.Y * 500 * dtime;
+	m_camera->setPosition(pos);
+	m_camera->updateAbsolutePosition();
 }
 
 bool SceneGameplay::OnEvent(const SEvent &e)
@@ -95,8 +123,20 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 		}
 	}
 	if (e.EventType == EET_MOUSE_INPUT_EVENT) {
+
 		switch (e.MouseInput.Event) {
 			case EMIE_MOUSE_MOVED:
+				break;
+			case EMIE_MOUSE_WHEEL:
+				{
+					float dir = e.MouseInput.Wheel > 0 ? 1 : -1;
+
+					auto &mat = m_bb->getMaterial(0).getTextureMatrix(0);
+					float x, y;
+					mat.getTextureTranslate(x, y);
+					x += dir / 7.0f;
+					mat.setTextureTranslate(x, 0);
+				}
 				break;
 			default: break;
 		}
@@ -124,10 +164,6 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 				break;
 			default: break;
 		}
-		auto pos = m_camera->getPosition();
-		pos.X += controls.direction.X * 20;
-		pos.Y += controls.direction.Y * 20;
-		m_camera->setPosition(pos);
 	}
 	return false;
 }
