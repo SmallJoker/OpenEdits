@@ -77,7 +77,7 @@ void BlockManager::populateTextures(video::IVideoDriver *driver)
 			auto prop = m_props[id];
 			if (i < max_tiles) {
 				prop->texture = image;
-				prop->texture_offset = i * dim.Height;
+				prop->texture_offset = i;
 				i++;
 			} else {
 				prop->texture = m_missing_texture;

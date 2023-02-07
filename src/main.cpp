@@ -24,7 +24,7 @@ static void register_packs()
 	{
 		BlockPack *pack = new BlockPack("action");
 		pack->default_type = BlockDrawType::Action;
-		pack->block_ids = { 0, 1, 2, 3 };
+		pack->block_ids = { 0, 1, 2, 3, 4 };
 		g_blockmanager->registerPack(pack);
 	}
 
@@ -40,6 +40,7 @@ static void register_packs()
 int main(int argc, char *argv[])
 {
 	atexit(exit_cleanup);
+	srand(time(nullptr));
 
 	g_blockmanager = new BlockManager();
 	register_packs();

@@ -43,26 +43,18 @@ void SceneGameplay::draw()
 
 	auto smgr = m_gui->scenemgr;
 
-	for (int x = -3; x <= 3; x++)
-	for (int y = -3; y <= 3; y++) {
-		auto stage = smgr->addBillboardSceneNode(nullptr, core::dimension2d<f32>(10, 10));
-		stage->setMaterialFlag(video::EMF_LIGHTING, false);
-		stage->setMaterialTexture(0, m_gui->driver->getTexture("assets/textures/dummy.png"));
-		stage->setPosition(core::vector3df(x * 10, y * 10, 20));
-	}
+	// Main node to keep track of all children
+	auto stage = smgr->addBillboardSceneNode(nullptr,
+		core::dimension2d<f32>(10, 10),
+		core::vector3df(0, 0, -10)
+	);
+	stage->setMaterialFlag(video::EMF_LIGHTING, false);
+	stage->setMaterialFlag(video::EMF_ZWRITE_ENABLE, true);
+	stage->setMaterialTexture(0, m_gui->driver->getTexture("assets/textures/dummy.png"));
+	m_stage = stage;
 
-	m_bb = smgr->addBillboardSceneNode(nullptr, core::dimension2d<f32>(35, 35));
-	m_bb->setMaterialFlag(video::EMF_LIGHTING, false);
-	m_bb->setMaterialFlag(video::EMF_ZWRITE_ENABLE, true);
-	m_bb->setMaterialTexture(0, m_gui->driver->getTexture("assets/textures/pack_basic.png"));
-	auto &mat = m_bb->getMaterial(0).getTextureMatrix(0);
-	mat.setTextureTranslate(1.0f / 7, 0);
-	mat.setTextureScale(1.0f / 7, 1);
-
-	m_bb->setPosition(core::vector3df(0,0,0));
-
+	// Set up camera
 	m_camera = smgr->addCameraSceneNode(nullptr);
-
 	if (1) {
 		core::matrix4 ortho;
 		ortho.buildProjectionMatrixOrthoLH(400 * 0.7f, 300 * 0.7f, 0.1f, 1000.0f);
@@ -70,8 +62,7 @@ void SceneGameplay::draw()
 		//m_camera->setAspectRatio((float)draw_area.getWidth() / (float)draw_area.getHeight());
 	}
 
-	m_camera->setPosition({0,0,-50.0f});
-	m_camera->setTarget({0,0,1E6});
+	setCamera({0,0,-70.0f});
 	//printf("x=%f,y=%f,z=%f\n", vec.X, vec.Y, vec.Z);
 }
 
@@ -94,8 +85,7 @@ void SceneGameplay::step(float dtime)
 	auto pos = m_camera->getPosition();
 	pos.X += controls.direction.X * 500 * dtime;
 	pos.Y += controls.direction.Y * 500 * dtime;
-	m_camera->setPosition(pos);
-	m_camera->updateAbsolutePosition();
+	setCamera(pos);
 }
 
 bool SceneGameplay::OnEvent(const SEvent &e)
@@ -129,13 +119,18 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 				break;
 			case EMIE_MOUSE_WHEEL:
 				{
-					float dir = e.MouseInput.Wheel > 0 ? 1 : -1;
+					if (e.MouseInput.Wheel > 0)
+						m_camera->setFOV(m_camera->getFOV() / 1.05f);
+					else
+						m_camera->setFOV(m_camera->getFOV() * 1.05f);
+
+					/*float dir = e.MouseInput.Wheel > 0 ? 1 : -1;
 
 					auto &mat = m_bb->getMaterial(0).getTextureMatrix(0);
 					float x, y;
 					mat.getTextureTranslate(x, y);
 					x += dir / 7.0f;
-					mat.setTextureTranslate(x, 0);
+					mat.setTextureTranslate(x, 0);*/
 				}
 				break;
 			default: break;
@@ -144,9 +139,17 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 	if (e.EventType == EET_KEY_INPUT_EVENT) {
 		auto &controls = m_gui->getClient()->getControls();
 		bool down = e.KeyInput.PressedDown;
+		EKEY_CODE keycode = e.KeyInput.Key;
+
+		/*switch (e.KeyInput.Char) {
+			case L'a': keycode = KEY_LEFT; break;
+			case L'd': keycode = KEY_RIGHT; break;
+			case L'w': keycode = KEY_UP; break;
+			case L's': keycode = KEY_DOWN; break;
+		}*/
 
 		// The Client performs physics of all players, including ours.
-		switch (e.KeyInput.Key) {
+		switch (keycode) {
 			case KEY_LEFT:
 				controls.direction.X = down ? -1 : 0;
 				break;
@@ -200,25 +203,50 @@ bool SceneGameplay::OnEvent(GameEvent &e)
 
 void SceneGameplay::drawWorld()
 {
-	if (true)
-		return;
-
 	World *world = m_gui->getClient()->getWorld();
 	if (!world || !m_need_mesh_update)
 		return;
 
-	video::ITexture *image = m_gui->driver->getTexture("assets/textures/dummy.png");
-    m_gui->driver->makeColorKeyTexture(image, core::position2di(0,0));
+	SimpleLock lock(world->mutex);
 
-	//auto extent = draw_area.getSize() / 2;
-	auto size = image->getSize();
+	m_need_mesh_update = false;
 
-	for (s32 y = draw_area.UpperLeftCorner.Y; y < draw_area.LowerRightCorner.Y; y += size.Height)
-	for (s32 x = draw_area.UpperLeftCorner.X; x < draw_area.LowerRightCorner.X; x += size.Width) {
-		int pos_x = (x - draw_area.UpperLeftCorner.X) / size.Width;
-		int pos_y = (y - draw_area.UpperLeftCorner.Y) / size.Height;
+	auto smgr = m_gui->scenemgr;
+	m_stage->removeAll();
 
-		m_gui->driver->draw2DImage(image, core::position2di(x, y), false);
+	auto size = world->getSize();
+	for (int x = 0; x < size.X; x++)
+	for (int y = 0; y < size.Y; y++) {
+		Block b;
+		if (!world->getBlock(blockpos_t(x, y), &b))
+			continue;
+
+		auto props = g_blockmanager->getProps(b.id);
+		if (!props)
+			continue;
+
+		auto bb = smgr->addBillboardSceneNode(m_stage,
+			core::dimension2d<f32>(10, 10),
+			core::vector3df(x * 10, -y * 10, 0)
+		);
+		bb->setMaterialFlag(video::EMF_LIGHTING, false);
+		bb->setMaterialFlag(video::EMF_ZWRITE_ENABLE, true);
+		bb->setMaterialTexture(0, props->texture);
+
+		// Set texture
+		auto &mat = bb->getMaterial(0).getTextureMatrix(0);
+
+		float tiles = props->pack->block_ids.size();
+		mat.setTextureTranslate(props->texture_offset / tiles, 0);
+		mat.setTextureScale(1.0f / tiles, 1);
 	}
+}
+
+void SceneGameplay::setCamera(core::vector3df pos)
+{
+	m_camera->setPosition(pos);
+	pos.Z += 1E6;
+	m_camera->setTarget(pos);
+	m_camera->updateAbsolutePosition();
 }
 

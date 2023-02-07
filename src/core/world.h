@@ -54,11 +54,11 @@ public:
 	std::map<blockpos_t, BlockUpdate> proc_queue; // for networking
 
 protected:
-	inline Block &getBlockRefNoCheck(blockpos_t pos, char layer) const
+	inline Block &getBlockRefNoCheck(const blockpos_t pos, char layer) const
 	{
 		return m_data[(layer * m_size.Y + pos.Y) * m_size.X + pos.X];
 	}
-	inline void setBlockNoCheck(blockpos_t pos, char layer, Block block)
+	inline void setBlockNoCheck(const blockpos_t pos, char layer, const Block block)
 	{
 		m_data[(layer * m_size.Y + pos.Y) * m_size.X + pos.X] = block;
 	}
