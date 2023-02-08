@@ -13,10 +13,10 @@ void sleep_ms(long delay);
 
 Gui::Gui()
 {
-	m_window_size = core::dimension2du(700, 500);
+	window_size = core::dimension2du(700, 500);
 
 	device = createDevice(video::EDT_OPENGL,
-		m_window_size, 32, false, false, true /* vsync */, this);
+		window_size, 32, false, false, true /* vsync */, this);
 
 	ASSERT_FORCED(device, "Failed to initialize driver");
 
@@ -89,9 +89,9 @@ void Gui::run()
 			m_scenetype = m_scenetype_next;
 
 		auto screensize = driver->getScreenSize();
-		if (screensize != m_window_size) {
+		if (screensize != window_size) {
 			is_new_screen = true;
-			m_window_size = screensize;
+			window_size = screensize;
 		}
 
 		if (is_new_screen) {
@@ -227,20 +227,20 @@ core::recti Gui::getRect(core::vector2df pos_perc, core::dimension2di size)
 	core::recti ret;
 
 	core::vector2di pos(
-		m_window_size.Width * pos_perc.X * 0.01f,
-		m_window_size.Height * pos_perc.Y * 0.01f
+		window_size.Width * pos_perc.X * 0.01f,
+		window_size.Height * pos_perc.Y * 0.01f
 	);
 
 	// Pin to the bottom (maybe not needed)
 	if (pos.X + size.Width < 0)
 		pos.X = -size.Width;
-	else if (pos.X + size.Width >= (s32)m_window_size.Width)
-		pos.X = m_window_size.Width - size.Width - 1;
+	else if (pos.X + size.Width >= (s32)window_size.Width)
+		pos.X = window_size.Width - size.Width - 1;
 
 	if (pos.Y + size.Height < 0)
 		pos.Y = -size.Height;
-	else if (pos.Y + size.Height >= (s32)m_window_size.Height)
-		pos.Y = m_window_size.Height - size.Height - 1;
+	else if (pos.Y + size.Height >= (s32)window_size.Height)
+		pos.Y = window_size.Height - size.Height - 1;
 
 	ret.UpperLeftCorner = pos;
 	ret.LowerRightCorner = pos + size;
@@ -254,8 +254,8 @@ core::recti Gui::getRect(core::vector2df pos_perc, core::dimension2di size)
 void Gui::displaceRect(core::recti &rect, core::vector2df pos_perc)
 {
 	core::vector2di disp(
-		m_window_size.Width * pos_perc.X * 0.01f,
-		m_window_size.Height * pos_perc.Y * 0.01f
+		window_size.Width * pos_perc.X * 0.01f,
+		window_size.Height * pos_perc.Y * 0.01f
 	);
 	rect += disp;
 }

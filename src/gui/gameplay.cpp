@@ -35,47 +35,46 @@ static std::string dump_val(const core::vector3df vec)
 
 void SceneGameplay::draw()
 {
+	const auto wsize = m_gui->window_size;
+
+	// Bottom row
 	core::recti rect_1(
-		core::vector2di(10, 460),
+		core::vector2di(10, wsize.Height - 40),
 		core::dimension2du(100, 30)
 	);
 
 	m_gui->gui->addButton(
 		rect_1, nullptr, ID_BtnBack, L"<< Back");
 
-	// Bottom row
 	core::recti rect_2(
-		core::vector2di(150, 460),
+		core::vector2di(150, wsize.Height - 40),
 		core::dimension2du(300, 30)
 	);
 
 	m_gui->gui->addEditBox(
 		L"", rect_2, true, nullptr, ID_BoxChat);
 
-	m_need_mesh_update = true;
+	{
+		core::recti rect_ch(
+			core::vector2di(500, 50),
+			core::dimension2di(wsize.Width - 500, wsize.Height - 50 - 100)
+		);
+		if (m_chathistory_text.empty())
+			m_chathistory_text = L"Chat history:\n";
 
-	auto smgr = m_gui->scenemgr;
-
-	// Main node to keep track of all children
-	auto stage = smgr->addBillboardSceneNode(nullptr,
-		core::dimension2d<f32>(10, 10),
-		core::vector3df(0, 0, 0)
-	);
-	stage->setMaterialFlag(video::EMF_LIGHTING, false);
-	stage->setMaterialFlag(video::EMF_ZWRITE_ENABLE, true);
-	stage->setMaterialTexture(0, m_gui->driver->getTexture("assets/textures/dummy.png"));
-	m_stage = stage;
-
-	// Set up camera
-	m_camera = smgr->addCameraSceneNode(nullptr);
-	if (0) {
-		core::matrix4 ortho;
-		ortho.buildProjectionMatrixOrthoLH(400 * 0.9f, 300 * 0.9f, 0.1f, 1000.0f);
-		m_camera->setProjectionMatrix(ortho, true);
-		//m_camera->setAspectRatio((float)draw_area.getWidth() / (float)draw_area.getHeight());
+		auto e = m_gui->gui->addEditBox(m_chathistory_text.c_str(), rect_ch, true);
+		e->setAutoScroll(true);
+		e->setMultiLine(true);
+		e->setWordWrap(true);
+		e->setEnabled(false);
+		e->setDrawBackground(false);
+		e->setTextAlignment(gui::EGUIA_UPPERLEFT, gui::EGUIA_UPPERLEFT);
+		e->setOverrideColor(0xFFAAAAAA);
+		m_chathistory = e;
 	}
 
-	setCamera({60,-60,-200.0f}); // values don't matter
+
+	setupCamera();
 }
 
 void SceneGameplay::step(float dtime)
@@ -121,6 +120,12 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 
 					e.GUIEvent.Caller->setText(L"");
 				}
+				break;
+			case gui::EGET_ELEMENT_FOCUSED:
+				m_ignore_keys = true;
+				break;
+			case gui::EGET_ELEMENT_FOCUS_LOST:
+				m_ignore_keys = false;
 				break;
 			default: break;
 		}
@@ -170,29 +175,26 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 			default: break;
 		}
 	}
-	if (e.EventType == EET_KEY_INPUT_EVENT) {
+	if (e.EventType == EET_KEY_INPUT_EVENT && !m_ignore_keys) {
 		auto &controls = m_gui->getClient()->getControls();
 		bool down = e.KeyInput.PressedDown;
 		EKEY_CODE keycode = e.KeyInput.Key;
 
-		/*switch (e.KeyInput.Char) {
-			case L'a': keycode = KEY_LEFT; break;
-			case L'd': keycode = KEY_RIGHT; break;
-			case L'w': keycode = KEY_UP; break;
-			case L's': keycode = KEY_DOWN; break;
-		}*/
-
 		// The Client performs physics of all players, including ours.
 		switch (keycode) {
+			case KEY_KEY_A:
 			case KEY_LEFT:
 				controls.direction.X = down ? -1 : 0;
 				break;
+			case KEY_KEY_D:
 			case KEY_RIGHT:
 				controls.direction.X = down ? 1 : 0;
 				break;
+			case KEY_KEY_W:
 			case KEY_UP:
 				controls.direction.Y = down ? 1 : 0;
 				break;
+			case KEY_KEY_S:
 			case KEY_DOWN:
 				controls.direction.Y = down ? -1 : 0;
 				break;
@@ -229,6 +231,18 @@ bool SceneGameplay::OnEvent(GameEvent &e)
 				e.player_chat->player->name.c_str(),
 				e.player_chat->message.c_str()
 			);
+			{
+				char buf[200];
+				snprintf(buf, sizeof(buf), "%s: %s\n",
+					e.player_chat->player->name.c_str(),
+					e.player_chat->message.c_str()
+				);
+
+				core::stringw line;
+				core::multibyteToWString(line, buf);
+				m_chathistory_text.append(line);
+				m_chathistory->setText(m_chathistory_text.c_str());
+			}
 			break;
 		default: break;
 	}
@@ -276,6 +290,39 @@ void SceneGameplay::drawWorld()
 		mat.setTextureScale(1.0f / tiles, 1);
 	}
 }
+
+void SceneGameplay::setupCamera()
+{
+	auto smgr = m_gui->scenemgr;
+
+	{
+		// Main node to keep track of all children
+		auto stage = smgr->addBillboardSceneNode(nullptr,
+			core::dimension2d<f32>(10, 10),
+			core::vector3df(0, 0, 0)
+		);
+		stage->setMaterialFlag(video::EMF_LIGHTING, false);
+		stage->setMaterialFlag(video::EMF_ZWRITE_ENABLE, true);
+		stage->setMaterialTexture(0, m_gui->driver->getTexture("assets/textures/dummy.png"));
+		m_stage = stage;
+	}
+
+	// Set up camera
+	m_camera = smgr->addCameraSceneNode(nullptr);
+
+	if (0) {
+		// Makes things worse
+		core::matrix4 ortho;
+		ortho.buildProjectionMatrixOrthoLH(400 * 0.9f, 300 * 0.9f, 0.1f, 1000.0f);
+		m_camera->setProjectionMatrix(ortho, true);
+		//m_camera->setAspectRatio((float)draw_area.getWidth() / (float)draw_area.getHeight());
+	}
+
+	setCamera({60,-60,-200.0f});
+
+	m_need_mesh_update = true;
+}
+
 
 void SceneGameplay::setCamera(core::vector3df pos)
 {

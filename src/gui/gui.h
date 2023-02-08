@@ -73,11 +73,11 @@ public:
 	gui::IGUIEnvironment *gui = nullptr;
 	gui::IGUIFont *font = nullptr;
 	video::IVideoDriver *driver = nullptr; // 2D images
+	core::dimension2du window_size;
 
 private:
 	inline void setNextScene(SceneHandlerType type) { m_scenetype_next = type; }
 
-	core::dimension2du m_window_size;
 	bool m_initialized = false;
 
 	SceneHandlerType m_scenetype_next;

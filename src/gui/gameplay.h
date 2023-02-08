@@ -5,6 +5,9 @@
 #include <vector3d.h>
 
 namespace irr {
+	namespace gui {
+		class IGUIEditBox;
+	}
 	namespace scene {
 		class IBillboardSceneNode;
 		class ICameraSceneNode;
@@ -23,13 +26,18 @@ public:
 
 private:
 	void drawWorld();
+	void setupCamera();
 	void setCamera(core::vector3df pos);
 
 	bool m_need_mesh_update = false;
+	bool m_ignore_keys = false;
 	core::vector2df camera_pos;
 	core::recti draw_area;
 
 	scene::ISceneNode *m_stage = nullptr;
 	scene::ICameraSceneNode *m_camera = nullptr;
+
+	gui::IGUIEditBox *m_chathistory = nullptr;
+	core::stringw m_chathistory_text;
 };
 
