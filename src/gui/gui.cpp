@@ -13,7 +13,7 @@ void sleep_ms(long delay);
 
 Gui::Gui()
 {
-	window_size = core::dimension2du(700, 500);
+	window_size = core::dimension2du(800, 550);
 
 	device = createDevice(video::EDT_OPENGL,
 		window_size, 32, false, false, true /* vsync */, this);
@@ -118,7 +118,11 @@ void Gui::run()
 			int fps = driver->getFPS();
 			core::stringw str;
 			core::multibyteToWString(str, std::to_string(fps).c_str());
-			font->draw(str, core::recti(600, 5, 650, 20), 0xFFFFFF00);
+			core::recti rect(
+				core::vector2di(window_size.Width - 40, window_size.Height - 20),
+				core::dimension2di(50, 50)
+			);
+			font->draw(str, rect, 0xFFFFFF00);
 		}
 
 		driver->endScene();

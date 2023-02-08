@@ -6,17 +6,19 @@
 enum ElementId : int {
 	ID_BoxChat = 101,
 	ID_BtnBack = 110,
+	ID_ListPlayers = 120,
 };
 
 SceneGameplay::SceneGameplay()
 {
 	camera_pos = core::vector2df(0, 0);
-
-	draw_area = core::recti(
-		core::vector2di(0, 60),
-		core::dimension2di(500, 300)
-	);
 }
+
+SceneGameplay::~SceneGameplay()
+{
+	//m_world_smgr->drop();
+}
+
 
 static std::string dump_val(const core::vector2df vec)
 {
@@ -56,8 +58,8 @@ void SceneGameplay::draw()
 
 	{
 		core::recti rect_ch(
-			core::vector2di(500, 50),
-			core::dimension2di(wsize.Width - 500, wsize.Height - 50 - 100)
+			core::vector2di(600, 160),
+			core::dimension2di(wsize.Width - 600, wsize.Height - 50 - 160)
 		);
 		if (m_chathistory_text.empty())
 			m_chathistory_text = L"Chat history:\n";
@@ -69,22 +71,36 @@ void SceneGameplay::draw()
 		e->setEnabled(false);
 		e->setDrawBackground(false);
 		e->setTextAlignment(gui::EGUIA_UPPERLEFT, gui::EGUIA_UPPERLEFT);
-		e->setOverrideColor(0xFFAAAAAA);
+		e->setOverrideColor(0xFFCCCCCC);
 		m_chathistory = e;
 	}
 
-
 	setupCamera();
+
+	m_need_playerlist_update = true;
 }
 
 void SceneGameplay::step(float dtime)
 {
-	core::recti rect(200, 10, 200, 30);
-	video::SColor color(0xFFFFFFFF);
+	updateWorld();
+	updatePlayerlist();
+	updatePlayerPositions();
 
-	m_gui->font->draw(L"Gameplay", rect, color);
+	if (0) {
+		// Actually draw the world contents
+		// Disabled: conflicts with the collision manager
+		static const core::recti draw_area(
+			core::vector2di(1, 1),
+			core::dimension2di(600 - 5, 500)
+		);
 
-	drawWorld();
+		auto old_viewport = m_gui->driver->getViewPort();
+		m_gui->driver->setViewPort(draw_area);
+
+		m_world_smgr->drawAll();
+
+		m_gui->driver->setViewPort(old_viewport);
+	}
 
 	if (m_gui->getClient()->getState() == ClientState::LobbyIdle) {
 		GameEvent e(GameEvent::G2C_JOIN);
@@ -148,7 +164,7 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 				{
 					core::vector2di pos(e.MouseInput.X, e.MouseInput.Y);
 
-					auto shootline = m_gui->scenemgr
+					auto shootline = m_world_smgr
 							->getSceneCollisionManager()
 							->getRayFromScreenCoordinates(pos, m_camera);
 
@@ -220,11 +236,13 @@ bool SceneGameplay::OnEvent(GameEvent &e)
 			printf(" * Player %s joined\n",
 				e.player->name.c_str()
 			);
+			m_need_playerlist_update = true;
 			break;
 		case E::C2G_PLAYER_LEAVE:
 			printf(" * Player %s left\n",
 				e.player->name.c_str()
 			);
+			m_need_playerlist_update = true;
 			break;
 		case E::C2G_PLAYER_CHAT:
 			printf(" * <%s> %s\n",
@@ -249,7 +267,7 @@ bool SceneGameplay::OnEvent(GameEvent &e)
 	return false;
 }
 
-void SceneGameplay::drawWorld()
+void SceneGameplay::updateWorld()
 {
 	World *world = m_gui->getClient()->getWorld();
 	if (!world || !m_need_mesh_update)
@@ -260,6 +278,7 @@ void SceneGameplay::drawWorld()
 	m_need_mesh_update = false;
 
 	auto smgr = m_gui->scenemgr;
+
 	m_stage->removeAll();
 
 	auto size = world->getSize();
@@ -291,24 +310,99 @@ void SceneGameplay::drawWorld()
 	}
 }
 
+void SceneGameplay::updatePlayerlist()
+{
+	if (!m_need_playerlist_update)
+		return;
+
+	m_need_playerlist_update = false;
+
+	auto root = m_gui->gui->getRootGUIElement();
+	auto playerlist = root->getElementFromId(ID_ListPlayers);
+
+	if (playerlist)
+		root->removeChild(playerlist);
+
+	const auto wsize = m_gui->window_size;
+
+	core::recti rect(
+		core::vector2di(600, 50),
+		core::dimension2du(wsize.Width - 600, 100)
+	);
+
+	auto e = m_gui->gui->addListBox(rect, nullptr, ID_ListPlayers);
+
+	auto list = m_gui->getClient()->getPlayerList();
+	for (auto &it : *list) {
+		core::stringw wstr;
+		core::multibyteToWString(wstr, it.second->name.c_str());
+		u32 i = e->addItem(wstr.c_str());
+		e->setItemOverrideColor(i, 0xFFFFFFFF);
+	}
+}
+
+void SceneGameplay::updatePlayerPositions()
+{
+	m_players->removeAll();
+
+	auto smgr = m_world_smgr;
+	auto txt_dummy = m_gui->driver->getTexture("assets/textures/dummy.png");
+
+	auto players = m_gui->getClient()->getPlayerList();
+	for (auto it : *players) {
+		auto pos = it.second->pos;
+
+		auto bb = smgr->addBillboardSceneNode(m_players,
+			core::dimension2d<f32>(10, 10),
+			core::vector3df(pos.X * 10, -pos.Y * 10, 0.0f)
+		);
+		bb->setMaterialFlag(video::EMF_LIGHTING, false);
+		bb->setMaterialFlag(video::EMF_ZWRITE_ENABLE, true);
+		bb->setMaterialTexture(0, txt_dummy);
+		//printf("ppos=%s\n", dump_val(bb->getPosition()).c_str());
+	}
+}
+
+
 void SceneGameplay::setupCamera()
 {
-	auto smgr = m_gui->scenemgr;
+	if (!m_world_smgr) {
+		//m_world_smgr = m_gui->scenemgr->createNewSceneManager(false);
+		m_world_smgr = m_gui->scenemgr;
+	}
+
+	auto smgr = m_world_smgr;
+	auto txt_dummy = m_gui->driver->getTexture("assets/textures/dummy.png");
 
 	{
 		// Main node to keep track of all children
 		auto stage = smgr->addBillboardSceneNode(nullptr,
-			core::dimension2d<f32>(10, 10),
+			core::dimension2d<f32>(5, 5),
 			core::vector3df(0, 0, 0)
 		);
 		stage->setMaterialFlag(video::EMF_LIGHTING, false);
 		stage->setMaterialFlag(video::EMF_ZWRITE_ENABLE, true);
-		stage->setMaterialTexture(0, m_gui->driver->getTexture("assets/textures/dummy.png"));
+		stage->setMaterialTexture(0, txt_dummy);
 		m_stage = stage;
 	}
 
+	{
+		// Main node to keep track of all children
+		auto stage = smgr->addBillboardSceneNode(nullptr,
+			core::dimension2d<f32>(5, 5),
+			core::vector3df(0, 0, 0)
+		);
+		stage->setMaterialFlag(video::EMF_LIGHTING, false);
+		stage->setMaterialFlag(video::EMF_ZWRITE_ENABLE, true);
+		stage->setMaterialTexture(0, txt_dummy);
+		m_players = stage;
+	}
+
 	// Set up camera
+
 	m_camera = smgr->addCameraSceneNode(nullptr);
+	/*core::matrix4 mx = core::IdentityMatrix;
+	mx.setTranslation({100,0,0});*/
 
 	if (0) {
 		// Makes things worse

@@ -113,6 +113,7 @@ void Client::pkt_Join(Packet &pkt)
 
 	player->name = pkt.readStr16();
 	player->readPhysics(pkt);
+	player->joinWorld(m_world);
 
 	GameEvent e(GameEvent::C2G_PLAYER_JOIN);
 	e.player = player;
@@ -126,6 +127,7 @@ void Client::pkt_Leave(Packet &pkt)
 	peer_t peer_id = pkt.read<peer_t>();
 	LocalPlayer *player = getPlayerNoLock(peer_id);
 
+	player->leaveWorld();
 	m_players.erase(peer_id);
 
 	GameEvent e(GameEvent::C2G_PLAYER_LEAVE);

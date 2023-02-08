@@ -35,6 +35,9 @@ void Server::pkt_Hello(peer_t peer_id, Packet &pkt)
 	}
 
 	std::string name(pkt.readStr16());
+	if (name.size() > 30)
+		name.resize(30);
+
 	for (char &c : name)
 		c = tolower(c);
 

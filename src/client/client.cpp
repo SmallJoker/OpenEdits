@@ -81,6 +81,13 @@ void Client::step(float dtime)
 		m_con->send(0, 0, out);
 		break;
 	}
+
+	if (m_world) {
+		SimpleLock lock(m_players_lock);
+		for (auto it : m_players) {
+			it.second->step(dtime);
+		}
+	}
 }
 
 bool Client::OnEvent(GameEvent &e)
@@ -117,18 +124,29 @@ bool Client::OnEvent(GameEvent &e)
 	return false;
 }
 
+// -------------- Functions for the GUI -------------
+
 PtrLock<LocalPlayer> Client::getMyPlayer()
 {
 	m_players_lock.lock();
 	return PtrLock<LocalPlayer>(m_players_lock, getPlayerNoLock(m_my_peer_id));
 }
 
-LocalPlayer *Client::getPlayerNoLock(peer_t peer_id)
+PtrLock<decltype(Client::m_players)> Client::getPlayerList()
 {
-	// It's not really a "peer" ID but player ID
-	auto it = m_players.find(peer_id);
-	return it != m_players.end() ? dynamic_cast<LocalPlayer *>(it->second) : nullptr;
+	m_players_lock.lock();
+
+#if 0
+	std::vector<std::string> list;
+	list.reserve(m_players.size());
+	for (auto it : m_players) {
+		list.push_back(it.second->name);
+	}
+	return list;
+#endif
+	return PtrLock<decltype(m_players)>(m_players_lock, &m_players);
 }
+
 
 bool Client::setBlock(blockpos_t pos, Block block, char layer)
 {
@@ -149,6 +167,16 @@ bool Client::setBlock(blockpos_t pos, Block block, char layer)
 	return true;
 }
 
+// -------------- Utility functions -------------
+
+LocalPlayer *Client::getPlayerNoLock(peer_t peer_id)
+{
+	// It's not really a "peer" ID but player ID
+	auto it = m_players.find(peer_id);
+	return it != m_players.end() ? dynamic_cast<LocalPlayer *>(it->second) : nullptr;
+}
+
+// -------------- Networking -------------
 
 void Client::onPeerConnected(peer_t peer_id)
 {

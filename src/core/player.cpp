@@ -73,19 +73,20 @@ void Player::step(float dtime)
 
 	pos += ((0.5f * acc * dtime) + vel) * dtime;
 	vel += acc * dtime;
+	//printf("dtime=%f, y=%f, y.=%f, y..=%f\n", dtime, pos.Y, vel.Y, acc.Y);
 
 	auto worldsize = m_world->getSize();
 	if (pos.X < 0) {
 		pos.X = 0;
 		vel.X = 0;
-	} else if (pos.X - 1 > worldsize.X) {
+	} else if (pos.X > worldsize.X - 1) {
 		pos.X = worldsize.X - 1;
 		vel.X = 0;
 	}
 	if (pos.Y < 0) {
 		pos.Y = 0;
 		vel.Y = 0;
-	} else if (pos.Y - 1 > worldsize.Y) {
+	} else if (pos.Y > worldsize.Y - 1) {
 		pos.Y = worldsize.Y - 1;
 		vel.Y = 0;
 	}
@@ -118,8 +119,8 @@ void Player::step(float dtime)
 	// Get nearest solid block to collide with
 	float nearest_time = 999;
 	blockpos_t nearest_bp = bp;
-	for (int y = -1; y < 1; ++y)
-	for (int x = -1; x < 1; ++x) {
+	for (int y = -1; y <= 1; ++y)
+	for (int x = -1; x <= 1; ++x) {
 		if (x == 0 && y == 0)
 			continue; // already handled?
 
@@ -137,15 +138,18 @@ void Player::step(float dtime)
 		// Calculate time needed to reach his block
 		auto time = (core::vector2df(bp2.X, bp2.Y) - pos) / vel;
 		if (time.X < nearest_time || time.Y < nearest_time) {
-			nearest_bp = bp;
+			nearest_bp = bp2;
 			nearest_time = std::min(time.X, time.Y);
 		}
 	}
+
+	acc.Y = 0.3f; // DEBUG
 
 	if (nearest_bp == bp) {
 		// free falling?
 		return;
 	}
+	//printf("closest: x=%d,y=%d\n", nearest_bp.X, nearest_bp.Y);
 
 	// Do collision handling
 	ok = m_world->getBlock(nearest_bp, &block);

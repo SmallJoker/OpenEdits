@@ -130,6 +130,9 @@ size_t Connection::getPeerIDs(std::vector<peer_t> *fill) const
 
 bool Connection::listenAsync(PacketProcessor &proc)
 {
+	if (!m_host)
+		return false;
+
 	m_running = true;
 
 	int status = pthread_create(&m_thread, nullptr, &recvAsync, this);
