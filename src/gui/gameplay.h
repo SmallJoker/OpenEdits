@@ -28,6 +28,8 @@ public:
 	bool OnEvent(GameEvent &e) override;
 
 private:
+	blockpos_t getBlockFromPixel(int x, int y);
+
 	void updateWorld();
 	void updatePlayerlist();
 	void updatePlayerPositions();

@@ -1,6 +1,7 @@
 #include "player.h"
 #include "packet.h"
 #include "world.h"
+#include <rect.h>
 
 constexpr float DISTANCE_STEP = 0.3f;
 
@@ -53,6 +54,15 @@ void Player::writePhysics(Packet &pkt)
 	pkt.write(acc.Y);
 }
 
+bool Player::setControls(const PlayerControls &ctrl)
+{
+	bool changed = !(ctrl == m_controls);
+
+	m_controls = ctrl;
+
+	return changed;
+}
+
 
 void Player::step(float dtime)
 {
@@ -73,7 +83,22 @@ void Player::step(float dtime)
 
 	pos += ((0.5f * acc * dtime) + vel) * dtime;
 	vel += acc * dtime;
+	acc = core::vector2df(0, 0);
 	//printf("dtime=%f, y=%f, y.=%f, y..=%f\n", dtime, pos.Y, vel.Y, acc.Y);
+
+	// Apply controls
+	acc += m_controls.dir * 10;
+	//printf("ctrl x=%g,y=%g\n", m_controls.dir.X, m_controls.dir.Y);
+
+	{
+		const float coeff_b = 0.1f; // Stokes
+		const float coeff_n = 0.05f; // Newton
+		acc.X += ((-coeff_n * vel.X) - coeff_n) * vel.X;
+		acc.Y += ((-coeff_n * vel.Y) - coeff_n) * vel.Y;
+		const float coeff_f = 50.0f; // Friction
+		acc.X += -get_sign(vel.X) * dtime * coeff_f;
+		acc.Y += -get_sign(vel.Y) * dtime * coeff_f;
+	}
 
 	auto worldsize = m_world->getSize();
 	if (pos.X < 0) {
@@ -117,87 +142,90 @@ void Player::step(float dtime)
 	}
 
 	// Get nearest solid block to collide with
-	float nearest_time = 999;
-	blockpos_t nearest_bp = bp;
-	for (int y = -1; y <= 1; ++y)
-	for (int x = -1; x <= 1; ++x) {
-		if (x == 0 && y == 0)
-			continue; // already handled?
+	const int sign_x = get_sign(vel.X);
+	const int sign_y = get_sign(vel.Y);
 
-		blockpos_t bp2 = bp;
-		bp2.X += x; bp2.Y += y; // ignore over/underflow :)
+	bool collided = false;
 
-		bool ok = m_world->getBlock(bp2, &block);
-		if (!ok)
-			continue;
+	// Run loop at least once
+	bool first_y = true;
+	for (int y = 0; y != 2 * sign_y || first_y; y += sign_y) {
+		first_y = false;
+		bool first_x = true;
+		for (int x = 0; x != 2 * sign_x || first_x; x += sign_x) {
+			first_x = false;
+			if (x == 0 && y == 0)
+				continue; // current block
 
-		auto props = g_blockmanager->getProps(block.id);
-		if (!props || props->type != BlockDrawType::Solid)
-			continue;
+			int bx = bp.X + x,
+				by = bp.Y + y;
 
-		// Calculate time needed to reach his block
-		auto time = (core::vector2df(bp2.X, bp2.Y) - pos) / vel;
-		if (time.X < nearest_time || time.Y < nearest_time) {
-			nearest_bp = bp2;
-			nearest_time = std::min(time.X, time.Y);
+			bool ok = m_world->getBlock(blockpos_t(bx, by), &block);
+			if (!ok)
+				continue;
+
+			auto props = g_blockmanager->getProps(block.id);
+			if (!props || props->type != BlockDrawType::Solid)
+				continue;
+
+			if (collideWith(bx, by))
+				collided = true;
 		}
 	}
 
-	acc.Y = 0.3f; // DEBUG
+	acc.Y += 5.0f; // DEBUG
 
-	if (nearest_bp == bp) {
+	if (!collided) {
 		// free falling?
 		return;
 	}
 	//printf("closest: x=%d,y=%d\n", nearest_bp.X, nearest_bp.Y);
 
 	// Do collision handling
-	ok = m_world->getBlock(nearest_bp, &block);
-	props = g_blockmanager->getProps(block.id);
+	//ok = m_world->getBlock(nearest_bp, &block);
+	//props = g_blockmanager->getProps(block.id);
 	// maybe run a callback here to check for actual collisions or one-way-gates
 
-	bool collided = false;
-	if (vel.X > 0) {
-		if (pos.X > nearest_bp.X - 1) {
-			vel.X = 0;
-			pos.X = nearest_bp.X - 1;
-			collided = true;
-		}
-	} else if (vel.X < 0) {
-		if (pos.X <= nearest_bp.X) {
-			vel.X = 0;
-			pos.X = nearest_bp.X;
-			collided = true;
-		}
-	}
-	if (vel.Y > 0) {
-		if (pos.Y > nearest_bp.Y - 1) {
-			vel.Y = 0;
-			pos.Y = nearest_bp.Y - 1;
-			collided = true;
-		}
-	} else if (vel.Y < 0) {
-		if (pos.Y <= nearest_bp.Y) {
-			vel.Y = 0;
-			pos.Y = nearest_bp.Y;
-			collided = true;
-		}
-	}
+
+	m_collided = collided; // Not a stable value!
 
 	// snap to grid
-	if (acc.X * vel.X < 1) {
+	if (acc.X * vel.X < 0.1f) {
 		// slowing down
 		if (std::abs(vel.X) < 0.1f && std::abs(pos.X - bp.X) < 0.1f) {
-			pos.X = (int)pos.X;
+			pos.X = std::roundf(pos.X);
 			vel.X = 0;
 		}
 	}
-	if (acc.Y * vel.Y < 1) {
+	if (acc.Y * vel.Y < 0.1f) {
 		// slowing down
 		if (std::abs(vel.Y) < 0.1f && std::abs(pos.Y - bp.Y) < 0.1f) {
-			pos.Y = (int)pos.Y;
+			pos.Y = std::roundf(pos.Y);
 			vel.Y = 0;
 		}
 	}
+}
+
+bool Player::collideWith(int x, int y)
+{
+	core::rectf player(0, 0, 1, 1);
+	core::rectf block(0, 0, 1, 1);
+	block += core::vector2df(x - pos.X, y - pos.Y);
+
+	player.clipAgainst(block);
+	if (player.getArea() == 0)
+		return false;
+
+	//printf("collision x=%d,y=%d\n", x, y);
+
+	if (player.getWidth() > player.getHeight()) {
+		vel.Y = 0;
+		pos.Y = std::roundf(pos.Y);
+	} else {
+		vel.X = 0;
+		pos.X = std::roundf(pos.X);
+	}
+
+	return true;
 }
 

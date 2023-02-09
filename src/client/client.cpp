@@ -87,6 +87,7 @@ void Client::step(float dtime)
 		for (auto it : m_players) {
 			it.second->step(dtime);
 		}
+		//printf("Client players: %zu\n", m_players.size());
 	}
 }
 
@@ -177,6 +178,19 @@ LocalPlayer *Client::getPlayerNoLock(peer_t peer_id)
 }
 
 // -------------- Networking -------------
+
+void Client::sendPlayerMove()
+{
+	auto player = getMyPlayer();
+	if (!player)
+		return;
+
+	Packet pkt;
+	pkt.write(Packet2Server::Move);
+	player->writePhysics(pkt);
+	m_con->send(0, 0, pkt);
+}
+
 
 void Client::onPeerConnected(peer_t peer_id)
 {

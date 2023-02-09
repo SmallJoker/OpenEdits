@@ -24,6 +24,7 @@ public:
 	void onPeerDisconnected(peer_t peer_id) override;
 	void processPacket(peer_t peer_id, Packet &pkt) override;
 
+private:
 	void pkt_Quack(peer_t peer_id, Packet &pkt);
 	void pkt_Hello(peer_t peer_id, Packet &pkt);
 	void pkt_GetLobby(peer_t peer_id, Packet &pkt);
@@ -36,7 +37,6 @@ public:
 
 	void sendError(peer_t peer_id, const std::string &text);
 
-private:
 	void broadcastInWorld(Player *player, int flags, Packet &pkt);
 
 	static const ServerPacketHandler packet_actions[];

@@ -24,12 +24,6 @@ struct ClientStartData {
 	std::string nickname;
 };
 
-struct PlayerControls {
-	core::vector2di direction;
-	bool jump = false;
-	bool shift = false;
-};
-
 struct LobbyWorld : public WorldMeta {
 	blockpos_t size;
 };
@@ -46,7 +40,6 @@ public:
 	// ----------- Functions for the GUI -----------
 	PtrLock<LocalPlayer> getMyPlayer();
 	PtrLock<decltype(m_players)> getPlayerList();
-	PlayerControls &getControls() { return m_controls; }
 	World *getWorld() { return m_world; }
 	bool setBlock(blockpos_t pos, Block block, char layer = 0);
 
@@ -56,10 +49,13 @@ public:
 	ClientState getState() { return m_state; }
 
 	// ----------- Networking -----------
+	void sendPlayerMove();
+
 	void onPeerConnected(peer_t peer_id) override;
 	void onPeerDisconnected(peer_t peer_id) override;
 	void processPacket(peer_t peer_id, Packet &pkt) override;
 
+private:
 	void pkt_Quack(Packet &pkt);
 	void pkt_Hello(Packet &pkt);
 	void pkt_Error(Packet &pkt);
@@ -74,12 +70,10 @@ public:
 
 	std::map<std::string, LobbyWorld> world_list;
 
-protected:
 	ClientState m_state = ClientState::None;
 	uint16_t m_protocol_version = 0;
 
 	World *m_world = nullptr;
-	PlayerControls m_controls;
 
 	std::string m_world_hash = "foobar";
 	std::string m_nickname;

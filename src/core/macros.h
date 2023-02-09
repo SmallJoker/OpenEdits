@@ -36,11 +36,18 @@ public:
 
 	DISABLE_COPY(PtrLock)
 
+	void release()
+	{
+		if (m_ptr)
+			m_mutex.unlock();
+		m_ptr = nullptr;
+	}
+
 	// Synthetic sugar
 	inline operator T *() const { return m_ptr; }
 	inline T *operator->() const { return m_ptr; }
 	// Validation check
-	inline bool operator!() const { return !!m_ptr; }
+	inline bool operator!() const { return !m_ptr; }
 
 private:
 	std::mutex &m_mutex;

@@ -51,6 +51,7 @@ private:
 	pthread_t m_thread = 0;
 	bool m_running = false;
 
+	std::mutex m_host_lock;
 	_ENetHost *m_host = nullptr;
 
 	PacketProcessor *m_processor = nullptr;

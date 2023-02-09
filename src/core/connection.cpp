@@ -171,6 +171,9 @@ void Connection::send(peer_t peer_id, uint16_t flags, Packet &pkt)
 	if (!(flags & FLAG_UNRELIABLE))
 		pkt.data()->flags |= ENET_PACKET_FLAG_RELIABLE;
 
+	// Prepare for sending
+	SimpleLock lock(m_host_lock);
+
 	if (flags & FLAG_BROADCAST) {
 		peer_id = 0;
 		enet_host_broadcast(m_host, channel, pkt.data());
@@ -202,6 +205,7 @@ void Connection::recvAsyncInternal()
 
 	std::vector<peer_t> peer_id_list(m_host->peerCount, 0);
 
+	// TODO: Perhaps move async back to sync. This enet stuff is not thread-safe
 	while (true) {
 		if (!m_running && shutdown_seen == 0) {
 			shutdown_seen++;
@@ -212,8 +216,8 @@ void Connection::recvAsyncInternal()
 				enet_peer_disconnect_later(&m_host->peers[i], 0);
 		}
 
-		if (enet_host_service(m_host, &event, 50) <= 0) {
-			// Abort after 20 * 50 ms
+		if (enet_host_service(m_host, &event, 100) <= 0) {
+			// Abort after 2000 ms
 			if (shutdown_seen > 0) {
 				if (++shutdown_seen > 20)
 					break;

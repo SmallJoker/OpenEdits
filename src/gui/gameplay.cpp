@@ -1,6 +1,6 @@
 #include "gameplay.h"
 #include "client/client.h"
-#include "core/player.h"
+#include "client/localplayer.h"
 #include <irrlicht.h>
 
 enum ElementId : int {
@@ -108,11 +108,14 @@ void SceneGameplay::step(float dtime)
 		m_gui->sendNewEvent(e);
 	}
 
-	auto &controls = m_gui->getClient()->getControls();
-	auto pos = m_camera->getPosition();
-	pos.X += controls.direction.X * 500 * dtime;
-	pos.Y += controls.direction.Y * 500 * dtime;
-	setCamera(pos);
+	if (0) {
+		auto player = m_gui->getClient()->getMyPlayer();
+		auto controls = player->getControls();
+		auto pos = m_camera->getPosition();
+		pos.X += controls.dir.X * 500 * dtime;
+		pos.Y += controls.dir.Y * 500 * dtime;
+		setCamera(pos);
+	}
 }
 
 bool SceneGameplay::OnEvent(const SEvent &e)
@@ -162,37 +165,29 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 				break;
 			case EMIE_LMOUSE_PRESSED_DOWN:
 				{
-					core::vector2di pos(e.MouseInput.X, e.MouseInput.Y);
-
-					auto shootline = m_world_smgr
-							->getSceneCollisionManager()
-							->getRayFromScreenCoordinates(pos, m_camera);
-
-					// find clicked element
-					for (auto c : m_stage->getChildren()) {
-						auto bb = c->getBoundingBox();
-						auto abspos = c->getAbsolutePosition();
-						bb.MinEdge += abspos;
-						bb.MaxEdge += abspos;
-						if (bb.intersectsWithLine(shootline)) {
-							core::vector3df pos = c->getPosition();
-
-							blockpos_t bp(pos.X / 10.0f, -pos.Y / 10.0f);
-							Block b;
-							b.id = 11;
-
-							m_gui->getClient()->setBlock(bp, b, 0);
-							printf("clicked %s\n", dump_val(pos).c_str());
-							break;
-						}
-					}
+					blockpos_t bp = getBlockFromPixel(e.MouseInput.X, e.MouseInput.Y);
+					Block b;
+					b.id = 11;
+					m_gui->getClient()->setBlock(bp, b, 0);
+				}
+				break;
+			case EMIE_RMOUSE_PRESSED_DOWN:
+				{
+					blockpos_t bp = getBlockFromPixel(e.MouseInput.X, e.MouseInput.Y);
+					Block b;
+					b.id = 0;
+					m_gui->getClient()->setBlock(bp, b, 0);
 				}
 				break;
 			default: break;
 		}
 	}
 	if (e.EventType == EET_KEY_INPUT_EVENT && !m_ignore_keys) {
-		auto &controls = m_gui->getClient()->getControls();
+		auto player = m_gui->getClient()->getMyPlayer();
+		if (!player)
+			return false;
+
+		auto controls = player->getControls();
 		bool down = e.KeyInput.PressedDown;
 		EKEY_CODE keycode = e.KeyInput.Key;
 
@@ -200,24 +195,37 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 		switch (keycode) {
 			case KEY_KEY_A:
 			case KEY_LEFT:
-				controls.direction.X = down ? -1 : 0;
+				controls.dir.X = down ? -1 : 0;
 				break;
 			case KEY_KEY_D:
 			case KEY_RIGHT:
-				controls.direction.X = down ? 1 : 0;
+				controls.dir.X = down ? 1 : 0;
 				break;
 			case KEY_KEY_W:
 			case KEY_UP:
-				controls.direction.Y = down ? 1 : 0;
+				controls.dir.Y = down ? -1 : 0;
 				break;
 			case KEY_KEY_S:
 			case KEY_DOWN:
-				controls.direction.Y = down ? -1 : 0;
+				controls.dir.Y = down ? 1 : 0;
 				break;
 			case KEY_SPACE:
 				controls.jump = down;
+				player->vel.Y -= 4;
+				break;
+			case KEY_KEY_R:
+				player->pos = core::vector2df(2, 0);
+				player->vel = core::vector2df(0, 0);
 				break;
 			default: break;
+		}
+
+		controls.dir = controls.dir.normalize();
+		bool changed = player->setControls(controls);
+
+		if (changed) {
+			player.release();
+			m_gui->getClient()->sendPlayerMove();
 		}
 	}
 	return false;
@@ -266,6 +274,32 @@ bool SceneGameplay::OnEvent(GameEvent &e)
 	}
 	return false;
 }
+
+blockpos_t SceneGameplay::getBlockFromPixel(int x, int y)
+{
+	core::vector2di mousepos(x, y);
+
+	auto shootline = m_world_smgr
+			->getSceneCollisionManager()
+			->getRayFromScreenCoordinates(mousepos, m_camera);
+
+	// find clicked element
+	for (auto c : m_stage->getChildren()) {
+		auto bb = c->getBoundingBox();
+		auto abspos = c->getAbsolutePosition();
+		bb.MinEdge += abspos;
+		bb.MaxEdge += abspos;
+		if (bb.intersectsWithLine(shootline)) {
+			core::vector3df pos = c->getPosition();
+
+			//printf("clicked %s\n", dump_val(pos).c_str());
+			return blockpos_t((pos.X + 0.5f) / 10.0f, (-pos.Y + 0.5f) / 10.0f);
+		}
+	}
+
+	return blockpos_t(-1, -1);
+}
+
 
 void SceneGameplay::updateWorld()
 {
@@ -346,7 +380,7 @@ void SceneGameplay::updatePlayerPositions()
 	m_players->removeAll();
 
 	auto smgr = m_world_smgr;
-	auto txt_dummy = m_gui->driver->getTexture("assets/textures/dummy.png");
+	auto texture = m_gui->driver->getTexture("assets/textures/smileys.png");
 
 	auto players = m_gui->getClient()->getPlayerList();
 	for (auto it : *players) {
@@ -358,8 +392,14 @@ void SceneGameplay::updatePlayerPositions()
 		);
 		bb->setMaterialFlag(video::EMF_LIGHTING, false);
 		bb->setMaterialFlag(video::EMF_ZWRITE_ENABLE, true);
-		bb->setMaterialTexture(0, txt_dummy);
-		//printf("ppos=%s\n", dump_val(bb->getPosition()).c_str());
+		bb->setMaterialType(video::EMT_TRANSPARENT_ALPHA_CHANNEL_REF);
+		bb->setMaterialTexture(0, texture);
+
+		// Set texture
+		auto &mat = bb->getMaterial(0).getTextureMatrix(0);
+		int tiles = 4;
+		mat.setTextureTranslate((it.first % tiles) / (float)tiles, 0);
+		mat.setTextureScale(1.0f / tiles, 1);
 	}
 }
 
@@ -412,7 +452,7 @@ void SceneGameplay::setupCamera()
 		//m_camera->setAspectRatio((float)draw_area.getWidth() / (float)draw_area.getHeight());
 	}
 
-	setCamera({60,-60,-200.0f});
+	setCamera({60,-60,-150.0f});
 
 	m_need_mesh_update = true;
 }

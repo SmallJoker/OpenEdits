@@ -111,6 +111,16 @@ void Server::onPeerConnected(peer_t peer_id)
 
 void Server::onPeerDisconnected(peer_t peer_id)
 {
+	SimpleLock lock(m_players_lock);
+
+	auto player = getPlayerNoLock(peer_id);
+	if (!player)
+		return;
+
+	player->leaveWorld();
+	delete player;
+
+	m_players.erase(peer_id);
 }
 
 void Server::processPacket(peer_t peer_id, Packet &pkt)

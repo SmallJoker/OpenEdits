@@ -115,9 +115,11 @@ void Client::pkt_Join(Packet &pkt)
 	player->readPhysics(pkt);
 	player->joinWorld(m_world);
 
-	GameEvent e(GameEvent::C2G_PLAYER_JOIN);
-	e.player = player;
-	sendNewEvent(e);
+	{
+		GameEvent e(GameEvent::C2G_PLAYER_JOIN);
+		e.player = player;
+		sendNewEvent(e);
+	}
 }
 
 void Client::pkt_Leave(Packet &pkt)
@@ -150,6 +152,7 @@ void Client::pkt_Leave(Packet &pkt)
 void Client::pkt_Move(Packet &pkt)
 {
 	SimpleLock lock(m_players_lock);
+	LocalPlayer dummy(0);
 
 	while (true) {
 		bool is_ok = pkt.read<u8>();
@@ -160,7 +163,7 @@ void Client::pkt_Move(Packet &pkt)
 		LocalPlayer *player = getPlayerNoLock(peer_id);
 		if (!player || peer_id == m_my_peer_id) {
 			// don't care
-			continue;
+			player = &dummy;
 		}
 
 		// maybe do interpolation?
