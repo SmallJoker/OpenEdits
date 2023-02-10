@@ -163,6 +163,11 @@ bool Client::setBlock(blockpos_t pos, Block block, char layer)
 	if (!is_ok)
 		return false;
 
+
+	Block b2;
+	m_world->getBlock(pos, &b2);
+	printf("\told_id=%d\n", b2.id);
+
 	BlockUpdate bu;
 	bu.id = block.id;
 	bu.param1 = block.param1;

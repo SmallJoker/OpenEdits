@@ -61,6 +61,10 @@ bool World::setBlock(blockpos_t pos, Block block, char layer)
 	if ((props->type == BlockDrawType::Background) != layer)
 		return false;
 
-	setBlockNoCheck(pos, layer, block);
+	Block &ref = getBlockRefNoCheck(pos, layer);
+	if (ref == block)
+		return false;
+
+	ref = block;
 	return true;
 }

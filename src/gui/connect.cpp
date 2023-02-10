@@ -23,7 +23,7 @@ SceneConnect::SceneConnect()
 void SceneConnect::draw()
 {
 	core::recti rect_1(
-		core::vector2di(100, 100),
+		core::vector2di(200, 100),
 		core::dimension2du(150, 30)
 	);
 	core::recti rect_2 = rect_1 + core::vector2di(120, -5);

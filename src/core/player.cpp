@@ -159,12 +159,13 @@ void Player::stepInternal(float dtime)
 
 	// Controls handling
 	if (m_controls.jump) {
-		if (get_sign(m_collision.X * acc.X) == 1) {
+		if (get_sign(m_collision.X * acc.X) == 1 && std::fabs(vel.X) < 3.0f) {
 			vel.X += m_collision.X * -Player::JUMP_SPEED;
-		} else if (get_sign(m_collision.Y * acc.Y) == 1) {
+		} else if (get_sign(m_collision.Y * acc.Y) == 1 && std::fabs(vel.Y) < 3.0f) {
 			vel.Y += m_collision.Y * -Player::JUMP_SPEED;
 		}
 	}
+
 	// Apply controls
 	acc.X += m_controls.dir.X * Player::CONTROLS_ACCEL;
 	if (acc.Y == 0)

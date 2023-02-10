@@ -19,7 +19,12 @@ typedef core::vector2d<u16> blockpos_t;
 typedef uint16_t bid_t;
 
 struct Block {
-	bid_t id;
-	uint8_t param1; // rotation?
+	bool operator ==(const Block &o)
+	{
+		return id == o.id && param1 == o.param1;
+	}
+
+	bid_t id = 0;
+	uint8_t param1 = 0; // rotation?
 };
 

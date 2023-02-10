@@ -13,7 +13,7 @@ void sleep_ms(long delay);
 
 Gui::Gui()
 {
-	window_size = core::dimension2du(800, 550);
+	window_size = core::dimension2du(850, 550);
 
 	device = createDevice(video::EDT_OPENGL,
 		window_size, 32, false, false, true /* vsync */, this);

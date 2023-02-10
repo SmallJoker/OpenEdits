@@ -36,6 +36,8 @@ private:
 	void setupCamera();
 	void setCamera(core::vector3df pos);
 
+	core::recti m_draw_area;
+
 	bool m_need_mesh_update = false;
 	bool m_ignore_keys = false;
 	core::vector3df m_camera_pos;

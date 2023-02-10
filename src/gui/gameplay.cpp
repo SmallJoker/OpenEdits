@@ -3,6 +3,8 @@
 #include "client/localplayer.h"
 #include <irrlicht.h>
 
+static int SIZEW = 650; // world render size
+
 enum ElementId : int {
 	ID_BoxChat = 101,
 	ID_BtnBack = 110,
@@ -15,7 +17,8 @@ SceneGameplay::SceneGameplay()
 
 SceneGameplay::~SceneGameplay()
 {
-	//m_world_smgr->drop();
+	if (m_world_smgr != m_gui->scenemgr)
+		m_world_smgr->drop();
 }
 
 
@@ -38,17 +41,26 @@ void SceneGameplay::draw()
 {
 	const auto wsize = m_gui->window_size;
 
+	{
+		SIZEW = wsize.Width * 0.7f;
+
+		m_draw_area = core::recti(
+			core::vector2di(1, 1),
+			core::dimension2di(SIZEW - 5, wsize.Height - 45)
+		);
+	}
+
 	// Bottom row
 	core::recti rect_1(
-		core::vector2di(10, wsize.Height - 40),
+		core::vector2di(5, wsize.Height - 35),
 		core::dimension2du(100, 30)
 	);
 
 	m_gui->gui->addButton(
-		rect_1, nullptr, ID_BtnBack, L"<< Back");
+		rect_1, nullptr, ID_BtnBack, L"<< Lobby");
 
 	core::recti rect_2(
-		core::vector2di(150, wsize.Height - 40),
+		core::vector2di(150, wsize.Height - 35),
 		core::dimension2du(300, 30)
 	);
 
@@ -57,8 +69,8 @@ void SceneGameplay::draw()
 
 	{
 		core::recti rect_ch(
-			core::vector2di(600, 160),
-			core::dimension2di(wsize.Width - 600, wsize.Height - 50 - 160)
+			core::vector2di(SIZEW, 160),
+			core::dimension2di(wsize.Width - SIZEW, wsize.Height - 50 - 160)
 		);
 		if (m_chathistory_text.empty())
 			m_chathistory_text = L"Chat history:\n";
@@ -77,24 +89,24 @@ void SceneGameplay::draw()
 	setupCamera();
 
 	m_need_playerlist_update = true;
+	updatePlayerlist();
 }
 
 void SceneGameplay::step(float dtime)
 {
+
 	updateWorld();
 	updatePlayerlist();
 	updatePlayerPositions();
 
-	if (0) {
+
+	if (1) {
 		// Actually draw the world contents
 		// Disabled: conflicts with the collision manager
-		static const core::recti draw_area(
-			core::vector2di(1, 1),
-			core::dimension2di(600 - 5, 500)
-		);
 
 		auto old_viewport = m_gui->driver->getViewPort();
-		m_gui->driver->setViewPort(draw_area);
+		m_gui->driver->setViewPort(m_draw_area);
+		m_camera->setAspectRatio((float)m_draw_area.getWidth() / m_draw_area.getHeight());
 
 		m_world_smgr->drawAll();
 
@@ -174,6 +186,9 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 			case EMIE_LMOUSE_PRESSED_DOWN:
 				{
 					blockpos_t bp = getBlockFromPixel(e.MouseInput.X, e.MouseInput.Y);
+					if (bp.X == (u16)-1)
+						break;
+
 					Block b;
 					b.id = 11;
 					m_gui->getClient()->setBlock(bp, b, 0);
@@ -182,6 +197,9 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 			case EMIE_RMOUSE_PRESSED_DOWN:
 				{
 					blockpos_t bp = getBlockFromPixel(e.MouseInput.X, e.MouseInput.Y);
+					if (bp.X == (u16)-1)
+						break;
+
 					Block b;
 					b.id = 0;
 					m_gui->getClient()->setBlock(bp, b, 0);
@@ -203,19 +221,23 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 		switch (keycode) {
 			case KEY_KEY_A:
 			case KEY_LEFT:
-				controls.dir.X = down ? -1 : 0;
+				if (down || controls.dir.X < 0)
+					controls.dir.X = down ? -1 : 0;
 				break;
 			case KEY_KEY_D:
 			case KEY_RIGHT:
-				controls.dir.X = down ? 1 : 0;
+				if (down || controls.dir.X > 0)
+					controls.dir.X = down ? 1 : 0;
 				break;
 			case KEY_KEY_W:
 			case KEY_UP:
-				controls.dir.Y = down ? -1 : 0;
+				if (down || controls.dir.Y < 0)
+					controls.dir.Y = down ? -1 : 0;
 				break;
 			case KEY_KEY_S:
 			case KEY_DOWN:
-				controls.dir.Y = down ? 1 : 0;
+				if (down || controls.dir.Y > 0)
+					controls.dir.Y = down ? 1 : 0;
 				break;
 			case KEY_SPACE:
 				controls.jump = down;
@@ -285,6 +307,13 @@ bool SceneGameplay::OnEvent(GameEvent &e)
 blockpos_t SceneGameplay::getBlockFromPixel(int x, int y)
 {
 	core::vector2di mousepos(x, y);
+	blockpos_t ret(-1, -1);
+
+	if (!m_draw_area.isPointInside(mousepos))
+		return ret;
+
+	auto old_viewport = m_gui->driver->getViewPort();
+	m_gui->driver->setViewPort(m_draw_area);
 
 	auto shootline = m_world_smgr
 			->getSceneCollisionManager()
@@ -300,11 +329,15 @@ blockpos_t SceneGameplay::getBlockFromPixel(int x, int y)
 			core::vector3df pos = c->getPosition();
 
 			//printf("clicked %s\n", dump_val(pos).c_str());
-			return blockpos_t((pos.X + 0.5f) / 10.0f, (-pos.Y + 0.5f) / 10.0f);
+			ret.X = (pos.X + 0.5f) / 10.0f;
+			ret.Y = (-pos.Y + 0.5f) / 10.0f;
+			break;
 		}
 	}
 
-	return blockpos_t(-1, -1);
+	m_gui->driver->setViewPort(old_viewport);
+
+	return ret;
 }
 
 
@@ -367,8 +400,8 @@ void SceneGameplay::updatePlayerlist()
 	const auto wsize = m_gui->window_size;
 
 	core::recti rect(
-		core::vector2di(600, 50),
-		core::dimension2du(wsize.Width - 600, 100)
+		core::vector2di(SIZEW, 50),
+		core::dimension2du(wsize.Width - SIZEW, 100)
 	);
 
 	auto e = m_gui->gui->addListBox(rect, nullptr, ID_ListPlayers);
@@ -414,9 +447,12 @@ void SceneGameplay::updatePlayerPositions()
 void SceneGameplay::setupCamera()
 {
 	if (!m_world_smgr) {
-		//m_world_smgr = m_gui->scenemgr->createNewSceneManager(false);
-		m_world_smgr = m_gui->scenemgr;
+		m_world_smgr = m_gui->scenemgr->createNewSceneManager(false);
+		//m_world_smgr = m_gui->scenemgr;
 	}
+	if (m_world_smgr != m_gui->scenemgr)
+		m_world_smgr->clear();
+
 
 	auto smgr = m_world_smgr;
 	auto txt_dummy = m_gui->driver->getTexture("assets/textures/dummy.png");
@@ -448,8 +484,6 @@ void SceneGameplay::setupCamera()
 	// Set up camera
 
 	m_camera = smgr->addCameraSceneNode(nullptr);
-	/*core::matrix4 mx = core::IdentityMatrix;
-	mx.setTranslation({100,0,0});*/
 
 	if (0) {
 		// Makes things worse
@@ -459,8 +493,8 @@ void SceneGameplay::setupCamera()
 		//m_camera->setAspectRatio((float)draw_area.getWidth() / (float)draw_area.getHeight());
 	}
 
-	setCamera({60,-60,-150.0f});
-	m_camera_pos = m_camera->getPosition();
+	m_camera_pos.Z = -150.0f;
+	setCamera(m_camera_pos);
 
 	m_need_mesh_update = true;
 }
