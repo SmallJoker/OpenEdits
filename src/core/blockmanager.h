@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/types.h"
 #include <string>
 #include <map>
 #include <vector>
@@ -10,10 +11,6 @@ namespace irr {
 		class IVideoDriver;
 	}
 }
-
-typedef uint16_t bid_t;
-
-using namespace irr;
 
 class Player;
 class World;
@@ -54,7 +51,10 @@ struct BlockProperties {
 	BlockPack *pack = nullptr;
 
 	// Callback when a player intersects with the block
-	void (*step)(float dtime, CollisionData &c) = nullptr;
+	void (*step)(float dtime, Player &c, blockpos_t pos) = nullptr;
+
+	// Callback when colliding: true -> set velocity to 0
+	bool (*onCollide)(float dtime, Player &c, const core::vector2d<s8> dir) = nullptr;
 };
 
 class BlockManager {

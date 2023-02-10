@@ -112,6 +112,9 @@ bool Client::OnEvent(GameEvent &e)
 			m_con->disconnect(0);
 			return true;
 		case E::G2C_CHAT:
+			if (e.text->empty())
+				return false;
+
 			{
 				Packet pkt;
 				pkt.write(Packet2Server::Chat);

@@ -38,7 +38,7 @@ private:
 
 	bool m_need_mesh_update = false;
 	bool m_ignore_keys = false;
-	core::vector2df camera_pos;
+	core::vector3df m_camera_pos;
 	scene::ISceneManager *m_world_smgr = nullptr;
 
 	scene::ISceneNode *m_stage = nullptr;

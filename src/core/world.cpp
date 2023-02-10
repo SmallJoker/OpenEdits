@@ -31,7 +31,7 @@ void World::createDummy(blockpos_t size)
 {
 	createEmpty(size);
 
-	for (u16 y = 5; y < (u16)m_size.Y; ++y)
+	for (u16 y = m_size.Y / 2; y < (u16)m_size.Y; ++y)
 	for (u16 x = 0; x < (u16)m_size.X; ++x) {
 		getBlockRefNoCheck({x, y}, 0).id = 9;
 	}

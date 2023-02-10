@@ -45,15 +45,20 @@ public:
 	bool is_physical = true;
 	bool controls_enabled = true;
 
+	static constexpr float GRAVITY_NORMAL = 40.0f;
+	static constexpr float CONTROLS_ACCEL = 30.0f;
+	static constexpr float JUMP_SPEED = 20.0f;
+
 protected:
 	Player(peer_t peer_id) :
 		peer_id(peer_id) {}
 
-	bool collideWith(int x, int y);
+	void stepInternal(float dtime);
+	void collideWith(float dtime, int x, int y);
 
 	// Currently active world (nullptr if lobby)
 	World *m_world = nullptr;
 
 	PlayerControls m_controls;
-	bool m_collided = false;
+	core::vector2d<s8> m_collision;
 };

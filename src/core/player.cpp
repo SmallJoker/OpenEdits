@@ -1,18 +1,11 @@
 #include "player.h"
 #include "packet.h"
+#include "utils.h"
 #include "world.h"
 #include <rect.h>
 
-constexpr float DISTANCE_STEP = 0.3f;
+constexpr float DISTANCE_STEP = 0.3f; // absolute max is 0.5f
 
-inline static float get_sign(float f)
-{
-	if (f > 0.0001f)
-		return 1;
-	if (f < -0.0001f)
-		return -1;
-	return 0;
-}
 
 void Player::joinWorld(World *world)
 {
@@ -69,35 +62,44 @@ void Player::step(float dtime)
 	if (!m_world)
 		return;
 
+	m_collision = core::vector2d<s8>(0, 0);
+
 	float distance = (((0.5f * acc * dtime) + vel) * dtime).getLength();
 
 	if (distance > DISTANCE_STEP) {
-		printf("step(): distance was %f\n", distance);
+		//printf("step(): distance was %f\n", distance);
 
 		float dtime2 = DISTANCE_STEP / (acc * dtime + vel).getLength();
 		while (dtime > dtime2) {
-			step(dtime2);
+			stepInternal(dtime2);
 			dtime -= dtime2;
 		}
 	}
 
+	stepInternal(dtime);
+}
+
+void Player::stepInternal(float dtime)
+{
 	pos += ((0.5f * acc * dtime) + vel) * dtime;
 	vel += acc * dtime;
 	acc = core::vector2df(0, 0);
 	//printf("dtime=%f, y=%f, y.=%f, y..=%f\n", dtime, pos.Y, vel.Y, acc.Y);
 
-	// Apply controls
-	acc += m_controls.dir * 10;
-	//printf("ctrl x=%g,y=%g\n", m_controls.dir.X, m_controls.dir.Y);
-
 	{
-		const float coeff_b = 0.1f; // Stokes
+		const float sign_x = get_sign(vel.X);
+		const float sign_y = get_sign(vel.Y);
+
+		const float coeff_b = 0.6f; // Stokes
+		acc += -coeff_b * vel;
+
 		const float coeff_n = 0.05f; // Newton
-		acc.X += ((-coeff_n * vel.X) - coeff_n) * vel.X;
-		acc.Y += ((-coeff_n * vel.Y) - coeff_n) * vel.Y;
-		const float coeff_f = 50.0f; // Friction
-		acc.X += -get_sign(vel.X) * dtime * coeff_f;
-		acc.Y += -get_sign(vel.Y) * dtime * coeff_f;
+		acc.X += coeff_n * (vel.X * vel.X) * -sign_x;
+		acc.Y += coeff_n * (vel.Y * vel.Y) * -sign_y;
+
+		const float coeff_f = 1.0f; // Friction
+		acc.X += coeff_f * -sign_x;
+		acc.Y += coeff_f * -sign_y;
 	}
 
 	auto worldsize = m_world->getSize();
@@ -125,27 +127,18 @@ void Player::step(float dtime)
 		return;
 	}
 
-	core::vector2di dir;
-	dir.X = get_sign(vel.X);
-	dir.Y = get_sign(vel.Y);
-
 	auto props = g_blockmanager->getProps(block.id);
 	// single block effect
 	if (props && props->step) {
-		CollisionData c {
-			.player = *this,
-			.pos = bp,
-			.direction = dir
-		};
-
-		props->step(dtime, c);
+		props->step(dtime, *this, bp);
+	} else {
+		// default step
+		acc.Y += Player::GRAVITY_NORMAL;
 	}
 
 	// Get nearest solid block to collide with
 	const int sign_x = get_sign(vel.X);
 	const int sign_y = get_sign(vel.Y);
-
-	bool collided = false;
 
 	// Run loop at least once
 	bool first_y = true;
@@ -160,34 +153,24 @@ void Player::step(float dtime)
 			int bx = bp.X + x,
 				by = bp.Y + y;
 
-			bool ok = m_world->getBlock(blockpos_t(bx, by), &block);
-			if (!ok)
-				continue;
-
-			auto props = g_blockmanager->getProps(block.id);
-			if (!props || props->type != BlockDrawType::Solid)
-				continue;
-
-			if (collideWith(bx, by))
-				collided = true;
+			collideWith(dtime, bx, by);
 		}
 	}
 
-	acc.Y += 5.0f; // DEBUG
-
-	if (!collided) {
-		// free falling?
-		return;
+	// Controls handling
+	if (m_controls.jump) {
+		if (get_sign(m_collision.X * acc.X) == 1) {
+			vel.X += m_collision.X * -Player::JUMP_SPEED;
+		} else if (get_sign(m_collision.Y * acc.Y) == 1) {
+			vel.Y += m_collision.Y * -Player::JUMP_SPEED;
+		}
 	}
-	//printf("closest: x=%d,y=%d\n", nearest_bp.X, nearest_bp.Y);
+	// Apply controls
+	acc.X += m_controls.dir.X * Player::CONTROLS_ACCEL;
+	if (acc.Y == 0)
+		acc.Y += m_controls.dir.Y * Player::CONTROLS_ACCEL;
+	//printf("ctrl x=%g,y=%g\n", m_controls.dir.X, m_controls.dir.Y);
 
-	// Do collision handling
-	//ok = m_world->getBlock(nearest_bp, &block);
-	//props = g_blockmanager->getProps(block.id);
-	// maybe run a callback here to check for actual collisions or one-way-gates
-
-
-	m_collided = collided; // Not a stable value!
 
 	// snap to grid
 	if (acc.X * vel.X < 0.1f) {
@@ -206,26 +189,42 @@ void Player::step(float dtime)
 	}
 }
 
-bool Player::collideWith(int x, int y)
+void Player::collideWith(float dtime, int x, int y)
 {
+	Block b;
+	bool ok = m_world->getBlock(blockpos_t(x, y), &b);
+	if (!ok)
+		return;
+
+	auto props = g_blockmanager->getProps(b.id);
+	if (!props || props->type != BlockDrawType::Solid)
+		return;
+
 	core::rectf player(0, 0, 1, 1);
 	core::rectf block(0, 0, 1, 1);
 	block += core::vector2df(x - pos.X, y - pos.Y);
 
 	player.clipAgainst(block);
 	if (player.getArea() == 0)
-		return false;
+		return;
 
 	//printf("collision x=%d,y=%d\n", x, y);
 
+	core::vector2d<s8> dir;
 	if (player.getWidth() > player.getHeight()) {
-		vel.Y = 0;
-		pos.Y = std::roundf(pos.Y);
+		dir.Y = get_sign(vel.Y);
+		m_collision.Y = dir.Y;
+		if (!props->onCollide || props->onCollide(dtime, *this, dir)) {
+			vel.Y = 0;
+			pos.Y = std::roundf(pos.Y);
+		}
 	} else {
-		vel.X = 0;
-		pos.X = std::roundf(pos.X);
+		dir.X = get_sign(vel.X);
+		m_collision.X = dir.X;
+		if (!props->onCollide || props->onCollide(dtime, *this, dir)) {
+			vel.X = 0;
+			pos.X = std::roundf(pos.X);
+		}
 	}
-
-	return true;
 }
 

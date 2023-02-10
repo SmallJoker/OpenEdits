@@ -1,6 +1,7 @@
 #include "server.h"
 #include "remoteplayer.h"
 #include "core/packet.h"
+#include "core/utils.h"
 #include "core/world.h"
 
 // in sync with core/packet.h
@@ -109,7 +110,7 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 	auto it = m_worlds.find(world_id);
 	if (it == m_worlds.end()) {
 		World *world = new World();
-		world->createDummy({10, 10});
+		world->createDummy({30, 30});
 		auto ret = m_worlds.emplace(world_id, world);
 
 		// ?? we already checked for it
@@ -223,7 +224,9 @@ void Server::pkt_Chat(peer_t peer_id, Packet &pkt)
 	if (message.size() > 200)
 		message.resize(200);
 
-	bool ok = true;
+	message = strtrim(message);
+
+	bool ok = message.size() > 0;
 	for (char c : message) {
 		if (c < ' ') {
 			ok = false;

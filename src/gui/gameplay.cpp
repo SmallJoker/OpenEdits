@@ -11,7 +11,6 @@ enum ElementId : int {
 
 SceneGameplay::SceneGameplay()
 {
-	camera_pos = core::vector2df(0, 0);
 }
 
 SceneGameplay::~SceneGameplay()
@@ -116,6 +115,17 @@ void SceneGameplay::step(float dtime)
 		pos.Y += controls.dir.Y * 500 * dtime;
 		setCamera(pos);
 	}
+
+	do {
+		auto player = m_gui->getClient()->getMyPlayer();
+		if (!player)
+			break;
+
+		m_camera_pos.X += ((player->pos.X *  10) - m_camera_pos.X) * 5 * dtime;
+		m_camera_pos.Y += ((player->pos.Y * -10) - m_camera_pos.Y) * 5 * dtime;
+
+		setCamera(m_camera_pos);
+	} while (false);
 }
 
 bool SceneGameplay::OnEvent(const SEvent &e)
@@ -158,9 +168,7 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 				{
 					float dir = e.MouseInput.Wheel > 0 ? 1 : -1;
 
-					auto pos = m_camera->getPosition();
-					pos.Z += dir * 30;
-					m_camera->setPosition(pos);
+					m_camera_pos.Z += dir * 30;
 				}
 				break;
 			case EMIE_LMOUSE_PRESSED_DOWN:
@@ -211,7 +219,6 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 				break;
 			case KEY_SPACE:
 				controls.jump = down;
-				player->vel.Y -= 4;
 				break;
 			case KEY_KEY_R:
 				player->pos = core::vector2df(2, 0);
@@ -453,6 +460,7 @@ void SceneGameplay::setupCamera()
 	}
 
 	setCamera({60,-60,-150.0f});
+	m_camera_pos = m_camera->getPosition();
 
 	m_need_mesh_update = true;
 }

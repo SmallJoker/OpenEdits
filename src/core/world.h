@@ -2,37 +2,11 @@
 
 #include "blockmanager.h"
 #include "core/macros.h"
+#include "core/types.h"
 #include <string>
-#include <irrTypes.h>
-#include <vector2d.h>
-
-using namespace irr;
-
-namespace irr {
-	namespace core {
-		// For std::map insertions
-		template <>
-		inline u16 roundingError()
-		{
-			return 0;
-		}
-	}
-}
-
-typedef core::vector2d<u16> blockpos_t;
 
 class Player;
 
-struct CollisionData {
-	Player &player; // includes World reference
-	blockpos_t pos;
-	core::vector2di direction;
-};
-
-struct Block {
-	bid_t id;
-	uint8_t param1; // rotation?
-};
 
 struct BlockUpdate : public Block {
 	peer_t peer_id;
