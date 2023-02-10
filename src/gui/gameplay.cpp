@@ -20,9 +20,6 @@ SceneGameplay::~SceneGameplay()
 {
 	if (m_blockselector)
 		delete m_blockselector;
-
-	if (m_world_smgr != m_gui->scenemgr)
-		m_world_smgr->drop();
 }
 
 
@@ -281,26 +278,15 @@ bool SceneGameplay::OnEvent(GameEvent &e)
 
 	switch (e.type_c2g) {
 		case E::C2G_MAP_UPDATE:
-			printf(" * Map update\n");
 			m_need_mesh_update = true;
 			break;
 		case E::C2G_PLAYER_JOIN:
-			printf(" * Player %s joined\n",
-				e.player->name.c_str()
-			);
 			m_need_playerlist_update = true;
 			break;
 		case E::C2G_PLAYER_LEAVE:
-			printf(" * Player %s left\n",
-				e.player->name.c_str()
-			);
 			m_need_playerlist_update = true;
 			break;
 		case E::C2G_PLAYER_CHAT:
-			printf(" * <%s> %s\n",
-				e.player_chat->player->name.c_str(),
-				e.player_chat->message.c_str()
-			);
 			{
 				char buf[200];
 				snprintf(buf, sizeof(buf), "%s: %s\n",

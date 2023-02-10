@@ -3,16 +3,24 @@
 A 2D game block building inspired by Everybody Edits.
 Code structure inspired by Minetest practices.
 
+## Available archives
 
-## Dependencies
+### Linux
+
+1. Verify the archive checksum
+2. Extract the archive to any location
+3. Run `AppRun.sh`
+4. In case of issues: run with `gdb`. Debug symbols are included.
+
+
+## Compiling
+
+### Dependencies
 
  * CMake (cmake-gui recommended for desktops)
  * [Irrlicht-Mt](https://github.com/minetest/irrlicht) : GUI/rendering library
  * [enet](http://enet.bespin.org/) : networking library
  * Threads (phthread?)
-
-
-## Compiling
 
 Debian/Ubuntu:
 
