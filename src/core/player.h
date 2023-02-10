@@ -46,7 +46,7 @@ public:
 	bool controls_enabled = true;
 
 	static constexpr float GRAVITY_NORMAL = 40.0f;
-	static constexpr float CONTROLS_ACCEL = 30.0f;
+	static constexpr float CONTROLS_ACCEL = 20.0f;
 	static constexpr float JUMP_SPEED = 20.0f;
 
 protected:
@@ -54,6 +54,7 @@ protected:
 		peer_id(peer_id) {}
 
 	void stepInternal(float dtime);
+	bool stepCollisions(float dtime);
 	void collideWith(float dtime, int x, int y);
 
 	// Currently active world (nullptr if lobby)

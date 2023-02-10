@@ -64,7 +64,7 @@ void SceneGameplay::draw()
 		rect_1, nullptr, ID_BtnBack, L"<< Lobby");
 
 	core::recti rect_2(
-		core::vector2di(150, wsize.Height - 35),
+		core::vector2di(350, wsize.Height - 35),
 		core::dimension2du(300, 30)
 	);
 
@@ -100,7 +100,7 @@ void SceneGameplay::draw()
 	}
 
 	m_blockselector->setHotbarPos(
-		rect_2.UpperLeftCorner + core::position2di(300, 0)
+		rect_1.UpperLeftCorner + core::position2di(110, 0)
 	);
 	m_blockselector->draw();
 }

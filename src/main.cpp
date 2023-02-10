@@ -1,9 +1,7 @@
-#include <iostream>
 #include "core/blockmanager.h"
-#include "core/connection.h"
-#include "core/packet.h"
+#include "core/player.h"
 #include "gui/gui.h"
-#include <string.h>
+#include <string.h> // strcmp
 
 #include <chrono>
 #include <thread>
@@ -17,6 +15,37 @@ void unittest();
 static void exit_cleanup()
 {
 	delete g_blockmanager;
+}
+
+
+
+void step_arrow_left(float dtime, Player &c, blockpos_t pos)
+{
+	c.acc.X -= Player::GRAVITY_NORMAL;
+}
+
+void step_arrow_up(float dtime, Player &c, blockpos_t pos)
+{
+	c.acc.Y -= Player::GRAVITY_NORMAL;
+}
+
+void step_arrow_right(float dtime, Player &c, blockpos_t pos)
+{
+	c.acc.X += Player::GRAVITY_NORMAL;
+}
+
+void step_arrow_none(float dtime, Player &c, blockpos_t pos)
+{
+}
+
+bool onCollide_b10_bouncy(float dtime, Player &c, const core::vector2d<s8> dir)
+{
+	if (dir.X) {
+		c.vel.X *= -0.4f;
+	} else if (dir.Y) {
+		c.vel.Y *= -1.5f;
+	}
+	return false;
 }
 
 static void register_packs()
@@ -35,6 +64,11 @@ static void register_packs()
 		g_blockmanager->registerPack(pack);
 	}
 
+	g_blockmanager->getProps(1)->step = step_arrow_left;
+	g_blockmanager->getProps(2)->step = step_arrow_up;
+	g_blockmanager->getProps(3)->step = step_arrow_right;
+	g_blockmanager->getProps(4)->step = step_arrow_none;
+	g_blockmanager->getProps(10)->onCollide = onCollide_b10_bouncy; // blue
 }
 
 int main(int argc, char *argv[])

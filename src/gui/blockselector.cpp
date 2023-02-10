@@ -10,7 +10,7 @@ static const int ID_HOTBAR_0 = 300;
 SceneBlockSelector::SceneBlockSelector(gui::IGUIEnvironment *gui)
 {
 	m_gui = gui;
-	m_hotbar_ids = { 0, 1, 2, 3, 4, 10 };
+	m_hotbar_ids = { 0, 1, 2, 3, 4, 10, 11 };
 }
 
 void SceneBlockSelector::draw()
@@ -24,7 +24,6 @@ void SceneBlockSelector::draw()
 	for (size_t i = 0; i < m_hotbar_ids.size(); ++i) {
 		const bid_t bid = m_hotbar_ids[i];
 
-		rect += core::vector2di(BTN_SIZE.Width, 0);
 		auto e = m_gui->addButton(rect, nullptr, ID_HOTBAR_0 + i);
 
 		auto props = g_blockmanager->getProps(bid);
@@ -38,6 +37,8 @@ void SceneBlockSelector::draw()
 		} else {
 			e->setText(L"E");
 		}
+
+		rect += core::vector2di(BTN_SIZE.Width, 0);
 	}
 }
 
@@ -59,6 +60,8 @@ bool SceneBlockSelector::OnEvent(const SEvent &e)
 
 	m_selected_bid = m_hotbar_ids.at(id - ID_HOTBAR_0);
 	printf("Select bid_t=%d\n", m_selected_bid);
+
+	m_gui->setFocus(nullptr);
 	return true;
 }
 
