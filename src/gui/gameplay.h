@@ -17,6 +17,8 @@ namespace irr {
 	}
 }
 
+class SceneBlockSelector;
+
 class SceneGameplay : public SceneHandler {
 public:
 	SceneGameplay();
@@ -35,6 +37,8 @@ private:
 	void updatePlayerPositions();
 	void setupCamera();
 	void setCamera(core::vector3df pos);
+
+	SceneBlockSelector *m_blockselector = nullptr;
 
 	core::recti m_draw_area;
 

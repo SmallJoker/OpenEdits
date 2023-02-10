@@ -1,6 +1,7 @@
 #include "gameplay.h"
 #include "client/client.h"
 #include "client/localplayer.h"
+#include "blockselector.h"
 #include <irrlicht.h>
 
 static int SIZEW = 650; // world render size
@@ -17,6 +18,9 @@ SceneGameplay::SceneGameplay()
 
 SceneGameplay::~SceneGameplay()
 {
+	if (m_blockselector)
+		delete m_blockselector;
+
 	if (m_world_smgr != m_gui->scenemgr)
 		m_world_smgr->drop();
 }
@@ -90,15 +94,23 @@ void SceneGameplay::draw()
 
 	m_need_playerlist_update = true;
 	updatePlayerlist();
+
+	if (!m_blockselector) {
+		m_blockselector = new SceneBlockSelector(m_gui->gui);
+	}
+
+	m_blockselector->setHotbarPos(
+		rect_2.UpperLeftCorner + core::position2di(300, 0)
+	);
+	m_blockselector->draw();
 }
 
 void SceneGameplay::step(float dtime)
 {
-
 	updateWorld();
 	updatePlayerlist();
 	updatePlayerPositions();
-
+	m_blockselector->step(dtime);
 
 	if (1) {
 		// Actually draw the world contents
@@ -142,6 +154,9 @@ void SceneGameplay::step(float dtime)
 
 bool SceneGameplay::OnEvent(const SEvent &e)
 {
+	if (m_blockselector->OnEvent(e))
+		return true;
+
 	if (e.EventType == EET_GUI_EVENT) {
 		switch (e.GUIEvent.EventType) {
 			case gui::EGET_BUTTON_CLICKED:
@@ -190,7 +205,7 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 						break;
 
 					Block b;
-					b.id = 11;
+					b.id = m_blockselector->getSelectedBid();
 					m_gui->getClient()->setBlock(bp, b, 0);
 				}
 				break;
