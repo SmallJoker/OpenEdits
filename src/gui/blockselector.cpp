@@ -47,12 +47,44 @@ void SceneBlockSelector::step(float dtime)
 bool SceneBlockSelector::OnEvent(const SEvent &e)
 {
 	if (e.EventType == EET_MOUSE_INPUT_EVENT) {
-		if (e.MouseInput.Event == EMIE_LMOUSE_PRESSED_DOWN) {
-			// Avoid click-through
-			core::vector2di pos(e.MouseInput.X, e.MouseInput.Y);
-			auto element = m_showmore->getElementFromPoint(pos);
-			if (element)
-				return element->OnEvent(e);;
+		switch (e.MouseInput.Event) {
+			case EMIE_LMOUSE_PRESSED_DOWN:
+			{
+				// Avoid click-through
+				core::vector2di pos(e.MouseInput.X, e.MouseInput.Y);
+				auto element = m_showmore->getElementFromPoint(pos);
+				s32 id = element ? element->getID() : 0;
+				if (id >= ID_SELECTOR_0 && id < ID_SELECTOR_MAX) {
+					m_dragged_bid = id - ID_SELECTOR_0;
+				}
+
+				if (element)
+					return element->OnEvent(e);
+			}
+			break;
+			case EMIE_LMOUSE_LEFT_UP:
+			{
+				if (m_dragged_bid == (bid_t)-1)
+					break;
+
+				// Copy to hotbar
+				core::vector2di pos(e.MouseInput.X, e.MouseInput.Y);
+				auto root = m_gui->getRootGUIElement();
+				auto element = root->getElementFromPoint(pos);
+				s32 id = element ? element->getID() : 0;
+				if (id >= ID_HOTBAR_0 && id < ID_HOTBAR_0 + (int)m_hotbar_ids.size()) {
+					m_hotbar_ids.at(id - ID_HOTBAR_0) = m_dragged_bid;
+
+					// Update button image
+					auto rect = element->getAbsoluteClippingRect();
+					root->removeChild(element);
+					drawBlockButton(m_dragged_bid, rect, nullptr, id);
+					m_dragged_bid = -1;
+					return true;
+				}
+			}
+			break;
+			default: break;
 		}
 	}
 	if (e.EventType == EET_GUI_EVENT && e.GUIEvent.EventType == gui::EGET_BUTTON_CLICKED) {

@@ -218,25 +218,24 @@ bool Player::stepCollisions(float dtime)
 		acc.Y += Player::GRAVITY_NORMAL;
 	}
 
-	// Get nearest solid block to collide with
-	const int sign_x = get_sign(vel.X);
-	const int sign_y = get_sign(vel.Y);
+	// Collide with direct neighbours, outside afterwards.
+	const core::vector2di SCAN_DIR[8] = {
+		{  0,  1 },
+		{  0, -1 },
+		{  1,  0 },
+		{ -1,  0 },
 
-	// Run loop at least once
-	bool first_y = true;
-	for (int y = 0; y != 2 * sign_y || first_y; y += sign_y) {
-		first_y = false;
-		bool first_x = true;
-		for (int x = 0; x != 2 * sign_x || first_x; x += sign_x) {
-			first_x = false;
-			if (x == 0 && y == 0)
-				continue; // current block
+		{  1,  1 },
+		{  1, -1 },
+		{ -1,  1 },
+		{ -1, -1 },
+	};
 
-			int bx = bp.X + x,
-				by = bp.Y + y;
+	for (const auto dir : SCAN_DIR) {
+		int bx = bp.X + dir.X,
+			by = bp.Y + dir.Y;
 
-			collideWith(dtime, bx, by);
-		}
+		collideWith(dtime, bx, by);
 	}
 	return true;
 }
@@ -258,7 +257,7 @@ void Player::collideWith(float dtime, int x, int y)
 	block += core::vector2df(x - pos.X, y - pos.Y);
 
 	player.clipAgainst(block);
-	if (player.getArea() == 0)
+	if (player.getArea() < 0.01f)
 		return;
 
 	//printf("collision x=%d,y=%d\n", x, y);

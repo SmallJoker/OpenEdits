@@ -33,5 +33,6 @@ private:
 	bid_t m_selected_bid = 0;
 
 	bool m_show_selector = false;
+	bid_t m_dragged_bid = -1;
 	gui::IGUIElement *m_showmore = nullptr;
 };

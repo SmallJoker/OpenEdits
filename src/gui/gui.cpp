@@ -20,7 +20,7 @@ Gui::Gui()
 
 	ASSERT_FORCED(device, "Failed to initialize driver");
 
-	device->setWindowCaption(L"OpenEdits v1.0.0-dev");
+	device->setWindowCaption(L"OpenEdits v1.0.1-dev");
 
 	scenemgr = device->getSceneManager();
 	gui = device->getGUIEnvironment();
@@ -35,7 +35,11 @@ Gui::Gui()
 		skin->setFont(font);
 		auto make_opaque = [&skin] (gui::EGUI_DEFAULT_COLOR what) {
 			auto color = skin->getColor(what);
-			color.setAlpha(0xFF);
+			u32 alpha = color.getAlpha();
+			if (alpha > 220)
+				return;
+
+			color.setAlpha((alpha + 2 * 0xFF + 1) / 3);
 			skin->setColor(what, color);
 		};
 		make_opaque(gui::EGDC_3D_DARK_SHADOW);

@@ -41,6 +41,9 @@ private:
 	SceneBlockSelector *m_blockselector = nullptr;
 
 	core::recti m_draw_area;
+	bool m_drag_draw = true;
+	bool m_drag_draw_down = false;
+	bool m_erase_mode = false;
 
 	bool m_need_mesh_update = false;
 	bool m_ignore_keys = false;

@@ -64,6 +64,13 @@ static void register_packs()
 		g_blockmanager->registerPack(pack);
 	}
 
+	{
+		BlockPack *pack = new BlockPack("factory");
+		pack->default_type = BlockDrawType::Solid;
+		pack->block_ids = { 45, 46, 47, 48, 49 };
+		g_blockmanager->registerPack(pack);
+	}
+
 	g_blockmanager->getProps(1)->step = step_arrow_left;
 	g_blockmanager->getProps(2)->step = step_arrow_up;
 	g_blockmanager->getProps(3)->step = step_arrow_right;

@@ -10,6 +10,7 @@ enum ElementId : int {
 	ID_BoxChat = 101,
 	ID_BtnBack = 110,
 	ID_ListPlayers = 120,
+	ID_PlayerOffset = 300,
 };
 
 SceneGameplay::SceneGameplay()
@@ -159,7 +160,7 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 			case gui::EGET_BUTTON_CLICKED:
 				if (e.GUIEvent.Caller->getID() == ID_BtnBack)
 					m_gui->leaveWorld();
-				break;
+				return true;
 			case gui::EGET_EDITBOX_ENTER:
 				if (e.GUIEvent.Caller->getID() == ID_BoxChat) {
 					auto textw = e.GUIEvent.Caller->getText();
@@ -173,7 +174,7 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 
 					e.GUIEvent.Caller->setText(L"");
 				}
-				break;
+				return true;
 			case gui::EGET_ELEMENT_FOCUSED:
 				m_ignore_keys = true;
 				break;
@@ -183,10 +184,24 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 			default: break;
 		}
 	}
+	if (e.EventType == EET_KEY_INPUT_EVENT) {
+		if (e.KeyInput.Key == KEY_LSHIFT || e.KeyInput.Key == KEY_RSHIFT)
+			m_erase_mode = e.KeyInput.PressedDown;
+	}
 	if (e.EventType == EET_MOUSE_INPUT_EVENT) {
-
 		switch (e.MouseInput.Event) {
 			case EMIE_MOUSE_MOVED:
+				if (m_drag_draw && m_drag_draw_down) {
+					blockpos_t bp = getBlockFromPixel(e.MouseInput.X, e.MouseInput.Y);
+					if (bp.X == (u16)-1)
+						break;
+
+					Block b;
+					if (!m_erase_mode)
+						b.id = m_blockselector->getSelectedBid();
+					m_gui->getClient()->setBlock(bp, b, 0);
+					return true;
+				}
 				break;
 			case EMIE_MOUSE_WHEEL:
 				{
@@ -200,11 +215,16 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 					blockpos_t bp = getBlockFromPixel(e.MouseInput.X, e.MouseInput.Y);
 					if (bp.X == (u16)-1)
 						break;
+					m_drag_draw_down = true;
 
 					Block b;
-					b.id = m_blockselector->getSelectedBid();
+					if (!m_erase_mode)
+						b.id = m_blockselector->getSelectedBid();
 					m_gui->getClient()->setBlock(bp, b, 0);
 				}
+				return true;
+			case EMIE_LMOUSE_LEFT_UP:
+				m_drag_draw_down = false;
 				break;
 			case EMIE_RMOUSE_PRESSED_DOWN:
 				{
@@ -418,29 +438,51 @@ void SceneGameplay::updatePlayerlist()
 
 void SceneGameplay::updatePlayerPositions()
 {
-	m_players->removeAll();
-
 	auto smgr = m_world_smgr;
 	auto texture = m_gui->driver->getTexture("assets/textures/smileys.png");
 
+	auto children = m_players->getChildren();
 	auto players = m_gui->getClient()->getPlayerList();
 	for (auto it : *players) {
 		auto pos = it.second->pos;
+		core::vector3df bb_pos(pos.X * 10, -pos.Y * 10, 0.0f);
 
-		auto bb = smgr->addBillboardSceneNode(m_players,
-			core::dimension2d<f32>(10, 10),
-			core::vector3df(pos.X * 10, -pos.Y * 10, 0.0f)
-		);
-		bb->setMaterialFlag(video::EMF_LIGHTING, false);
-		bb->setMaterialFlag(video::EMF_ZWRITE_ENABLE, true);
-		bb->setMaterialType(video::EMT_TRANSPARENT_ALPHA_CHANNEL_REF);
-		bb->setMaterialTexture(0, texture);
+		s32 bb_id = it.first + ID_PlayerOffset;
+		scene::ISceneNode *bb = nullptr;
+		for (auto &c : children) {
+			if (c->getID() == bb_id) {
+				bb = c;
+				c = nullptr; // mark as handled
+				break;
+			}
+		}
 
-		// Set texture
-		auto &mat = bb->getMaterial(0).getTextureMatrix(0);
-		int tiles = 4;
-		mat.setTextureTranslate((it.first % tiles) / (float)tiles, 0);
-		mat.setTextureScale(1.0f / tiles, 1);
+		if (bb) {
+			bb->setPosition(bb_pos);
+		} else {
+			bb = smgr->addBillboardSceneNode(m_players,
+				core::dimension2d<f32>(10, 10),
+				bb_pos,
+				bb_id
+			);
+			bb->setMaterialFlag(video::EMF_LIGHTING, false);
+			bb->setMaterialFlag(video::EMF_ZWRITE_ENABLE, true);
+			bb->setMaterialType(video::EMT_TRANSPARENT_ALPHA_CHANNEL_REF);
+			bb->setMaterialTexture(0, texture);
+
+			// Set texture
+			auto &mat = bb->getMaterial(0).getTextureMatrix(0);
+			int tiles = 4;
+			mat.setTextureTranslate((it.first % tiles) / (float)tiles, 0);
+			mat.setTextureScale(1.0f / tiles, 1);
+		}
+
+		// TODO: Add StaticText SceneNode class
+	}
+
+	for (auto c : children) {
+		if (c)
+			m_players->removeChild(c);
 	}
 }
 
@@ -456,29 +498,22 @@ void SceneGameplay::setupCamera()
 
 
 	auto smgr = m_world_smgr;
-	auto txt_dummy = m_gui->driver->getTexture("assets/textures/dummy.png");
 
 	{
 		// Main node to keep track of all children
 		auto stage = smgr->addBillboardSceneNode(nullptr,
-			core::dimension2d<f32>(5, 5),
+			core::dimension2d<f32>(0.01f, 0.01f),
 			core::vector3df(0, 0, 0)
 		);
-		stage->setMaterialFlag(video::EMF_LIGHTING, false);
-		stage->setMaterialFlag(video::EMF_ZWRITE_ENABLE, true);
-		stage->setMaterialTexture(0, txt_dummy);
 		m_stage = stage;
 	}
 
 	{
 		// Main node to keep track of all children
 		auto stage = smgr->addBillboardSceneNode(nullptr,
-			core::dimension2d<f32>(5, 5),
+			core::dimension2d<f32>(0.01f, 0.01f),
 			core::vector3df(0, 0, 0)
 		);
-		stage->setMaterialFlag(video::EMF_LIGHTING, false);
-		stage->setMaterialFlag(video::EMF_ZWRITE_ENABLE, true);
-		stage->setMaterialTexture(0, txt_dummy);
 		m_players = stage;
 	}
 
