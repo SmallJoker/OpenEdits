@@ -33,6 +33,16 @@ Gui::Gui()
 
 		gui::IGUISkin *skin = gui->getSkin();
 		skin->setFont(font);
+		auto make_opaque = [&skin] (gui::EGUI_DEFAULT_COLOR what) {
+			auto color = skin->getColor(what);
+			color.setAlpha(0xFF);
+			skin->setColor(what, color);
+		};
+		make_opaque(gui::EGDC_3D_DARK_SHADOW);
+		make_opaque(gui::EGDC_3D_FACE); // Tab header
+		make_opaque(gui::EGDC_3D_SHADOW);
+		make_opaque(gui::EGDC_3D_HIGH_LIGHT);
+		make_opaque(gui::EGDC_3D_LIGHT);
 	}
 
 	{
@@ -110,9 +120,8 @@ void Gui::run()
 			handler->draw();
 
 		scenemgr->drawAll();
-		gui->drawAll();
-
 		handler->step(dtime);
+		gui->drawAll();
 
 		{
 			int fps = driver->getFPS();

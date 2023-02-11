@@ -19,12 +19,13 @@ struct CollisionData;
 
 constexpr size_t TEXTURE_SIZE = 32;
 
-enum BlockDrawType {
-	Invalid,
-	Background,
+// Sorted by tab appearance
+enum class BlockDrawType {
 	Solid,
 	Action,
-	Decoration
+	Decoration,
+	Background,
+	Invalid
 };
 
 extern BlockManager *g_blockmanager;
@@ -67,6 +68,7 @@ public:
 
 	BlockProperties *getProps(bid_t block_id);
 	BlockPack *getPack(const std::string &name);
+	const std::vector<BlockPack *> &getPacks() { return m_packs; }
 
 private:
 	void ensurePropsSize(size_t n);

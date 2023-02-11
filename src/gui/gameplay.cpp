@@ -61,7 +61,7 @@ void SceneGameplay::draw()
 		rect_1, nullptr, ID_BtnBack, L"<< Lobby");
 
 	core::recti rect_2(
-		core::vector2di(350, wsize.Height - 35),
+		core::vector2di(370, wsize.Height - 35),
 		core::dimension2du(300, 30)
 	);
 
