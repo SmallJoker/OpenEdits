@@ -1,5 +1,7 @@
 # OpenEdits
 
+![preview image v1.0.1-dev](screenshot.jpeg)
+
 A 2D game block building inspired by Everybody Edits.
 Code structure inspired by Minetest practices.
 

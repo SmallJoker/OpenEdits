@@ -66,6 +66,8 @@ bool SceneBlockSelector::OnEvent(const SEvent &e)
 			{
 				if (m_dragged_bid == (bid_t)-1)
 					break;
+				bid_t dragged_bid = m_dragged_bid;
+				m_dragged_bid = -1;
 
 				// Copy to hotbar
 				core::vector2di pos(e.MouseInput.X, e.MouseInput.Y);
@@ -73,13 +75,12 @@ bool SceneBlockSelector::OnEvent(const SEvent &e)
 				auto element = root->getElementFromPoint(pos);
 				s32 id = element ? element->getID() : 0;
 				if (id >= ID_HOTBAR_0 && id < ID_HOTBAR_0 + (int)m_hotbar_ids.size()) {
-					m_hotbar_ids.at(id - ID_HOTBAR_0) = m_dragged_bid;
+					m_hotbar_ids.at(id - ID_HOTBAR_0) = dragged_bid;
 
 					// Update button image
 					auto rect = element->getAbsoluteClippingRect();
 					root->removeChild(element);
-					drawBlockButton(m_dragged_bid, rect, nullptr, id);
-					m_dragged_bid = -1;
+					drawBlockButton(dragged_bid, rect, nullptr, id);
 					return true;
 				}
 			}
