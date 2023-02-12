@@ -7,7 +7,7 @@
 #include <string.h> // strerror
 #include <sstream>
 
-#if 1
+#if 0
 	#define DEBUGLOG(...) printf(__VA_ARGS__)
 #else
 	#define DEBUGLOG(...) /* SILENCE */
@@ -72,8 +72,9 @@ Connection::Connection(Connection::ConnectionType type, const char *name)
 
 Connection::~Connection()
 {
-	DEBUGLOG("--- ENet %s: Cleaning up ...\n", m_name);
 	m_running = false;
+	if (!m_host)
+		return;
 
 	for (size_t i = 0; i < m_host->peerCount; ++i)
 		enet_peer_disconnect_later(&m_host->peers[i], 0);
@@ -84,6 +85,8 @@ Connection::~Connection()
 			ERRORLOG("--- ENet %s: Failed to join thread status=%d\n", m_name, errno);
 		}
 	}
+	while (m_thread)
+		sleep(1);
 
 	// Apply force if needed
 	for (size_t i = 0; i < m_host->peerCount; ++i)
@@ -161,7 +164,7 @@ void Connection::disconnect(peer_t peer_id)
 	if (!peer)
 		return;
 
-	enet_peer_disconnect(peer, 0);
+	enet_peer_disconnect_later(peer, 0);
 	// Actual handling done in async event handler
 }
 

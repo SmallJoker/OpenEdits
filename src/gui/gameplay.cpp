@@ -80,7 +80,7 @@ void SceneGameplay::draw()
 			core::dimension2di(wsize.Width - SIZEW, wsize.Height - 50 - 160)
 		);
 		if (m_chathistory_text.empty())
-			m_chathistory_text = L"Chat history:\n";
+			m_chathistory_text = L"--- Start of chat history ---\n";
 
 		auto e = m_gui->gui->addEditBox(m_chathistory_text.c_str(), rect_ch, true);
 		e->setAutoScroll(true);
@@ -88,7 +88,7 @@ void SceneGameplay::draw()
 		e->setWordWrap(true);
 		e->setEnabled(false);
 		e->setDrawBackground(false);
-		e->setTextAlignment(gui::EGUIA_UPPERLEFT, gui::EGUIA_UPPERLEFT);
+		e->setTextAlignment(gui::EGUIA_UPPERLEFT, gui::EGUIA_LOWERRIGHT);
 		e->setOverrideColor(0xFFCCCCCC);
 		m_chathistory = e;
 	}
@@ -210,6 +210,16 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 				break;
 			case EMIE_MOUSE_WHEEL:
 				{
+					core::vector2di pos(e.MouseInput.X, e.MouseInput.Y);
+					auto root = m_gui->gui->getRootGUIElement();
+					auto element = root->getElementFromPoint(pos);
+					if (element && element != root) {
+						// Forward inputs to the corresponding element
+						return false;
+					}
+				}
+
+				{
 					float dir = e.MouseInput.Wheel > 0 ? 1 : -1;
 
 					m_camera_pos.Z *= (1 - dir * 0.1);
@@ -326,11 +336,8 @@ bool SceneGameplay::OnEvent(GameEvent &e)
 			}
 			return true;
 		case E::C2G_DIALOG:
-			printf(" * SYSTEM: %s\n", e.text->c_str());
+			// TODO: show an actual dialog?
 			break;
-		case E::C2G_DISCONNECT:
-			m_gui->disconnect();
-			return true;
 		default: break;
 	}
 	return false;
@@ -388,7 +395,6 @@ video::ITexture *SceneGameplay::generateTexture(const wchar_t *text, u32 color)
 
 	return texture;
 }
-
 
 void SceneGameplay::updateWorld()
 {

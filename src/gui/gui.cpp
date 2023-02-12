@@ -9,7 +9,7 @@
 #include "lobby.h"
 #include "gameplay.h"
 
-void sleep_ms(long delay);
+extern const char *VERSION_STRING;
 
 Gui::Gui()
 {
@@ -20,7 +20,12 @@ Gui::Gui()
 
 	ASSERT_FORCED(device, "Failed to initialize driver");
 
-	device->setWindowCaption(L"OpenEdits v1.0.2-dev");
+	{
+		// Title bar
+		core::stringw version;
+		core::multibyteToWString(version, VERSION_STRING);
+		device->setWindowCaption(version.c_str());
+	}
 
 	scenemgr = device->getSceneManager();
 	gui = device->getGUIEnvironment();
@@ -93,6 +98,18 @@ void Gui::run()
 			auto t_now = std::chrono::steady_clock::now();
 			dtime = std::chrono::duration<float>(t_now - t_last).count();
 			t_last = t_now;
+		}
+
+		if (m_pending_disconnect) {
+			if (m_client) {
+				delete m_client;
+				m_client = nullptr;
+			}
+			if (m_server) {
+				delete m_server;
+				m_server = nullptr;
+			}
+			m_pending_disconnect = false;
 		}
 
 		if (m_client) {
@@ -171,6 +188,10 @@ bool Gui::OnEvent(GameEvent &e)
 	if (!m_initialized)
 		return false;
 
+	if (e.type_c2g == GameEvent::C2G_DISCONNECT) {
+		disconnect();
+		return true;
+	}
 	return getHandler(m_scenetype)->OnEvent(e);
 }
 
@@ -222,12 +243,8 @@ void Gui::connect(SceneConnect *sc)
 		m_client->setEventHandler(this);
 		setNextScene(SceneHandlerType::Lobby);
 	} else {
-		puts("Wait timed out.");
-		delete m_client;
-		m_client = nullptr;
-
-		delete m_server;
-		m_server = nullptr;
+		puts("Connection timed out: Server is not reachable.");
+		m_pending_disconnect = true;
 	}
 }
 
@@ -235,15 +252,7 @@ void Gui::disconnect()
 {
 	setNextScene(SceneHandlerType::Connect);
 
-	if (m_client) {
-		delete m_client;
-		m_client = nullptr;
-	}
-
-	if (m_server) {
-		delete m_server;
-		m_server = nullptr;
-	}
+	m_pending_disconnect = true;
 }
 
 void Gui::joinWorld(SceneLobby *sc)

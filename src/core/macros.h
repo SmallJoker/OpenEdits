@@ -17,6 +17,8 @@ typedef std::unique_lock<std::mutex> SimpleLock;
 
 typedef uint32_t peer_t; // same as in ENetPeer
 
+void sleep_ms(long delay);
+
 // Auto-unlock wrapper for larger operations
 template<typename T>
 class PtrLock {

@@ -10,6 +10,8 @@ void sleep_ms(long delay)
 	std::this_thread::sleep_for(std::chrono::milliseconds(delay));
 }
 
+const char *VERSION_STRING = "OpenEdits v1.0.3-dev";
+
 void unittest();
 
 static void exit_cleanup()
@@ -86,9 +88,18 @@ int main(int argc, char *argv[])
 	g_blockmanager = new BlockManager();
 	register_packs();
 
-	if (argc >= 2 && strcmp(argv[1], "--unittest") == 0) {
-		unittest();
-		return EXIT_SUCCESS;
+	if (argc >= 2) {
+		if (strcmp(argv[1], "--version") == 0) {
+			puts(VERSION_STRING);
+			return EXIT_SUCCESS;
+		}
+		if (strcmp(argv[1], "--unittest") == 0) {
+			// Depends on BlockManager and ENet
+			unittest();
+			return EXIT_SUCCESS;
+		}
+		puts("-!- Unknown command line option.");
+		return EXIT_FAILURE;
 	}
 
 	Gui gui;

@@ -79,6 +79,7 @@ private:
 	inline void setNextScene(SceneHandlerType type) { m_scenetype_next = type; }
 
 	bool m_initialized = false;
+	bool m_pending_disconnect = false;
 
 	SceneHandlerType m_scenetype_next;
 	SceneHandlerType m_scenetype;
