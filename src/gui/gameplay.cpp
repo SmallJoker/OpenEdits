@@ -324,7 +324,13 @@ bool SceneGameplay::OnEvent(GameEvent &e)
 				m_chathistory_text.append(line);
 				m_chathistory->setText(m_chathistory_text.c_str());
 			}
+			return true;
+		case E::C2G_DIALOG:
+			printf(" * SYSTEM: %s\n", e.text->c_str());
 			break;
+		case E::C2G_DISCONNECT:
+			m_gui->disconnect();
+			return true;
 		default: break;
 	}
 	return false;
@@ -429,7 +435,8 @@ void SceneGameplay::updateWorld()
 
 void SceneGameplay::updatePlayerlist()
 {
-	if (!m_need_playerlist_update)
+	auto world = m_gui->getClient()->getWorld();
+	if (!m_need_playerlist_update || !world)
 		return;
 
 	m_need_playerlist_update = false;
@@ -456,6 +463,22 @@ void SceneGameplay::updatePlayerlist()
 		u32 i = e->addItem(wstr.c_str());
 		e->setItemOverrideColor(i, 0xFFFFFFFF);
 	}
+
+	// Add world ID and online count
+	{
+		rect.UpperLeftCorner.Y = 5;
+		rect.LowerRightCorner.X += 200;
+		auto meta = world->getMeta();
+		std::string src_text;
+		src_text.append("ID: " + meta.id);
+		src_text.append("\r\nOwner: " + meta.owner);
+
+		core::stringw dst_text;
+		core::multibyteToWString(dst_text, src_text.c_str());
+
+		auto e = m_gui->gui->addStaticText(dst_text.c_str(), rect);
+		e->setOverrideColor(0xFFFFFFFF);
+	}
 }
 
 void SceneGameplay::updatePlayerPositions()
@@ -463,7 +486,7 @@ void SceneGameplay::updatePlayerPositions()
 	auto smgr = m_world_smgr;
 	auto texture = m_gui->driver->getTexture("assets/textures/smileys.png");
 
-	auto children = m_players->getChildren();
+	std::list<scene::ISceneNode *> children = m_players->getChildren();
 	auto players = m_gui->getClient()->getPlayerList();
 	for (auto it : *players.ptr()) {
 		auto pos = it.second->pos;
@@ -472,10 +495,9 @@ void SceneGameplay::updatePlayerPositions()
 		s32 bb_id = it.first + ID_PlayerOffset;
 		scene::ISceneNode *bb = nullptr;
 		for (auto &c : children) {
-			if (c->getID() == bb_id) {
+			if (c && c->getID() == bb_id) {
 				bb = c;
 				c = nullptr; // mark as handled
-				break;
 			}
 		}
 
@@ -497,6 +519,7 @@ void SceneGameplay::updatePlayerPositions()
 			int tiles = 4;
 			mat.setTextureTranslate((it.first % tiles) / (float)tiles, 0);
 			mat.setTextureScale(1.0f / tiles, 1);
+
 
 			// Add nametag
 			core::stringw namew;

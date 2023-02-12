@@ -6,12 +6,16 @@
 #include <string>
 
 class Player;
+class Packet;
 
 struct BlockUpdate : public Block {
 	peer_t peer_id;
 };
 
 struct WorldMeta {
+	void readCommon(Packet &pkt);
+	void writeCommon(Packet &pkt);
+
 	const std::string id;
 	std::string edit_code;
 	std::string title;

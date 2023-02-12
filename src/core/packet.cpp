@@ -142,7 +142,7 @@ void Packet::writeStr16(const std::string &str)
 
 void Packet::ensureCapacity(size_t nbytes)
 {
-	if (m_write_offset + nbytes > size())
+	if (m_write_offset + nbytes > m_data->dataLength)
 		enet_packet_resize(m_data, (m_write_offset + nbytes) * 2);
 }
 

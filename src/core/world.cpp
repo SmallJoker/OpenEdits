@@ -1,6 +1,24 @@
 #include "world.h"
 #include "macros.h"
+#include "packet.h"
 #include <cstring> // memset
+
+void WorldMeta::readCommon(Packet &pkt)
+{
+	title = pkt.readStr16();
+	owner = pkt.readStr16();
+	online = pkt.read<u16>();
+	plays = pkt.read<u32>();
+}
+
+void WorldMeta::writeCommon(Packet &pkt)
+{
+	pkt.writeStr16(title);
+	pkt.writeStr16(owner);
+	pkt.write<u16>(online);
+	pkt.write<u32>(plays);
+}
+
 
 template class RefCnt<World>;
 

@@ -145,6 +145,13 @@ void Server::onPeerDisconnected(peer_t peer_id)
 	if (!player)
 		return;
 
+	{
+		Packet pkt;
+		pkt.write(Packet2Client::Leave);
+		pkt.write(peer_id);
+		broadcastInWorld(player, 0, pkt);
+	}
+
 	player->setWorld(nullptr);
 	m_players.erase(peer_id);
 

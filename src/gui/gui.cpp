@@ -67,8 +67,15 @@ Gui::Gui()
 
 Gui::~Gui()
 {
+	// Avoid double-frees caused by callback chains
+	setEventHandler(nullptr);
+
+	delete m_client;
+	delete m_server;
+
 	for (auto it : m_handlers)
 		delete it.second;
+	m_handlers.clear();
 
 	delete device;
 }
@@ -227,6 +234,16 @@ void Gui::connect(SceneConnect *sc)
 void Gui::disconnect()
 {
 	setNextScene(SceneHandlerType::Connect);
+
+	if (m_client) {
+		delete m_client;
+		m_client = nullptr;
+	}
+
+	if (m_server) {
+		delete m_server;
+		m_server = nullptr;
+	}
 }
 
 void Gui::joinWorld(SceneLobby *sc)

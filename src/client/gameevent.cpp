@@ -1,15 +1,22 @@
 #include "gameevent.h"
 
+GameEventHandler::~GameEventHandler()
+{
+	setEventHandler(nullptr);
+}
+
 void GameEventHandler::setEventHandler(GameEventHandler *eh)
 {
 	if (eh == m_eventhandler)
 		return;
 
-	if (m_eventhandler)
-		m_eventhandler->setEventHandler(nullptr);
-
+	GameEventHandler *old_eh = m_eventhandler;
 	m_eventhandler = eh;
-	eh->setEventHandler(this);
+
+	if (old_eh)
+		old_eh->setEventHandler(nullptr);
+	if (eh)
+		eh->setEventHandler(this);
 }
 
 bool GameEventHandler::sendNewEvent(GameEvent &e)

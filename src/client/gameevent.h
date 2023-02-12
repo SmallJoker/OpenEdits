@@ -57,12 +57,14 @@ struct GameEvent {
 // Callback execution (1 <---> 1 link)
 class GameEventHandler {
 public:
+	virtual ~GameEventHandler();
+
 	void setEventHandler(GameEventHandler *eh);
 	bool sendNewEvent(GameEvent &e); // for memory cleanup
 
 	// Callback function to overload. Do NOT call manually!
 	virtual bool OnEvent(GameEvent &e) = 0;
 
-protected:
+private:
 	GameEventHandler *m_eventhandler = nullptr;
 };

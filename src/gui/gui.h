@@ -94,11 +94,12 @@ private:
 class SceneHandler {
 public:
 	virtual ~SceneHandler() {}
+
 	DISABLE_COPY(SceneHandler)
 
 	void init(Gui *gui) { m_gui = gui; }
 
-	virtual void draw() = 0;
+	virtual void draw() = 0; // GUI updates
 	virtual void step(float dtime) = 0;
 	virtual bool OnEvent(const SEvent &e) = 0;
 	virtual bool OnEvent(GameEvent &e) = 0;

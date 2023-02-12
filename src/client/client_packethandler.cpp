@@ -31,7 +31,7 @@ void Client::pkt_Hello(Packet &pkt)
 	m_players.emplace(m_my_peer_id, player);
 
 	m_state = ClientState::LobbyIdle;
-	printf("Client: hello. my peer_id=%d\n", m_my_peer_id);
+	printf("Client: got HELLO. my peer_id=%u\n", m_my_peer_id);
 }
 
 void Client::pkt_Error(Packet &pkt)
@@ -51,12 +51,9 @@ void Client::pkt_Lobby(Packet &pkt)
 		std::string world_id(pkt.readStr16());
 
 		LobbyWorld world;
+		world.readCommon(pkt);
 		world.size.X = pkt.read<u16>();
 		world.size.Y = pkt.read<u16>();
-		world.title = pkt.readStr16();
-		world.owner = pkt.readStr16();
-		world.online = pkt.read<u16>();
-		world.plays = pkt.read<u32>();
 
 		world_list.emplace(world_id, world);
 	}
@@ -77,6 +74,7 @@ void Client::pkt_WorldData(Packet &pkt)
 	RefCnt<World> world(new World(m_world_id));
 	world->drop(); // kept alive by RefCnt
 
+	world->getMeta().readCommon(pkt);
 	blockpos_t size;
 	pkt.read<u16>(size.X);
 	pkt.read<u16>(size.Y);
@@ -137,9 +135,11 @@ void Client::pkt_Leave(Packet &pkt)
 
 	m_players.erase(peer_id);
 
-	GameEvent e(GameEvent::C2G_PLAYER_LEAVE);
-	e.player = player;
-	sendNewEvent(e);
+	{
+		GameEvent e(GameEvent::C2G_PLAYER_LEAVE);
+		e.player = player;
+		sendNewEvent(e);
+	}
 
 	delete player;
 

@@ -72,11 +72,17 @@ Connection::Connection(Connection::ConnectionType type, const char *name)
 
 Connection::~Connection()
 {
+	DEBUGLOG("--- ENet %s: Cleaning up ...\n", m_name);
 	m_running = false;
 
+	for (size_t i = 0; i < m_host->peerCount; ++i)
+		enet_peer_disconnect_later(&m_host->peers[i], 0);
+	enet_host_flush(m_host);
+
 	if (m_thread) {
-		pthread_join(m_thread, nullptr);
-		m_thread = 0;
+		if (pthread_join(m_thread, nullptr) < 0) {
+			ERRORLOG("--- ENet %s: Failed to join thread status=%d\n", m_name, errno);
+		}
 	}
 
 	// Apply force if needed
@@ -84,6 +90,7 @@ Connection::~Connection()
 		enet_peer_reset(&m_host->peers[i]);
 
 	enet_host_destroy(m_host);
+	DEBUGLOG("--- ENet %s: Cleanup done\n", m_name);
 }
 
 // -------------- Public members -------------
@@ -134,6 +141,7 @@ bool Connection::listenAsync(PacketProcessor &proc)
 		return false;
 
 	m_running = true;
+	m_processor = &proc;
 
 	int status = pthread_create(&m_thread, nullptr, &recvAsync, this);
 
@@ -144,7 +152,6 @@ bool Connection::listenAsync(PacketProcessor &proc)
 		return false;
 	}
 
-	m_processor = &proc;
 	return m_running;
 }
 
@@ -179,6 +186,9 @@ void Connection::send(peer_t peer_id, uint16_t flags, Packet &pkt)
 		enet_host_broadcast(m_host, channel, pkt.data());
 	} else {
 		auto peer = findPeer(peer_id);
+		if (!peer)
+			return;
+
 		peer_id = peer->connectID;
 		enet_peer_send(peer, channel, pkt.data());
 	}
@@ -195,6 +205,7 @@ void *Connection::recvAsync(void *con_p)
 	con->recvAsyncInternal();
 
 	printf("<-- ENet %s: Thread stop\n", con->m_name);
+	con->m_thread = 0;
 	return nullptr;
 }
 
@@ -216,13 +227,16 @@ void Connection::recvAsyncInternal()
 				enet_peer_disconnect_later(&m_host->peers[i], 0);
 		}
 
-		if (enet_host_service(m_host, &event, 100) <= 0) {
-			// Abort after 2000 ms
+		int status = enet_host_service(m_host, &event, 100);
+		if (status < 0) {
+			ERRORLOG("--- ENet %s: Got host error code %d\n", m_name, status);
+		}
+		if (status <= 0) {
+			// Abort after 500 ms
 			if (shutdown_seen > 0) {
-				if (++shutdown_seen > 20)
+				if (++shutdown_seen > 5)
 					break;
 			}
-
 			continue;
 		}
 
@@ -297,6 +311,6 @@ _ENetPeer *Connection::findPeer(peer_t peer_id)
 			return &m_host->peers[i];
 	}
 
-	throw std::runtime_error((std::stringstream() << "Cannot find peer_id=" << peer_id).str());
+	return nullptr;
 }
 

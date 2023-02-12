@@ -37,13 +37,19 @@ void Server::pkt_Hello(peer_t peer_id, Packet &pkt)
 	}
 
 	std::string name(pkt.readStr16());
+	name = strtrim(name);
 	if (name.size() > 30)
 		name.resize(30);
 
-	for (char &c : name)
+	bool ok = !name.empty();
+	for (char &c : name) {
 		c = toupper(c);
+		if (!std::isalnum(c)) {
+			ok = false;
+			break;
+		}
+	}
 
-	bool ok = true;
 	for (auto it : m_players) {
 		if (it.second->name == name) {
 			ok = false;
@@ -52,7 +58,7 @@ void Server::pkt_Hello(peer_t peer_id, Packet &pkt)
 	}
 
 	if (!ok) {
-		sendError(peer_id, "Player is already online");
+		sendError(peer_id, "Invalid nickname or player is already online");
 		m_con->disconnect(peer_id);
 		return;
 	}
@@ -74,7 +80,7 @@ void Server::pkt_Hello(peer_t peer_id, Packet &pkt)
 		m_con->send(peer_id, 0, reply);
 	}
 
-	printf("Hello from %s, proto_ver=%d\n", player->name.c_str(), player->protocol_version);
+	printf("Server: Hello from %s, proto_ver=%d\n", player->name.c_str(), player->protocol_version);
 }
 
 void Server::pkt_GetLobby(peer_t peer_id, Packet &)
@@ -97,13 +103,11 @@ void Server::pkt_GetLobby(peer_t peer_id, Packet &)
 		out.write<u8>(true); // continue!
 
 		out.writeStr16(meta.id); // world ID
+		meta.writeCommon(out);
+		// Additional Lobby fields
 		blockpos_t size = world->getSize();
 		out.write(size.X);
 		out.write(size.Y);
-		out.writeStr16(meta.title);
-		out.writeStr16(meta.owner);
-		out.write<u16>(meta.online);
-		out.write<u32>(meta.plays);
 	}
 	out.write<u8>(false); // terminate
 
@@ -120,6 +124,7 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 	if (!world) {
 		world = new World(world_id);
 		world->createDummy({30, 30});
+		world->getMeta().owner = player->name;
 		world->drop(); // kept alive by RefCnt
 	}
 
@@ -133,6 +138,7 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 		player->state = RemotePlayerState::WorldPlay;
 	}
 
+	world->getMeta().writeCommon(out);
 	blockpos_t size = world->getSize();
 	out.write(size.X); // dimensions
 	out.write(size.Y);

@@ -237,7 +237,7 @@ void Client::onPeerDisconnected(peer_t peer_id)
 	m_state = ClientState::None;
 
 	// send event for client destruction
-	if (m_eventhandler) {
+	{
 		GameEvent e(GameEvent::C2G_DIALOG);
 		e.text = new std::string("Server disconnected");
 		sendNewEvent(e);
