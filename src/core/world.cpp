@@ -2,13 +2,18 @@
 #include "macros.h"
 #include <cstring> // memset
 
-World::World()
+template class RefCnt<World>;
+
+World::World(const std::string &id) :
+	m_meta({ .id = id })
 {
 	ASSERT_FORCED(g_blockmanager, "BlockManager is required");
+	printf("World: Create %s\n", id.c_str());
 }
 
 World::~World()
 {
+	printf("World: Delete %s\n", m_meta.id.c_str());
 	delete[] m_data;
 }
 
@@ -24,7 +29,8 @@ void World::createEmpty(blockpos_t size)
 	const size_t length = m_size.X * m_size.Y * 2;
 	m_data = new Block[length]; // *2
 
-	memset(m_data, 0, length);
+	// Prevents the warning -Wclass-memaccess
+	memset((void *)m_data, 0, length);
 }
 
 void World::createDummy(blockpos_t size)

@@ -14,6 +14,8 @@ namespace irr {
 class SceneBlockSelector : public IEventReceiver {
 public:
 	SceneBlockSelector(gui::IGUIEnvironment *gui);
+	~SceneBlockSelector();
+
 	void setHotbarPos(const core::position2di &pos) { m_hotbar_pos = pos; }
 
 	void draw();

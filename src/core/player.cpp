@@ -7,21 +7,26 @@
 constexpr float DISTANCE_STEP = 0.3f; // absolute max is 0.5f
 
 
-void Player::joinWorld(World *world)
+void Player::setWorld(World *world)
 {
+	if (m_world.ptr())
+		m_world->getMeta().online--;
+
 	m_world = world;
-	m_world->getMeta().online++;
+
+	if (m_world.ptr())
+		m_world->getMeta().online++;
 
 	pos = core::vector2df();
 	vel = core::vector2df();
 	acc = core::vector2df();
 }
 
-void Player::leaveWorld()
+World *Player::getWorld()
 {
-	m_world->getMeta().online--;
-	m_world = nullptr;
+	return m_world.ptr();
 }
+
 
 enum PlayerPacketFlags {
 	PPF_IS_PHYSICAL      = 0x01,
@@ -257,7 +262,7 @@ void Player::collideWith(float dtime, int x, int y)
 	block += core::vector2df(x - pos.X, y - pos.Y);
 
 	player.clipAgainst(block);
-	if (player.getArea() < 0.01f)
+	if (player.getArea() < 0.001f)
 		return;
 
 	//printf("collision x=%d,y=%d\n", x, y);

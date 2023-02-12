@@ -26,6 +26,10 @@ void Client::pkt_Hello(Packet &pkt)
 	m_protocol_version = pkt.read<uint16_t>();
 	m_my_peer_id = pkt.read<peer_t>();
 
+	auto player = new LocalPlayer(m_my_peer_id);
+	m_nickname = player->name = pkt.readStr16();
+	m_players.emplace(m_my_peer_id, player);
+
 	m_state = ClientState::LobbyIdle;
 	printf("Client: hello. my peer_id=%d\n", m_my_peer_id);
 }
@@ -60,8 +64,9 @@ void Client::pkt_Lobby(Packet &pkt)
 
 void Client::pkt_WorldData(Packet &pkt)
 {
+	auto player = getMyPlayer();
 	bool is_ok = pkt.read<u8>();
-	if (!is_ok) {
+	if (!is_ok || !player) {
 		// back to lobby
 		GameEvent e(GameEvent::C2G_PLAYER_LEAVE);
 		e.player = nullptr;
@@ -69,26 +74,27 @@ void Client::pkt_WorldData(Packet &pkt)
 		return;
 	}
 
-	if (m_world)
-		delete m_world;
-
-	m_world = new World();
+	RefCnt<World> world(new World(m_world_id));
+	world->drop(); // kept alive by RefCnt
 
 	blockpos_t size;
 	pkt.read<u16>(size.X);
 	pkt.read<u16>(size.Y);
-	m_world->createDummy(size);
+	world->createDummy(size);
 
 	for (size_t y = 0; y < size.Y; ++y)
 	for (size_t x = 0; x < size.X; ++x) {
 		Block b;
 		pkt.read(b.id);
-		m_world->setBlock(blockpos_t(x, y), b);
+		world->setBlock(blockpos_t(x, y), b);
 	}
 
 	if (pkt.read<u8>() != 0xF8) {
 		fprintf(stderr, "Client: ERROR while reading world data!\n");
 	}
+
+	// World kept alive by at least one player
+	player->setWorld(world.ptr());
 
 	{
 		m_state = ClientState::WorldPlay;
@@ -113,7 +119,7 @@ void Client::pkt_Join(Packet &pkt)
 
 	player->name = pkt.readStr16();
 	player->readPhysics(pkt);
-	player->joinWorld(m_world);
+	player->setWorld(getWorld().ptr());
 
 	{
 		GameEvent e(GameEvent::C2G_PLAYER_JOIN);
@@ -129,7 +135,6 @@ void Client::pkt_Leave(Packet &pkt)
 	peer_t peer_id = pkt.read<peer_t>();
 	LocalPlayer *player = getPlayerNoLock(peer_id);
 
-	player->leaveWorld();
 	m_players.erase(peer_id);
 
 	GameEvent e(GameEvent::C2G_PLAYER_LEAVE);
@@ -192,10 +197,11 @@ void Client::pkt_Chat(Packet &pkt)
 
 void Client::pkt_PlaceBlock(Packet &pkt)
 {
-	if (!m_world)
+	auto world = getWorld();
+	if (!world)
 		throw std::runtime_error("Got block but the world is not ready");
 
-	SimpleLock lock(m_world->mutex);
+	SimpleLock lock(world->mutex);
 
 	while (true) {
 		bool is_ok = pkt.read<u8>();
@@ -211,7 +217,7 @@ void Client::pkt_PlaceBlock(Packet &pkt)
 		pkt.read(b.id);
 		pkt.read(b.param1);
 
-		m_world->setBlock(pos, b);
+		world->setBlock(pos, b);
 	}
 
 	lock.unlock();

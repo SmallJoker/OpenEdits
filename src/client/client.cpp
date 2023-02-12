@@ -3,6 +3,12 @@
 #include "core/connection.h"
 #include "core/packet.h"
 
+#if 0
+	#define DEBUGLOG(...) printf(__VA_ARGS__)
+#else
+	#define DEBUGLOG(...) /* SILENCE */
+#endif
+
 static uint16_t PACKET_ACTIONS_MAX; // initialized in ctor
 
 Client::Client(ClientStartData &init)
@@ -45,11 +51,12 @@ Client::~Client()
 
 void Client::step(float dtime)
 {
-	// run player physics
-	// process user inputs
-	while (m_world) {
-		SimpleLock lock(m_world->mutex);
-		auto &queue = m_world->proc_queue;
+	auto world = getWorld();
+
+	// Process block updates
+	while (world.ptr()) { // run once
+		SimpleLock lock(world->mutex);
+		auto &queue = world->proc_queue;
 		if (queue.empty())
 			break;
 
@@ -67,7 +74,7 @@ void Client::step(float dtime)
 			out.write(it->second.id);
 			out.write(it->second.param1);
 
-			printf("Client: sending block x=%d,y=%d,id=%d\n",
+			DEBUGLOG("Client: sending block x=%d,y=%d,id=%d\n",
 				it->first.X, it->first.Y, it->second.id);
 
 			it = queue.erase(it);
@@ -82,7 +89,8 @@ void Client::step(float dtime)
 		break;
 	}
 
-	if (m_world) {
+	// Run physics engine
+	if (world.ptr()) {
 		SimpleLock lock(m_players_lock);
 		for (auto it : m_players) {
 			it.second->step(dtime);
@@ -99,12 +107,18 @@ bool Client::OnEvent(GameEvent &e)
 		case E::G2C_INVALID:
 			return false;
 		case E::G2C_JOIN:
+			if (getWorld().ptr()) {
+				// Already joined one. ignore.
+				return false;
+			}
+
 			{
 				m_state = ClientState::WorldJoin;
+				m_world_id = *e.text;
 
 				Packet pkt;
 				pkt.write(Packet2Server::Join);
-				pkt.writeStr16(*e.text);
+				pkt.writeStr16(m_world_id);
 				m_con->send(0, 0, pkt);
 			}
 			return true;
@@ -151,28 +165,33 @@ PtrLock<decltype(Client::m_players)> Client::getPlayerList()
 	return PtrLock<decltype(m_players)>(m_players_lock, &m_players);
 }
 
+RefCnt<World> Client::getWorld()
+{
+	auto player = getPlayerNoLock(m_my_peer_id);
+	return player ? player->getWorld() : nullptr;
+}
+
 
 bool Client::setBlock(blockpos_t pos, Block block, char layer)
 {
-	if (!m_world)
+	auto world = getWorld();
+	if (!world)
 		return false;
 
-	SimpleLock lock(m_world->mutex);
+	SimpleLock lock(world->mutex);
 
-	bool is_ok = m_world->setBlock(pos, block, layer);
+	bool is_ok = world->setBlock(pos, block, layer);
 	if (!is_ok)
 		return false;
 
-
 	Block b2;
-	m_world->getBlock(pos, &b2);
-	printf("\told_id=%d\n", b2.id);
+	world->getBlock(pos, &b2);
 
 	BlockUpdate bu;
 	bu.id = block.id;
 	bu.param1 = block.param1;
 
-	m_world->proc_queue.emplace(pos, bu);
+	world->proc_queue.emplace(pos, bu);
 	return true;
 }
 

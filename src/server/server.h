@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/environment.h"
+#include "core/types.h" // RefCnt
 #include <map>
 
 enum class RemotePlayerState;
@@ -18,6 +19,7 @@ public:
 
 	// ----------- Utility functions -----------
 	RemotePlayer *getPlayerNoLock(peer_t peer_id);
+	RefCnt<World> getWorldNoLock(std::string &id);
 
 	// ----------- Networking -----------
 	void onPeerConnected(peer_t peer_id) override;
@@ -40,9 +42,6 @@ private:
 	void broadcastInWorld(Player *player, int flags, Packet &pkt);
 
 	static const ServerPacketHandler packet_actions[];
-
-	// No secondary lock to avoid deadlocks!
-	std::map<std::string, World *> m_worlds;
 };
 
 

@@ -7,13 +7,13 @@
 
 class Player;
 
-
 struct BlockUpdate : public Block {
 	peer_t peer_id;
 };
 
 struct WorldMeta {
-	std::string key;
+	const std::string id;
+	std::string edit_code;
 	std::string title;
 	std::string owner;
 	bool is_public = true;
@@ -21,10 +21,13 @@ struct WorldMeta {
 	u32 plays = 0;
 };
 
-class World {
+
+class World : public IReferenceCounted {
 public:
-	World();
+	World(const std::string &id);
 	~World();
+
+	DISABLE_COPY(World);
 
 	void createEmpty(blockpos_t size);
 	void createDummy(blockpos_t size);

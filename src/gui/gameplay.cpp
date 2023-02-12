@@ -19,6 +19,11 @@ SceneGameplay::SceneGameplay()
 
 SceneGameplay::~SceneGameplay()
 {
+	if (m_world_smgr) {
+		m_world_smgr->clear();
+		m_world_smgr->drop();
+	}
+
 	if (m_blockselector)
 		delete m_blockselector;
 }
@@ -207,7 +212,7 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 				{
 					float dir = e.MouseInput.Wheel > 0 ? 1 : -1;
 
-					m_camera_pos.Z += dir * 30;
+					m_camera_pos.Z *= (1 - dir * 0.1);
 				}
 				break;
 			case EMIE_LMOUSE_PRESSED_DOWN:
@@ -361,10 +366,27 @@ blockpos_t SceneGameplay::getBlockFromPixel(int x, int y)
 	return ret;
 }
 
+video::ITexture *SceneGameplay::generateTexture(const wchar_t *text, u32 color)
+{
+	auto driver = m_gui->driver;
+	auto dim = m_gui->font->getDimension(text);
+	dim.Width += 2; dim.Height += 2;
+
+	auto texture = driver->addRenderTargetTexture(dim); //, "rt", video::ECF_A8R8G8B8);
+	driver->setRenderTarget(texture); //, true, true, video::SColor(0));
+
+	m_gui->font->draw(text, core::recti(core::vector2di(2,0), dim), 0xFF555555); // Shadow
+	m_gui->font->draw(text, core::recti(core::vector2di(1,-1), dim), color);
+
+	driver->setRenderTarget(nullptr, video::ECBF_ALL);
+
+	return texture;
+}
+
 
 void SceneGameplay::updateWorld()
 {
-	World *world = m_gui->getClient()->getWorld();
+	auto world = m_gui->getClient()->getWorld();
 	if (!world || !m_need_mesh_update)
 		return;
 
@@ -428,7 +450,7 @@ void SceneGameplay::updatePlayerlist()
 	auto e = m_gui->gui->addListBox(rect, nullptr, ID_ListPlayers);
 
 	auto list = m_gui->getClient()->getPlayerList();
-	for (auto &it : *list) {
+	for (auto &it : *list.ptr()) {
 		core::stringw wstr;
 		core::multibyteToWString(wstr, it.second->name.c_str());
 		u32 i = e->addItem(wstr.c_str());
@@ -443,7 +465,7 @@ void SceneGameplay::updatePlayerPositions()
 
 	auto children = m_players->getChildren();
 	auto players = m_gui->getClient()->getPlayerList();
-	for (auto it : *players) {
+	for (auto it : *players.ptr()) {
 		auto pos = it.second->pos;
 		core::vector3df bb_pos(pos.X * 10, -pos.Y * 10, 0.0f);
 
@@ -475,9 +497,21 @@ void SceneGameplay::updatePlayerPositions()
 			int tiles = 4;
 			mat.setTextureTranslate((it.first % tiles) / (float)tiles, 0);
 			mat.setTextureScale(1.0f / tiles, 1);
-		}
 
-		// TODO: Add StaticText SceneNode class
+			// Add nametag
+			core::stringw namew;
+			core::multibyteToWString(namew, it.second->name.c_str());
+			auto nt_texture = generateTexture(namew.c_str());
+			auto nt_size = nt_texture->getOriginalSize();
+			auto nt = smgr->addBillboardSceneNode(bb,
+				core::dimension2d<f32>(nt_size.Width * 0.4, nt_size.Height * 0.4),
+				core::vector3df(0, -10, 0)
+			);
+			nt->setMaterialFlag(video::EMF_LIGHTING, false);
+			nt->setMaterialFlag(video::EMF_ZWRITE_ENABLE, true);
+			//nt->setMaterialType(video::EMT_TRANSPARENT_ALPHA_CHANNEL_REF);
+			nt->setMaterialTexture(0, nt_texture);
+		}
 	}
 
 	for (auto c : children) {

@@ -40,7 +40,7 @@ public:
 	// ----------- Functions for the GUI -----------
 	PtrLock<LocalPlayer> getMyPlayer();
 	PtrLock<decltype(m_players)> getPlayerList();
-	World *getWorld() { return m_world; }
+	RefCnt<World> getWorld();
 	bool setBlock(blockpos_t pos, Block block, char layer = 0);
 
 	// ----------- Utility functions -----------
@@ -73,9 +73,7 @@ private:
 	ClientState m_state = ClientState::None;
 	uint16_t m_protocol_version = 0;
 
-	World *m_world = nullptr;
-
-	std::string m_world_hash = "foobar";
+	std::string m_world_id = "foobar";
 	std::string m_nickname;
 	peer_t m_my_peer_id = 0;
 

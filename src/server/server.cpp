@@ -3,6 +3,12 @@
 #include "core/packet.h"
 #include "core/world.h"
 
+#if 0
+	#define DEBUGLOG(...) printf(__VA_ARGS__)
+#else
+	#define DEBUGLOG(...) /* SILENCE */
+#endif
+
 static uint16_t PACKET_ACTIONS_MAX; // initialized in ctor
 
 Server::Server()
@@ -42,12 +48,16 @@ void Server::step(float dtime)
 
 	// always player lock first, world lock after.
 	SimpleLock players_lock(m_players_lock);
-	for (auto world_it : m_worlds) {
-		SimpleLock world_lock(world_it.second->mutex);
-		auto &queue = world_it.second->proc_queue;
+	for (auto p : m_players) {
+		auto world = p.second->getWorld();
+		if (!world)
+			continue;
 
+		auto &queue = world->proc_queue;
 		if (queue.empty())
-			return;
+			continue;
+
+		SimpleLock world_lock(world->mutex);
 
 		Packet out;
 		out.write(Packet2Client::PlaceBlock);
@@ -64,7 +74,7 @@ void Server::step(float dtime)
 			out.write(it->second.id);
 			out.write(it->second.param1);
 
-			printf("Server: sending block x=%d,y=%d,id=%d\n",
+			DEBUGLOG("Server: sending block x=%d,y=%d,id=%d\n",
 				it->first.X, it->first.Y, it->second.id);
 
 			it = queue.erase(it);
@@ -77,20 +87,38 @@ void Server::step(float dtime)
 
 		// Distribute to players within this world
 		for (auto it : m_players) {
-			if (it.second->getWorld() != world_it.second)
+			if (it.second->getWorld() != world)
 				continue;
 
 			m_con->send(it.first, 0, out);
 		}
 	}
+
+	// No player physics (yet?)
 }
 
+// -------------- Utility functions --------------
 
 RemotePlayer *Server::getPlayerNoLock(peer_t peer_id)
 {
 	auto it = m_players.find(peer_id);
 	return it != m_players.end() ? dynamic_cast<RemotePlayer *>(it->second) : nullptr;
 }
+
+RefCnt<World> Server::getWorldNoLock(std::string &id)
+{
+	for (auto p : m_players) {
+		auto world = p.second->getWorld();
+		if (!world)
+			continue;
+
+		if (world->getMeta().id == id)
+			return world;
+	}
+	return nullptr;
+}
+
+// -------------- Networking --------------
 
 void Server::onPeerConnected(peer_t peer_id)
 {
@@ -117,10 +145,10 @@ void Server::onPeerDisconnected(peer_t peer_id)
 	if (!player)
 		return;
 
-	player->leaveWorld();
-	delete player;
-
+	player->setWorld(nullptr);
 	m_players.erase(peer_id);
+
+	delete player;
 }
 
 void Server::processPacket(peer_t peer_id, Packet &pkt)

@@ -1,4 +1,5 @@
 #pragma once
+// Types related to the std library
 
 #include <mutex>
 //#include <shared_mutex>
@@ -43,8 +44,8 @@ public:
 		m_ptr = nullptr;
 	}
 
+	inline T *ptr() const { return m_ptr; }
 	// Synthetic sugar
-	inline operator T *() const { return m_ptr; }
 	inline T *operator->() const { return m_ptr; }
 	// Validation check
 	inline bool operator!() const { return !m_ptr; }

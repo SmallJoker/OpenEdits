@@ -20,7 +20,7 @@ Gui::Gui()
 
 	ASSERT_FORCED(device, "Failed to initialize driver");
 
-	device->setWindowCaption(L"OpenEdits v1.0.1-dev");
+	device->setWindowCaption(L"OpenEdits v1.0.2-dev");
 
 	scenemgr = device->getSceneManager();
 	gui = device->getGUIEnvironment();
@@ -145,6 +145,9 @@ void Gui::run()
 		if (m_server)
 			m_server->step(dtime);
 	}
+
+	scenemgr->clear();
+	gui->clear();
 }
 
 

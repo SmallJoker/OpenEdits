@@ -3,6 +3,7 @@
 #include "core/packet.h"
 #include "core/utils.h"
 #include "core/world.h"
+#include <set>
 
 // in sync with core/packet.h
 const ServerPacketHandler Server::packet_actions[] = {
@@ -40,7 +41,7 @@ void Server::pkt_Hello(peer_t peer_id, Packet &pkt)
 		name.resize(30);
 
 	for (char &c : name)
-		c = tolower(c);
+		c = toupper(c);
 
 	bool ok = true;
 	for (auto it : m_players) {
@@ -68,6 +69,7 @@ void Server::pkt_Hello(peer_t peer_id, Packet &pkt)
 		reply.write(Packet2Client::Hello);
 		reply.write(player->protocol_version);
 		reply.write(player->peer_id);
+		reply.writeStr16(player->name);
 
 		m_con->send(peer_id, 0, reply);
 	}
@@ -80,15 +82,22 @@ void Server::pkt_GetLobby(peer_t peer_id, Packet &)
 	Packet out;
 	out.write(Packet2Client::Lobby);
 
-	for (auto it : m_worlds) {
-		auto meta = it.second->getMeta();
+	std::set<World *> worlds;
+	for (auto p : m_players) {
+		auto world = p.second->getWorld();
+		if (world)
+			worlds.insert(world);
+	}
+
+	for (auto world : worlds) {
+		auto meta = world->getMeta();
 		if (!meta.is_public)
 			continue;
 
 		out.write<u8>(true); // continue!
 
-		out.writeStr16(it.first); // world ID
-		blockpos_t size = it.second->getSize();
+		out.writeStr16(meta.id); // world ID
+		blockpos_t size = world->getSize();
 		out.write(size.X);
 		out.write(size.Y);
 		out.writeStr16(meta.title);
@@ -107,28 +116,20 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 	std::string world_id(pkt.readStr16());
 
 	// query database for existing world
-	auto it = m_worlds.find(world_id);
-	if (it == m_worlds.end()) {
-		World *world = new World();
+	auto world = getWorldNoLock(world_id);
+	if (!world) {
+		world = new World(world_id);
 		world->createDummy({30, 30});
-		auto ret = m_worlds.emplace(world_id, world);
-
-		// ?? we already checked for it
-		if (!ret.second)
-			delete world;
-
-		it = ret.first;
+		world->drop(); // kept alive by RefCnt
 	}
 
 	Packet out;
 	out.write(Packet2Client::WorldData);
 	out.write<u8>(1); // status indicator
 
-	World *world = it->second;
-
 	{
 		// Update player information
-		player->joinWorld(world);
+		player->setWorld(world.ptr());
 		player->state = RemotePlayerState::WorldPlay;
 	}
 
@@ -156,8 +157,8 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 	player->writePhysics(pkt_new);
 
 	for (auto it : m_players) {
-		RemotePlayer *p = dynamic_cast<RemotePlayer *>(it.second);
-		if (p->getWorld() != world)
+		auto *p = it.second;
+		if (p->getWorld() != world.ptr())
 			continue;
 
 		// Notify existing players about the new one
@@ -176,9 +177,6 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 void Server::pkt_Leave(peer_t peer_id, Packet &pkt)
 {
 	RemotePlayer *player = getPlayerNoLock(peer_id);
-	World *world = player->getWorld();
-	if (!world)
-		return; // ???
 
 	Packet out;
 	out.write(Packet2Client::Leave);
@@ -186,7 +184,7 @@ void Server::pkt_Leave(peer_t peer_id, Packet &pkt)
 
 	broadcastInWorld(player, 0, out);
 
-	player->leaveWorld();
+	player->setWorld(nullptr);
 	player->state = RemotePlayerState::Idle;
 }
 
@@ -196,10 +194,10 @@ void Server::pkt_Move(peer_t peer_id, Packet &pkt)
 	ASSERT_FORCED(player, "Player required!");
 
 	// TODO: Anticheat test here
-	core::vector2df
+	/*core::vector2df
 		pos = player->pos,
 		vel = player->vel,
-		acc = player->acc;
+		acc = player->acc;*/
 
 	player->readPhysics(pkt);
 
@@ -256,7 +254,7 @@ void Server::pkt_PlaceBlock(peer_t peer_id, Packet &pkt)
 {
 	RemotePlayer *player = getPlayerNoLock(peer_id);
 
-	World *world = player->getWorld();
+	auto world = player->getWorld();
 	SimpleLock lock(world->mutex);
 
 	while (true) {
@@ -310,7 +308,7 @@ void Server::broadcastInWorld(Player *player, int flags, Packet &pkt)
 	if (!player)
 		return;
 
-	World *world = player->getWorld();
+	auto world = player->getWorld();
 	if (!world)
 		return;
 

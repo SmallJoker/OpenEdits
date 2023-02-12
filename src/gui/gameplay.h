@@ -15,6 +15,9 @@ namespace irr {
 		class ISceneNode;
 		class ISceneManager;
 	}
+	namespace video {
+		class ITexture;
+	}
 }
 
 class SceneBlockSelector;
@@ -31,6 +34,7 @@ public:
 
 private:
 	blockpos_t getBlockFromPixel(int x, int y);
+	video::ITexture *generateTexture(const wchar_t *text, u32 color = 0xFFFFFFFF);
 
 	void updateWorld();
 	void updatePlayerlist();

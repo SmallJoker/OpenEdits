@@ -1,8 +1,8 @@
 #pragma once
 
 #include "core/macros.h"
+#include "core/types.h"
 #include <string>
-#include <vector2d.h>
 
 using namespace irr;
 
@@ -23,9 +23,8 @@ class Player {
 public:
 	virtual ~Player() {}
 
-	void joinWorld(World *world);
-	void leaveWorld();
-	inline World *getWorld() { return m_world; }
+	void setWorld(World *world);
+	World *getWorld();
 
 	void readPhysics(Packet &pkt);
 	void writePhysics(Packet &pkt);
@@ -51,14 +50,14 @@ public:
 
 protected:
 	Player(peer_t peer_id) :
-		peer_id(peer_id) {}
+		peer_id(peer_id), m_world(nullptr) {}
 
 	void stepInternal(float dtime);
 	bool stepCollisions(float dtime);
 	void collideWith(float dtime, int x, int y);
 
 	// Currently active world (nullptr if lobby)
-	World *m_world = nullptr;
+	RefCnt<World> m_world;
 
 	PlayerControls m_controls;
 	core::vector2d<s8> m_collision;

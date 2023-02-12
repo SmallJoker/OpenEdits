@@ -3,7 +3,7 @@
 
 void unittest_world()
 {
-	World w;
+	World w("foobar");
 	w.createEmpty({3,5});
 
 	Block b;
