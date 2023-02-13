@@ -122,7 +122,17 @@ bool Client::OnEvent(GameEvent &e)
 			}
 			return true;
 		case E::G2C_LEAVE:
-			m_con->disconnect(0);
+			if (!getWorld().ptr()) {
+				// Cannot leave
+				return false;
+			}
+
+			{
+				Packet pkt;
+				pkt.write(Packet2Server::Leave);
+				m_con->send(0, 0, pkt);
+			}
+
 			return true;
 		case E::G2C_CHAT:
 			if (e.text->empty())
@@ -135,7 +145,12 @@ bool Client::OnEvent(GameEvent &e)
 				m_con->send(0, 0, pkt);
 			}
 			return true;
-		case E::G2C_SET_BLOCK:
+		case E::G2C_LOBBY_REQUEST:
+			{
+				Packet pkt;
+				pkt.write(Packet2Server::GetLobby);
+				m_con->send(0, 0, pkt);
+			}
 			return true;
 	}
 	return false;

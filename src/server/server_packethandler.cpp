@@ -95,6 +95,12 @@ void Server::pkt_GetLobby(peer_t peer_id, Packet &)
 			worlds.insert(world);
 	}
 
+
+	World demo("dummytest");
+	demo.getMeta().owner = "foo mc bar";
+	demo.createEmpty(blockpos_t(30, 20));
+	worlds.insert(&demo);
+
 	for (auto world : worlds) {
 		auto meta = world->getMeta();
 		if (!meta.is_public)
@@ -109,6 +115,7 @@ void Server::pkt_GetLobby(peer_t peer_id, Packet &)
 		out.write(size.X);
 		out.write(size.Y);
 	}
+
 	out.write<u8>(false); // terminate
 
 	m_con->send(peer_id, 0, out);

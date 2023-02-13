@@ -16,10 +16,10 @@ struct GameEvent {
 	// GUI --> Client
 	enum G2C_Enum {
 		G2C_INVALID,
+		G2C_LOBBY_REQUEST,
 		G2C_JOIN,
 		G2C_LEAVE,
 		G2C_CHAT,
-		G2C_SET_BLOCK
 	} type_g2c = G2C_INVALID;
 
 	// Client --> GUI
@@ -27,6 +27,9 @@ struct GameEvent {
 		C2G_INVALID,
 		C2G_DIALOG,
 		C2G_DISCONNECT,
+		C2G_LOBBY_UPDATE,
+		C2G_JOIN,
+		C2G_LEAVE,
 		C2G_MAP_UPDATE,
 		C2G_PLAYER_JOIN,
 		C2G_PLAYER_LEAVE,

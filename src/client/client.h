@@ -43,6 +43,8 @@ public:
 	RefCnt<World> getWorld();
 	bool updateBlock(const BlockUpdate bu);
 
+	std::map<std::string, LobbyWorld> world_list;
+
 	// ----------- Utility functions -----------
 
 	LocalPlayer *getPlayerNoLock(peer_t peer_id);
@@ -68,8 +70,7 @@ private:
 	void pkt_PlaceBlock(Packet &pkt);
 	void pkt_Deprecated(Packet &pkt);
 
-	std::map<std::string, LobbyWorld> world_list;
-
+	// State used for packet filtering
 	ClientState m_state = ClientState::None;
 	uint16_t m_protocol_version = 0;
 

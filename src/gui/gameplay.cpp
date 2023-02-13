@@ -58,6 +58,8 @@ void SceneGameplay::draw()
 {
 	const auto wsize = m_gui->window_size;
 
+	m_ignore_keys = false;
+
 	{
 		SIZEW = wsize.Width * 0.7f;
 
@@ -135,12 +137,6 @@ void SceneGameplay::step(float dtime)
 		m_world_smgr->drawAll();
 
 		m_gui->driver->setViewPort(old_viewport);
-	}
-
-	if (m_gui->getClient()->getState() == ClientState::LobbyIdle) {
-		GameEvent e(GameEvent::G2C_JOIN);
-		e.text = new std::string("dummyworld");
-		m_gui->sendNewEvent(e);
 	}
 
 	do {

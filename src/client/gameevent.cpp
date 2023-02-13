@@ -39,6 +39,9 @@ bool GameEventHandler::sendNewEvent(GameEvent &e)
 		// List of no-ops
 		case C::C2G_INVALID:
 		case C::C2G_DISCONNECT:
+		case C::C2G_LOBBY_UPDATE:
+		case C::C2G_JOIN:
+		case C::C2G_LEAVE:
 		case C::C2G_MAP_UPDATE:
 		case C::C2G_PLAYER_JOIN:
 		case C::C2G_PLAYER_LEAVE:
@@ -51,11 +54,9 @@ bool GameEventHandler::sendNewEvent(GameEvent &e)
 		case G::G2C_CHAT:
 			delete e.text;
 			break;
-		case G::G2C_SET_BLOCK:
-			delete e.block;
-			break;
 		// List of no-ops
 		case G::G2C_INVALID:
+		case G::G2C_LOBBY_REQUEST:
 		case G::G2C_LEAVE:
 			break;
 	}

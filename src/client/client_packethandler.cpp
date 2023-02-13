@@ -57,16 +57,21 @@ void Client::pkt_Lobby(Packet &pkt)
 
 		world_list.emplace(world_id, world);
 	}
+
+	{
+		GameEvent e(GameEvent::C2G_LOBBY_UPDATE);
+		sendNewEvent(e);
+	}
 }
 
 void Client::pkt_WorldData(Packet &pkt)
 {
-	auto player = getMyPlayer();
 	bool is_ok = pkt.read<u8>();
-	if (!is_ok || !player) {
+	if (!is_ok) {
+		m_state = ClientState::LobbyIdle;
+
 		// back to lobby
-		GameEvent e(GameEvent::C2G_PLAYER_LEAVE);
-		e.player = nullptr;
+		GameEvent e(GameEvent::C2G_LEAVE);
 		sendNewEvent(e);
 		return;
 	}
@@ -92,13 +97,20 @@ void Client::pkt_WorldData(Packet &pkt)
 		fprintf(stderr, "Client: ERROR while reading world data!\n");
 	}
 
+	SimpleLock lock(m_players_lock);
+	Player *player = getPlayerNoLock(m_my_peer_id);
+	if (!player) {
+		auto ret = m_players.emplace(m_my_peer_id, new LocalPlayer(m_my_peer_id));
+		player = ret.first->second;
+	}
+
 	// World kept alive by at least one player
 	player->setWorld(world.ptr());
 
 	{
 		m_state = ClientState::WorldPlay;
 
-		GameEvent e(GameEvent::C2G_MAP_UPDATE);
+		GameEvent e(GameEvent::C2G_JOIN);
 		sendNewEvent(e);
 	}
 }
@@ -151,6 +163,9 @@ void Client::pkt_Leave(Packet &pkt)
 		m_players.clear();
 
 		m_state = ClientState::LobbyIdle;
+
+		GameEvent e(GameEvent::C2G_LEAVE);
+		sendNewEvent(e);
 	}
 
 }

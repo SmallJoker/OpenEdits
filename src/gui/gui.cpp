@@ -188,10 +188,20 @@ bool Gui::OnEvent(GameEvent &e)
 	if (!m_initialized)
 		return false;
 
-	if (e.type_c2g == GameEvent::C2G_DISCONNECT) {
-		disconnect();
-		return true;
+	using E = GameEvent::C2G_Enum;
+	switch (e.type_c2g) {
+		case E::C2G_DISCONNECT:
+			disconnect();
+			return true;
+		case E::C2G_JOIN:
+			setNextScene(SceneHandlerType::Gameplay);
+			return true;
+		case E::C2G_LEAVE:
+			setNextScene(SceneHandlerType::Lobby);
+			return true;
+		default: break;
 	}
+
 	return getHandler(m_scenetype)->OnEvent(e);
 }
 
@@ -242,6 +252,9 @@ void Gui::connect(SceneConnect *sc)
 	if (m_client->getState() == ClientState::LobbyIdle) {
 		m_client->setEventHandler(this);
 		setNextScene(SceneHandlerType::Lobby);
+
+		GameEvent e(GameEvent::G2C_LOBBY_REQUEST);
+		sendNewEvent(e);
 	} else {
 		puts("Connection timed out: Server is not reachable.");
 		m_pending_disconnect = true;
@@ -257,12 +270,15 @@ void Gui::disconnect()
 
 void Gui::joinWorld(SceneLobby *sc)
 {
-	setNextScene(SceneHandlerType::Gameplay);
+	GameEvent e(GameEvent::G2C_JOIN);
+	e.text = new std::string(sc->world_id);
+	sendNewEvent(e);
 }
 
 void Gui::leaveWorld()
 {
-	setNextScene(SceneHandlerType::Lobby);
+	GameEvent e(GameEvent::G2C_LEAVE);
+	sendNewEvent(e);
 }
 
 
