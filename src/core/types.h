@@ -2,7 +2,7 @@
 // Types related to Irrlicht
 
 #include <IReferenceCounted.h>
-#include <vector3d.h>
+#include <vector2d.h>
 
 using namespace irr;
 
@@ -17,18 +17,23 @@ namespace irr {
 	}
 }
 
-typedef core::vector3d<u16> blockpos_t;
+typedef core::vector2d<u16> blockpos_t;
 typedef uint16_t bid_t;
 constexpr bid_t BLOCKID_INVALID = UINT16_MAX;
 
 struct Block {
+	static constexpr bid_t ID_INVALID { UINT16_MAX };
+
 	bool operator ==(const Block &o)
 	{
-		return id == o.id && param1 == o.param1;
+		return id == o.id && bg == o.bg && param1 == o.param1;
 	}
 
-	bid_t id = 0;
+	bid_t id = 0; // Foreground block ID
+	bid_t bg = 0; // Background block ID
+
 	/*
+	Parameter for the foreground blocks
 	Portals
 		Represents the configuration ID
 		Separate list provides:

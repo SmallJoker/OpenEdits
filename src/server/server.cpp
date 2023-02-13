@@ -66,17 +66,15 @@ void Server::step(float dtime)
 			// Distribute valid changes to players
 
 			out.write<u8>(true); // begin
-			out.write(it->second.peer_id);
+			out.write(it->peer_id);
 			// blockpos_t
-			out.write(it->first.X);
-			out.write(it->first.Y);
-			out.write(it->first.Z);
+			out.write(it->pos.X);
+			out.write(it->pos.Y);
 			// Block
-			out.write(it->second.id);
-			out.write(it->second.param1);
+			out.write(it->id);
 
 			DEBUGLOG("Server: sending block x=%d,y=%d,id=%d\n",
-				it->first.X, it->first.Y, it->second.id);
+				it->pos.X, it->pos.Y, it->id);
 
 			it = queue.erase(it);
 

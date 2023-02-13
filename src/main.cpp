@@ -85,6 +85,14 @@ static void register_packs()
 	g_blockmanager->getProps(3)->step = step_arrow_right;
 	g_blockmanager->getProps(4)->step = step_arrow_none;
 	g_blockmanager->getProps(10)->onCollide = onCollide_b10_bouncy; // blue
+
+	// Backgrounds
+	{
+		BlockPack *pack = new BlockPack("simple");
+		pack->default_type = BlockDrawType::Background;
+		pack->block_ids = { 500, 501, 502, 503, 504, 505, 506 };
+		g_blockmanager->registerPack(pack);
+	}
 }
 
 int main(int argc, char *argv[])

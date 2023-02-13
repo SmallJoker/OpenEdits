@@ -36,7 +36,6 @@ World::~World()
 
 void World::createEmpty(blockpos_t size)
 {
-	size.Z = 2;
 	if (size.X == 0 || size.Y == 0)
 		throw std::length_error("Invalid size");
 	if (m_data)
@@ -44,7 +43,7 @@ void World::createEmpty(blockpos_t size)
 
 	m_size = size;
 
-	const size_t length = m_size.X * m_size.Y * 2;
+	const size_t length = m_size.X * m_size.Y;
 	m_data = new Block[length]; // *2
 
 	// Prevents the warning -Wclass-memaccess
@@ -57,13 +56,13 @@ void World::createDummy(blockpos_t size)
 
 	for (u16 y = m_size.Y / 2; y < (u16)m_size.Y; ++y)
 	for (u16 x = 0; x < (u16)m_size.X; ++x) {
-		getBlockRefNoCheck({x, y, 0}).id = 9;
+		getBlockRefNoCheck({x, y}).id = 9;
 	}
 }
 
 bool World::getBlock(blockpos_t pos, Block *block) const
 {
-	if (pos.X >= m_size.X || pos.Y >= m_size.Y || pos.Z > 1)
+	if (pos.X >= m_size.X || pos.Y >= m_size.Y)
 		return false;
 
 	if (block)
@@ -72,17 +71,9 @@ bool World::getBlock(blockpos_t pos, Block *block) const
 	return true;
 }
 
-bool World::setBlock(blockpos_t pos, Block block)
+bool World::setBlock(blockpos_t pos, const Block block)
 {
-	if (pos.X >= m_size.X || pos.Y >= m_size.Y || pos.Z > 1)
-		return false;
-
-	auto props = g_blockmanager->getProps(block.id);
-	if (!props)
-		return false;
-
-	// backgrounds only on layer 1 and foreground on layer 0
-	if ((props->type == BlockDrawType::Background) != pos.Z)
+	if (pos.X >= m_size.X || pos.Y >= m_size.Y)
 		return false;
 
 	Block &ref = getBlockRefNoCheck(pos);
@@ -90,5 +81,30 @@ bool World::setBlock(blockpos_t pos, Block block)
 		return false;
 
 	ref = block;
+	return true;
+}
+
+bool World::updateBlock(const BlockUpdate bu)
+{
+	if (bu.pos.X >= m_size.X || bu.pos.Y >= m_size.Y)
+		return false;
+
+	bid_t new_id = bu.id & ~BlockUpdate::BG_FLAG;
+	auto props = g_blockmanager->getProps(new_id);
+	if (!props)
+		return false;
+
+	// Special case: Always allow ID 0, but not others
+	bool is_background = (bu.id & BlockUpdate::BG_FLAG) > 0;
+	if (new_id > 0 && (props->type == BlockDrawType::Background) != is_background)
+		return false;
+
+	Block &ref = getBlockRefNoCheck(bu.pos);
+	bid_t &id_ref = is_background ? ref.bg : ref.id;
+
+	if (id_ref == new_id)
+		return false;
+
+	id_ref = new_id;
 	return true;
 }

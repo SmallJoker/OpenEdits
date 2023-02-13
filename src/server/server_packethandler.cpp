@@ -123,7 +123,7 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 	auto world = getWorldNoLock(world_id);
 	if (!world) {
 		world = new World(world_id);
-		world->createDummy({30, 30, 0});
+		world->createDummy({30, 30});
 		world->getMeta().owner = player->name;
 		world->drop(); // kept alive by RefCnt
 	}
@@ -143,12 +143,12 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 	out.write(size.X); // dimensions
 	out.write(size.Y);
 
-	for (size_t z = 0; z < 2; ++z)
 	for (size_t y = 0; y < size.Y; ++y)
 	for (size_t x = 0; x < size.X; ++x) {
 		Block b;
-		world->getBlock(blockpos_t(x, y, z), &b);
+		world->getBlock(blockpos_t(x, y), &b);
 		out.write(b.id);
+		out.write(b.bg);
 	}
 
 	out.write<u8>(0xF8); // validation
@@ -269,23 +269,20 @@ void Server::pkt_PlaceBlock(peer_t peer_id, Packet &pkt)
 		if (!is_ok)
 			break;
 
-		blockpos_t pos;
-		pkt.read(pos.X);
-		pkt.read(pos.Y);
-		pkt.read(pos.Z);
-		BlockUpdate b;
-		pkt.read(b.id);
-		pkt.read(b.param1);
-		b.peer_id = peer_id;
+		BlockUpdate bu;
+		bu.peer_id = peer_id;
+		pkt.read(bu.pos.X);
+		pkt.read(bu.pos.Y);
+		pkt.read(bu.id);
 
-		bool ok = world->setBlock(pos, b);
+		bool ok = world->updateBlock(bu);
 		if (!ok) {
 			// out of range?
 			continue;
 		}
 
 		// Put into queue to keep the world lock as short as possible
-		world->proc_queue.emplace(pos, b);
+		world->proc_queue.emplace(bu);
 	}
 	lock.unlock();
 }

@@ -68,15 +68,13 @@ void Client::step(float dtime)
 
 			out.write<u8>(true); // begin
 			// blockpos_t
-			out.write(it->first.X);
-			out.write(it->first.Y);
-			out.write(it->first.Z);
+			out.write(it->pos.X);
+			out.write(it->pos.Y);
 			// Block
-			out.write(it->second.id);
-			out.write(it->second.param1);
+			out.write(it->id);
 
 			DEBUGLOG("Client: sending block x=%d,y=%d,id=%d\n",
-				it->first.X, it->first.Y, it->second.id);
+				it->pos.X, it->pos.Y, it->id);
 
 			it = queue.erase(it);
 
@@ -173,7 +171,7 @@ RefCnt<World> Client::getWorld()
 }
 
 
-bool Client::setBlock(blockpos_t pos, Block block)
+bool Client::updateBlock(const BlockUpdate bu)
 {
 	auto world = getWorld();
 	if (!world)
@@ -181,15 +179,11 @@ bool Client::setBlock(blockpos_t pos, Block block)
 
 	SimpleLock lock(world->mutex);
 
-	bool is_ok = world->setBlock(pos, block);
+	bool is_ok = world->isValidPosition(bu.pos.X, bu.pos.Y);
 	if (!is_ok)
 		return false;
 
-	BlockUpdate bu;
-	bu.id = block.id;
-	bu.param1 = block.param1;
-
-	world->proc_queue.emplace(pos, bu);
+	world->proc_queue.emplace(bu);
 	return true;
 }
 

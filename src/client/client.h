@@ -41,7 +41,7 @@ public:
 	PtrLock<LocalPlayer> getMyPlayer();
 	PtrLock<decltype(m_players)> getPlayerList();
 	RefCnt<World> getWorld();
-	bool setBlock(blockpos_t pos, Block block);
+	bool updateBlock(const BlockUpdate bu);
 
 	// ----------- Utility functions -----------
 

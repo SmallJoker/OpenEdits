@@ -146,7 +146,7 @@ void Player::stepInternal(float dtime)
 	}
 
 	// Evaluate center position
-	blockpos_t bp(pos.X + 0.5f, pos.Y + 0.5f, 0);
+	blockpos_t bp(pos.X + 0.5f, pos.Y + 0.5f);
 
 	if (is_physical) {
 		if (!stepCollisions(dtime))
@@ -206,7 +206,7 @@ void Player::stepInternal(float dtime)
 
 bool Player::stepCollisions(float dtime)
 {
-	blockpos_t bp(pos.X + 0.5f, pos.Y + 0.5f, 0);
+	blockpos_t bp(pos.X + 0.5f, pos.Y + 0.5f);
 	Block block;
 	bool ok = m_world->getBlock(bp, &block);
 	if (!ok) {
@@ -249,7 +249,7 @@ bool Player::stepCollisions(float dtime)
 void Player::collideWith(float dtime, int x, int y)
 {
 	Block b;
-	bool ok = m_world->getBlock(blockpos_t(x, y, 0), &b);
+	bool ok = m_world->getBlock(blockpos_t(x, y), &b);
 	if (!ok)
 		return;
 

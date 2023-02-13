@@ -37,6 +37,7 @@ private:
 	video::ITexture *generateTexture(const wchar_t *text, u32 color = 0xFFFFFFFF);
 
 	void updateWorld();
+	void assignBlockTexture(const BlockProperties *props, scene::ISceneNode *node);
 	bool m_dirty_worldmesh = false;
 
 	void updatePlayerlist();
@@ -55,7 +56,6 @@ private:
 	// Statis indicators for mouse inputs
 	bool m_may_drag_draw = true;   // permission: free drawing
 	bid_t m_drag_draw_block = BLOCKID_INVALID; // drawing mode
-	u8    m_drag_draw_layer = 0;
 	bool m_erase_mode = false;     // removes the pointed block : shift down
 
 	bool m_ignore_keys = false;    // ignore key inputs e.g. when typing

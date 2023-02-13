@@ -6,6 +6,14 @@
 
 static int SIZEW = 650; // world render size
 
+static float ZINDEX_SMILEY = 0;
+static float ZINDEX_LOOKUP[(int)BlockDrawType::Invalid] = {
+	0.1, // Solid
+	0.1, // Action
+	-0.1, // Decoration
+	0.2, // Background
+};
+
 enum ElementId : int {
 	ID_BoxChat = 101,
 	ID_BtnBack = 110,
@@ -117,9 +125,8 @@ void SceneGameplay::step(float dtime)
 	updatePlayerPositions(dtime);
 	m_blockselector->step(dtime);
 
-	if (1) {
+	{
 		// Actually draw the world contents
-		// Disabled: conflicts with the collision manager
 
 		auto old_viewport = m_gui->driver->getViewPort();
 		m_gui->driver->setViewPort(m_draw_area);
@@ -134,15 +141,6 @@ void SceneGameplay::step(float dtime)
 		GameEvent e(GameEvent::G2C_JOIN);
 		e.text = new std::string("dummyworld");
 		m_gui->sendNewEvent(e);
-	}
-
-	if (0) {
-		auto player = m_gui->getClient()->getMyPlayer();
-		auto controls = player->getControls();
-		auto pos = m_camera->getPosition();
-		pos.X += controls.dir.X * 500 * dtime;
-		pos.Y += controls.dir.Y * 500 * dtime;
-		setCamera(pos);
 	}
 
 	do {
@@ -219,35 +217,34 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 					bool guess_layer = false;
 					if (l_pressed) {
 						m_drag_draw_block = m_blockselector->getSelectedBid();
-						if (m_drag_draw_block == 0) {
+						auto props = g_blockmanager->getProps(m_drag_draw_block);
+						if (m_drag_draw_block == 0)
 							guess_layer = true;
-						} else {
-							auto props = g_blockmanager->getProps(m_drag_draw_block);
-							if (props)
-								m_drag_draw_layer = (props->type == BlockDrawType::Background);
-						}
+						else if (props)
+							m_drag_draw_block |= (BlockUpdate::BG_FLAG * (props->type == BlockDrawType::Background));
 					}
 
 					if (r_pressed || guess_layer) {
 						// Update block ID on click
-						bp.Z = 0; // test foreground
 						Block bt;
 						if (!world->getBlock(bp, &bt))
 							break;
 
-						m_drag_draw_block = 0;
-						// Pick background if there is no block
-						m_drag_draw_layer = (bt.id == 0);
+						// Pick background if there is no foreground
+						m_drag_draw_block = 0 | (BlockUpdate::BG_FLAG * (bt.id == 0));
 					}
 
-					Block b;
-					b.id = m_erase_mode ? 0 : m_drag_draw_block;
-					bp.Z = m_drag_draw_layer;
+					BlockUpdate bu;
+					bu.pos = bp;
+					if (m_erase_mode)
+						bu.id = 0 | (m_drag_draw_block & BlockUpdate::BG_FLAG);
+					else
+						bu.id = m_drag_draw_block;
 
 					if (!m_may_drag_draw)
 						m_drag_draw_block = BLOCKID_INVALID;
 
-					m_gui->getClient()->setBlock(bp, b);
+					m_gui->getClient()->updateBlock(bu);
 					return true;
 				}
 				break;
@@ -397,12 +394,11 @@ bool SceneGameplay::getBlockFromPixel(int x, int y, blockpos_t &bp)
 	//printf("pointed: %f, %f, %f\n", xy_point.X, xy_point.Y, xy_point.Z);
 
 	auto world = m_gui->getClient()->getWorld();
-	if (!world->isValidPosition(xy_point.X, xy_point.Y, 0))
+	if (!world->isValidPosition(xy_point.X, xy_point.Y))
 		return false;
 
 	bp.X = xy_point.X;
 	bp.Y = xy_point.Y;
-	bp.Z = 0;
 	return true;
 }
 
@@ -440,29 +436,69 @@ void SceneGameplay::updateWorld()
 	for (int x = 0; x < size.X; x++)
 	for (int y = 0; y < size.Y; y++) {
 		Block b;
-		if (!world->getBlock(blockpos_t(x, y, 0), &b))
+		if (!world->getBlock(blockpos_t(x, y), &b))
 			continue;
 
-		auto props = g_blockmanager->getProps(b.id);
-		if (!props)
-			continue;
+		do {
+			if (b.id == 0)
+				break;
 
-		// Note: Position is relative to its parent
-		auto bb = smgr->addBillboardSceneNode(m_stage,
-			core::dimension2d<f32>(10, 10),
-			core::vector3df(x * 10, -y * 10, 1)
-		);
-		bb->setMaterialFlag(video::EMF_LIGHTING, false);
-		bb->setMaterialFlag(video::EMF_ZWRITE_ENABLE, true);
-		bb->setMaterialTexture(0, props->texture);
+			const BlockProperties *props = g_blockmanager->getProps(b.id);
+			if (!props)
+				break;
 
-		// Set texture
-		auto &mat = bb->getMaterial(0).getTextureMatrix(0);
+			auto z = ZINDEX_LOOKUP[(int)props->type];
 
-		float tiles = props->pack->block_ids.size();
-		mat.setTextureTranslate(props->texture_offset / tiles, 0);
-		mat.setTextureScale(1.0f / tiles, 1);
+			// Note: Position is relative to its parent
+			auto bb = smgr->addBillboardSceneNode(m_stage,
+				core::dimension2d<f32>(10, 10),
+				core::vector3df(x * 10, -y * 10, z)
+			);
+			assignBlockTexture(props, bb);
+
+		} while (false);
+
+
+		do {
+			if (b.bg == 0)
+				break;
+
+			const BlockProperties *props = g_blockmanager->getProps(b.bg);
+			if (!props)
+				break;
+			auto z = ZINDEX_LOOKUP[(int)props->type];
+
+			// Note: Position is relative to its parent
+			auto bb = smgr->addBillboardSceneNode(m_stage,
+				core::dimension2d<f32>(10, 10),
+				core::vector3df(x * 10, -y * 10, z)
+			);
+			assignBlockTexture(props, bb);
+
+		} while (false);
 	}
+}
+
+void SceneGameplay::assignBlockTexture(const BlockProperties *props, scene::ISceneNode *node)
+{
+	node->setMaterialFlag(video::EMF_LIGHTING, false);
+	node->setMaterialFlag(video::EMF_ZWRITE_ENABLE, true);
+	// Problem: Filtering bleeds into adjacent textures
+	node->setMaterialFlag(video::EMF_BILINEAR_FILTER, false);
+	if (props->type == BlockDrawType::Action)
+		node->setMaterialType(video::EMT_TRANSPARENT_ALPHA_CHANNEL_REF);
+	else if (props->type == BlockDrawType::Decoration)
+		node->setMaterialType(video::EMT_TRANSPARENT_ALPHA_CHANNEL);
+
+	node->setMaterialTexture(0, props->texture);
+
+	// Set texture
+	auto &mat = node->getMaterial(0).getTextureMatrix(0);
+
+	float tiles = props->pack->block_ids.size();
+	mat.setTextureTranslate(props->texture_offset / tiles, 0);
+	mat.setTextureScale(1.0f / tiles, 1);
+
 }
 
 void SceneGameplay::updatePlayerlist()
@@ -517,6 +553,11 @@ void SceneGameplay::updatePlayerPositions(float dtime)
 {
 	auto smgr = m_world_smgr;
 	auto texture = m_gui->driver->getTexture("assets/textures/smileys.png");
+	int texture_tiles = 4; // TODO: add a better check
+	if (0) {
+		auto dim = texture->getOriginalSize();
+		texture_tiles = dim.Width / dim.Height;
+	}
 
 	auto cam_pos = m_camera_pos;
 	cam_pos.Z = 0;
@@ -536,7 +577,7 @@ void SceneGameplay::updatePlayerPositions(float dtime)
 	for (auto it : *players.ptr()) {
 		auto player = dynamic_cast<LocalPlayer *>(it.second);
 
-		core::vector3df nf_pos(player->pos.X * 10, player->pos.Y * -10, 0.0f);
+		core::vector3df nf_pos(player->pos.X * 10, player->pos.Y * -10, ZINDEX_SMILEY);
 		if (cam_pos.getDistanceFromSQ(nf_pos) > 500 * 500)
 			continue; // Do not draw if too far away
 
@@ -559,14 +600,14 @@ void SceneGameplay::updatePlayerPositions(float dtime)
 			);
 			nf->setMaterialFlag(video::EMF_LIGHTING, false);
 			nf->setMaterialFlag(video::EMF_ZWRITE_ENABLE, true);
+			nf->setMaterialFlag(video::EMF_BILINEAR_FILTER, false);
 			nf->setMaterialType(video::EMT_TRANSPARENT_ALPHA_CHANNEL_REF);
 			nf->setMaterialTexture(0, texture);
 
 			// Set texture
 			auto &mat = nf->getMaterial(0).getTextureMatrix(0);
-			int tiles = 4;
-			mat.setTextureTranslate((it.first % tiles) / (float)tiles, 0);
-			mat.setTextureScale(1.0f / tiles, 1);
+			mat.setTextureTranslate((it.first % texture_tiles) / (float)texture_tiles, 0);
+			mat.setTextureScale(1.0f / texture_tiles, 1);
 
 
 			// Add nametag
