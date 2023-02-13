@@ -19,9 +19,6 @@ void WorldMeta::writeCommon(Packet &pkt)
 	pkt.write<u32>(plays);
 }
 
-
-template class RefCnt<World>;
-
 World::World(const std::string &id) :
 	m_meta({ .id = id })
 {

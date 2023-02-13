@@ -37,21 +37,28 @@ private:
 	video::ITexture *generateTexture(const wchar_t *text, u32 color = 0xFFFFFFFF);
 
 	void updateWorld();
+	bool m_dirty_worldmesh = false;
+
 	void updatePlayerlist();
-	void updatePlayerPositions();
+	bool m_dirty_playerlist = false;
+
+	void updatePlayerPositions(float dtime);
+	float m_nametag_show_timer = 0;
+
 	void setupCamera();
 	void setCamera(core::vector3df pos);
 
 	SceneBlockSelector *m_blockselector = nullptr;
 
-	core::recti m_draw_area;
-	bool m_drag_draw = true;
-	bool m_drag_draw_down = false;
-	bool m_erase_mode = false;
+	core::recti m_draw_area; // rendering area
 
-	bool m_need_mesh_update = false;
-	bool m_ignore_keys = false;
-	core::vector3df m_camera_pos;
+	// Statis indicators for mouse inputs
+	bool m_drag_draw = true;       // permission: free drawing
+	bool m_drag_draw_down = false; // whether the mouse is dragged for drawing
+	bool m_erase_mode = false;     // removes the pointed block : shift down
+
+	bool m_ignore_keys = false;    // ignore key inputs e.g. when typing
+	core::vector3df m_camera_pos;  // setter camera position (smoothed)
 	scene::ISceneManager *m_world_smgr = nullptr;
 
 	scene::ISceneNode *m_stage = nullptr;
@@ -59,8 +66,6 @@ private:
 
 	gui::IGUIEditBox *m_chathistory = nullptr;
 	core::stringw m_chathistory_text;
-
-	bool m_need_playerlist_update = false;
 
 	scene::ISceneNode *m_players = nullptr;
 };

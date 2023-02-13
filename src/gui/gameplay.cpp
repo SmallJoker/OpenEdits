@@ -15,6 +15,7 @@ enum ElementId : int {
 
 SceneGameplay::SceneGameplay()
 {
+	LocalPlayer::gui_smiley_counter = ID_PlayerOffset;
 }
 
 SceneGameplay::~SceneGameplay()
@@ -28,7 +29,7 @@ SceneGameplay::~SceneGameplay()
 		delete m_blockselector;
 }
 
-
+#if 0
 static std::string dump_val(const core::vector2df vec)
 {
 	return "x=" + std::to_string(vec.X)
@@ -41,6 +42,7 @@ static std::string dump_val(const core::vector3df vec)
 		+ ", y=" + std::to_string(vec.Y)
 		+ ", z=" + std::to_string(vec.Z);
 }
+#endif
 
 // -------------- Public members -------------
 
@@ -95,7 +97,7 @@ void SceneGameplay::draw()
 
 	setupCamera();
 
-	m_need_playerlist_update = true;
+	m_dirty_playerlist = true;
 	updatePlayerlist();
 
 	if (!m_blockselector) {
@@ -112,7 +114,7 @@ void SceneGameplay::step(float dtime)
 {
 	updateWorld();
 	updatePlayerlist();
-	updatePlayerPositions();
+	updatePlayerPositions(dtime);
 	m_blockselector->step(dtime);
 
 	if (1) {
@@ -313,13 +315,13 @@ bool SceneGameplay::OnEvent(GameEvent &e)
 
 	switch (e.type_c2g) {
 		case E::C2G_MAP_UPDATE:
-			m_need_mesh_update = true;
+			m_dirty_worldmesh = true;
 			break;
 		case E::C2G_PLAYER_JOIN:
-			m_need_playerlist_update = true;
+			m_dirty_playerlist = true;
 			break;
 		case E::C2G_PLAYER_LEAVE:
-			m_need_playerlist_update = true;
+			m_dirty_playerlist = true;
 			break;
 		case E::C2G_PLAYER_CHAT:
 			{
@@ -399,12 +401,11 @@ video::ITexture *SceneGameplay::generateTexture(const wchar_t *text, u32 color)
 void SceneGameplay::updateWorld()
 {
 	auto world = m_gui->getClient()->getWorld();
-	if (!world || !m_need_mesh_update)
+	if (!world || !m_dirty_worldmesh)
 		return;
+	m_dirty_worldmesh = false;
 
 	SimpleLock lock(world->mutex);
-
-	m_need_mesh_update = false;
 
 	auto smgr = m_gui->scenemgr;
 
@@ -442,10 +443,10 @@ void SceneGameplay::updateWorld()
 void SceneGameplay::updatePlayerlist()
 {
 	auto world = m_gui->getClient()->getWorld();
-	if (!m_need_playerlist_update || !world)
+	if (!m_dirty_playerlist || !world)
 		return;
 
-	m_need_playerlist_update = false;
+	m_dirty_playerlist = false;
 
 	auto root = m_gui->gui->getRootGUIElement();
 	auto playerlist = root->getElementFromId(ID_ListPlayers);
@@ -487,41 +488,57 @@ void SceneGameplay::updatePlayerlist()
 	}
 }
 
-void SceneGameplay::updatePlayerPositions()
+void SceneGameplay::updatePlayerPositions(float dtime)
 {
 	auto smgr = m_world_smgr;
 	auto texture = m_gui->driver->getTexture("assets/textures/smileys.png");
 
+	auto cam_pos = m_camera_pos;
+	cam_pos.Z = 0;
+	do {
+		auto me = m_gui->getClient()->getMyPlayer();
+		if (!me)
+			break;
+
+		if (me->vel.getLengthSQ() < 10 * 10)
+			m_nametag_show_timer += dtime;
+		else
+			m_nametag_show_timer = 0;
+	} while (0);
+
 	std::list<scene::ISceneNode *> children = m_players->getChildren();
 	auto players = m_gui->getClient()->getPlayerList();
 	for (auto it : *players.ptr()) {
-		auto pos = it.second->pos;
-		core::vector3df bb_pos(pos.X * 10, -pos.Y * 10, 0.0f);
+		auto player = dynamic_cast<LocalPlayer *>(it.second);
 
-		s32 bb_id = it.first + ID_PlayerOffset;
-		scene::ISceneNode *bb = nullptr;
+		core::vector3df nf_pos(player->pos.X * 10, player->pos.Y * -10, 0.0f);
+		if (cam_pos.getDistanceFromSQ(nf_pos) > 500 * 500)
+			continue; // Do not draw if too far away
+
+		s32 nf_id = player->getGUISmileyId();
+		scene::ISceneNode *nf = nullptr;
 		for (auto &c : children) {
-			if (c && c->getID() == bb_id) {
-				bb = c;
+			if (c && c->getID() == nf_id) {
+				nf = c;
 				c = nullptr; // mark as handled
 			}
 		}
 
-		if (bb) {
-			bb->setPosition(bb_pos);
+		if (nf) {
+			nf->setPosition(nf_pos);
 		} else {
-			bb = smgr->addBillboardSceneNode(m_players,
+			nf = smgr->addBillboardSceneNode(m_players,
 				core::dimension2d<f32>(10, 10),
-				bb_pos,
-				bb_id
+				nf_pos,
+				nf_id
 			);
-			bb->setMaterialFlag(video::EMF_LIGHTING, false);
-			bb->setMaterialFlag(video::EMF_ZWRITE_ENABLE, true);
-			bb->setMaterialType(video::EMT_TRANSPARENT_ALPHA_CHANNEL_REF);
-			bb->setMaterialTexture(0, texture);
+			nf->setMaterialFlag(video::EMF_LIGHTING, false);
+			nf->setMaterialFlag(video::EMF_ZWRITE_ENABLE, true);
+			nf->setMaterialType(video::EMT_TRANSPARENT_ALPHA_CHANNEL_REF);
+			nf->setMaterialTexture(0, texture);
 
 			// Set texture
-			auto &mat = bb->getMaterial(0).getTextureMatrix(0);
+			auto &mat = nf->getMaterial(0).getTextureMatrix(0);
 			int tiles = 4;
 			mat.setTextureTranslate((it.first % tiles) / (float)tiles, 0);
 			mat.setTextureScale(1.0f / tiles, 1);
@@ -532,14 +549,24 @@ void SceneGameplay::updatePlayerPositions()
 			core::multibyteToWString(namew, it.second->name.c_str());
 			auto nt_texture = generateTexture(namew.c_str());
 			auto nt_size = nt_texture->getOriginalSize();
-			auto nt = smgr->addBillboardSceneNode(bb,
-				core::dimension2d<f32>(nt_size.Width * 0.4, nt_size.Height * 0.4),
-				core::vector3df(0, -10, 0)
+			auto nt = smgr->addBillboardSceneNode(nf,
+				core::dimension2d<f32>(nt_size.Width * 0.4f, nt_size.Height * 0.4f),
+				core::vector3df(0, -10, 0),
+				nf_id + 1
 			);
 			nt->setMaterialFlag(video::EMF_LIGHTING, false);
 			nt->setMaterialFlag(video::EMF_ZWRITE_ENABLE, true);
 			//nt->setMaterialType(video::EMT_TRANSPARENT_ALPHA_CHANNEL_REF);
 			nt->setMaterialTexture(0, nt_texture);
+		}
+
+		for (auto c : nf->getChildren()) {
+			auto id = c->getID();
+			if (id == nf_id + 1) {
+				// Nametag
+				c->setVisible(m_nametag_show_timer > 1.0f);
+			}
+			// id + 2: effect
 		}
 	}
 
@@ -595,7 +622,7 @@ void SceneGameplay::setupCamera()
 	m_camera_pos.Z = -150.0f;
 	setCamera(m_camera_pos);
 
-	m_need_mesh_update = true;
+	m_dirty_worldmesh = true;
 }
 
 

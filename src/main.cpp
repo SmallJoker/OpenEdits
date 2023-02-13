@@ -21,26 +21,26 @@ static void exit_cleanup()
 
 
 
-void step_arrow_left(float dtime, Player &c, blockpos_t pos)
+static void step_arrow_left(float dtime, Player &c, blockpos_t pos)
 {
 	c.acc.X -= Player::GRAVITY_NORMAL;
 }
 
-void step_arrow_up(float dtime, Player &c, blockpos_t pos)
+static void step_arrow_up(float dtime, Player &c, blockpos_t pos)
 {
 	c.acc.Y -= Player::GRAVITY_NORMAL;
 }
 
-void step_arrow_right(float dtime, Player &c, blockpos_t pos)
+static void step_arrow_right(float dtime, Player &c, blockpos_t pos)
 {
 	c.acc.X += Player::GRAVITY_NORMAL;
 }
 
-void step_arrow_none(float dtime, Player &c, blockpos_t pos)
+static void step_arrow_none(float dtime, Player &c, blockpos_t pos)
 {
 }
 
-bool onCollide_b10_bouncy(float dtime, Player &c, const core::vector2d<s8> dir)
+static bool onCollide_b10_bouncy(float dtime, Player &c, const core::vector2d<s8> dir)
 {
 	if (dir.X) {
 		c.vel.X *= -0.4f;

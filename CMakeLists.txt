@@ -33,7 +33,7 @@ endif()
 if (NOT MSVC)
 	# -fsanitize=address,undefined
 	# -O3 is default for release
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -g")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -gdwarf-4")
 
 	# Debugging symbols
 	set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -O1")
