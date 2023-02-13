@@ -91,6 +91,8 @@ void Player::step(float dtime)
 		return;
 
 	m_collision = core::vector2d<s8>(0, 0);
+	if (m_jump_cooldown > 0)
+		m_jump_cooldown -= dtime;
 
 	// Maximal travel distance per iteration
 	while (true) {
@@ -173,11 +175,13 @@ void Player::stepInternal(float dtime)
 	}
 
 	// Controls handling
-	if (m_controls.jump) {
+	if (m_controls.jump && m_jump_cooldown <= 0) {
 		if (get_sign(m_collision.X * acc.X) == 1 && std::fabs(vel.X) < 3.0f) {
 			vel.X += m_collision.X * -Player::JUMP_SPEED;
+			m_jump_cooldown = 0.3f;
 		} else if (get_sign(m_collision.Y * acc.Y) == 1 && std::fabs(vel.Y) < 3.0f) {
 			vel.Y += m_collision.Y * -Player::JUMP_SPEED;
+			m_jump_cooldown = 0.3f;
 		}
 	}
 

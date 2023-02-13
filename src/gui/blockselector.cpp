@@ -70,10 +70,10 @@ bool SceneBlockSelector::OnEvent(const SEvent &e)
 			break;
 			case EMIE_LMOUSE_LEFT_UP:
 			{
-				if (m_dragged_bid == (bid_t)-1)
+				if (m_dragged_bid == Block::ID_INVALID)
 					break;
 				bid_t dragged_bid = m_dragged_bid;
-				m_dragged_bid = -1;
+				m_dragged_bid = Block::ID_INVALID;
 
 				// Copy to hotbar
 				core::vector2di pos(e.MouseInput.X, e.MouseInput.Y);

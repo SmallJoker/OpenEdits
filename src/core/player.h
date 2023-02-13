@@ -62,4 +62,6 @@ protected:
 
 	PlayerControls m_controls;
 	core::vector2d<s8> m_collision;
+
+	float m_jump_cooldown = 0;
 };

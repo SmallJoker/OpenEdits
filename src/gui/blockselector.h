@@ -35,6 +35,6 @@ private:
 	bid_t m_selected_bid = 0;
 
 	bool m_show_selector = false;
-	bid_t m_dragged_bid = -1;
+	bid_t m_dragged_bid = Block::ID_INVALID;
 	gui::IGUIElement *m_showmore = nullptr;
 };

@@ -37,7 +37,7 @@ private:
 	video::ITexture *generateTexture(const wchar_t *text, u32 color = 0xFFFFFFFF);
 
 	void updateWorld();
-	void assignBlockTexture(const BlockProperties *props, scene::ISceneNode *node);
+	bool assignBlockTexture(const BlockProperties *props, scene::ISceneNode *node);
 	bool m_dirty_worldmesh = false;
 
 	void updatePlayerlist();

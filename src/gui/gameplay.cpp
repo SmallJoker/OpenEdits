@@ -439,6 +439,7 @@ void SceneGameplay::updateWorld()
 		if (!world->getBlock(blockpos_t(x, y), &b))
 			continue;
 
+		bool have_solid_above = false;
 		do {
 			if (b.id == 0)
 				break;
@@ -454,19 +455,19 @@ void SceneGameplay::updateWorld()
 				core::dimension2d<f32>(10, 10),
 				core::vector3df(x * 10, -y * 10, z)
 			);
-			assignBlockTexture(props, bb);
+			have_solid_above = assignBlockTexture(props, bb);
 
 		} while (false);
 
 
 		do {
-			if (b.bg == 0)
+			if (have_solid_above)
 				break;
 
 			const BlockProperties *props = g_blockmanager->getProps(b.bg);
 			if (!props)
 				break;
-			auto z = ZINDEX_LOOKUP[(int)props->type];
+			auto z = ZINDEX_LOOKUP[(int)BlockDrawType::Background];
 
 			// Note: Position is relative to its parent
 			auto bb = smgr->addBillboardSceneNode(m_stage,
@@ -479,8 +480,10 @@ void SceneGameplay::updateWorld()
 	}
 }
 
-void SceneGameplay::assignBlockTexture(const BlockProperties *props, scene::ISceneNode *node)
+bool SceneGameplay::assignBlockTexture(const BlockProperties *props, scene::ISceneNode *node)
 {
+	bool is_opaque = false;
+
 	node->setMaterialFlag(video::EMF_LIGHTING, false);
 	node->setMaterialFlag(video::EMF_ZWRITE_ENABLE, true);
 	// Problem: Filtering bleeds into adjacent textures
@@ -489,6 +492,8 @@ void SceneGameplay::assignBlockTexture(const BlockProperties *props, scene::ISce
 		node->setMaterialType(video::EMT_TRANSPARENT_ALPHA_CHANNEL_REF);
 	else if (props->type == BlockDrawType::Decoration)
 		node->setMaterialType(video::EMT_TRANSPARENT_ALPHA_CHANNEL);
+	else
+		is_opaque = true;
 
 	node->setMaterialTexture(0, props->texture);
 
@@ -499,6 +504,7 @@ void SceneGameplay::assignBlockTexture(const BlockProperties *props, scene::ISce
 	mat.setTextureTranslate(props->texture_offset / tiles, 0);
 	mat.setTextureScale(1.0f / tiles, 1);
 
+	return is_opaque;
 }
 
 void SceneGameplay::updatePlayerlist()
