@@ -42,7 +42,7 @@ struct GameEvent {
 	};
 
 	struct BlockData {
-		core::vector2di pos;
+		blockpos_t pos;
 		Block b;
 	};
 

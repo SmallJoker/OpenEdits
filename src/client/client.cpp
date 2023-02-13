@@ -70,6 +70,7 @@ void Client::step(float dtime)
 			// blockpos_t
 			out.write(it->first.X);
 			out.write(it->first.Y);
+			out.write(it->first.Z);
 			// Block
 			out.write(it->second.id);
 			out.write(it->second.param1);
@@ -172,7 +173,7 @@ RefCnt<World> Client::getWorld()
 }
 
 
-bool Client::setBlock(blockpos_t pos, Block block, char layer)
+bool Client::setBlock(blockpos_t pos, Block block)
 {
 	auto world = getWorld();
 	if (!world)
@@ -180,12 +181,9 @@ bool Client::setBlock(blockpos_t pos, Block block, char layer)
 
 	SimpleLock lock(world->mutex);
 
-	bool is_ok = world->setBlock(pos, block, layer);
+	bool is_ok = world->setBlock(pos, block);
 	if (!is_ok)
 		return false;
-
-	Block b2;
-	world->getBlock(pos, &b2);
 
 	BlockUpdate bu;
 	bu.id = block.id;
@@ -215,7 +213,7 @@ void Client::sendPlayerMove()
 	Packet pkt;
 	pkt.write(Packet2Server::Move);
 	player->writePhysics(pkt);
-	m_con->send(0, 0, pkt);
+	m_con->send(0, 1 | Connection::FLAG_UNRELIABLE, pkt);
 }
 
 

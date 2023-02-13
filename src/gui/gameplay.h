@@ -33,7 +33,7 @@ public:
 	bool OnEvent(GameEvent &e) override;
 
 private:
-	blockpos_t getBlockFromPixel(int x, int y);
+	bool getBlockFromPixel(int x, int y, blockpos_t &bp);
 	video::ITexture *generateTexture(const wchar_t *text, u32 color = 0xFFFFFFFF);
 
 	void updateWorld();
@@ -53,8 +53,9 @@ private:
 	core::recti m_draw_area; // rendering area
 
 	// Statis indicators for mouse inputs
-	bool m_drag_draw = true;       // permission: free drawing
-	bool m_drag_draw_down = false; // whether the mouse is dragged for drawing
+	bool m_may_drag_draw = true;   // permission: free drawing
+	bid_t m_drag_draw_block = BLOCKID_INVALID; // drawing mode
+	u8    m_drag_draw_layer = 0;
 	bool m_erase_mode = false;     // removes the pointed block : shift down
 
 	bool m_ignore_keys = false;    // ignore key inputs e.g. when typing

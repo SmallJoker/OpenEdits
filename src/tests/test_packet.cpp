@@ -4,6 +4,19 @@
 static const std::string val_str = "Héllo wörld!"; // 14 length
 static const int32_t val_s32 = -2035832324;
 
+static void test_repeated()
+{
+	Packet pkt;
+	for (int i = 0; i < 200; ++i) {
+		pkt.write(val_s32);
+		pkt.writeStr16(val_str);
+	}
+	for (int i = 0; i < 200; ++i) {
+		CHECK(pkt.read<int32_t>() == val_s32);
+		CHECK(pkt.readStr16() == val_str);
+	}
+}
+
 void unittest_packet()
 {
 	const uint8_t val_u8 = 9;
@@ -42,5 +55,7 @@ void unittest_packet()
 
 		CHECK(p2.size() == pkt.size());
 	}
+
+	test_repeated();
 }
 

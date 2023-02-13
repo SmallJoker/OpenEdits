@@ -123,7 +123,7 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 	auto world = getWorldNoLock(world_id);
 	if (!world) {
 		world = new World(world_id);
-		world->createDummy({30, 30});
+		world->createDummy({30, 30, 0});
 		world->getMeta().owner = player->name;
 		world->drop(); // kept alive by RefCnt
 	}
@@ -143,10 +143,11 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 	out.write(size.X); // dimensions
 	out.write(size.Y);
 
+	for (size_t z = 0; z < 2; ++z)
 	for (size_t y = 0; y < size.Y; ++y)
 	for (size_t x = 0; x < size.X; ++x) {
 		Block b;
-		world->getBlock(blockpos_t(x, y), &b);
+		world->getBlock(blockpos_t(x, y, z), &b);
 		out.write(b.id);
 	}
 
@@ -219,7 +220,7 @@ void Server::pkt_Move(peer_t peer_id, Packet &pkt)
 	}
 	out.write<u8>(false); // stop
 
-	broadcastInWorld(player, Connection::FLAG_UNRELIABLE, out);
+	broadcastInWorld(player, 1 | Connection::FLAG_UNRELIABLE, out);
 }
 
 void Server::pkt_Chat(peer_t peer_id, Packet &pkt)
@@ -271,6 +272,7 @@ void Server::pkt_PlaceBlock(peer_t peer_id, Packet &pkt)
 		blockpos_t pos;
 		pkt.read(pos.X);
 		pkt.read(pos.Y);
+		pkt.read(pos.Z);
 		BlockUpdate b;
 		pkt.read(b.id);
 		pkt.read(b.param1);

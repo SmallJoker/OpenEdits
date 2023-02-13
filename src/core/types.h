@@ -2,7 +2,7 @@
 // Types related to Irrlicht
 
 #include <IReferenceCounted.h>
-#include <vector2d.h>
+#include <vector3d.h>
 
 using namespace irr;
 
@@ -17,8 +17,9 @@ namespace irr {
 	}
 }
 
-typedef core::vector2d<u16> blockpos_t;
+typedef core::vector3d<u16> blockpos_t;
 typedef uint16_t bid_t;
+constexpr bid_t BLOCKID_INVALID = UINT16_MAX;
 
 struct Block {
 	bool operator ==(const Block &o)

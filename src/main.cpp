@@ -10,7 +10,14 @@ void sleep_ms(long delay)
 	std::this_thread::sleep_for(std::chrono::milliseconds(delay));
 }
 
-const char *VERSION_STRING = "OpenEdits v1.0.3-dev";
+const char *VERSION_STRING = "OpenEdits v1.0.3-dev"
+#ifdef NDEBUG
+	" (Release)"
+#else
+	" (Debug)"
+#endif
+	;
+
 
 void unittest();
 

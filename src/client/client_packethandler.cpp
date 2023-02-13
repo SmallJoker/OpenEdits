@@ -80,11 +80,12 @@ void Client::pkt_WorldData(Packet &pkt)
 	pkt.read<u16>(size.Y);
 	world->createDummy(size);
 
+	for (size_t z = 0; z < 2; ++z)
 	for (size_t y = 0; y < size.Y; ++y)
 	for (size_t x = 0; x < size.X; ++x) {
 		Block b;
 		pkt.read(b.id);
-		world->setBlock(blockpos_t(x, y), b);
+		world->setBlock(blockpos_t(x, y, z), b);
 	}
 
 	if (pkt.read<u8>() != 0xF8) {
@@ -114,10 +115,10 @@ void Client::pkt_Join(Packet &pkt)
 		m_players.emplace(peer_id, new LocalPlayer(peer_id));
 	}
 	player = getPlayerNoLock(peer_id);
+	player->setWorld(getWorld().ptr());
 
 	player->name = pkt.readStr16();
 	player->readPhysics(pkt);
-	player->setWorld(getWorld().ptr());
 
 	{
 		GameEvent e(GameEvent::C2G_PLAYER_JOIN);
@@ -213,6 +214,7 @@ void Client::pkt_PlaceBlock(Packet &pkt)
 		blockpos_t pos;
 		pkt.read(pos.X);
 		pkt.read(pos.Y);
+		pkt.read(pos.Z);
 		Block b;
 		pkt.read(b.id);
 		pkt.read(b.param1);

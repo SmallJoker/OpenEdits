@@ -19,6 +19,8 @@ void WorldMeta::writeCommon(Packet &pkt)
 	pkt.write<u32>(plays);
 }
 
+// -------------- World class -------------
+
 World::World(const std::string &id) :
 	m_meta({ .id = id })
 {
@@ -34,6 +36,7 @@ World::~World()
 
 void World::createEmpty(blockpos_t size)
 {
+	size.Z = 2;
 	if (size.X == 0 || size.Y == 0)
 		throw std::length_error("Invalid size");
 	if (m_data)
@@ -54,24 +57,24 @@ void World::createDummy(blockpos_t size)
 
 	for (u16 y = m_size.Y / 2; y < (u16)m_size.Y; ++y)
 	for (u16 x = 0; x < (u16)m_size.X; ++x) {
-		getBlockRefNoCheck({x, y}, 0).id = 9;
+		getBlockRefNoCheck({x, y, 0}).id = 9;
 	}
 }
 
-bool World::getBlock(blockpos_t pos, Block *block, char layer) const
+bool World::getBlock(blockpos_t pos, Block *block) const
 {
-	if (pos.X >= m_size.X || pos.Y >= m_size.Y || layer > 1)
+	if (pos.X >= m_size.X || pos.Y >= m_size.Y || pos.Z > 1)
 		return false;
 
 	if (block)
-		*block = getBlockRefNoCheck(pos, layer);
+		*block = getBlockRefNoCheck(pos);
 
 	return true;
 }
 
-bool World::setBlock(blockpos_t pos, Block block, char layer)
+bool World::setBlock(blockpos_t pos, Block block)
 {
-	if (pos.X >= m_size.X || pos.Y >= m_size.Y || layer > 1)
+	if (pos.X >= m_size.X || pos.Y >= m_size.Y || pos.Z > 1)
 		return false;
 
 	auto props = g_blockmanager->getProps(block.id);
@@ -79,10 +82,10 @@ bool World::setBlock(blockpos_t pos, Block block, char layer)
 		return false;
 
 	// backgrounds only on layer 1 and foreground on layer 0
-	if ((props->type == BlockDrawType::Background) != layer)
+	if ((props->type == BlockDrawType::Background) != pos.Z)
 		return false;
 
-	Block &ref = getBlockRefNoCheck(pos, layer);
+	Block &ref = getBlockRefNoCheck(pos);
 	if (ref == block)
 		return false;
 

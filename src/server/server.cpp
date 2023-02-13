@@ -70,6 +70,7 @@ void Server::step(float dtime)
 			// blockpos_t
 			out.write(it->first.X);
 			out.write(it->first.Y);
+			out.write(it->first.Z);
 			// Block
 			out.write(it->second.id);
 			out.write(it->second.param1);

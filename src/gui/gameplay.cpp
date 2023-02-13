@@ -198,15 +198,56 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 	if (e.EventType == EET_MOUSE_INPUT_EVENT) {
 		switch (e.MouseInput.Event) {
 			case EMIE_MOUSE_MOVED:
-				if (m_drag_draw && m_drag_draw_down) {
-					blockpos_t bp = getBlockFromPixel(e.MouseInput.X, e.MouseInput.Y);
-					if (bp.X == (u16)-1)
+			case EMIE_LMOUSE_PRESSED_DOWN:
+			case EMIE_RMOUSE_PRESSED_DOWN:
+				{
+					auto world = m_gui->getClient()->getWorld();
+					if (!world || !m_blockselector)
 						break;
 
+					// Place currently selected block
+					bool l_pressed = e.MouseInput.Event == EMIE_LMOUSE_PRESSED_DOWN;
+					// Place bid=0
+					bool r_pressed = e.MouseInput.Event == EMIE_RMOUSE_PRESSED_DOWN;
+					if (!((m_may_drag_draw && m_drag_draw_block != BLOCKID_INVALID) || l_pressed || r_pressed))
+						break;
+
+					blockpos_t bp;
+					if (!getBlockFromPixel(e.MouseInput.X, e.MouseInput.Y, bp))
+						break;
+
+					bool guess_layer = false;
+					if (l_pressed) {
+						m_drag_draw_block = m_blockselector->getSelectedBid();
+						if (m_drag_draw_block == 0) {
+							guess_layer = true;
+						} else {
+							auto props = g_blockmanager->getProps(m_drag_draw_block);
+							if (props)
+								m_drag_draw_layer = (props->type == BlockDrawType::Background);
+						}
+					}
+
+					if (r_pressed || guess_layer) {
+						// Update block ID on click
+						bp.Z = 0; // test foreground
+						Block bt;
+						if (!world->getBlock(bp, &bt))
+							break;
+
+						m_drag_draw_block = 0;
+						// Pick background if there is no block
+						m_drag_draw_layer = (bt.id == 0);
+					}
+
 					Block b;
-					if (!m_erase_mode)
-						b.id = m_blockselector->getSelectedBid();
-					m_gui->getClient()->setBlock(bp, b, 0);
+					b.id = m_erase_mode ? 0 : m_drag_draw_block;
+					bp.Z = m_drag_draw_layer;
+
+					if (!m_may_drag_draw)
+						m_drag_draw_block = BLOCKID_INVALID;
+
+					m_gui->getClient()->setBlock(bp, b);
 					return true;
 				}
 				break;
@@ -227,32 +268,9 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 					m_camera_pos.Z *= (1 - dir * 0.1);
 				}
 				break;
-			case EMIE_LMOUSE_PRESSED_DOWN:
-				{
-					blockpos_t bp = getBlockFromPixel(e.MouseInput.X, e.MouseInput.Y);
-					if (bp.X == (u16)-1)
-						break;
-					m_drag_draw_down = true;
-
-					Block b;
-					if (!m_erase_mode)
-						b.id = m_blockselector->getSelectedBid();
-					m_gui->getClient()->setBlock(bp, b, 0);
-				}
-				return true;
 			case EMIE_LMOUSE_LEFT_UP:
-				m_drag_draw_down = false;
-				break;
-			case EMIE_RMOUSE_PRESSED_DOWN:
-				{
-					blockpos_t bp = getBlockFromPixel(e.MouseInput.X, e.MouseInput.Y);
-					if (bp.X == (u16)-1)
-						break;
-
-					Block b;
-					b.id = 0;
-					m_gui->getClient()->setBlock(bp, b, 0);
-				}
+			case EMIE_RMOUSE_LEFT_UP:
+				m_drag_draw_block = BLOCKID_INVALID;
 				break;
 			default: break;
 		}
@@ -345,13 +363,12 @@ bool SceneGameplay::OnEvent(GameEvent &e)
 	return false;
 }
 
-blockpos_t SceneGameplay::getBlockFromPixel(int x, int y)
+bool SceneGameplay::getBlockFromPixel(int x, int y, blockpos_t &bp)
 {
 	core::vector2di mousepos(x, y);
-	blockpos_t ret(-1, -1);
 
 	if (!m_draw_area.isPointInside(mousepos))
-		return ret;
+		return false;
 
 	auto old_viewport = m_gui->driver->getViewPort();
 	m_gui->driver->setViewPort(m_draw_area);
@@ -360,25 +377,33 @@ blockpos_t SceneGameplay::getBlockFromPixel(int x, int y)
 			->getSceneCollisionManager()
 			->getRayFromScreenCoordinates(mousepos, m_camera);
 
-	// find clicked element
-	for (auto c : m_stage->getChildren()) {
-		auto bb = c->getBoundingBox();
-		auto abspos = c->getAbsolutePosition();
-		bb.MinEdge += abspos;
-		bb.MaxEdge += abspos;
-		if (bb.intersectsWithLine(shootline)) {
-			core::vector3df pos = c->getPosition();
-
-			//printf("clicked %s\n", dump_val(pos).c_str());
-			ret.X = (pos.X + 0.5f) / 10.0f;
-			ret.Y = (-pos.Y + 0.5f) / 10.0f;
-			break;
-		}
-	}
-
 	m_gui->driver->setViewPort(old_viewport);
 
-	return ret;
+	/*
+		Get X/Y intersection point at Z=0
+
+		dir = end - start  (unit vector is not necessary)
+		(x, y, 0) = start + dir * n
+		--> n = (0 - start.z) / dir.z
+	*/
+
+	auto dir = shootline.end - shootline.start;
+	float n = (0.0f - shootline.start.Z) / dir.Z;
+	auto xy_point = shootline.start + dir * n;
+
+	// convert to block positions
+	xy_point.X = (xy_point.X + 5.0f) / 10.0f;
+	xy_point.Y = (-xy_point.Y + 5.0f) / 10.0f;
+	//printf("pointed: %f, %f, %f\n", xy_point.X, xy_point.Y, xy_point.Z);
+
+	auto world = m_gui->getClient()->getWorld();
+	if (!world->isValidPosition(xy_point.X, xy_point.Y, 0))
+		return false;
+
+	bp.X = xy_point.X;
+	bp.Y = xy_point.Y;
+	bp.Z = 0;
+	return true;
 }
 
 video::ITexture *SceneGameplay::generateTexture(const wchar_t *text, u32 color)
@@ -415,7 +440,7 @@ void SceneGameplay::updateWorld()
 	for (int x = 0; x < size.X; x++)
 	for (int y = 0; y < size.Y; y++) {
 		Block b;
-		if (!world->getBlock(blockpos_t(x, y), &b))
+		if (!world->getBlock(blockpos_t(x, y, 0), &b))
 			continue;
 
 		auto props = g_blockmanager->getProps(b.id);

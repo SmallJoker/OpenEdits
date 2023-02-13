@@ -3,6 +3,7 @@
 #include "core/macros.h"
 #include "core/types.h"
 #include <string>
+#include <vector2d.h>
 
 using namespace irr;
 

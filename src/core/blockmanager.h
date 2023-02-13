@@ -4,6 +4,7 @@
 #include <string>
 #include <map>
 #include <vector>
+#include <vector2d.h> // collision direction
 
 namespace irr {
 	namespace video {
