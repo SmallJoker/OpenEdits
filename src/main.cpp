@@ -86,6 +86,14 @@ static void register_packs()
 	g_blockmanager->getProps(4)->step = step_arrow_none;
 	g_blockmanager->getProps(10)->onCollide = onCollide_b10_bouncy; // blue
 
+	// Decoration
+	{
+		BlockPack *pack = new BlockPack("spring");
+		pack->default_type = BlockDrawType::Decoration;
+		pack->block_ids = { 233, 234, 235, 236, 237, 238, 239, 240 };
+		g_blockmanager->registerPack(pack);
+	}
+
 	// Backgrounds
 	{
 		BlockPack *pack = new BlockPack("simple");
