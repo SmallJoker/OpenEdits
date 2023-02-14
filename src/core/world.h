@@ -72,9 +72,10 @@ public:
 	bool updateBlock(const BlockUpdate bu);
 
 	blockpos_t getSize() const { return m_size; }
+	const WorldMeta &getMeta() const { return m_meta; }
 	WorldMeta &getMeta() { return m_meta; }
 
-	std::mutex mutex; // used by Server/Client
+	mutable std::mutex mutex; // used by Server/Client
 	std::unordered_set<BlockUpdate, BlockUpdateHash> proc_queue; // for networking
 
 protected:

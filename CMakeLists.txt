@@ -12,6 +12,7 @@ message("--- Setting up OpenEdits")
 set(THREADS_PREFER_PTHREAD_FLAG TRUE)
 find_package(Threads REQUIRED) # pthread
 find_package(ENet REQUIRED)
+find_package(SQLite3 REQUIRED)
 
 # Irrlicht detection code imported from minetest/CMakeLists.cpp, commit 38ba813c by JosiahWI
 set(IRRLICHTMT_BUILD_DIR "" CACHE PATH "Path to IrrlichtMt build directory.")
@@ -51,6 +52,7 @@ include_directories(
 	"${PROJECT_SOURCE_DIR}/src"
 	${ENet_INCLUDE_DIRS}
 	${IRRLICHT_INCLUDES}
+	${SQLite3_INCLUDE_DIRS}
 )
 
 
@@ -64,4 +66,5 @@ target_link_libraries(
 	${ENet_LIBRARY}
 	Threads::Threads
 	IrrlichtMt::IrrlichtMt
+	SQLite::SQLite3
 )

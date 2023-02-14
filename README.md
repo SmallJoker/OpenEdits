@@ -23,10 +23,11 @@ Code structure inspired by Minetest practices.
  * [Irrlicht-Mt](https://github.com/minetest/irrlicht) : GUI/rendering library
  * [enet](http://enet.bespin.org/) : networking library
  * Threads (phthread?)
+ * SQLite3 : auth & world saving
 
 Debian/Ubuntu:
 
-	sudo apt install libenet-dev
+	sudo apt install libenet-dev libsqlite3-dev
 
 Project compiling:
 
