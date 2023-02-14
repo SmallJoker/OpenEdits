@@ -37,7 +37,7 @@ void SceneConnect::draw()
 
 	{
 		auto text_a = m_gui->gui->addStaticText(L"Username", rect_1, false, false);
-		text_a->setOverrideColor(0xFFFFFFFF);
+		text_a->setOverrideColor(Gui::COLOR_ON_BG);
 
 		m_gui->gui->addEditBox(
 			nickname.c_str(), rect_2, true, nullptr, ID_BoxNickname);
@@ -48,7 +48,7 @@ void SceneConnect::draw()
 
 	{
 		auto text_a = m_gui->gui->addStaticText(L"Address", rect_1, false, false);
-		text_a->setOverrideColor(0xFFFFFFFF);
+		text_a->setOverrideColor(Gui::COLOR_ON_BG);
 
 		core::stringw str;
 
@@ -65,11 +65,8 @@ void SceneConnect::draw()
 
 void SceneConnect::step(float dtime)
 {
-	core::recti rect(200, 10, 200, 30);
-	video::SColor color(0xFFFFFFFF);
 	video::SColor red(0xFFFF0000);
 
-	m_gui->font->draw(L"Hello world", rect, color);
 	if (x >= 0) {
 		core::recti rect(x - 6, y - 10, 200, 30);;
 		m_gui->font->draw(L"X", rect, red);

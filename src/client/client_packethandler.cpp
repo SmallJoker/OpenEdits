@@ -38,6 +38,10 @@ void Client::pkt_Error(Packet &pkt)
 {
 	std::string str(pkt.readStr16());
 	printf("Client received error: %s\n", str.c_str());
+
+	GameEvent e(GameEvent::C2G_DIALOG);
+	e.text = new std::string(str);
+	sendNewEvent(e);
 }
 
 void Client::pkt_Lobby(Packet &pkt)

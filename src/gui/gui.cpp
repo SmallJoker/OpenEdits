@@ -50,8 +50,9 @@ Gui::Gui()
 		make_opaque(gui::EGDC_3D_DARK_SHADOW);
 		make_opaque(gui::EGDC_3D_FACE); // Tab header
 		make_opaque(gui::EGDC_3D_SHADOW);
-		make_opaque(gui::EGDC_3D_HIGH_LIGHT);
 		make_opaque(gui::EGDC_3D_LIGHT);
+		skin->setColor(gui::EGDC_HIGH_LIGHT, 0xDD113388); // selected items
+		skin->setColor(gui::EGDC_3D_HIGH_LIGHT, 0xCC666666); // list 3D sunken pane BG
 	}
 
 	{
@@ -232,16 +233,9 @@ void Gui::connect(SceneConnect *sc)
 		init.address = "127.0.0.1";
 	}
 
-	{
-		core::stringc str;
-		wStringToMultibyte(str, sc->address);
-		init.address = str.c_str();
-	}
-	{
-		core::stringc str;
-		wStringToMultibyte(str, sc->nickname);
-		init.nickname = str.c_str();
-	}
+	utf32_to_utf8(init.address, sc->address.c_str());
+	utf32_to_utf8(init.nickname, sc->nickname.c_str());
+
 
 	m_client = new Client(init);
 
@@ -270,6 +264,7 @@ void Gui::disconnect()
 
 void Gui::joinWorld(SceneLobby *sc)
 {
+	// Similar to the "Connect" scene. More fields might be added to create and delete worlds
 	GameEvent e(GameEvent::G2C_JOIN);
 	e.text = new std::string(sc->world_id);
 	sendNewEvent(e);
@@ -284,7 +279,7 @@ void Gui::leaveWorld()
 
 // -------------- GUI utility functions -------------
 
-core::recti Gui::getRect(core::vector2df pos_perc, core::dimension2di size)
+core::recti Gui::getRect(core::vector2df pos_perc, core::dimension2di size_perc)
 {
 	core::recti ret;
 
@@ -292,6 +287,18 @@ core::recti Gui::getRect(core::vector2df pos_perc, core::dimension2di size)
 		window_size.Width * pos_perc.X * 0.01f,
 		window_size.Height * pos_perc.Y * 0.01f
 	);
+
+	// negative size: treat as pixel value
+	core::dimension2di size;
+	if (size_perc.Width <= 0)
+		size.Width = -size_perc.Width;
+	else
+		size.Width = window_size.Width * size_perc.Width * 0.01f;
+
+	if (size_perc.Height <= 0)
+		size.Height = -size_perc.Height;
+	else
+		size.Height = window_size.Height * size_perc.Height * 0.01f;
 
 	// Pin to the bottom (maybe not needed)
 	if (pos.X + size.Width < 0)
@@ -307,9 +314,6 @@ core::recti Gui::getRect(core::vector2df pos_perc, core::dimension2di size)
 	ret.UpperLeftCorner = pos;
 	ret.LowerRightCorner = pos + size;
 
-	if (size.Width < 0 || size.Height < 0)
-		ret.repair();
-
 	return ret;
 }
 
@@ -320,12 +324,4 @@ void Gui::displaceRect(core::recti &rect, core::vector2df pos_perc)
 		window_size.Height * pos_perc.Y * 0.01f
 	);
 	rect += disp;
-}
-
-void wStringToMultibyte(std::string &dst, const wchar_t *src)
-{
-	size_t length = wcslen(src);
-	dst.resize(length);
-
-	wcstombs(&dst[0], src, length);
 }

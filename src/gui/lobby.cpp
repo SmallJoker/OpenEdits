@@ -22,32 +22,45 @@ SceneLobby::SceneLobby()
 void SceneLobby::draw()
 {
 	core::recti rect_title(
-		core::vector2di(50, 20),
+		core::vector2di(m_gui->window_size.Width * 0.45f, 20),
 		core::dimension2di(100, 30)
 	);
 
-	const auto wsize = m_gui->window_size;
-
 	auto text = m_gui->gui->addStaticText(L"Lobby", rect_title);
-	text->setOverrideColor(0xFFFFFFFF);
+	text->setOverrideColor(Gui::COLOR_ON_BG);
 
 	{
-		core::recti rect_list(
-			core::vector2di(50, 60),
-			core::dimension2di(wsize.Width - 50 * 2, wsize.Height - 200)
+		auto rect = m_gui->getRect({10, 15}, {80, 30});
+		m_worldlist = m_gui->gui->addListBox(rect, nullptr, ID_ListWorlds, true);
+
+		core::recti rect_lab(
+			rect.UpperLeftCorner + core::vector2di(0, -25),
+			core::dimension2di(100, 25)
 		);
-		m_worldlist = m_gui->gui->addListBox(rect_list, nullptr, ID_ListWorlds, false);
+		auto e = m_gui->gui->addStaticText(L"Public worlds", rect_lab);
+		e->setOverrideColor(Gui::COLOR_ON_BG);
 
 		core::recti rect_btn(
-			rect_list.UpperLeftCorner,
+			core::vector2di(rect.LowerRightCorner.X - 100, rect.UpperLeftCorner.Y - 40),
 			core::dimension2di(100, 30)
 		);
-		rect_btn += core::vector2di(wsize.Width - 200, -40);
 		m_refreshbtn = m_gui->gui->addButton(rect_btn, nullptr, ID_BtnRefresh, L"Refresh");
 	}
 
 	{
 		// Custom world ID box
+		auto rect = m_gui->getRect({10, 75}, {20, -30});
+		m_gui->gui->addEditBox(L"", rect, true, nullptr, ID_BoxWorldID);
+
+		core::recti rect_lab(
+			rect.UpperLeftCorner + core::vector2di(0, -25),
+			core::dimension2di(300, 25)
+		);
+		auto e = m_gui->gui->addStaticText(L"Custom world ID", rect_lab);
+		e->setOverrideColor(Gui::COLOR_ON_BG);
+
+		auto rect_btn =  m_gui->getRect({32, 75}, {-100, -30});
+		m_gui->gui->addButton(rect_btn, nullptr, ID_BtnJoin, L"Join");
 	}
 
 	m_dirty_worldlist = true;
@@ -64,11 +77,13 @@ bool SceneLobby::OnEvent(const SEvent &e)
 	if (e.EventType == EET_GUI_EVENT) {
 		switch (e.GUIEvent.EventType) {
 			case gui::EGET_BUTTON_CLICKED:
-				if (e.GUIEvent.Caller->getID() == ID_BtnJoin) {
+			case gui::EGET_EDITBOX_ENTER:
+				if (e.GUIEvent.Caller->getID() == ID_BtnJoin
+						|| e.GUIEvent.Caller->getID() == ID_BoxWorldID) {
 					auto root = m_gui->gui->getRootGUIElement();
 					auto editbox = root->getElementFromId(ID_BoxWorldID);
 
-					wStringToMultibyte(world_id, editbox->getText());
+					utf32_to_utf8(world_id, editbox->getText());
 					m_gui->joinWorld(this);
 					return true;
 				}

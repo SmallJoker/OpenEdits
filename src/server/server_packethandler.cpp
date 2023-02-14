@@ -41,13 +41,9 @@ void Server::pkt_Hello(peer_t peer_id, Packet &pkt)
 	if (name.size() > 30)
 		name.resize(30);
 
-	bool ok = !name.empty();
+	bool ok = !name.empty() && isalnum_nolocale(name);
 	for (char &c : name) {
 		c = toupper(c);
-		if (!std::isalnum(c)) {
-			ok = false;
-			break;
-		}
 	}
 
 	for (auto it : m_players) {
@@ -125,6 +121,19 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 {
 	RemotePlayer *player = getPlayerNoLock(peer_id);
 	std::string world_id(pkt.readStr16());
+	world_id = strtrim(world_id);
+
+	{
+		bool is_ok = !world_id.empty() && isalnum_nolocale(world_id);
+
+		if (!is_ok) {
+			Packet out;
+			out.write(Packet2Client::Error);
+			out.writeStr16("Invalid world ID. [A-z0-9]+ are allowed");
+			m_con->send(peer_id, 0, out);
+			return;
+		}
+	}
 
 	// query database for existing world
 	auto world = getWorldNoLock(world_id);
@@ -239,8 +248,8 @@ void Server::pkt_Chat(peer_t peer_id, Packet &pkt)
 	message = strtrim(message);
 
 	bool ok = message.size() > 0;
-	for (char c : message) {
-		if (c < ' ') {
+	for (uint8_t c : message) {
+		if (c < 0x20 || c == 0x7F) {
 			ok = false;
 			break;
 		}

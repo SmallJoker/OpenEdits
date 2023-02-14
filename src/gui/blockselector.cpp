@@ -64,7 +64,7 @@ bool SceneBlockSelector::OnEvent(const SEvent &e)
 					m_dragged_bid = id - ID_SELECTOR_0;
 				}
 
-				if (element)
+				if (element && element != m_showmore)
 					return element->OnEvent(e);
 			}
 			break;
@@ -114,6 +114,7 @@ bool SceneBlockSelector::OnEvent(const SEvent &e)
 		if (id == ID_SHOWMORE) {
 			m_show_selector ^= true;
 			drawBlockSelector();
+			m_gui->setFocus(nullptr);
 			return true;
 		}
 	}
@@ -167,7 +168,7 @@ void SceneBlockSelector::drawBlockSelector()
 	);
 
 	auto skin = m_gui->getSkin();
-	video::SColor color(skin->getColor(gui::EGDC_3D_SHADOW));
+	video::SColor color(skin->getColor(gui::EGDC_3D_HIGH_LIGHT));
 
 	auto tc = m_gui->addTabControl(rect_tab, m_showmore);
 	tc->setTabHeight(30);

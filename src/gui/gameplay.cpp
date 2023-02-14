@@ -159,9 +159,10 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 	if (e.EventType == EET_GUI_EVENT) {
 		switch (e.GUIEvent.EventType) {
 			case gui::EGET_BUTTON_CLICKED:
-				if (e.GUIEvent.Caller->getID() == ID_BtnBack)
+				if (e.GUIEvent.Caller->getID() == ID_BtnBack) {
 					m_gui->leaveWorld();
-				return true;
+					return true;
+				}
 			case gui::EGET_EDITBOX_ENTER:
 				if (e.GUIEvent.Caller->getID() == ID_BoxChat) {
 					auto textw = e.GUIEvent.Caller->getText();
@@ -169,13 +170,13 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 					{
 						GameEvent e(GameEvent::G2C_CHAT);
 						e.text = new std::string();
-						wStringToMultibyte(*e.text, textw);
+						utf32_to_utf8(*e.text, textw);
 						m_gui->sendNewEvent(e);
 					}
 
 					e.GUIEvent.Caller->setText(L"");
+					return true;
 				}
-				return true;
 			case gui::EGET_ELEMENT_FOCUSED:
 				m_ignore_keys = true;
 				break;
@@ -342,9 +343,9 @@ bool SceneGameplay::OnEvent(GameEvent &e)
 					e.player_chat->message.c_str()
 				);
 
-				core::stringw line;
-				core::multibyteToWString(line, buf);
-				m_chathistory_text.append(line);
+				std::wstring line;
+				utf8_to_utf32(line, buf);
+				m_chathistory_text.append(line.c_str());
 				m_chathistory->setText(m_chathistory_text.c_str());
 			}
 			return true;
@@ -531,7 +532,7 @@ void SceneGameplay::updatePlayerlist()
 		core::stringw wstr;
 		core::multibyteToWString(wstr, it.second->name.c_str());
 		u32 i = e->addItem(wstr.c_str());
-		e->setItemOverrideColor(i, 0xFFFFFFFF);
+		e->setItemOverrideColor(i, Gui::COLOR_ON_BG);
 	}
 
 	// Add world ID and online count
@@ -547,7 +548,7 @@ void SceneGameplay::updatePlayerlist()
 		core::multibyteToWString(dst_text, src_text.c_str());
 
 		auto e = m_gui->gui->addStaticText(dst_text.c_str(), rect);
-		e->setOverrideColor(0xFFFFFFFF);
+		e->setOverrideColor(Gui::COLOR_ON_BG);
 	}
 }
 

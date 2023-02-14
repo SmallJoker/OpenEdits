@@ -2,6 +2,7 @@
 
 #include "client/gameevent.h"
 #include "core/macros.h"
+#include "core/utils.h" // text conversion
 #include <IEventReceiver.h>
 #include <rect.h>
 #include <map>
@@ -39,8 +40,6 @@ enum class SceneHandlerType {
 	CTRL_RENEW
 };
 
-void wStringToMultibyte(std::string &dst, const wchar_t *src);
-
 class Gui : public IEventReceiver, public GameEventHandler {
 public:
 	Gui();
@@ -65,7 +64,7 @@ public:
 	void leaveWorld();
 
 	// GUI utility functions
-	core::recti getRect(core::vector2df pos_perc, core::dimension2di size);
+	core::recti getRect(core::vector2df pos_perc, core::dimension2di size_perc);
 	void displaceRect(core::recti &rect, core::vector2df pos_perc);
 
 	// For use in SceneHandler
@@ -75,6 +74,7 @@ public:
 	video::IVideoDriver *driver = nullptr; // 2D images
 	core::dimension2du window_size;
 
+	static constexpr u32 COLOR_ON_BG { 0xFFFFFFFF };
 private:
 	inline void setNextScene(SceneHandlerType type) { m_scenetype_next = type; }
 
