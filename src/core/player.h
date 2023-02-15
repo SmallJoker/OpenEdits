@@ -49,6 +49,19 @@ public:
 	static constexpr float CONTROLS_ACCEL = 20.0f;
 	static constexpr float JUMP_SPEED = 20.0f;
 
+	// Permission flags. Only valid within the current world
+	enum Flag : playerflags_t {
+		// World access
+		FLAG_BANNED    = 0x01,
+		FLAG_EDIT      = 0x02,
+		FLAG_EDIT_DRAG = 0x02 + 0x04,
+		FLAG_CO_OWNER  = 0x10,
+		// Physics
+		FLAG_GODMODE = 0x0100,
+		FLAG_NO_JUMP = 0x0200,
+		FLAG_NO_MOVE = 0x0400
+	};
+
 protected:
 	Player(peer_t peer_id) :
 		peer_id(peer_id), m_world(nullptr) {}

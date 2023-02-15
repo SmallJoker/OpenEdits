@@ -11,13 +11,21 @@
 #define ASSERT_FORCED(cond, msg) \
 	if (!(cond)) { throw std::runtime_error(msg); }
 
+
+// -------------- Player specific types -------------
+
+typedef uint32_t peer_t; // same as in ENetPeer
+typedef uint32_t playerflags_t;
+
+// -------------- Uncategorized functions -------------
+
+void sleep_ms(long delay);
+
+// -------------- Mutex specifics -------------
+
 typedef std::unique_lock<std::mutex> SimpleLock;
 //typedef std::unique_lock<std::shared_mutex> WriteLock;
 //typedef std::shared_lock<std::shared_mutex> ReadLock;
-
-typedef uint32_t peer_t; // same as in ENetPeer
-
-void sleep_ms(long delay);
 
 // Auto-unlock wrapper for larger operations
 template<typename T>

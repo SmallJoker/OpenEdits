@@ -88,18 +88,7 @@ void Client::pkt_WorldData(Packet &pkt)
 	pkt.read<u16>(size.X);
 	pkt.read<u16>(size.Y);
 	world->createDummy(size);
-
-	for (size_t y = 0; y < size.Y; ++y)
-	for (size_t x = 0; x < size.X; ++x) {
-		Block b;
-		pkt.read(b.id);
-		pkt.read(b.bg);
-		world->setBlock(blockpos_t(x, y), b);
-	}
-
-	if (pkt.read<u8>() != 0xF8) {
-		fprintf(stderr, "Client: ERROR while reading world data!\n");
-	}
+	world->read(pkt);
 
 	SimpleLock lock(m_players_lock);
 	Player *player = getPlayerNoLock(m_my_peer_id);

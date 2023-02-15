@@ -12,18 +12,19 @@ struct _ENetPacket;
 class Packet {
 public:
 	Packet(size_t n_prealloc = 200);
-	Packet(const char *data, size_t len);
+	Packet(const void *bytes, size_t len);
 	Packet(_ENetPacket **pkt); // takes ownership
 	~Packet();
 	DISABLE_COPY(Packet);
 
 	size_t getRemainingBytes() { return size() - m_read_offset; }
 	inline size_t size() const { return m_write_offset; }
+	const void *data() const;
 
 	std::string dump(size_t n = 10);
 
 	// For network sending
-	_ENetPacket *data();
+	_ENetPacket *ptr();
 
 	template<typename T>
 	T read();
@@ -37,8 +38,10 @@ public:
 	std::string readStr16();
 	void writeStr16(const std::string &str);
 
+	// Preallocated additional bytes for large data writes
+	void ensureCapacity(size_t nbytes);
+
 private:
-	inline void ensureCapacity(size_t nbytes);
 	inline void checkLength(size_t nbytes);
 
 	size_t m_read_offset = 0;

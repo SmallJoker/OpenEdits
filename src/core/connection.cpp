@@ -179,21 +179,21 @@ void Connection::send(peer_t peer_id, uint16_t flags, Packet &pkt)
 	// Most of it should be reliable
 	// TODO: test ENET_PACKET_FLAG_UNSEQUENCED
 	if (!(flags & FLAG_UNRELIABLE))
-		pkt.data()->flags |= ENET_PACKET_FLAG_RELIABLE;
+		pkt.ptr()->flags |= ENET_PACKET_FLAG_RELIABLE;
 
 	// Prepare for sending
 	SimpleLock lock(m_host_lock);
 
 	if (flags & FLAG_BROADCAST) {
 		peer_id = 0;
-		enet_host_broadcast(m_host, channel, pkt.data());
+		enet_host_broadcast(m_host, channel, pkt.ptr());
 	} else {
 		auto peer = findPeer(peer_id);
 		if (!peer)
 			return;
 
 		peer_id = peer->connectID;
-		enet_peer_send(peer, channel, pkt.data());
+		enet_peer_send(peer, channel, pkt.ptr());
 	}
 
 	DEBUGLOG("--- ENet %s: packet sent. peer_id=%u, channel=%d, dump=%s\n",

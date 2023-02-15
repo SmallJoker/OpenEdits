@@ -4,13 +4,14 @@
 
 void unittest_database()
 {
+	const char *filepath = "unittest.sqlite3";
 	DatabaseWorld db;
 
-	CHECK(db.tryOpen("unittest.sqlite3"));
+	CHECK(db.tryOpen(filepath));
 
 	{
 		World world("dummyworldname");
-		world.createEmpty({30, 20});
+		world.createEmpty({5, 2});
 		world.getMeta().owner = "test";
 
 		CHECK(db.save(&world));
@@ -19,10 +20,12 @@ void unittest_database()
 	{
 		World world("dummyworldname");
 		CHECK(db.load(&world));
-		CHECK(world.getSize().X == 30);
-		CHECK(world.getSize().Y == 20);
+		CHECK(world.getSize().X == 5);
+		CHECK(world.getSize().Y == 2);
 		CHECK(world.getMeta().owner == "test");
 	}
 	db.close();
+
+	std::remove(filepath);
 }
 

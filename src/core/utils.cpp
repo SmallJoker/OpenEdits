@@ -15,6 +15,34 @@ std::string strtrim(const std::string &str)
 	return str.substr(front, back - front);
 }
 
+std::string get_next_part(std::string &input)
+{
+	char *pos_a = &input[0];
+	while (*pos_a && std::isspace(*pos_a))
+		pos_a++;
+
+	char *pos_b = pos_a;
+	while (*pos_b && !std::isspace(*pos_b))
+		pos_b++;
+
+	if (!*pos_a) {
+		// End reached
+		input.clear();
+		return "";
+	}
+
+	// Split into two parts
+	bool ended = !*pos_b;
+	*pos_b = '\0';
+
+	std::string value(pos_a); // Until terminator
+	if (ended)
+		input.clear();
+	else
+		input = std::string(pos_b + 1);
+	return value;
+}
+
 // #include <codecvt> is no more in C++17, hence rely on some weird-ass conversion code instead
 static_assert(sizeof(wchar_t) == 4);
 bool utf32_to_utf8(std::string &dst, const wchar_t *str)

@@ -158,16 +158,7 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 	blockpos_t size = world->getSize();
 	out.write(size.X); // dimensions
 	out.write(size.Y);
-
-	for (size_t y = 0; y < size.Y; ++y)
-	for (size_t x = 0; x < size.X; ++x) {
-		Block b;
-		world->getBlock(blockpos_t(x, y), &b);
-		out.write(b.id);
-		out.write(b.bg);
-	}
-
-	out.write<u8>(0xF8); // validation
+	world->write(out, World::Method::Plain);
 
 	m_con->send(peer_id, 0, out);
 

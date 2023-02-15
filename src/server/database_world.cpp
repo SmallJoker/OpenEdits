@@ -1,4 +1,5 @@
 #include "database_world.h"
+#include "core/packet.h"
 #include "core/world.h"
 #include <sqlite3.h>
 
@@ -19,11 +20,13 @@ bool DatabaseWorld::tryOpen(const char *filepath)
 	// Thanks "DB Browser for SQLite"
 	bool good = ok("create", sqlite3_exec(m_database,
 		"CREATE TABLE IF NOT EXISTS `worlds` ("
-		"`id`     INTEGER UNIQUE,"
+		"`id`     TEXT UNIQUE,"
 		"`width`  INTEGER,"
 		"`height` INTEGER,"
-		"`owner`  INTEGER,"
+		"`owner`  TEXT,"
 		"`plays`  INTEGER,"
+		"`visibility`   INTEGER,"
+		"`player_flags` BLOB,"
 		"`data`   BLOB,"
 		"PRIMARY KEY(`id`)"
 		")",
@@ -40,8 +43,8 @@ bool DatabaseWorld::tryOpen(const char *filepath)
 		-1, &m_stmt_read, nullptr));
 	good &= ok("write", sqlite3_prepare_v2(m_database,
 		"REPLACE INTO `worlds` "
-		"(`id`, `width`, `height`, `owner`, `plays`, `data`) "
-		"VALUES (?, ?, ?, ?, ?, ?)",
+		"(`id`, `width`, `height`, `owner`, `plays`, `visibility`, `player_flags`, `data`) "
+		"VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
 		-1, &m_stmt_write, nullptr));
 
 	return good;
@@ -90,7 +93,7 @@ bool DatabaseWorld::load(World *world)
 	WorldMeta &meta = world->getMeta();
 
 	auto s = m_stmt_read;
-	sqlite3_bind_int64(s, 1, stupid_worldid_hash(meta.id));
+	custom_bind_string(s, 1, meta.id);
 
 	if (sqlite3_step(s) != SQLITE_ROW) {
 		// Not found
@@ -101,18 +104,31 @@ bool DatabaseWorld::load(World *world)
 	blockpos_t size;
 	size.X = sqlite3_column_int(s, 1);
 	size.Y = sqlite3_column_int(s, 2);
+	world->createDummy(size);
+
 	meta.owner = (const char *)sqlite3_column_text(s, 3);
 	meta.plays = sqlite3_column_int(s, 4);
+	meta.is_public = sqlite3_column_int(s, 5) == 1;
 
-	const void *blob = sqlite3_column_blob(s, 5);
-	const size_t len = sqlite3_column_bytes(s, 5);
-	// read in data.. ?
+	{
+		// Player flags
+		const void *blob = sqlite3_column_blob(s, 6);
+		const size_t len = sqlite3_column_bytes(s, 6);
+		Packet pkt((const char *)blob, len);
+		meta.readPlayerFlags(pkt);
+	}
+
+	{
+		// World data
+		const void *blob = sqlite3_column_blob(s, 7);
+		const size_t len = sqlite3_column_bytes(s, 7);
+		Packet pkt((const char *)blob, len);
+		world->read(pkt);
+	}
 
 	sqlite3_step(s);
 	bool good = ok("read", sqlite3_errcode(m_database));
 	sqlite3_reset(s);
-
-	world->createEmpty(size);
 
 	return good;
 }
@@ -128,16 +144,25 @@ bool DatabaseWorld::save(const World *world)
 	sqlite3_step(m_stmt_begin);
 	sqlite3_reset(m_stmt_begin);
 
-	auto meta = world->getMeta();
+	auto &meta = world->getMeta();
 
 	auto s = m_stmt_write;
-	sqlite3_bind_int64(s, 1, stupid_worldid_hash(meta.id));
+	custom_bind_string(s, 1, meta.id);
 	sqlite3_bind_int(s, 2, world->getSize().X);
 	sqlite3_bind_int(s, 3, world->getSize().Y);
 	custom_bind_string(s, 4, meta.owner);
 	sqlite3_bind_int(s, 5, meta.plays);
-	char random[100];
-	sqlite3_bind_blob(s, 6, random, sizeof(random), nullptr);
+	sqlite3_bind_int(s, 6, meta.is_public ? 1 : 0);
+
+	// IMPORTANT: slite3_bind_*(...) does NOT copy the data.
+	// The packets must be alive until sqlite3_step(...)
+	Packet p_flags;
+	meta.writePlayerFlags(p_flags);
+	sqlite3_bind_blob(s, 7, p_flags.data(), p_flags.size(), nullptr);
+
+	Packet p_world;
+	world->write(p_world, World::Method::Plain);
+	sqlite3_bind_blob(s, 8, p_world.data(), p_world.size(), nullptr);
 
 	bool good = ok("save_s", sqlite3_step(s));
 	ok("save_r", sqlite3_reset(s));

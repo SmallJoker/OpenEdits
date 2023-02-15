@@ -38,6 +38,7 @@ struct BlockUpdateHash {
 };
 
 struct WorldMeta {
+	// For networking
 	void readCommon(Packet &pkt);
 	void writeCommon(Packet &pkt);
 
@@ -48,6 +49,12 @@ struct WorldMeta {
 	bool is_public = true;
 	u16 online = 0;
 	u32 plays = 0;
+
+	const playerflags_t getPlayerFlags(const std::string &name) const;
+	// For database
+	void readPlayerFlags(Packet &pkt);
+	void writePlayerFlags(Packet &pkt) const;
+	std::map<std::string, playerflags_t> player_flags;
 };
 
 
@@ -56,10 +63,20 @@ public:
 	World(const std::string &id);
 	~World();
 
+	enum class Method : u8 {
+		Dummy = 7, // No-op for testing
+		Plain = 41, // Bitmap-alike
+		//CompressionV1,
+		INVALID
+	};
+
 	DISABLE_COPY(World);
 
 	void createEmpty(blockpos_t size);
 	void createDummy(blockpos_t size);
+
+	void read(Packet &pkt);
+	void write(Packet &pkt, Method method) const;
 
 	inline bool isValidPosition(int x, int y) const
 	{
@@ -83,6 +100,9 @@ protected:
 	{
 		return m_data[pos.Y * m_size.X + pos.X];
 	}
+
+	void readPlain(Packet &pkt);
+	void writePlain(Packet &pkt) const;
 
 	blockpos_t m_size;
 	WorldMeta m_meta;

@@ -15,9 +15,9 @@ Packet::Packet(size_t n_prealloc)
 	m_data->referenceCount++; // until ~Packet
 }
 
-Packet::Packet(const char *data, size_t len)
+Packet::Packet(const void *bytes, size_t len)
 {
-	m_data = enet_packet_create(data, len, 0);
+	m_data = enet_packet_create(bytes, len, 0);
 	m_data->referenceCount++; // until ~Packet
 
 	m_write_offset = len;
@@ -46,6 +46,12 @@ Packet::~Packet()
 
 // -------------- Public members -------------
 
+const void *Packet::data() const
+{
+	return m_data->data;
+}
+
+
 std::string Packet::dump(size_t n)
 {
 	n = std::min(n, m_write_offset);
@@ -72,7 +78,7 @@ std::string Packet::dump(size_t n)
 }
 
 
-_ENetPacket *Packet::data()
+_ENetPacket *Packet::ptr()
 {
 	m_data->dataLength = m_write_offset;
 	return m_data;
@@ -138,13 +144,13 @@ void Packet::writeStr16(const std::string &str)
 	m_write_offset += str.size();
 }
 
-// -------------- Private members -------------
-
 void Packet::ensureCapacity(size_t nbytes)
 {
 	if (m_write_offset + nbytes > m_data->dataLength)
 		enet_packet_resize(m_data, (m_write_offset + nbytes) * 2);
 }
+
+// -------------- Private members -------------
 
 void Packet::checkLength(size_t nbytes)
 {
