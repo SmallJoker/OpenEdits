@@ -26,41 +26,43 @@ void SceneLobby::draw()
 		core::dimension2di(100, 30)
 	);
 
-	auto text = m_gui->gui->addStaticText(L"Lobby", rect_title);
+	auto gui = m_gui->guienv;
+
+	auto text = gui->addStaticText(L"Lobby", rect_title);
 	text->setOverrideColor(Gui::COLOR_ON_BG);
 
 	{
 		auto rect = m_gui->getRect({10, 15}, {80, 30});
-		m_worldlist = m_gui->gui->addListBox(rect, nullptr, ID_ListWorlds, true);
+		m_worldlist = gui->addListBox(rect, nullptr, ID_ListWorlds, true);
 
 		core::recti rect_lab(
 			rect.UpperLeftCorner + core::vector2di(0, -25),
 			core::dimension2di(100, 25)
 		);
-		auto e = m_gui->gui->addStaticText(L"Public worlds", rect_lab);
+		auto e = gui->addStaticText(L"Public worlds", rect_lab);
 		e->setOverrideColor(Gui::COLOR_ON_BG);
 
 		core::recti rect_btn(
 			core::vector2di(rect.LowerRightCorner.X - 100, rect.UpperLeftCorner.Y - 40),
 			core::dimension2di(100, 30)
 		);
-		m_refreshbtn = m_gui->gui->addButton(rect_btn, nullptr, ID_BtnRefresh, L"Refresh");
+		m_refreshbtn = gui->addButton(rect_btn, nullptr, ID_BtnRefresh, L"Refresh");
 	}
 
 	{
 		// Custom world ID box
 		auto rect = m_gui->getRect({10, 75}, {20, -30});
-		m_gui->gui->addEditBox(L"", rect, true, nullptr, ID_BoxWorldID);
+		gui->addEditBox(L"", rect, true, nullptr, ID_BoxWorldID);
 
 		core::recti rect_lab(
 			rect.UpperLeftCorner + core::vector2di(0, -25),
 			core::dimension2di(300, 25)
 		);
-		auto e = m_gui->gui->addStaticText(L"Custom world ID", rect_lab);
+		auto e = gui->addStaticText(L"Custom world ID", rect_lab);
 		e->setOverrideColor(Gui::COLOR_ON_BG);
 
 		auto rect_btn =  m_gui->getRect({32, 75}, {-100, -30});
-		m_gui->gui->addButton(rect_btn, nullptr, ID_BtnJoin, L"Join");
+		gui->addButton(rect_btn, nullptr, ID_BtnJoin, L"Join");
 	}
 
 	m_dirty_worldlist = true;
@@ -80,7 +82,7 @@ bool SceneLobby::OnEvent(const SEvent &e)
 			case gui::EGET_EDITBOX_ENTER:
 				if (e.GUIEvent.Caller->getID() == ID_BtnJoin
 						|| e.GUIEvent.Caller->getID() == ID_BoxWorldID) {
-					auto root = m_gui->gui->getRootGUIElement();
+					auto root = m_gui->guienv->getRootGUIElement();
 					auto editbox = root->getElementFromId(ID_BoxWorldID);
 
 					utf32_to_utf8(world_id, editbox->getText());

@@ -28,18 +28,20 @@ void SceneConnect::draw()
 	);
 	core::recti rect_2 = rect_1 + core::vector2di(120, -5);
 
+	auto gui = m_gui->guienv;
+
 	{
 		auto rect = rect_2 + core::vector2di(180, 0);
 
-		m_gui->gui->addButton(
+		gui->addButton(
 			rect, nullptr, ID_BtnHost, L"Host");
 	}
 
 	{
-		auto text_a = m_gui->gui->addStaticText(L"Username", rect_1, false, false);
+		auto text_a = gui->addStaticText(L"Username", rect_1, false, false);
 		text_a->setOverrideColor(Gui::COLOR_ON_BG);
 
-		m_gui->gui->addEditBox(
+		gui->addEditBox(
 			nickname.c_str(), rect_2, true, nullptr, ID_BoxNickname);
 
 		rect_1 += core::vector2di(0, 50);
@@ -47,19 +49,19 @@ void SceneConnect::draw()
 	}
 
 	{
-		auto text_a = m_gui->gui->addStaticText(L"Address", rect_1, false, false);
+		auto text_a = gui->addStaticText(L"Address", rect_1, false, false);
 		text_a->setOverrideColor(Gui::COLOR_ON_BG);
 
 		core::stringw str;
 
-		m_gui->gui->addEditBox(
+		gui->addEditBox(
 			address.c_str(), rect_2, true, nullptr, ID_BoxAddress);
 
 		rect_1 += core::vector2di(0, 50);
 		rect_2 += core::vector2di(0, 50);
 	}
 
-	m_gui->gui->addButton(
+	gui->addButton(
 		rect_2, nullptr, ID_BtnConnect, L"Connect");
 }
 
@@ -103,7 +105,7 @@ bool SceneConnect::OnEvent(GameEvent &e)
 
 void SceneConnect::onSubmit(int elementid)
 {
-	auto root = m_gui->gui->getRootGUIElement();
+	auto root = m_gui->guienv->getRootGUIElement();
 
 	nickname = root->getElementFromId(ID_BoxNickname)->getText();
 	address = root->getElementFromId(ID_BoxAddress)->getText();

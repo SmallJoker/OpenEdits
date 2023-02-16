@@ -167,7 +167,7 @@ void Player::stepInternal(float dtime)
 		acc.X += coeff_n * (vel.X * vel.X) * -sign_x;
 		ac.Y += coeff_n * (vel.Y * vel.Y) * -sign_y;*/
 
-		const float coeff_f = 2.0f; // Friction
+		const float coeff_f = 8.0f; // Friction
 		if (m_collision.Y)
 			acc.X += coeff_f * -sign_x;
 		if (m_collision.X)

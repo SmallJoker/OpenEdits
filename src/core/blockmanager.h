@@ -70,6 +70,7 @@ public:
 	BlockProperties *getProps(bid_t block_id);
 	BlockPack *getPack(const std::string &name);
 	const std::vector<BlockPack *> &getPacks() { return m_packs; }
+	video::ITexture *getMissingTexture() { return m_missing_texture; }
 
 private:
 	void ensurePropsSize(size_t n);
@@ -77,6 +78,7 @@ private:
 	// This is probably a bad idea for headless servers
 	video::ITexture *m_missing_texture = nullptr;
 
+	BlockProperties m_fallback;
 	std::vector<BlockProperties *> m_props;
 	std::vector<BlockPack *> m_packs;
 };

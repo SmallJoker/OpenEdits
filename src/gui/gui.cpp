@@ -15,28 +15,28 @@ Gui::Gui()
 {
 	window_size = core::dimension2du(850, 550);
 
-	device = createDevice(video::EDT_OPENGL,
+	m_device = createDevice(video::EDT_OPENGL,
 		window_size, 32, false, false, true /* vsync */, this);
 
-	ASSERT_FORCED(device, "Failed to initialize driver");
+	ASSERT_FORCED(m_device, "Failed to initialize driver");
 
 	{
 		// Title bar
 		core::stringw version;
 		core::multibyteToWString(version, VERSION_STRING);
-		device->setWindowCaption(version.c_str());
+		m_device->setWindowCaption(version.c_str());
 	}
 
-	scenemgr = device->getSceneManager();
-	gui = device->getGUIEnvironment();
-	driver = device->getVideoDriver();
+	scenemgr = m_device->getSceneManager();
+	guienv = m_device->getGUIEnvironment();
+	driver = m_device->getVideoDriver();
 
 	{
 		// Styling
-		font = gui->getFont("assets/fonts/DejaVuSans_15pt.png");
+		font = guienv->getFont("assets/fonts/DejaVuSans_15pt.png");
 		ASSERT_FORCED(font, "Cannot load font");
 
-		gui::IGUISkin *skin = gui->getSkin();
+		gui::IGUISkin *skin = guienv->getSkin();
 		skin->setFont(font);
 		auto make_opaque = [&skin] (gui::EGUI_DEFAULT_COLOR what) {
 			auto color = skin->getColor(what);
@@ -83,7 +83,7 @@ Gui::~Gui()
 		delete it.second;
 	m_handlers.clear();
 
-	delete device;
+	delete m_device;
 }
 
 // -------------- Public members -------------
@@ -91,8 +91,9 @@ Gui::~Gui()
 void Gui::run()
 {
 	auto t_last = std::chrono::steady_clock::now();
+	getHandler(m_scenetype)->OnOpen();
 
-	while (device->run() && m_scenetype_next != SceneHandlerType::CTRL_QUIT) {
+	while (m_device->run() && m_scenetype_next != SceneHandlerType::CTRL_QUIT) {
 		float dtime;
 		{
 			// Measure precise timings
@@ -113,19 +114,12 @@ void Gui::run()
 			m_pending_disconnect = false;
 		}
 
-		if (m_client) {
+		if (m_client)
 			m_client->step(dtime);
-		}
-		if (m_server) {
+		if (m_server)
 			m_server->step(dtime);
-		}
 
 		bool is_new_screen = (m_scenetype_next != m_scenetype);
-
-		if (m_scenetype_next == SceneHandlerType::CTRL_RENEW)
-			m_scenetype_next = m_scenetype;
-		else
-			m_scenetype = m_scenetype_next;
 
 		auto screensize = driver->getScreenSize();
 		if (screensize != window_size) {
@@ -138,41 +132,39 @@ void Gui::run()
 
 			// Clear GUI elements
 			scenemgr->clear();
-			gui->clear();
+			guienv->clear();
+		}
+
+		if (m_scenetype_next == SceneHandlerType::CTRL_RENEW) {
+			m_scenetype_next = m_scenetype;
+		} else if (m_scenetype_next != m_scenetype) {
+			// Substitutes for the constructors that do not allow access to "Gui *"
+			getHandler(m_scenetype)->OnClose();
+			m_scenetype = m_scenetype_next;
+			getHandler(m_scenetype)->OnOpen();
 		}
 
 		driver->beginScene(true, true, video::SColor(0xFF000000));
 
 		auto handler = getHandler(m_scenetype);
 
-		if (is_new_screen)
+		if (is_new_screen) {
 			handler->draw();
+			// TODO: draw popups here to appear above everything else
+		}
 
 		scenemgr->drawAll();
 		handler->step(dtime);
-		gui->drawAll();
+		guienv->drawAll();
 
-		{
-			int fps = driver->getFPS();
-			core::stringw str;
-			core::multibyteToWString(str, std::to_string(fps).c_str());
-			core::recti rect(
-				core::vector2di(window_size.Width - 40, window_size.Height - 20),
-				core::dimension2di(50, 50)
-			);
-			font->draw(str, rect, 0xFFFFFF00);
-		}
+		drawFPS();
+		drawPopup(dtime);
 
 		driver->endScene();
-
-		if (m_client)
-			m_client->step(dtime);
-		if (m_server)
-			m_server->step(dtime);
 	}
 
 	scenemgr->clear();
-	gui->clear();
+	guienv->clear();
 }
 
 
@@ -193,6 +185,7 @@ bool Gui::OnEvent(GameEvent &e)
 	switch (e.type_c2g) {
 		case E::C2G_DISCONNECT:
 			disconnect();
+			showPopupText("Disconnected from the server");
 			return true;
 		case E::C2G_JOIN:
 			setNextScene(SceneHandlerType::Gameplay);
@@ -200,6 +193,9 @@ bool Gui::OnEvent(GameEvent &e)
 		case E::C2G_LEAVE:
 			setNextScene(SceneHandlerType::Lobby);
 			return true;
+		case E::C2G_DIALOG:
+			showPopupText(*e.text);
+			break;
 		default: break;
 	}
 
@@ -212,7 +208,7 @@ void Gui::registerHandler(SceneHandlerType type, SceneHandler *handler)
 	ASSERT_FORCED(m_handlers.find(type) == m_handlers.end(), "Already registered");
 
 	m_handlers.insert({type, handler});
-	handler->init(this);
+	handler->m_gui = this;
 }
 
 SceneHandler *Gui::getHandler(SceneHandlerType type)
@@ -238,19 +234,20 @@ void Gui::connect(SceneConnect *sc)
 
 
 	m_client = new Client(init);
+	m_client->setEventHandler(this);
 
 	for (int i = 0; i < 10 && m_client->getState() != ClientState::LobbyIdle; ++i) {
 		sleep_ms(200);
 	}
 
 	if (m_client->getState() == ClientState::LobbyIdle) {
-		m_client->setEventHandler(this);
 		setNextScene(SceneHandlerType::Lobby);
 
 		GameEvent e(GameEvent::G2C_LOBBY_REQUEST);
 		sendNewEvent(e);
 	} else {
-		puts("Connection timed out: Server is not reachable.");
+		if (m_popup_text.empty())
+			showPopupText("Connection timed out: Server is not reachable.");
 		m_pending_disconnect = true;
 	}
 }
@@ -324,4 +321,55 @@ void Gui::displaceRect(core::recti &rect, core::vector2df pos_perc)
 		window_size.Height * pos_perc.Y * 0.01f
 	);
 	rect += disp;
+}
+
+// -------------- Overlay elements -------------
+
+void Gui::drawFPS()
+{
+	// FPS indicator text on the bottom right
+	int fps = driver->getFPS();
+	core::stringw str;
+	core::multibyteToWString(str, std::to_string(fps).c_str());
+	core::recti rect(
+		core::vector2di(window_size.Width - 40, window_size.Height - 20),
+		core::dimension2di(50, 50)
+	);
+	font->draw(str, rect, 0xFFFFFF00);
+}
+
+
+void Gui::showPopupText(const std::string &str)
+{
+	printf("GUI popup: %s\n", str.c_str());
+
+	std::wstring wstr;
+	utf8_to_utf32(wstr, str.c_str());
+
+	m_popup_timer += 7;
+	if (m_popup_text.empty()) {
+		m_popup_text = wstr.c_str();
+	} else {
+		m_popup_text += L"\n";
+		m_popup_text += wstr.c_str();
+	}
+}
+
+
+void Gui::drawPopup(float dtime)
+{
+	if (m_popup_timer <= 0) {
+		m_popup_text.clear();
+		return;
+	}
+
+	core::recti rect = getRect({25, 80}, {50, 10});
+	video::SColor color(0xFFFFFF00);
+	if (m_popup_timer < 1.0f) {
+		color.setAlpha(255 * m_popup_timer);
+	}
+
+	font->draw(m_popup_text, rect, color, true, true);
+
+	m_popup_timer -= dtime;
 }

@@ -57,6 +57,7 @@ static std::string dump_val(const core::vector3df vec)
 void SceneGameplay::draw()
 {
 	const auto wsize = m_gui->window_size;
+	auto gui = m_gui->guienv;
 
 	m_ignore_keys = false;
 
@@ -75,7 +76,7 @@ void SceneGameplay::draw()
 		core::dimension2du(100, 30)
 	);
 
-	m_gui->gui->addButton(
+	gui->addButton(
 		rect_1, nullptr, ID_BtnBack, L"<< Lobby");
 
 	core::recti rect_2(
@@ -83,7 +84,7 @@ void SceneGameplay::draw()
 		core::dimension2du(300, 30)
 	);
 
-	m_gui->gui->addEditBox(
+	gui->addEditBox(
 		L"", rect_2, true, nullptr, ID_BoxChat);
 
 	{
@@ -94,7 +95,7 @@ void SceneGameplay::draw()
 		if (m_chathistory_text.empty())
 			m_chathistory_text = L"--- Start of chat history ---\n";
 
-		auto e = m_gui->gui->addEditBox(m_chathistory_text.c_str(), rect_ch, true);
+		auto e = gui->addEditBox(m_chathistory_text.c_str(), rect_ch, true);
 		e->setAutoScroll(true);
 		e->setMultiLine(true);
 		e->setWordWrap(true);
@@ -111,7 +112,7 @@ void SceneGameplay::draw()
 	updatePlayerlist();
 
 	if (!m_blockselector) {
-		m_blockselector = new SceneBlockSelector(m_gui->gui);
+		m_blockselector = new SceneBlockSelector(gui);
 	}
 
 	m_blockselector->setHotbarPos(
@@ -248,7 +249,7 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 			case EMIE_MOUSE_WHEEL:
 				{
 					core::vector2di pos(e.MouseInput.X, e.MouseInput.Y);
-					auto root = m_gui->gui->getRootGUIElement();
+					auto root = m_gui->guienv->getRootGUIElement();
 					auto element = root->getElementFromPoint(pos);
 					if (element && element != root) {
 						// Forward inputs to the corresponding element
@@ -349,9 +350,6 @@ bool SceneGameplay::OnEvent(GameEvent &e)
 				m_chathistory->setText(m_chathistory_text.c_str());
 			}
 			return true;
-		case E::C2G_DIALOG:
-			// TODO: show an actual dialog?
-			break;
 		default: break;
 	}
 	return false;
@@ -442,10 +440,7 @@ void SceneGameplay::updateWorld()
 				break;
 
 			const BlockProperties *props = g_blockmanager->getProps(b.id);
-			if (!props)
-				break;
-
-			auto z = ZINDEX_LOOKUP[(int)props->type];
+			auto z = ZINDEX_LOOKUP[(int)(props ? props->type : BlockDrawType::Solid)];
 
 			// Note: Position is relative to its parent
 			auto bb = smgr->addBillboardSceneNode(m_stage,
@@ -462,8 +457,6 @@ void SceneGameplay::updateWorld()
 				break;
 
 			const BlockProperties *props = g_blockmanager->getProps(b.bg);
-			if (!props)
-				break;
 			auto z = ZINDEX_LOOKUP[(int)BlockDrawType::Background];
 
 			// Note: Position is relative to its parent
@@ -485,6 +478,12 @@ bool SceneGameplay::assignBlockTexture(const BlockProperties *props, scene::ISce
 	node->setMaterialFlag(video::EMF_ZWRITE_ENABLE, true);
 	// Problem: Filtering bleeds into adjacent textures
 	node->setMaterialFlag(video::EMF_BILINEAR_FILTER, false);
+
+	if (!props) {
+		node->setMaterialTexture(0, g_blockmanager->getMissingTexture());
+		return true;
+	}
+
 	if (props->type == BlockDrawType::Action)
 		node->setMaterialType(video::EMT_TRANSPARENT_ALPHA_CHANNEL_REF);
 	else if (props->type == BlockDrawType::Decoration)
@@ -512,7 +511,8 @@ void SceneGameplay::updatePlayerlist()
 
 	m_dirty_playerlist = false;
 
-	auto root = m_gui->gui->getRootGUIElement();
+	auto gui = m_gui->guienv;
+	auto root = gui->getRootGUIElement();
 	auto playerlist = root->getElementFromId(ID_ListPlayers);
 
 	if (playerlist)
@@ -525,7 +525,7 @@ void SceneGameplay::updatePlayerlist()
 		core::dimension2du(wsize.Width - SIZEW, 100)
 	);
 
-	auto e = m_gui->gui->addListBox(rect, nullptr, ID_ListPlayers);
+	auto e = gui->addListBox(rect, nullptr, ID_ListPlayers);
 
 	auto list = m_gui->getClient()->getPlayerList();
 	for (auto &it : *list.ptr()) {
@@ -547,7 +547,7 @@ void SceneGameplay::updatePlayerlist()
 		core::stringw dst_text;
 		core::multibyteToWString(dst_text, src_text.c_str());
 
-		auto e = m_gui->gui->addStaticText(dst_text.c_str(), rect);
+		auto e = gui->addStaticText(dst_text.c_str(), rect);
 		e->setOverrideColor(Gui::COLOR_ON_BG);
 	}
 }

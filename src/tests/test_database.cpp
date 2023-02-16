@@ -24,6 +24,12 @@ void unittest_database()
 		CHECK(world.getSize().Y == 2);
 		CHECK(world.getMeta().owner == "test");
 	}
+
+	{
+		World world("_does_not_exist_");
+		CHECK(!db.load(&world));
+	}
+
 	db.close();
 
 	std::remove(filepath);

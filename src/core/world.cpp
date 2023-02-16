@@ -88,7 +88,7 @@ void World::createEmpty(blockpos_t size)
 	m_size = size;
 
 	const size_t length = m_size.X * m_size.Y;
-	m_data = new Block[length]; // *2
+	m_data = new Block[length];
 
 	// Prevents the warning -Wclass-memaccess
 	memset((void *)m_data, 0, length);
@@ -109,6 +109,8 @@ static constexpr u16 VALIDATION = 0x4B4F; // OK
 
 void World::read(Packet &pkt)
 {
+	if (m_size.X == 0 || m_size.Y == 0)
+		throw std::runtime_error("World size error (not initialized?)");
 	if (pkt.read<u32>() != SIGNATURE)
 		throw std::runtime_error("World signature mismatch");
 
