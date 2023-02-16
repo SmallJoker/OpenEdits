@@ -1,11 +1,13 @@
 #pragma once
 
+#include "core/chatcommand.h"
 #include "core/environment.h"
 #include "core/types.h" // RefCnt
-#include <map>
 
 enum class RemotePlayerState;
 
+class ChatCommand;
+class DatabaseWorld;
 class RemotePlayer;
 struct ServerPacketHandler;
 
@@ -42,6 +44,16 @@ private:
 	void broadcastInWorld(Player *player, int flags, Packet &pkt);
 
 	static const ServerPacketHandler packet_actions[];
+
+	DatabaseWorld *m_world_db = nullptr;
+
+	// ----------- Chat commands -----------
+	void systemChatSend(Player *player, const std::string &msg);
+
+	CHATCMD_FUNC(chat_Help);
+	CHATCMD_FUNC(chat_Save);
+
+	ChatCommand m_chatcmd;
 };
 
 

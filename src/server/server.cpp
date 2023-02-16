@@ -1,7 +1,9 @@
 #include "server.h"
 #include "remoteplayer.h"
+#include "core/chatcommand.h"
 #include "core/packet.h"
 #include "core/world.h"
+#include "server/database_world.h"
 
 #if 0
 	#define DEBUGLOG(...) printf(__VA_ARGS__)
@@ -11,11 +13,26 @@
 
 static uint16_t PACKET_ACTIONS_MAX; // initialized in ctor
 
-Server::Server()
+Server::Server() :
+	m_chatcmd(this)
 {
 	puts("Server: startup");
 	m_con = new Connection(Connection::TYPE_SERVER, "Server");
 	m_con->listenAsync(*this);
+
+	{
+		// Initialize persistent world storage
+		m_world_db = new DatabaseWorld();
+		if (!m_world_db->tryOpen("server_worlddata.sqlite")) {
+			delete m_world_db;
+			m_world_db = nullptr;
+		}
+	}
+
+	{
+		m_chatcmd.add("/help", (ChatCommandAction)&Server::chat_Help);
+		m_chatcmd.add("/save", (ChatCommandAction)&Server::chat_Save);
+	}
 
 	{
 		PACKET_ACTIONS_MAX = 0;
@@ -37,6 +54,7 @@ Server::~Server()
 	m_players.clear();
 
 	delete m_con;
+	delete m_world_db;
 }
 
 
@@ -189,4 +207,38 @@ void Server::processPacket(peer_t peer_id, Packet &pkt)
 	} catch (std::exception &e) {
 		printf("Server: Action %d general error: %s\n", action, e.what());
 	}
+}
+
+// -------------- Chat commands -------------
+
+void Server::systemChatSend(Player *player, const std::string &msg)
+{
+	Packet pkt;
+	pkt.write(Packet2Client::Chat);
+	pkt.write<peer_t>(0);
+	pkt.writeStr16(msg);
+	m_con->send(player->peer_id, 0, pkt);
+}
+
+
+CHATCMD_FUNC(Server::chat_Help)
+{
+	systemChatSend(player, "Available commands: " + m_chatcmd.dumpUI());
+}
+
+CHATCMD_FUNC(Server::chat_Save)
+{
+	if (!m_world_db)
+		return;
+
+	auto world = player->getWorld();
+
+	if (player->name != world->getMeta().owner) {
+		systemChatSend(player, "Missing permissions");
+		return;
+	}
+
+	m_world_db->save(world);
+
+	systemChatSend(player, "Saved!");
 }

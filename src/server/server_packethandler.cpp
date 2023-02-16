@@ -3,6 +3,7 @@
 #include "core/packet.h"
 #include "core/utils.h"
 #include "core/world.h"
+#include "server/database_world.h"
 #include <set>
 
 // in sync with core/packet.h
@@ -137,7 +138,17 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 
 	// query database for existing world
 	auto world = getWorldNoLock(world_id);
+	if (!world && m_world_db) {
+		// try to load from the database
+		world = new World(world_id);
+		bool found = m_world_db->load(world.ptr());
+		if (!found) {
+			world->drop();
+			world = nullptr;
+		}
+	}
 	if (!world) {
+		// create a new one
 		world = new World(world_id);
 		world->createDummy({30, 30});
 		world->getMeta().owner = player->name;
@@ -255,6 +266,9 @@ void Server::pkt_Chat(peer_t peer_id, Packet &pkt)
 	}
 
 	RemotePlayer *player = getPlayerNoLock(peer_id);
+
+	if (m_chatcmd.run(player, message))
+		return; // Handled
 
 	Packet out;
 	out.write(Packet2Client::Chat);

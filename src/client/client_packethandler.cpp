@@ -190,9 +190,13 @@ void Client::pkt_Chat(Packet &pkt)
 	SimpleLock lock(m_players_lock);
 
 	peer_t peer_id = pkt.read<peer_t>();
-	LocalPlayer *player = getPlayerNoLock(peer_id);
-	if (!player)
-		return;
+	LocalPlayer *player = nullptr;
+	if (peer_id != 0) {
+		// Non-SYSTEM message
+		player = getPlayerNoLock(peer_id);
+		if (!player)
+			return;
+	}
 
 	std::string message(pkt.readStr16());
 

@@ -4,7 +4,7 @@
 #include "world.h"
 #include <rect.h>
 
-constexpr float DISTANCE_STEP = 0.3f; // absolute max is 0.5f
+constexpr float DISTANCE_STEP = 0.4f; // absolute max is 0.5f
 
 
 void Player::setWorld(World *world)
@@ -97,10 +97,15 @@ void Player::step(float dtime)
 	// Maximal travel distance per iteration
 	while (true) {
 		float speed = vel.getLength();
-		if (speed < 0.01f)
+		if (speed < 0.001f)
 			break;
 
 		float dtime2 = DISTANCE_STEP / speed;
+		speed = (acc * dtime2 + vel).getLength();
+		if (speed < 0.01f)
+			break;
+
+		dtime2 = DISTANCE_STEP / speed;
 		if (dtime < dtime2)
 			break;
 

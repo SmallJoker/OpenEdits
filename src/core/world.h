@@ -43,12 +43,14 @@ struct WorldMeta {
 	void writeCommon(Packet &pkt);
 
 	const std::string id;
-	std::string edit_code;
 	std::string title;
 	std::string owner;
 	bool is_public = true;
-	u16 online = 0;
 	u32 plays = 0;
+
+	bool is_persistent = true; // for testing
+	u16 online = 0;
+	std::string edit_code;
 
 	const playerflags_t getPlayerFlags(const std::string &name) const;
 	// For database

@@ -275,6 +275,20 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 		if (!player)
 			return false;
 
+		if (e.KeyInput.Char == L'/') {
+			auto root = m_gui->guienv->getRootGUIElement();
+			auto element = root->getElementFromId(ID_BoxChat);
+			if (element) {
+				SEvent ev;
+				memcpy(&ev, &e, sizeof(e));
+				ev.KeyInput.Key = KEY_END;
+				element->OnEvent(ev);
+
+				m_gui->guienv->setFocus(element);
+				return true;
+			}
+		}
+
 		auto controls = player->getControls();
 		bool down = e.KeyInput.PressedDown;
 		EKEY_CODE keycode = e.KeyInput.Key;
@@ -338,10 +352,13 @@ bool SceneGameplay::OnEvent(GameEvent &e)
 			break;
 		case E::C2G_PLAYER_CHAT:
 			{
+				const char *who = "* SYSTEM";
+				if (e.player_chat->player)
+					who = e.player_chat->player->name.c_str();
+
 				char buf[200];
 				snprintf(buf, sizeof(buf), "%s: %s\n",
-					e.player_chat->player->name.c_str(),
-					e.player_chat->message.c_str()
+					who, e.player_chat->message.c_str()
 				);
 
 				std::wstring line;
