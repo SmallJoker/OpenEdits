@@ -3,6 +3,10 @@ build/
 bin/
 experimental/
 
+# Binaries
+./OpenEdits
+*.sqlite
+
 # Development files
 *.patch
 *.diff

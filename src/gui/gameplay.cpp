@@ -54,6 +54,12 @@ static std::string dump_val(const core::vector3df vec)
 
 // -------------- Public members -------------
 
+void SceneGameplay::OnClose()
+{
+	m_chathistory_text.clear();
+}
+
+
 void SceneGameplay::draw()
 {
 	const auto wsize = m_gui->window_size;

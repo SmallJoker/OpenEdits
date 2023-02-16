@@ -27,6 +27,8 @@ public:
 	SceneGameplay();
 	~SceneGameplay();
 
+	void OnClose() override;
+
 	void draw() override;
 	void step(float dtime) override;
 	bool OnEvent(const SEvent &e) override;
