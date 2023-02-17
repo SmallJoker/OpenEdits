@@ -1,6 +1,7 @@
 #include "gui.h"
 #include "client/client.h"
 #include "server/server.h"
+#include "core/blockmanager.h"
 #include "core/macros.h"
 #include <irrlicht.h>
 #include <chrono>

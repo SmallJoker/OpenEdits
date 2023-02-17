@@ -20,7 +20,9 @@ namespace irr {
 	}
 }
 
+class BlockProperties;
 class SceneBlockSelector;
+class SceneMinimap;
 
 class SceneGameplay : public SceneHandler {
 public:
@@ -33,6 +35,9 @@ public:
 	void step(float dtime) override;
 	bool OnEvent(const SEvent &e) override;
 	bool OnEvent(GameEvent &e) override;
+
+	// For Minimap
+	core::recti getDrawArea() { return m_draw_area; }
 
 private:
 	bool getBlockFromPixel(int x, int y, blockpos_t &bp);
@@ -52,6 +57,7 @@ private:
 	void setCamera(core::vector3df pos);
 
 	SceneBlockSelector *m_blockselector = nullptr;
+	SceneMinimap *m_minimap = nullptr;
 
 	core::recti m_draw_area; // rendering area
 

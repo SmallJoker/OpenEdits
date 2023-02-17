@@ -152,8 +152,8 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 		world = new World(world_id);
 		world->createDummy({30, 30});
 		world->getMeta().owner = player->name;
-		world->drop(); // kept alive by RefCnt
 	}
+	world->drop(); // kept alive by RefCnt
 
 	Packet out;
 	out.write(Packet2Client::WorldData);

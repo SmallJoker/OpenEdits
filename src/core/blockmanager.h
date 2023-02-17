@@ -45,7 +45,7 @@ struct BlockPack {
 struct BlockProperties {
 	BlockDrawType type = BlockDrawType::Invalid;
 
-	uint32_t color = 0; // minimap
+	u32 color = 0; // minimap
 	video::ITexture *texture = nullptr;
 	int texture_offset = 0; // e.g. when specifying a material
 	int animation_tiles = 0;
@@ -74,9 +74,11 @@ public:
 
 private:
 	void ensurePropsSize(size_t n);
+	u32 getBlockColor(const BlockProperties *props) const;
 
 	// This is probably a bad idea for headless servers
 	video::ITexture *m_missing_texture = nullptr;
+	video::IVideoDriver *m_driver = nullptr;
 
 	BlockProperties m_fallback;
 	std::vector<BlockProperties *> m_props;

@@ -1,4 +1,5 @@
 #include "world.h"
+#include "blockmanager.h"
 #include "macros.h"
 #include "packet.h"
 #include <cstring> // memset

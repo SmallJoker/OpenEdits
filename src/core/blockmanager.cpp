@@ -57,6 +57,7 @@ void BlockManager::populateTextures(video::IVideoDriver *driver)
 
 	int count = 0;
 	m_missing_texture = driver->getTexture("assets/textures/missing_texture.png");
+	m_driver = driver;
 
 	for (auto pack : m_packs) {
 		if (pack->imagepath.empty())
@@ -78,9 +79,13 @@ void BlockManager::populateTextures(video::IVideoDriver *driver)
 			if (i < max_tiles) {
 				prop->texture = image;
 				prop->texture_offset = i;
+				if (prop->color == 0)
+					prop->color = getBlockColor(prop);
 				i++;
 			} else {
 				prop->texture = m_missing_texture;
+				if (prop->color == 0)
+					prop->color = 0xFFFF0000; // red
 				fprintf(stderr, "BlockManager: Out-of-range texture for block_id=%d\n", id);
 			}
 			count++;
@@ -110,5 +115,120 @@ void BlockManager::ensurePropsSize(size_t n)
 {
 	if (n >= m_props.size())
 		m_props.resize(n + 64, nullptr);
+}
+
+u32 BlockManager::getBlockColor(const BlockProperties *props) const
+{
+	auto dim = props->texture->getOriginalSize();
+	auto texture = props->texture;
+
+	void *data = texture->lock(video::ETLM_READ_ONLY);
+
+	video::IImage *img = m_driver->createImageFromData(
+		texture->getColorFormat(),
+		texture->getOriginalSize(),
+		data, true, false
+ 	);
+
+	std::map<video::SColor, int> histogram;
+
+	const float h_levels = 6 * 10,
+		s_levels = 8,
+		v_levels = 4;
+
+	const size_t x_start = dim.Height * props->texture_offset;
+	const size_t x_stop = x_start + dim.Height;
+
+	// Calculate median color
+	for (size_t y = 0; y < dim.Height; ++y)
+	for (size_t x = x_start; x < x_stop; ++x) {
+		video::SColor color = img->getPixel(x, y);
+		if (color.getAlpha() < 127)
+			continue;
+
+		// RGB -> HSV: http://www.easyrgb.com/en/math.php#text20
+		float r = color.getRed() / 255.0f,
+			g = color.getGreen() / 255.0f,
+			b = color.getBlue() / 255.0f;
+
+		float cmin = std::min(r, std::min(g, b)),
+			cmax = std::max(r, std::max(g, b));
+		float delta = cmax - cmin;
+
+		float h = 0,
+			s = 0,
+			v = cmax;
+
+		if (delta != 0) {
+			s = delta / cmax;
+
+			float dr = (((cmax - r) / 6) + (delta / 2)) / delta,
+				dg = (((cmax - g) / 6) + (delta / 2)) / delta,
+				db = (((cmax - b) / 6) + (delta / 2)) / delta;
+
+			if (r == cmax)
+				h = db - dg;
+			else if (g == cmax)
+				h = (1.0f / 3) + dr - db;
+			else if (b == cmax)
+				h = (2.0f / 3) + dg - dr;
+
+			if (h < 0)
+				h += 1;
+			if (h > 1)
+				h -= 1;
+		}
+
+		video::SColor entry(
+			255,
+			std::round(h * h_levels),
+			std::round(s * s_levels),
+			std::round(v * v_levels)
+		);
+		histogram[entry]++;
+	}
+
+	// Get dominant HSV
+	video::SColor color;
+	int highest = 0;
+	for (auto it : histogram) {
+		if (it.second <= highest)
+			continue;
+
+		color = it.first;
+		highest = it.second;
+	}
+
+	{
+		// Convert back to RGB
+		float h = color.getRed() / h_levels,
+			s = color.getGreen() / s_levels,
+			v = color.getBlue() / v_levels;
+		float r, g, b;
+		if (s == 0) {
+			r = g = b = v;
+		} else {
+			float h6 = h * 6;
+			if (h6 == 6)
+				h6 = 0;
+			float i = std::floor(h6);
+			float x1 = v * (1 - s),
+				x2 = v * (1 - s * (h6 - i)),
+				x3 = v * (1 - s * (1 - (h6 - i)));
+
+			if      (i == 0) { r = v  ; g = x3 ; b = x1; }
+			else if (i == 1) { r = x2 ; g = v  ; b = x1; }
+			else if (i == 2) { r = x1 ; g = v  ; b = x3; }
+			else if (i == 3) { r = x1 ; g = x2 ; b = v;  }
+			else if (i == 4) { r = x3 ; g = x1 ; b = v;  }
+			else             { r = v  ; g = x1 ; b = x2; }
+		}
+		color = video::SColor(255, r * 255, g * 255, b * 255);
+	}
+
+	img->drop();
+	texture->unlock();
+
+	return color.color;
 }
 

@@ -1,7 +1,9 @@
 #include "gameplay.h"
 #include "client/client.h"
 #include "client/localplayer.h"
+#include "core/blockmanager.h"
 #include "blockselector.h"
+#include "minimap.h"
 #include <irrlicht.h>
 
 static int SIZEW = 650; // world render size
@@ -17,6 +19,7 @@ static float ZINDEX_LOOKUP[(int)BlockDrawType::Invalid] = {
 enum ElementId : int {
 	ID_BoxChat = 101,
 	ID_BtnBack = 110,
+	ID_BtnMinimap,
 	ID_ListPlayers = 120,
 	ID_PlayerOffset = 300,
 };
@@ -33,8 +36,8 @@ SceneGameplay::~SceneGameplay()
 		m_world_smgr->drop();
 	}
 
-	if (m_blockselector)
-		delete m_blockselector;
+	delete m_blockselector;
+	delete m_minimap;
 }
 
 #if 0
@@ -93,6 +96,13 @@ void SceneGameplay::draw()
 	gui->addEditBox(
 		L"", rect_2, true, nullptr, ID_BoxChat);
 
+	core::recti rect_3(
+		core::vector2di(680, wsize.Height - 35),
+		core::dimension2du(30, 30)
+	);
+
+	gui->addButton(rect_3, nullptr, ID_BtnMinimap, L"M");
+
 	{
 		core::recti rect_ch(
 			core::vector2di(SIZEW, 160),
@@ -117,14 +127,24 @@ void SceneGameplay::draw()
 	m_dirty_playerlist = true;
 	updatePlayerlist();
 
-	if (!m_blockselector) {
-		m_blockselector = new SceneBlockSelector(gui);
+	{
+		// Minimap (below block selector)
+		if (!m_minimap)
+			m_minimap = new SceneMinimap(this, m_gui);
+
+		m_minimap->draw();
 	}
 
-	m_blockselector->setHotbarPos(
-		rect_1.UpperLeftCorner + core::position2di(110, 0)
-	);
-	m_blockselector->draw();
+	{
+		// Block selector GUI
+		if (!m_blockselector)
+			m_blockselector = new SceneBlockSelector(gui);
+
+		m_blockselector->setHotbarPos(
+			rect_1.UpperLeftCorner + core::position2di(110, 0)
+		);
+		m_blockselector->draw();
+	}
 }
 
 void SceneGameplay::step(float dtime)
@@ -133,6 +153,7 @@ void SceneGameplay::step(float dtime)
 	updatePlayerlist();
 	updatePlayerPositions(dtime);
 	m_blockselector->step(dtime);
+	m_minimap->step(dtime);
 
 	{
 		// Actually draw the world contents
@@ -170,6 +191,13 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 					m_gui->leaveWorld();
 					return true;
 				}
+				if (e.GUIEvent.Caller->getID() == ID_BtnMinimap) {
+					if (m_minimap)
+						m_minimap->toggleVisibility();
+					m_gui->guienv->setFocus(nullptr);
+					return true;
+				}
+				break;
 			case gui::EGET_EDITBOX_ENTER:
 				if (e.GUIEvent.Caller->getID() == ID_BoxChat) {
 					auto textw = e.GUIEvent.Caller->getText();
@@ -182,8 +210,10 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 					}
 
 					e.GUIEvent.Caller->setText(L"");
+					m_gui->guienv->setFocus(nullptr);
 					return true;
 				}
+				break;
 			case gui::EGET_ELEMENT_FOCUSED:
 				m_ignore_keys = true;
 				break;
@@ -349,6 +379,9 @@ bool SceneGameplay::OnEvent(GameEvent &e)
 	switch (e.type_c2g) {
 		case E::C2G_MAP_UPDATE:
 			m_dirty_worldmesh = true;
+
+			if (m_minimap)
+				m_minimap->markDirty();
 			break;
 		case E::C2G_PLAYER_JOIN:
 			m_dirty_playerlist = true;

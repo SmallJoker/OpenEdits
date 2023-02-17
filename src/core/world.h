@@ -1,9 +1,9 @@
 #pragma once
 
-#include "blockmanager.h"
 #include "core/macros.h"
 #include "core/types.h"
 #include <string>
+#include <map>
 #include <unordered_set>
 
 class Player;
@@ -22,7 +22,7 @@ struct BlockUpdate {
 
 	blockpos_t pos;
 
-	peer_t peer_id; // specified by server
+	peer_t peer_id = -1; // specified by server
 	// New block ID (BlockUpdate::BG_FLAG for backgrounds)
 	bid_t id = Block::ID_INVALID;
 };
