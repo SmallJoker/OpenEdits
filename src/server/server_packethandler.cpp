@@ -150,7 +150,7 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 	if (!world) {
 		// create a new one
 		world = new World(world_id);
-		world->createDummy({30, 30});
+		world->createDummy({100, 75});
 		world->getMeta().owner = player->name;
 	}
 	world->drop(); // kept alive by RefCnt

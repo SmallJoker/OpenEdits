@@ -43,7 +43,7 @@ private:
 	bool getBlockFromPixel(int x, int y, blockpos_t &bp);
 	video::ITexture *generateTexture(const wchar_t *text, u32 color = 0xFFFFFFFF);
 
-	void updateWorld();
+	void drawBlocksInView();
 	bool assignBlockTexture(const BlockProperties *props, scene::ISceneNode *node);
 	bool m_dirty_worldmesh = false;
 

@@ -95,18 +95,15 @@ void Player::step(float dtime)
 	if (m_jump_cooldown > 0)
 		m_jump_cooldown -= dtime;
 
+	//printf("dtime: %g, v=%g, a=%g\n", dtime, vel.getLength(), acc.getLength());
+
 	// Maximal travel distance per iteration
 	while (true) {
-		float speed = vel.getLength();
-		if (speed < 0.001f)
+		float speed = (acc * dtime + vel).getLength();
+		if (speed * dtime < DISTANCE_STEP)
 			break;
 
 		float dtime2 = DISTANCE_STEP / speed;
-		speed = (acc * dtime2 + vel).getLength();
-		if (speed < 0.01f)
-			break;
-
-		dtime2 = DISTANCE_STEP / speed;
 		if (dtime < dtime2)
 			break;
 

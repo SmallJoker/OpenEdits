@@ -60,6 +60,8 @@ static std::string dump_val(const core::vector3df vec)
 void SceneGameplay::OnClose()
 {
 	m_chathistory_text.clear();
+	if (m_minimap)
+		m_minimap->markDirty();
 }
 
 
@@ -149,7 +151,7 @@ void SceneGameplay::draw()
 
 void SceneGameplay::step(float dtime)
 {
-	updateWorld();
+	drawBlocksInView();
 	updatePlayerlist();
 	updatePlayerPositions(dtime);
 	m_blockselector->step(dtime);
@@ -470,12 +472,13 @@ video::ITexture *SceneGameplay::generateTexture(const wchar_t *text, u32 color)
 	return texture;
 }
 
-void SceneGameplay::updateWorld()
+void SceneGameplay::drawBlocksInView()
 {
 	auto world = m_gui->getClient()->getWorld();
-	if (!world || !m_dirty_worldmesh)
+	if (!world)
 		return;
-	m_dirty_worldmesh = false;
+
+	auto player = m_gui->getClient()->getMyPlayer();
 
 	SimpleLock lock(world->mutex);
 
@@ -483,9 +486,34 @@ void SceneGameplay::updateWorld()
 
 	m_stage->removeAll();
 
-	auto size = world->getSize();
-	for (int x = 0; x < size.X; x++)
-	for (int y = 0; y < size.Y; y++) {
+	const int x_center = std::round(m_camera_pos.X / 10),
+		y_center = std::round(-m_camera_pos.Y / 10);
+	int x_extent = 18,
+		y_extent = 12;
+
+	{
+		// Updated in the last draw cycle (no need to set viewport now)
+		const auto &panes = m_camera->getViewFrustum()->planes;
+		core::vector3df center = m_camera_pos;
+		center.Z = 0;
+
+		core::vector3df intersection_x, intersection_y;
+		panes[scene::SViewFrustum::VF_RIGHT_PLANE].getIntersectionWithLine(
+			center, core::vector3df(1, 0, 0), intersection_x
+		);
+		panes[scene::SViewFrustum::VF_BOTTOM_PLANE].getIntersectionWithLine(
+			center, core::vector3df(0, 1, 0), intersection_y
+		);
+		x_extent = std::ceil(intersection_x.X / 10) - x_center + 1;
+		y_extent = std::ceil(-intersection_y.Y / 10) - y_center + 1;
+	}
+
+	//printf("center: %i, %i, %i, %i\n", x_center, y_center, x_extent, y_extent);
+
+	// This is very slow. Isn't there a faster way to draw stuff?
+	// also camera->setFar(-camera_pos.Z + 0.1) does not filter them out (bug?)
+	for (int x = x_center - x_extent; x <= x_center + x_extent; x++)
+	for (int y = y_center - y_extent; y <= y_center + y_extent; y++) {
 		Block b;
 		if (!world->getBlock(blockpos_t(x, y), &b))
 			continue;
@@ -736,10 +764,10 @@ void SceneGameplay::setupCamera()
 
 	m_camera = smgr->addCameraSceneNode(nullptr);
 
-	if (0) {
+	if (1) {
 		// Makes things worse
 		core::matrix4 ortho;
-		ortho.buildProjectionMatrixOrthoLH(400 * 0.9f, 300 * 0.9f, 0.1f, 1000.0f);
+		ortho.buildProjectionMatrixOrthoLH(400 * 0.9f, 300 * 0.9f, 0.1f, 300.0f);
 		m_camera->setProjectionMatrix(ortho, true);
 		//m_camera->setAspectRatio((float)draw_area.getWidth() / (float)draw_area.getHeight());
 	}
