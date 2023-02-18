@@ -73,6 +73,8 @@ private:
 	void pkt_GodMode(Packet &pkt);
 	void pkt_Deprecated(Packet &pkt);
 
+	static const ClientPacketHandler packet_actions[];
+
 	// State used for packet filtering
 	ClientState m_state = ClientState::None;
 	uint16_t m_protocol_version = 0;
@@ -80,9 +82,6 @@ private:
 	std::string m_world_id = "foobar";
 	std::string m_nickname;
 	peer_t m_my_peer_id = 0;
-
-private:
-	static const ClientPacketHandler packet_actions[];
 };
 
 struct ClientPacketHandler {

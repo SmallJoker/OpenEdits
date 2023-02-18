@@ -5,7 +5,31 @@
 
 BlockManager *g_blockmanager = nullptr;
 
-BlockManager::BlockManager()
+BlockTile BlockProperties::getTile(const Block b) const
+{
+	switch (condition) {
+		case BlockTileCondition::NotZero:
+			return tiles[b.param1 != 0];
+		case BlockTileCondition::Zero:
+			return tiles[b.param1 == 0];
+		case BlockTileCondition::None:
+			return tiles[0];
+	}
+}
+
+BlockProperties::BlockProperties(BlockDrawType type)
+{
+	tiles[0] = BlockTile();
+	tiles[0].type = type;
+
+	tiles[1] = BlockTile();
+}
+
+
+// -------------- BlockManager public -------------
+
+BlockManager::BlockManager() :
+	m_fallback(BlockDrawType::Solid)
 {
 	m_props.resize(1100, nullptr);
 }
@@ -43,27 +67,26 @@ void BlockManager::registerPack(BlockPack *pack)
 	// Register properties
 	ensurePropsSize(max_id);
 	for (bid_t id : pack->block_ids) {
-		auto prop = new BlockProperties();
-		prop->pack = pack;
-		prop->type = pack->default_type;
-		m_props[id] = prop;
+		auto props = new BlockProperties(pack->default_type);
+		props->pack = pack;
+		m_props[id] = props;
 	}
 }
 
-static void split_texture(video::IVideoDriver *driver, BlockProperties *props)
+static void split_texture(video::IVideoDriver *driver, BlockTile *tile)
 {
-	auto dim = props->texture->getOriginalSize();
-	video::IImage *img = driver->createImage(props->texture,
-		core::vector2di(props->texture_offset * dim.Height, 0),
+	auto dim = tile->texture->getOriginalSize();
+	video::IImage *img = driver->createImage(tile->texture,
+		core::vector2di(tile->texture_offset * dim.Height, 0),
 		core::dimension2du(dim.Height, dim.Height)
 	);
 
-	std::string name = props->pack->name;
+	std::string name = std::to_string((uint64_t)tile->texture);
 	name.append("&&");
-	name.append(std::to_string(props->texture_offset));
+	name.append(std::to_string(tile->texture_offset));
 
-	props->texture = driver->addTexture(name.c_str(), img);
-	props->texture_offset = 0;
+	tile->texture = driver->addTexture(name.c_str(), img);
+	tile->texture_offset = 0;
 	img->drop();
 }
 
@@ -95,15 +118,27 @@ void BlockManager::populateTextures(video::IVideoDriver *driver)
 		for (bid_t id : pack->block_ids) {
 			auto prop = m_props[id];
 			if (i < max_tiles) {
-				prop->texture = texture;
-				prop->texture_offset = i;
-				split_texture(driver, prop);
+				prop->tiles[0].texture = texture;
+				prop->tiles[0].texture_offset = i;
+				split_texture(driver, &prop->tiles[0]);
+
+				if (prop->condition != BlockTileCondition::None) {
+					if (prop->tiles[1].type == BlockDrawType::Invalid) {
+						fprintf(stderr, "BlockManager: Unspecified tiles[1] type for block_id=%d\n", id);
+					}
+					prop->tiles[1].texture = texture;
+					prop->tiles[1].texture_offset += i;
+					split_texture(driver, &prop->tiles[1]);
+				}
 
 				if (prop->color == 0)
-					prop->color = getBlockColor(prop);
+					prop->color = getBlockColor(prop->tiles[0]);
 				i++;
-			} else {
-				prop->texture = m_missing_texture;
+			}
+			if (!prop->tiles[0].texture) {
+				prop->tiles[0].texture = m_missing_texture;
+				prop->tiles[1].texture = m_missing_texture;
+
 				if (prop->color == 0)
 					prop->color = 0xFFFF0000; // red
 				fprintf(stderr, "BlockManager: Out-of-range texture for block_id=%d\n", id);
@@ -131,16 +166,18 @@ BlockPack *BlockManager::getPack(const std::string &name)
 	return nullptr;
 }
 
+// -------------- BlockManager private -------------
+
 void BlockManager::ensurePropsSize(size_t n)
 {
 	if (n >= m_props.size())
 		m_props.resize(n + 64, nullptr);
 }
 
-u32 BlockManager::getBlockColor(const BlockProperties *props) const
+u32 BlockManager::getBlockColor(const BlockTile tile) const
 {
-	auto dim = props->texture->getOriginalSize();
-	auto texture = props->texture;
+	auto dim = tile.texture->getOriginalSize();
+	auto texture = tile.texture;
 
 	void *data = texture->lock(video::ETLM_READ_ONLY);
 
@@ -156,7 +193,7 @@ u32 BlockManager::getBlockColor(const BlockProperties *props) const
 		s_levels = 8,
 		v_levels = 4;
 
-	const size_t x_start = dim.Height * props->texture_offset;
+	const size_t x_start = dim.Height * tile.texture_offset;
 	const size_t x_stop = x_start + dim.Height;
 
 	// Calculate median color

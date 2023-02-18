@@ -133,12 +133,14 @@ bool SceneBlockSelector::drawBlockButton(bid_t bid, const core::recti &rect, gui
 
 	auto props = g_blockmanager->getProps(bid);
 	if (props) {
-		auto dim = props->texture->getOriginalSize();
+		BlockTile tile = props->tiles[0];
+
+		auto dim = tile.texture->getOriginalSize();
 		core::recti rect(
-			core::vector2di(dim.Height * props->texture_offset, 0),
+			core::vector2di(dim.Height * tile.texture_offset, 0),
 			core::dimension2di(dim.Height, dim.Height)
 		);
-		e->setImage(props->texture, rect);
+		e->setImage(tile.texture, rect);
 	} else {
 		e->setText(L"E");
 	}

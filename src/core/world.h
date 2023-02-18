@@ -91,6 +91,7 @@ public:
 	bool updateBlock(const BlockUpdate bu);
 
 	std::vector<blockpos_t> getBlocks(bid_t block_id) const;
+	void setParam1(bid_t block_id, u8 param1);
 
 	blockpos_t getSize() const { return m_size; }
 	const WorldMeta &getMeta() const { return m_meta; }

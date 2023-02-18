@@ -29,6 +29,13 @@ enum class BlockDrawType {
 	Invalid
 };
 
+// Depends on param1
+enum class BlockTileCondition {
+	NotZero,
+	Zero,
+	None
+};
+
 extern BlockManager *g_blockmanager;
 
 struct BlockPack {
@@ -42,21 +49,32 @@ struct BlockPack {
 	std::vector<bid_t> block_ids;
 };
 
-struct BlockProperties {
+struct BlockTile {
 	BlockDrawType type = BlockDrawType::Invalid;
-
-	u32 color = 0; // minimap
 	video::ITexture *texture = nullptr;
 	u8 texture_offset = 0; // e.g. when specifying a material
-	u8 animation_tiles = 0;
+};
+
+struct BlockProperties {
+	BlockProperties(BlockDrawType type);
 
 	BlockPack *pack = nullptr;
 
+	u32 color = 0; // minimap
+
+	BlockTile tiles[2]; // normal, active
+	BlockTile getTile(const Block b) const;
+	BlockTileCondition condition = BlockTileCondition::None;
+
 	// Callback when a player intersects with the block
-	void (*step)(float dtime, Player &c, blockpos_t pos) = nullptr;
+	#define BP_STEP_CALLBACK(name) \
+		void (name)(Player &player, blockpos_t pos)
+	BP_STEP_CALLBACK(*step) = nullptr;
 
 	// Callback when colliding: true -> set velocity to 0
-	bool (*onCollide)(float dtime, Player &c, const core::vector2d<s8> dir) = nullptr;
+	#define BP_COLLIDE_CALLBACK(name) \
+		bool (name)(Player &player, const core::vector2d<s8> dir)
+	BP_COLLIDE_CALLBACK(*onCollide) = nullptr;
 };
 
 class BlockManager {
@@ -74,7 +92,7 @@ public:
 
 private:
 	void ensurePropsSize(size_t n);
-	u32 getBlockColor(const BlockProperties *props) const;
+	u32 getBlockColor(const BlockTile tile) const;
 
 	// This is probably a bad idea for headless servers
 	video::ITexture *m_missing_texture = nullptr;

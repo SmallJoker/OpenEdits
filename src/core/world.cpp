@@ -213,7 +213,7 @@ bool World::updateBlock(const BlockUpdate bu)
 
 	// Special case: Always allow ID 0, but not others
 	bool is_background = (bu.id & BlockUpdate::BG_FLAG) > 0;
-	if (new_id > 0 && (props->type == BlockDrawType::Background) != is_background)
+	if (new_id > 0 && (props->tiles[0].type == BlockDrawType::Background) != is_background)
 		return false;
 
 	Block &ref = getBlockRefNoCheck(bu.pos);
@@ -239,5 +239,17 @@ std::vector<blockpos_t> World::getBlocks(bid_t block_id) const
 	}
 
 	return found;
+}
+
+void World::setParam1(bid_t block_id, u8 param1)
+{
+	for (size_t y = 0; y < m_size.Y; ++y)
+	for (size_t x = 0; x < m_size.X; ++x) {
+		blockpos_t pos(x, y);
+		Block &b = getBlockRefNoCheck(pos);
+		if (b.id == block_id)
+			b.param1 = param1;
+	}
+
 }
 

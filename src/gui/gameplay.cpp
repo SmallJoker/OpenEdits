@@ -300,7 +300,7 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 						if (m_drag_draw_block == 0)
 							guess_layer = true;
 						else if (props)
-							m_drag_draw_block |= (BlockUpdate::BG_FLAG * (props->type == BlockDrawType::Background));
+							m_drag_draw_block |= (BlockUpdate::BG_FLAG * (props->tiles[0].type == BlockDrawType::Background));
 					}
 
 					if (r_pressed || guess_layer) {
@@ -618,14 +618,20 @@ void SceneGameplay::drawBlocksInView()
 				break;
 
 			const BlockProperties *props = g_blockmanager->getProps(b.id);
-			auto z = ZINDEX_LOOKUP[(int)(props ? props->type : BlockDrawType::Solid)];
+			BlockTile tile;
+			if (props)
+				tile = props->getTile(b);
+			else
+				tile.type = BlockDrawType::Solid;
+
+			auto z = ZINDEX_LOOKUP[(int)tile.type];
 
 			// Note: Position is relative to its parent
 			auto bb = smgr->addBillboardSceneNode(m_stage,
 				core::dimension2d<f32>(10, 10),
 				core::vector3df(x * 10, -y * 10, z)
 			);
-			have_solid_above = assignBlockTexture(props, bb);
+			have_solid_above = assignBlockTexture(tile, bb);
 
 		} while (false);
 
@@ -642,13 +648,17 @@ void SceneGameplay::drawBlocksInView()
 				core::dimension2d<f32>(10, 10),
 				core::vector3df(x * 10, -y * 10, z)
 			);
-			assignBlockTexture(props, bb);
+
+			BlockTile tile;
+			if (props)
+				tile = props->tiles[0]; // backgrounds do not change
+			assignBlockTexture(tile, bb);
 
 		} while (false);
 	}
 }
 
-bool SceneGameplay::assignBlockTexture(const BlockProperties *props, scene::ISceneNode *node)
+bool SceneGameplay::assignBlockTexture(const BlockTile tile, scene::ISceneNode *node)
 {
 	bool is_opaque = false;
 
@@ -657,26 +667,26 @@ bool SceneGameplay::assignBlockTexture(const BlockProperties *props, scene::ISce
 	mat.ZWriteEnable = video::EZW_AUTO;
 	node->setMaterialFlag(video::EMF_BILINEAR_FILTER, true);
 
-	if (!props) {
+	if (!tile.texture) {
 		node->setMaterialTexture(0, g_blockmanager->getMissingTexture());
 		return true;
 	}
 
-	if (props->type == BlockDrawType::Action)
+	if (tile.type == BlockDrawType::Action)
 		mat.MaterialType = video::EMT_TRANSPARENT_ALPHA_CHANNEL_REF;
-	else if (props->type == BlockDrawType::Decoration)
+	else if (tile.type == BlockDrawType::Decoration)
 		mat.MaterialType = video::EMT_TRANSPARENT_ALPHA_CHANNEL;
 	else
 		is_opaque = true;
 
-	node->setMaterialTexture(0, props->texture);
+	node->setMaterialTexture(0, tile.texture);
 
 	if (0) {
 		auto &matrix = mat.getTextureMatrix(0);
 		// https://gamedev.stackexchange.com/questions/46963/how-to-avoid-texture-bleeding-in-a-texture-atlas
 		// Avoids bleeding with enabled filter but hides parts of the texture
-		auto dim = props->texture->getOriginalSize();
-		matrix.setTextureTranslate(props->texture_offset * dim.Height + 0.5f / dim.Width, 0);
+		auto dim = tile.texture->getOriginalSize();
+		matrix.setTextureTranslate(tile.texture_offset * dim.Height + 0.5f / dim.Width, 0);
 		matrix.setTextureScale((dim.Height - 1.0f) / dim.Width, 1);
 	}
 

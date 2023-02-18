@@ -214,7 +214,7 @@ bool Player::stepCollisions(float dtime)
 	auto props = g_blockmanager->getProps(block.id);
 	// single block effect
 	if (props && props->step) {
-		props->step(dtime, *this, bp);
+		props->step(*this, bp);
 	} else {
 		// default step
 		acc.Y += Player::GRAVITY_NORMAL;
@@ -251,7 +251,7 @@ void Player::collideWith(float dtime, int x, int y)
 		return;
 
 	auto props = g_blockmanager->getProps(b.id);
-	if (!props || props->type != BlockDrawType::Solid)
+	if (!props || props->getTile(b).type != BlockDrawType::Solid)
 		return;
 
 	core::rectf player(0, 0, 1, 1);
@@ -270,7 +270,7 @@ void Player::collideWith(float dtime, int x, int y)
 		dir.Y = get_sign(vel.Y);
 		if (dir.Y)
 			m_collision.Y = dir.Y;
-		if (!props->onCollide || props->onCollide(dtime, *this, dir)) {
+		if (!props->onCollide || props->onCollide(*this, dir)) {
 			vel.Y = 0;
 		}
 	} else {
@@ -278,7 +278,7 @@ void Player::collideWith(float dtime, int x, int y)
 		dir.X = get_sign(vel.X);
 		if (dir.X)
 			m_collision.X = dir.X;
-		if (!props->onCollide || props->onCollide(dtime, *this, dir)) {
+		if (!props->onCollide || props->onCollide(*this, dir)) {
 			vel.X = 0;
 		}
 	}

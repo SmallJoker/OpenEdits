@@ -30,6 +30,9 @@ Client::Client(ClientStartData &init)
 	}
 
 	m_nickname = init.nickname;
+
+	for (auto &k : m_keys)
+		k = Environment::Key();
 }
 
 Client::~Client()

@@ -20,6 +20,7 @@ namespace irr {
 	}
 }
 
+struct BlockTile;
 struct BlockProperties;
 class SceneBlockSelector;
 class SceneMinimap;
@@ -45,7 +46,7 @@ private:
 	video::ITexture *generateTexture(const wchar_t *text, u32 color = 0xFFFFFFFF);
 
 	void drawBlocksInView();
-	bool assignBlockTexture(const BlockProperties *props, scene::ISceneNode *node);
+	bool assignBlockTexture(const BlockTile tile, scene::ISceneNode *node);
 	bool m_dirty_worldmesh = false;
 	core::recti m_drawn_blocks;
 

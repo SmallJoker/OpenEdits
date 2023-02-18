@@ -23,6 +23,9 @@ constexpr bid_t BLOCKID_INVALID = UINT16_MAX;
 
 struct Block {
 	enum BlockIDs : bid_t {
+		ID_DOOR_R = 23,
+		ID_DOOR_G,
+		ID_DOOR_B,
 		ID_SPAWN = 255,
 		ID_INVALID = UINT16_MAX
 	};

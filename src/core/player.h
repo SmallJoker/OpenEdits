@@ -2,6 +2,7 @@
 
 #include "core/macros.h"
 #include "core/types.h"
+#include <set>
 #include <string>
 #include <vector2d.h>
 
@@ -41,6 +42,9 @@ public:
 	core::vector2df pos;
 	core::vector2df vel;
 	core::vector2df acc;
+
+	// For keys or killing blocks
+	std::set<blockpos_t> *triggered_blocks = nullptr;
 
 	bool godmode = false;
 	bool controls_enabled = true;

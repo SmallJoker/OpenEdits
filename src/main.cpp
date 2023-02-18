@@ -28,31 +28,37 @@ static void exit_cleanup()
 
 
 
-static void step_arrow_left(float dtime, Player &c, blockpos_t pos)
+static BP_STEP_CALLBACK(step_arrow_left)
 {
-	c.acc.X -= Player::GRAVITY_NORMAL;
+	player.acc.X -= Player::GRAVITY_NORMAL;
 }
 
-static void step_arrow_up(float dtime, Player &c, blockpos_t pos)
+static BP_STEP_CALLBACK(step_arrow_up)
 {
-	c.acc.Y -= Player::GRAVITY_NORMAL;
+	player.acc.Y -= Player::GRAVITY_NORMAL;
 }
 
-static void step_arrow_right(float dtime, Player &c, blockpos_t pos)
+static BP_STEP_CALLBACK(step_arrow_right)
 {
-	c.acc.X += Player::GRAVITY_NORMAL;
+	player.acc.X += Player::GRAVITY_NORMAL;
 }
 
-static void step_arrow_none(float dtime, Player &c, blockpos_t pos)
+static BP_STEP_CALLBACK(step_arrow_none)
 {
 }
 
-static bool onCollide_b10_bouncy(float dtime, Player &c, const core::vector2d<s8> dir)
+static BP_STEP_CALLBACK(step_key)
+{
+	if (player.triggered_blocks)
+		player.triggered_blocks->emplace(pos);
+}
+
+static BP_COLLIDE_CALLBACK(onCollide_b10_bouncy)
 {
 	if (dir.X) {
-		c.vel.X *= -0.4f;
+		player.vel.X *= -0.4f;
 	} else if (dir.Y) {
-		c.vel.Y *= -1.5f;
+		player.vel.Y *= -1.5f;
 	}
 	return false;
 }
@@ -64,6 +70,20 @@ static void register_packs()
 		pack->default_type = BlockDrawType::Solid;
 		pack->block_ids = { 9, 10, 11, 12, 13, 14, 15 };
 		g_blockmanager->registerPack(pack);
+	}
+
+	{
+		BlockPack *pack = new BlockPack("doors");
+		pack->default_type = BlockDrawType::Solid;
+		pack->block_ids = { Block::ID_DOOR_R, Block::ID_DOOR_G, Block::ID_DOOR_B };
+		g_blockmanager->registerPack(pack);
+
+		for (int i = Block::ID_DOOR_R; i <= Block::ID_DOOR_B; ++i) {
+			auto props = g_blockmanager->getProps(i);
+			props->condition = BlockTileCondition::NotZero;
+			props->tiles[1].type = BlockDrawType::Action;
+			props->tiles[1].texture_offset = 3;
+		}
 	}
 
 	{
@@ -83,6 +103,17 @@ static void register_packs()
 		g_blockmanager->getProps(2)->step = step_arrow_up;
 		g_blockmanager->getProps(3)->step = step_arrow_right;
 		g_blockmanager->getProps(4)->step = step_arrow_none;
+	}
+
+	{
+		BlockPack *pack = new BlockPack("keys");
+		pack->default_type = BlockDrawType::Action;
+		pack->block_ids = { 6, 7, 8 };
+		g_blockmanager->registerPack(pack);
+
+		g_blockmanager->getProps(6)->step = step_key;
+		g_blockmanager->getProps(7)->step = step_key;
+		g_blockmanager->getProps(8)->step = step_key;
 	}
 
 	// For testing. bouncy blue basic block
