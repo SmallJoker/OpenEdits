@@ -537,6 +537,7 @@ void SceneGameplay::drawBlocksInView()
 
 		core::recti clipped = m_drawn_blocks;
 		clipped.clipAgainst(required_area); // overlapping area
+
 		if (!m_dirty_worldmesh && clipped.getArea() >= required_area.getArea())
 			return;
 
@@ -853,9 +854,11 @@ void SceneGameplay::setupCamera()
 		//m_camera->setAspectRatio((float)draw_area.getWidth() / (float)draw_area.getHeight());
 	}
 
-	m_camera_pos.Z = -150.0f;
+	m_camera_pos.Z = -170.0f;
 	setCamera(m_camera_pos);
 
+	// TODO: Upon resize, the world sometimes blacks out, even though
+	// the world scene nodes are added... ?!
 	m_dirty_worldmesh = true;
 }
 

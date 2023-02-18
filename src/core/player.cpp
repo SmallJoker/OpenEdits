@@ -147,25 +147,6 @@ void Player::stepInternal(float dtime)
 			return;
 	}
 
-	{
-		// Apply friction
-		const float sign_x = get_sign(vel.X);
-		const float sign_y = get_sign(vel.Y);
-
-		const float coeff_b = 0.7f; // Stokes
-		acc += -coeff_b * vel;
-
-		/*const float coeff_n = 0.08f; // Newton
-		acc.X += coeff_n * (vel.X * vel.X) * -sign_x;
-		ac.Y += coeff_n * (vel.Y * vel.Y) * -sign_y;*/
-
-		const float coeff_f = 8.0f; // Friction
-		if (m_collision.Y || godmode)
-			acc.X += coeff_f * -sign_x;
-		if (m_collision.X || godmode)
-			acc.Y += coeff_f * -sign_y;
-	}
-
 	// Controls handling
 	if (m_controls.jump && m_jump_cooldown <= 0) {
 		if (get_sign(m_collision.X * acc.X) == 1 && std::fabs(vel.X) < 3.0f) {
@@ -179,8 +160,28 @@ void Player::stepInternal(float dtime)
 
 	// Apply controls
 	if (controls_enabled) {
-		acc += m_controls.dir * Player::CONTROLS_ACCEL;
+		if (acc.X == 0)
+			acc.X += m_controls.dir.X * Player::CONTROLS_ACCEL;
+		if (acc.Y == 0)
+			acc.Y += m_controls.dir.Y * Player::CONTROLS_ACCEL;
 		//printf("ctrl x=%g,y=%g\n", m_controls.dir.X, m_controls.dir.Y);
+	}
+
+	{
+		// Stokes friction to stop movement after releasing keys
+		const float coeff_s = godmode ? 1.5f : 2.0f; // Stokes
+		if (std::fabs(acc.X) < 0.01f && !m_controls.dir.X)
+			acc.X += -coeff_s * vel.X;
+		if (std::fabs(acc.Y) < 0.01f && !m_controls.dir.Y)
+			acc.Y += -coeff_s * vel.Y;
+
+		const float sign_x = get_sign(vel.X);
+		const float sign_y = get_sign(vel.Y);
+
+		const float coeff_n = 0.03f; // Newton
+		acc.X += coeff_n * (vel.X * vel.X) * -sign_x;
+		acc.Y += coeff_n * (vel.Y * vel.Y) * -sign_y;
+
 	}
 
 	// snap to grid

@@ -45,9 +45,9 @@ public:
 	bool godmode = false;
 	bool controls_enabled = true;
 
-	static constexpr float GRAVITY_NORMAL = 150.0f;
+	static constexpr float GRAVITY_NORMAL = 100.0f;
 	static constexpr float CONTROLS_ACCEL = 60.0f;
-	static constexpr float JUMP_SPEED = 35.0f;
+	static constexpr float JUMP_SPEED = 30.0f;
 
 	// Permission flags. Only valid within the current world
 	enum Flag : playerflags_t {
