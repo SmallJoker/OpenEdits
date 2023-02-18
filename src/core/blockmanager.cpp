@@ -50,6 +50,23 @@ void BlockManager::registerPack(BlockPack *pack)
 	}
 }
 
+static void split_texture(video::IVideoDriver *driver, BlockProperties *props)
+{
+	auto dim = props->texture->getOriginalSize();
+	video::IImage *img = driver->createImage(props->texture,
+		core::vector2di(props->texture_offset * dim.Height, 0),
+		core::dimension2du(dim.Height, dim.Height)
+	);
+
+	std::string name = props->pack->name;
+	name.append("&&");
+	name.append(std::to_string(props->texture_offset));
+
+	props->texture = driver->addTexture(name.c_str(), img);
+	props->texture_offset = 0;
+	img->drop();
+}
+
 void BlockManager::populateTextures(video::IVideoDriver *driver)
 {
 	if (!driver || m_missing_texture)
@@ -64,12 +81,13 @@ void BlockManager::populateTextures(video::IVideoDriver *driver)
 			pack->imagepath = "assets/textures/pack_" + pack->name + ".png";
 
 		// Assign texture ID and offset?
-		video::ITexture *image = driver->getTexture(pack->imagepath.c_str());
-		core::dimension2di dim;
+		video::ITexture *texture = driver->getTexture(pack->imagepath.c_str());
+
+		core::dimension2du dim;
 		int max_tiles = 0;
 
-		if (image) {
-			dim = image->getOriginalSize();
+		if (texture) {
+			dim = texture->getOriginalSize();
 			max_tiles = dim.Width / dim.Height;
 		}
 
@@ -77,8 +95,10 @@ void BlockManager::populateTextures(video::IVideoDriver *driver)
 		for (bid_t id : pack->block_ids) {
 			auto prop = m_props[id];
 			if (i < max_tiles) {
-				prop->texture = image;
+				prop->texture = texture;
 				prop->texture_offset = i;
+				split_texture(driver, prop);
+
 				if (prop->color == 0)
 					prop->color = getBlockColor(prop);
 				i++;

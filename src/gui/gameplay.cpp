@@ -516,6 +516,9 @@ void SceneGameplay::drawBlocksInView()
 		);
 		x_extent = std::ceil(intersection_x.X / 10) - x_center + 1;
 		y_extent = std::ceil(-intersection_y.Y / 10) - y_center + 1;
+
+		if (x_extent < 0 || y_extent < 0)
+			return; // window being resized
 	}
 
 	//printf("center: %i, %i, %i, %i\n", x_center, y_center, x_extent, y_extent);
@@ -555,6 +558,7 @@ void SceneGameplay::drawBlocksInView()
 	m_drawn_blocks.clipAgainst(world_border);
 	const auto upperleft = m_drawn_blocks.UpperLeftCorner; // move to stack
 	const auto lowerright = m_drawn_blocks.LowerRightCorner;
+
 
 	// This is very slow. Isn't there a faster way to draw stuff?
 	// also camera->setFar(-camera_pos.Z + 0.1) does not filter them out (bug?)
@@ -604,10 +608,10 @@ bool SceneGameplay::assignBlockTexture(const BlockProperties *props, scene::ISce
 {
 	bool is_opaque = false;
 
-	node->setMaterialFlag(video::EMF_LIGHTING, false);
-	node->setMaterialFlag(video::EMF_ZWRITE_ENABLE, true);
-	// Problem: Filtering bleeds into adjacent textures
-	node->setMaterialFlag(video::EMF_BILINEAR_FILTER, false);
+	auto &mat = node->getMaterial(0);
+	mat.Lighting = false;
+	mat.ZWriteEnable = video::EZW_AUTO;
+	node->setMaterialFlag(video::EMF_BILINEAR_FILTER, true);
 
 	if (!props) {
 		node->setMaterialTexture(0, g_blockmanager->getMissingTexture());
@@ -615,20 +619,22 @@ bool SceneGameplay::assignBlockTexture(const BlockProperties *props, scene::ISce
 	}
 
 	if (props->type == BlockDrawType::Action)
-		node->setMaterialType(video::EMT_TRANSPARENT_ALPHA_CHANNEL_REF);
+		mat.MaterialType = video::EMT_TRANSPARENT_ALPHA_CHANNEL_REF;
 	else if (props->type == BlockDrawType::Decoration)
-		node->setMaterialType(video::EMT_TRANSPARENT_ALPHA_CHANNEL);
+		mat.MaterialType = video::EMT_TRANSPARENT_ALPHA_CHANNEL;
 	else
 		is_opaque = true;
 
 	node->setMaterialTexture(0, props->texture);
 
-	// Set texture
-	auto &mat = node->getMaterial(0).getTextureMatrix(0);
-
-	float tiles = props->pack->block_ids.size();
-	mat.setTextureTranslate(props->texture_offset / tiles, 0);
-	mat.setTextureScale(1.0f / tiles, 1);
+	if (0) {
+		auto &matrix = mat.getTextureMatrix(0);
+		// https://gamedev.stackexchange.com/questions/46963/how-to-avoid-texture-bleeding-in-a-texture-atlas
+		// Avoids bleeding with enabled filter but hides parts of the texture
+		auto dim = props->texture->getOriginalSize();
+		matrix.setTextureTranslate(props->texture_offset * dim.Height + 0.5f / dim.Width, 0);
+		matrix.setTextureScale((dim.Height - 1.0f) / dim.Width, 1);
+	}
 
 	return is_opaque;
 }

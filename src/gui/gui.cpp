@@ -16,8 +16,15 @@ Gui::Gui()
 {
 	window_size = core::dimension2du(850, 550);
 
-	m_device = createDevice(video::EDT_OPENGL,
-		window_size, 32, false, false, true /* vsync */, this);
+	SIrrlichtCreationParameters params;
+	params.DriverType = video::EDT_OPENGL;
+	params.Vsync = true;
+	params.AntiAlias = 32;
+	params.WindowSize = window_size;
+	params.Stencilbuffer = false;
+	params.EventReceiver = this;
+
+	m_device = createDeviceEx(params);
 
 	ASSERT_FORCED(m_device, "Failed to initialize driver");
 
@@ -154,8 +161,8 @@ void Gui::run()
 			// TODO: draw popups here to appear above everything else
 		}
 
-		scenemgr->drawAll();
 		handler->step(dtime);
+		scenemgr->drawAll();
 		guienv->drawAll();
 
 		drawFPS();

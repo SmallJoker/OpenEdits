@@ -47,8 +47,8 @@ struct BlockProperties {
 
 	u32 color = 0; // minimap
 	video::ITexture *texture = nullptr;
-	int texture_offset = 0; // e.g. when specifying a material
-	int animation_tiles = 0;
+	u8 texture_offset = 0; // e.g. when specifying a material
+	u8 animation_tiles = 0;
 
 	BlockPack *pack = nullptr;
 
