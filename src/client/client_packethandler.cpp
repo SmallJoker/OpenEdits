@@ -279,6 +279,7 @@ void Client::pkt_GodMode(Packet &pkt)
 	LocalPlayer *player = getPlayerNoLock(peer_id);
 	if (player) {
 		player->godmode = state;
+		player->acc = core::vector2df();
 	}
 }
 

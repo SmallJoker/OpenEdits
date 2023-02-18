@@ -13,13 +13,14 @@ class Player;
 	to the Client or GUI. I want them to be decoupled, hence this code.
 */
 struct GameEvent {
-	// GUI --> Client
+	// GUI --> Client. generally requests to send packets
 	enum G2C_Enum {
 		G2C_INVALID,
 		G2C_LOBBY_REQUEST,
 		G2C_JOIN,
 		G2C_LEAVE,
 		G2C_CHAT,
+		G2C_GODMODE
 	} type_g2c = G2C_INVALID;
 
 	// Client --> GUI
@@ -54,6 +55,7 @@ struct GameEvent {
 		Player *player;
 		PlayerChat *player_chat;
 		BlockData *block;
+		int intval;
 	};
 };
 

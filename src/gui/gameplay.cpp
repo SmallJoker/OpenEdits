@@ -8,7 +8,10 @@
 
 static int SIZEW = 650; // world render size
 
-static float ZINDEX_SMILEY = 0;
+static float ZINDEX_SMILEY[2] = {
+	0, // god off
+	-0.3
+};
 static float ZINDEX_LOOKUP[(int)BlockDrawType::Invalid] = {
 	0.1, // Solid
 	0.1, // Action
@@ -333,6 +336,21 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 
 		// The Client performs physics of all players, including ours.
 		switch (keycode) {
+			case KEY_KEY_M:
+				if (down) {
+					if (m_minimap)
+						m_minimap->toggleVisibility();
+					return true;
+				}
+				break;
+			case KEY_KEY_G:
+				if (down) {
+					GameEvent e(GameEvent::G2C_GODMODE);
+					e.intval = !player->godmode;
+					m_gui->sendNewEvent(e);
+					return true;
+				}
+				break;
 			case KEY_KEY_A:
 			case KEY_LEFT:
 				if (down || controls.dir.X < 0)
@@ -666,10 +684,12 @@ void SceneGameplay::updatePlayerlist()
 void SceneGameplay::updatePlayerPositions(float dtime)
 {
 	auto smgr = m_world_smgr;
-	auto texture = m_gui->driver->getTexture("assets/textures/smileys.png");
+	auto smiley_texture = m_gui->driver->getTexture("assets/textures/smileys.png");
+	auto godmode_texture = m_gui->driver->getTexture("assets/textures/god_aura.png");
+
 	int texture_tiles = 4; // TODO: add a better check
 	if (0) {
-		auto dim = texture->getOriginalSize();
+		auto dim = smiley_texture->getOriginalSize();
 		texture_tiles = dim.Width / dim.Height;
 	}
 
@@ -695,7 +715,11 @@ void SceneGameplay::updatePlayerPositions(float dtime)
 		if (!m_drawn_blocks.isPointInside(bp))
 			continue;
 
-		core::vector3df nf_pos(player->pos.X * 10, player->pos.Y * -10, ZINDEX_SMILEY);
+		core::vector3df nf_pos(
+			player->pos.X * 10,
+			player->pos.Y * -10,
+			ZINDEX_SMILEY[player->godmode]
+		);
 
 		s32 nf_id = player->getGUISmileyId();
 		scene::ISceneNode *nf = nullptr;
@@ -718,7 +742,7 @@ void SceneGameplay::updatePlayerPositions(float dtime)
 			nf->setMaterialFlag(video::EMF_ZWRITE_ENABLE, true);
 			nf->setMaterialFlag(video::EMF_BILINEAR_FILTER, false);
 			nf->setMaterialType(video::EMT_TRANSPARENT_ALPHA_CHANNEL_REF);
-			nf->setMaterialTexture(0, texture);
+			nf->setMaterialTexture(0, smiley_texture);
 
 			// Set texture
 			auto &mat = nf->getMaterial(0).getTextureMatrix(0);
@@ -740,6 +764,32 @@ void SceneGameplay::updatePlayerPositions(float dtime)
 			nt->setMaterialFlag(video::EMF_ZWRITE_ENABLE, true);
 			//nt->setMaterialType(video::EMT_TRANSPARENT_ALPHA_CHANNEL_REF);
 			nt->setMaterialTexture(0, nt_texture);
+		}
+
+		scene::ISceneNode *ga = nullptr;
+		for (auto &c : nf->getChildren()) {
+			if (c->getID() == nf_id + 2) {
+				ga = c;
+				break;
+			}
+		}
+
+		// Add godmode aura
+		if (player->godmode != (!!ga)) {
+			// Difference!
+			if (player->godmode) {
+				auto ga = smgr->addBillboardSceneNode(nf,
+					core::dimension2d<f32>(18, 18),
+					core::vector3df(0, 0, 0.1),
+					nf_id + 2
+				);
+				ga->setMaterialFlag(video::EMF_LIGHTING, false);
+				ga->setMaterialFlag(video::EMF_ZWRITE_ENABLE, true);
+				ga->setMaterialType(video::EMT_TRANSPARENT_ALPHA_CHANNEL);
+				ga->setMaterialTexture(0, godmode_texture);
+			} else {
+				nf->removeChild(ga);
+			}
 		}
 
 		for (auto c : nf->getChildren()) {

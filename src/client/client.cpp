@@ -105,6 +105,13 @@ bool Client::OnEvent(GameEvent &e)
 	switch (e.type_g2c) {
 		case E::G2C_INVALID:
 			return false;
+		case E::G2C_LOBBY_REQUEST:
+			{
+				Packet pkt;
+				pkt.write(Packet2Server::GetLobby);
+				m_con->send(0, 0, pkt);
+			}
+			return true;
 		case E::G2C_JOIN:
 			if (getWorld().ptr()) {
 				// Already joined one. ignore.
@@ -145,13 +152,14 @@ bool Client::OnEvent(GameEvent &e)
 				m_con->send(0, 0, pkt);
 			}
 			return true;
-		case E::G2C_LOBBY_REQUEST:
+		case E::G2C_GODMODE:
 			{
 				Packet pkt;
-				pkt.write(Packet2Server::GetLobby);
-				m_con->send(0, 0, pkt);
+				pkt.write(Packet2Server::GodMode);
+				pkt.write<u8>(e.intval);
+				m_con->send(0, 1, pkt);
 			}
-			return true;
+			break;
 	}
 	return false;
 }
