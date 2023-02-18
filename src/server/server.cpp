@@ -31,6 +31,7 @@ Server::Server() :
 
 	{
 		m_chatcmd.add("/help", (ChatCommandAction)&Server::chat_Help);
+		m_chatcmd.add("/respawn", (ChatCommandAction)&Server::chat_Respawn);
 		m_chatcmd.add("/save", (ChatCommandAction)&Server::chat_Save);
 	}
 
@@ -210,6 +211,36 @@ void Server::processPacket(peer_t peer_id, Packet &pkt)
 	}
 }
 
+void Server::respawnPlayer(Player *player, bool send_packet)
+{
+	auto blocks = player->getWorld()->getBlocks(Block::ID_SPAWN);
+
+	if (blocks.empty()) {
+		player->pos = core::vector2df();
+	} else {
+		int index = m_spawn_index;
+		if (++index >= (int)blocks.size())
+			index = 0;
+
+		player->pos.X = blocks[index].X;
+		player->pos.Y = blocks[index].Y;
+		m_spawn_index = index;
+	}
+
+	if (!send_packet)
+		return;
+
+	Packet pkt;
+	pkt.write(Packet2Client::SetPosition);
+	pkt.write(player->peer_id);
+	pkt.write(player->pos.X);
+	pkt.write(player->pos.Y);
+	pkt.write<peer_t>(0); // end of bulk
+
+	m_con->send(player->peer_id, 1, pkt);
+}
+
+
 // -------------- Chat commands -------------
 
 void Server::systemChatSend(Player *player, const std::string &msg)
@@ -225,6 +256,11 @@ void Server::systemChatSend(Player *player, const std::string &msg)
 CHATCMD_FUNC(Server::chat_Help)
 {
 	systemChatSend(player, "Available commands: " + m_chatcmd.dumpUI());
+}
+
+CHATCMD_FUNC(Server::chat_Respawn)
+{
+	respawnPlayer(player, true);
 }
 
 CHATCMD_FUNC(Server::chat_Save)

@@ -225,3 +225,19 @@ bool World::updateBlock(const BlockUpdate bu)
 	id_ref = new_id;
 	return true;
 }
+
+std::vector<blockpos_t> World::getBlocks(bid_t block_id) const
+{
+	std::vector<blockpos_t> found;
+	found.reserve(std::hypot(m_size.X, m_size.Y) * 10);
+
+	for (size_t y = 0; y < m_size.Y; ++y)
+	for (size_t x = 0; x < m_size.X; ++x) {
+		blockpos_t pos(x, y);
+		if (getBlockRefNoCheck(pos).id == block_id)
+			found.emplace_back(pos);
+	}
+
+	return found;
+}
+

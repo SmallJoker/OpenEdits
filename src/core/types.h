@@ -22,7 +22,10 @@ typedef uint16_t bid_t;
 constexpr bid_t BLOCKID_INVALID = UINT16_MAX;
 
 struct Block {
-	static constexpr bid_t ID_INVALID { UINT16_MAX };
+	enum BlockIDs : bid_t {
+		ID_SPAWN = 255,
+		ID_INVALID = UINT16_MAX
+	};
 
 	bool operator ==(const Block &o)
 	{

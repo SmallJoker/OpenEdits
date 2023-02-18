@@ -20,7 +20,7 @@ namespace irr {
 	}
 }
 
-class BlockProperties;
+struct BlockProperties;
 class SceneBlockSelector;
 class SceneMinimap;
 
@@ -29,6 +29,7 @@ public:
 	SceneGameplay();
 	~SceneGameplay();
 
+	void OnOpen() override;
 	void OnClose() override;
 
 	void draw() override;

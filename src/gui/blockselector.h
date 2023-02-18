@@ -7,6 +7,7 @@
 
 namespace irr {
 	namespace gui {
+		class IGUIElement;
 		class IGUIEnvironment;
 	}
 }
@@ -21,6 +22,7 @@ public:
 	void draw();
 	void step(float dtime);
 	bool OnEvent(const SEvent &e) override;
+	void toggleShowMore();
 
 	bid_t getSelectedBid() const { return m_selected_bid; }
 

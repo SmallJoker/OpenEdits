@@ -164,6 +164,7 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 	{
 		// Update player information
 		player->setWorld(world.ptr());
+		respawnPlayer(player, false);
 		player->state = RemotePlayerState::WorldPlay;
 	}
 

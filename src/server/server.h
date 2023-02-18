@@ -47,12 +47,16 @@ private:
 
 	static const ServerPacketHandler packet_actions[];
 
+	void respawnPlayer(Player *player, bool send_packet);
+	int m_spawn_index = -1;
+
 	DatabaseWorld *m_world_db = nullptr;
 
 	// ----------- Chat commands -----------
 	void systemChatSend(Player *player, const std::string &msg);
 
 	CHATCMD_FUNC(chat_Help);
+	CHATCMD_FUNC(chat_Respawn);
 	CHATCMD_FUNC(chat_Save);
 
 	ChatCommand m_chatcmd;

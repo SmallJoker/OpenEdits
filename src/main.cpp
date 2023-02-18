@@ -60,13 +60,6 @@ static bool onCollide_b10_bouncy(float dtime, Player &c, const core::vector2d<s8
 static void register_packs()
 {
 	{
-		BlockPack *pack = new BlockPack("action");
-		pack->default_type = BlockDrawType::Action;
-		pack->block_ids = { 0, 1, 2, 3, 4 };
-		g_blockmanager->registerPack(pack);
-	}
-
-	{
 		BlockPack *pack = new BlockPack("basic");
 		pack->default_type = BlockDrawType::Solid;
 		pack->block_ids = { 9, 10, 11, 12, 13, 14, 15 };
@@ -80,11 +73,28 @@ static void register_packs()
 		g_blockmanager->registerPack(pack);
 	}
 
-	g_blockmanager->getProps(1)->step = step_arrow_left;
-	g_blockmanager->getProps(2)->step = step_arrow_up;
-	g_blockmanager->getProps(3)->step = step_arrow_right;
-	g_blockmanager->getProps(4)->step = step_arrow_none;
-	g_blockmanager->getProps(10)->onCollide = onCollide_b10_bouncy; // blue
+	{
+		BlockPack *pack = new BlockPack("action");
+		pack->default_type = BlockDrawType::Action;
+		pack->block_ids = { 0, 1, 2, 3, 4 };
+		g_blockmanager->registerPack(pack);
+
+		g_blockmanager->getProps(1)->step = step_arrow_left;
+		g_blockmanager->getProps(2)->step = step_arrow_up;
+		g_blockmanager->getProps(3)->step = step_arrow_right;
+		g_blockmanager->getProps(4)->step = step_arrow_none;
+	}
+
+	// For testing. bouncy blue basic block
+	g_blockmanager->getProps(10)->onCollide = onCollide_b10_bouncy;
+
+	{
+		// Spawn block only (for now)
+		BlockPack *pack = new BlockPack("owner");
+		pack->default_type = BlockDrawType::Action;
+		pack->block_ids = { Block::ID_SPAWN };
+		g_blockmanager->registerPack(pack);
+	}
 
 	// Decoration
 	{
@@ -96,11 +106,22 @@ static void register_packs()
 
 	// Backgrounds
 	{
+		// "basic" or "dark"
 		BlockPack *pack = new BlockPack("simple");
 		pack->default_type = BlockDrawType::Background;
 		pack->block_ids = { 500, 501, 502, 503, 504, 505, 506 };
 		g_blockmanager->registerPack(pack);
 	}
+
+/*
+	Key RGB: 6
+	Door RGB: 23
+	Gate RGB: 26
+	Coin: 100
+	Coin door: 43
+	Spawn: 255
+	Secret (invisible): 50
+*/
 }
 
 int main(int argc, char *argv[])

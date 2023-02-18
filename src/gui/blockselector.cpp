@@ -20,7 +20,7 @@ static const core::dimension2di BTN_SIZE(30, 30);
 SceneBlockSelector::SceneBlockSelector(gui::IGUIEnvironment *gui)
 {
 	m_gui = gui;
-	m_hotbar_ids = { 0, 1, 2, 3, 4, 10, 11 };
+	m_hotbar_ids = { 1, 2, 3, 4, 9, 10, 48 };
 }
 
 SceneBlockSelector::~SceneBlockSelector()
@@ -112,14 +112,20 @@ bool SceneBlockSelector::OnEvent(const SEvent &e)
 		}
 		// Show/hide block selector
 		if (id == ID_SHOWMORE) {
-			m_show_selector ^= true;
-			drawBlockSelector();
+			toggleShowMore();
 			m_gui->setFocus(nullptr);
 			return true;
 		}
 	}
 	return false;
 }
+
+void SceneBlockSelector::toggleShowMore()
+{
+	m_show_selector ^= true;
+	drawBlockSelector();
+}
+
 
 bool SceneBlockSelector::drawBlockButton(bid_t bid, const core::recti &rect, gui::IGUIElement *parent, int id)
 {
@@ -149,7 +155,7 @@ void SceneBlockSelector::drawBlockSelector()
 	}
 	m_showmore->setText(L"-");
 
-	static const core::vector2di SPACING(5, 5);
+	static const core::vector2di SPACING(7, 7);
 	struct TabData {
 		const wchar_t *name;
 		gui::IGUIElement *tab = nullptr;
@@ -162,11 +168,13 @@ void SceneBlockSelector::drawBlockSelector()
 	};
 
 	const int offset_x = m_showmore->getAbsolutePosition().UpperLeftCorner.X;
+	const core::dimension2di content_size(550, 150);
 	core::recti rect_tab(
 		core::vector2di(10 - offset_x, -150 - 5),
-		core::dimension2di(550, 150)
+		content_size
 	);
 
+	// Prepare to add tabs
 	auto skin = m_gui->getSkin();
 	video::SColor color(skin->getColor(gui::EGDC_3D_HIGH_LIGHT));
 
@@ -190,12 +198,19 @@ void SceneBlockSelector::drawBlockSelector()
 			continue;
 
 		TabData &td = tabs_data[(int)pack->default_type];
+		int required_width = SPACING.X + BTN_SIZE.Width * pack->block_ids.size();
+		if (td.pos.X + required_width  > content_size.Width) {
+			// does not fit into the current row, move to the next one
+			td.pos.X = SPACING.X;
+			td.pos.Y += BTN_SIZE.Height + SPACING.Y;
+		}
+
 		core::recti rect_b(td.pos, BTN_SIZE);
 		for (bid_t bid : pack->block_ids) {
 			drawBlockButton(bid, rect_b, td.tab, ID_SELECTOR_0 + (int)bid);
 			rect_b += core::vector2di(BTN_SIZE.Width, 0);
 		}
-		td.pos += core::vector2di(0, BTN_SIZE.Height + SPACING.Y);
+		td.pos.X += required_width;
 	}
 }
 

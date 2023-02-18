@@ -22,6 +22,7 @@ static float ZINDEX_LOOKUP[(int)BlockDrawType::Invalid] = {
 enum ElementId : int {
 	ID_BoxChat = 101,
 	ID_BtnBack = 110,
+	ID_BtnGodMode,
 	ID_BtnMinimap,
 	ID_ListPlayers = 120,
 	ID_PlayerOffset = 300,
@@ -60,6 +61,15 @@ static std::string dump_val(const core::vector3df vec)
 
 // -------------- Public members -------------
 
+void SceneGameplay::OnOpen()
+{
+	auto player = m_gui->getClient()->getMyPlayer();
+	if (!!player) {
+		m_camera_pos.X += player->pos.X *  10;
+		m_camera_pos.Y += player->pos.Y * -10;
+	}
+}
+
 void SceneGameplay::OnClose()
 {
 	m_chathistory_text.clear();
@@ -85,28 +95,50 @@ void SceneGameplay::draw()
 	}
 
 	// Bottom row
+	int x_pos = 5;
+	int y_pos = wsize.Height - 35;
 	core::recti rect_1(
-		core::vector2di(5, wsize.Height - 35),
+		core::vector2di(x_pos, y_pos),
 		core::dimension2du(100, 30)
 	);
 
 	gui->addButton(
 		rect_1, nullptr, ID_BtnBack, L"<< Lobby");
 
-	core::recti rect_2(
-		core::vector2di(370, wsize.Height - 35),
-		core::dimension2du(300, 30)
-	);
+	x_pos += 120 + 250; // lobby + block selector
 
-	gui->addEditBox(
-		L"", rect_2, true, nullptr, ID_BoxChat);
+	{
+		// God mode toggle button
+		core::recti rect_3(
+			core::vector2di(x_pos, y_pos),
+			core::dimension2du(30, 30)
+		);
 
-	core::recti rect_3(
-		core::vector2di(680, wsize.Height - 35),
-		core::dimension2du(30, 30)
-	);
+		gui->addButton(rect_3, nullptr, ID_BtnGodMode, L"G");
+		x_pos += 40;
+	}
 
-	gui->addButton(rect_3, nullptr, ID_BtnMinimap, L"M");
+	{
+		// Chatbox
+		core::recti rect_2(
+			core::vector2di(x_pos, y_pos),
+			core::dimension2du(250, 30)
+		);
+
+		gui->addEditBox(
+			L"", rect_2, true, nullptr, ID_BoxChat);
+		x_pos += 260;
+	}
+
+	{
+		// Minimap toggle button
+		core::recti rect_3(
+			core::vector2di(x_pos, y_pos),
+			core::dimension2du(30, 30)
+		);
+
+		gui->addButton(rect_3, nullptr, ID_BtnMinimap, L"M");
+	}
 
 	{
 		core::recti rect_ch(
@@ -146,7 +178,7 @@ void SceneGameplay::draw()
 			m_blockselector = new SceneBlockSelector(gui);
 
 		m_blockselector->setHotbarPos(
-			rect_1.UpperLeftCorner + core::position2di(110, 0)
+			rect_1.UpperLeftCorner + core::position2di(120, 0)
 		);
 		m_blockselector->draw();
 	}
@@ -194,6 +226,14 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 			case gui::EGET_BUTTON_CLICKED:
 				if (e.GUIEvent.Caller->getID() == ID_BtnBack) {
 					m_gui->leaveWorld();
+					return true;
+				}
+				if (e.GUIEvent.Caller->getID() == ID_BtnGodMode) {
+					auto player = m_gui->getClient()->getMyPlayer();
+					GameEvent e(GameEvent::G2C_GODMODE);
+					e.intval = !player->godmode;
+					m_gui->sendNewEvent(e);
+					m_gui->guienv->setFocus(nullptr);
 					return true;
 				}
 				if (e.GUIEvent.Caller->getID() == ID_BtnMinimap) {
@@ -316,7 +356,10 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 		if (!player)
 			return false;
 
-		if (e.KeyInput.Char == L'/') {
+		EKEY_CODE keycode = e.KeyInput.Key;
+		bool down = e.KeyInput.PressedDown;
+		if (e.KeyInput.Char == L'/' || (keycode == KEY_KEY_T && !down)) {
+			// Focus chat window
 			auto root = m_gui->guienv->getRootGUIElement();
 			auto element = root->getElementFromId(ID_BoxChat);
 			if (element) {
@@ -331,11 +374,16 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 		}
 
 		auto controls = player->getControls();
-		bool down = e.KeyInput.PressedDown;
-		EKEY_CODE keycode = e.KeyInput.Key;
 
 		// The Client performs physics of all players, including ours.
 		switch (keycode) {
+			case KEY_KEY_E:
+				if (down) {
+					if (m_blockselector)
+						m_blockselector->toggleShowMore();
+					return true;
+				}
+				break;
 			case KEY_KEY_M:
 				if (down) {
 					if (m_minimap)
@@ -373,10 +421,6 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 				break;
 			case KEY_SPACE:
 				controls.jump = down;
-				break;
-			case KEY_KEY_R:
-				player->pos = core::vector2df(2, 0);
-				player->vel = core::vector2df(0, 0);
 				break;
 			default: break;
 		}
