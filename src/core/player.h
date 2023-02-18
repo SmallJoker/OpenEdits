@@ -42,7 +42,7 @@ public:
 	core::vector2df vel;
 	core::vector2df acc;
 
-	bool is_physical = true;
+	bool godmode = false;
 	bool controls_enabled = true;
 
 	static constexpr float GRAVITY_NORMAL = 150.0f;

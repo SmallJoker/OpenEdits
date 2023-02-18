@@ -16,7 +16,9 @@ const ServerPacketHandler Server::packet_actions[] = {
 	{ RemotePlayerState::WorldPlay, &Server::pkt_Move }, // 5
 	{ RemotePlayerState::WorldPlay, &Server::pkt_Chat },
 	{ RemotePlayerState::WorldPlay, &Server::pkt_PlaceBlock },
-	{ RemotePlayerState::Invalid, 0 }
+	{ RemotePlayerState::WorldPlay, &Server::pkt_TriggerBlock },
+	{ RemotePlayerState::WorldPlay, &Server::pkt_GodMode },
+	{ RemotePlayerState::Invalid, 0 } // 10
 };
 
 
@@ -157,7 +159,7 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 
 	Packet out;
 	out.write(Packet2Client::WorldData);
-	out.write<u8>(1); // status indicator
+	out.write<u8>(1); // 1: new data. 2: clear
 
 	{
 		// Update player information
@@ -179,6 +181,7 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 	pkt_new.write(Packet2Client::Join);
 	pkt_new.write(peer_id);
 	pkt_new.writeStr16(player->name);
+	pkt_new.write<u8>(player->godmode);
 	player->writePhysics(pkt_new);
 
 	for (auto it : m_players) {
@@ -194,9 +197,12 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 		out.write(Packet2Client::Join);
 		out.write(p->peer_id);
 		out.writeStr16(p->name);
+		out.write<u8>(p->godmode);
 		p->writePhysics(out);
 		m_con->send(peer_id, 0, out);
 	}
+
+	printf("Server: Player %s joined\n", player->name.c_str());
 }
 
 void Server::pkt_Leave(peer_t peer_id, Packet &pkt)
@@ -226,17 +232,15 @@ void Server::pkt_Move(peer_t peer_id, Packet &pkt)
 
 	player->readPhysics(pkt);
 
-
 	// broadcast to connected players
 	Packet out;
 	out.write(Packet2Client::Move);
-	out.write<u8>(true); // start
 	{
 		// Bulk sending (future)
 		out.write(peer_id);
 		player->writePhysics(out);
 	}
-	out.write<u8>(false); // stop
+	out.write<peer_t>(0); // end of bulk
 
 	broadcastInWorld(player, 1 | Connection::FLAG_UNRELIABLE, out);
 }
@@ -305,9 +309,32 @@ void Server::pkt_PlaceBlock(peer_t peer_id, Packet &pkt)
 		// Put into queue to keep the world lock as short as possible
 		world->proc_queue.emplace(bu);
 	}
-	lock.unlock();
 }
 
+void Server::pkt_TriggerBlock(peer_t peer_id, Packet &pkt)
+{
+}
+
+void Server::pkt_GodMode(peer_t peer_id, Packet &pkt)
+{
+	RemotePlayer *player = getPlayerNoLock(peer_id);
+
+	bool status = pkt.read<u8>();
+
+	// Permission check
+	if (status) {
+		const auto &meta = player->getWorld()->getMeta();
+		if ((meta.getPlayerFlags(player->name) & Player::FLAG_GODMODE) == 0)
+			return;
+	}
+
+	Packet out;
+	out.write(Packet2Client::GodMode);
+	out.write(peer_id);
+	out.write<u8>(status);
+
+	broadcastInWorld(player, 1, out);
+}
 
 void Server::pkt_Deprecated(peer_t peer_id, Packet &pkt)
 {

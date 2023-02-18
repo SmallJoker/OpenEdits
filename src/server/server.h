@@ -37,6 +37,8 @@ private:
 	void pkt_Move(peer_t peer_id, Packet &pkt);
 	void pkt_Chat(peer_t peer_id, Packet &pkt);
 	void pkt_PlaceBlock(peer_t peer_id, Packet &pkt);
+	void pkt_TriggerBlock(peer_t peer_id, Packet &pkt);
+	void pkt_GodMode(peer_t peer_id, Packet &pkt);
 	void pkt_Deprecated(peer_t peer_id, Packet &pkt);
 
 	void sendError(peer_t peer_id, const std::string &text);

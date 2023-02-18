@@ -28,13 +28,6 @@ World *Player::getWorld()
 	return m_world.ptr();
 }
 
-
-enum PlayerPacketFlags {
-	PPF_IS_PHYSICAL      = 0x01,
-	PPF_CONTROLS_ENABLED = 0x02,
-	PPF_JUMP             = 0x04,
-};
-
 void Player::readPhysics(Packet &pkt)
 {
 	pkt.read(pos.X);
@@ -46,11 +39,9 @@ void Player::readPhysics(Packet &pkt)
 	pkt.read(acc.X);
 	pkt.read(acc.Y);
 
-	u8 flags = pkt.read<u8>();
-	is_physical      = (flags & PPF_IS_PHYSICAL) > 0;
-	controls_enabled = (flags & PPF_CONTROLS_ENABLED) > 0;
-	m_controls.jump  = (flags & PPF_JUMP) > 0;
+	pkt.read<u8>(); // flags
 
+	m_controls.jump = pkt.read<u8>();
 	pkt.read(m_controls.dir.X);
 	pkt.read(m_controls.dir.Y);
 }
@@ -66,12 +57,10 @@ void Player::writePhysics(Packet &pkt)
 	pkt.write(acc.X);
 	pkt.write(acc.Y);
 
-	u8 flags = 0
-		| (PPF_IS_PHYSICAL      * is_physical)
-		| (PPF_CONTROLS_ENABLED * controls_enabled)
-		| (PPF_JUMP             * m_controls.jump)
-	;
+	u8 flags = 0;
 	pkt.write(flags);
+
+	pkt.write<u8>(m_controls.jump);
 	pkt.write(m_controls.dir.X);
 	pkt.write(m_controls.dir.Y);
 }
@@ -153,7 +142,7 @@ void Player::stepInternal(float dtime)
 	// Evaluate center position
 	blockpos_t bp(pos.X + 0.5f, pos.Y + 0.5f);
 
-	if (is_physical) {
+	if (!godmode) {
 		if (!stepCollisions(dtime))
 			return;
 	}

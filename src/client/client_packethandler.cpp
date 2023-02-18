@@ -10,9 +10,12 @@ const ClientPacketHandler Client::packet_actions[] = {
 	{ ClientState::WorldJoin, &Client::pkt_WorldData },
 	{ ClientState::WorldJoin, &Client::pkt_Join }, // 5
 	{ ClientState::WorldJoin, &Client::pkt_Leave },
+	{ ClientState::WorldJoin, &Client::pkt_SetPosition },
 	{ ClientState::WorldPlay, &Client::pkt_Move },
 	{ ClientState::WorldPlay, &Client::pkt_Chat },
-	{ ClientState::WorldPlay, &Client::pkt_PlaceBlock },
+	{ ClientState::WorldPlay, &Client::pkt_PlaceBlock }, // 10
+	{ ClientState::WorldPlay, &Client::pkt_Key },
+	{ ClientState::WorldJoin, &Client::pkt_GodMode },
 	{ ClientState::Invalid, 0 }
 };
 
@@ -70,8 +73,8 @@ void Client::pkt_Lobby(Packet &pkt)
 
 void Client::pkt_WorldData(Packet &pkt)
 {
-	bool is_ok = pkt.read<u8>();
-	if (!is_ok) {
+	u8 mode = pkt.read<u8>();
+	if (!mode) {
 		m_state = ClientState::LobbyIdle;
 
 		// back to lobby
@@ -88,7 +91,9 @@ void Client::pkt_WorldData(Packet &pkt)
 	pkt.read<u16>(size.X);
 	pkt.read<u16>(size.Y);
 	world->createDummy(size);
-	world->read(pkt);
+	if (mode == 1) {
+		world->read(pkt);
+	} // else: clear
 
 	SimpleLock lock(m_players_lock);
 	Player *player = getPlayerNoLock(m_my_peer_id);
@@ -98,9 +103,11 @@ void Client::pkt_WorldData(Packet &pkt)
 	}
 
 	// World kept alive by at least one player
-	player->setWorld(world.ptr());
+	bool is_new_join = player->getWorld() == nullptr;
+	for (auto it : m_players)
+		it.second->setWorld(world.ptr());
 
-	{
+	if (is_new_join) {
 		m_state = ClientState::WorldPlay;
 
 		GameEvent e(GameEvent::C2G_JOIN);
@@ -123,6 +130,7 @@ void Client::pkt_Join(Packet &pkt)
 	player->setWorld(getWorld().ptr());
 
 	player->name = pkt.readStr16();
+	player->godmode = pkt.read<u8>();
 	player->readPhysics(pkt);
 
 	{
@@ -163,17 +171,37 @@ void Client::pkt_Leave(Packet &pkt)
 
 }
 
+void Client::pkt_SetPosition(Packet &pkt)
+{
+	SimpleLock lock(m_players_lock);
+
+	while (true) {
+		peer_t peer_id = pkt.read<peer_t>();
+		if (!peer_id)
+			break;
+
+		core::vector2df pos;
+		pkt.read(pos.X);
+		pkt.read(pos.Y);
+
+		LocalPlayer *player = getPlayerNoLock(peer_id);
+		if (player) {
+			player->pos = pos;
+			player->vel = core::vector2df();
+		}
+	}
+}
+
 void Client::pkt_Move(Packet &pkt)
 {
 	SimpleLock lock(m_players_lock);
 	LocalPlayer dummy(0);
 
 	while (true) {
-		bool is_ok = pkt.read<u8>();
-		if (!is_ok)
+		peer_t peer_id = pkt.read<peer_t>();
+		if (!peer_id)
 			break;
 
-		peer_t peer_id = pkt.read<peer_t>();
 		LocalPlayer *player = getPlayerNoLock(peer_id);
 		if (!player || peer_id == m_my_peer_id) {
 			// don't care
@@ -217,12 +245,12 @@ void Client::pkt_PlaceBlock(Packet &pkt)
 	SimpleLock lock(world->mutex);
 
 	while (true) {
-		bool is_ok = pkt.read<u8>();
-		if (!is_ok)
+		peer_t peer_id = pkt.read<peer_t>();
+		if (!peer_id)
 			break;
 
 		BlockUpdate bu;
-		pkt.read(bu.peer_id); // ... nothing to do with this?
+		bu.peer_id = peer_id; // ... nothing to do with this?
 		pkt.read(bu.pos.X);
 		pkt.read(bu.pos.Y);
 		pkt.read(bu.id);
@@ -236,6 +264,23 @@ void Client::pkt_PlaceBlock(Packet &pkt)
 	sendNewEvent(e);
 }
 
+void Client::pkt_Key(Packet &pkt)
+{
+	// ??
+}
+
+void Client::pkt_GodMode(Packet &pkt)
+{
+	SimpleLock lock(m_players_lock);
+
+	peer_t peer_id = pkt.read<peer_t>();
+	bool state = pkt.read<u8>();
+
+	LocalPlayer *player = getPlayerNoLock(peer_id);
+	if (player) {
+		player->godmode = state;
+	}
+}
 
 void Client::pkt_Deprecated(Packet &pkt)
 {

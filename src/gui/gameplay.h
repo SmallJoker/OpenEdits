@@ -46,6 +46,7 @@ private:
 	void drawBlocksInView();
 	bool assignBlockTexture(const BlockProperties *props, scene::ISceneNode *node);
 	bool m_dirty_worldmesh = false;
+	core::recti m_drawn_blocks;
 
 	void updatePlayerlist();
 	bool m_dirty_playerlist = false;

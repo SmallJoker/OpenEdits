@@ -42,6 +42,8 @@ struct Block {
 			own ID
 	Static texts
 		Represents the text number (separate list)
+	Coins & hidden block (temporary, client-only)
+		Collected/activated indicator [0,1]
 	*/
 	uint8_t param1 = 0;
 };

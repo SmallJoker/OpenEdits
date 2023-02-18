@@ -83,8 +83,7 @@ void Server::step(float dtime)
 		for (auto it = queue.cbegin(); it != queue.cend();) {
 			// Distribute valid changes to players
 
-			out.write<u8>(true); // begin
-			out.write(it->peer_id);
+			out.write(it->peer_id); // continue
 			// blockpos_t
 			out.write(it->pos.X);
 			out.write(it->pos.Y);
@@ -100,7 +99,7 @@ void Server::step(float dtime)
 			if (out.size() > CONNECTION_MTU)
 				break;
 		}
-		out.write<u8>(false); // end
+		out.write<peer_t>(0); // end
 
 		// Distribute to players within this world
 		for (auto it : m_players) {
@@ -161,6 +160,8 @@ void Server::onPeerDisconnected(peer_t peer_id)
 	auto player = getPlayerNoLock(peer_id);
 	if (!player)
 		return;
+
+	printf("Server: Player %s disconnected\n", player->name.c_str());
 
 	{
 		Packet pkt;

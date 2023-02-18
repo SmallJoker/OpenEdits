@@ -478,14 +478,6 @@ void SceneGameplay::drawBlocksInView()
 	if (!world)
 		return;
 
-	auto player = m_gui->getClient()->getMyPlayer();
-
-	SimpleLock lock(world->mutex);
-
-	auto smgr = m_gui->scenemgr;
-
-	m_stage->removeAll();
-
 	const int x_center = std::round(m_camera_pos.X / 10),
 		y_center = std::round(-m_camera_pos.Y / 10);
 	int x_extent = 18,
@@ -510,10 +502,45 @@ void SceneGameplay::drawBlocksInView()
 
 	//printf("center: %i, %i, %i, %i\n", x_center, y_center, x_extent, y_extent);
 
+	SimpleLock lock(world->mutex);
+	const auto world_size = world->getSize();
+	core::recti world_border(
+		core::vector2di(0, 0),
+		core::vector2di(world_size.X, world_size.Y)
+	);
+
+	{
+		// Figure out whether we need to redraw
+		core::recti required_area(
+			core::vector2di(x_center - x_extent, y_center - y_extent),
+			core::vector2di(x_center + x_extent, y_center + y_extent)
+		);
+		required_area.clipAgainst(world_border);
+
+		core::recti clipped = m_drawn_blocks;
+		clipped.clipAgainst(required_area); // overlapping area
+		if (!m_dirty_worldmesh && clipped.getArea() >= required_area.getArea())
+			return;
+
+		m_dirty_worldmesh = false;
+	}
+
+	auto smgr = m_gui->scenemgr;
+	m_stage->removeAll();
+
+	// Draw more than necessary to skip on render steps when moving only slightly
+	m_drawn_blocks = core::recti(
+		core::vector2di(x_center - x_extent - 2, y_center - y_extent - 2),
+		core::vector2di(x_center + x_extent + 2, y_center + y_extent + 2)
+	);
+	m_drawn_blocks.clipAgainst(world_border);
+	const auto upperleft = m_drawn_blocks.UpperLeftCorner; // move to stack
+	const auto lowerright = m_drawn_blocks.LowerRightCorner;
+
 	// This is very slow. Isn't there a faster way to draw stuff?
 	// also camera->setFar(-camera_pos.Z + 0.1) does not filter them out (bug?)
-	for (int x = x_center - x_extent; x <= x_center + x_extent; x++)
-	for (int y = y_center - y_extent; y <= y_center + y_extent; y++) {
+	for (int y = upperleft.Y; y <= lowerright.Y; y++)
+	for (int x = upperleft.X; x <= lowerright.X; x++) {
 		Block b;
 		if (!world->getBlock(blockpos_t(x, y), &b))
 			continue;
@@ -646,9 +673,9 @@ void SceneGameplay::updatePlayerPositions(float dtime)
 		texture_tiles = dim.Width / dim.Height;
 	}
 
-	auto cam_pos = m_camera_pos;
-	cam_pos.Z = 0;
 	do {
+		// Hide nametags after a certain duration
+		// Nested because "getMyPlayer" contains a lock
 		auto me = m_gui->getClient()->getMyPlayer();
 		if (!me)
 			break;
@@ -664,9 +691,11 @@ void SceneGameplay::updatePlayerPositions(float dtime)
 	for (auto it : *players.ptr()) {
 		auto player = dynamic_cast<LocalPlayer *>(it.second);
 
+		core::vector2di bp(player->pos.X + 0.5f, player->pos.Y + 0.5f);
+		if (!m_drawn_blocks.isPointInside(bp))
+			continue;
+
 		core::vector3df nf_pos(player->pos.X * 10, player->pos.Y * -10, ZINDEX_SMILEY);
-		if (cam_pos.getDistanceFromSQ(nf_pos) > 500 * 500)
-			continue; // Do not draw if too far away
 
 		s32 nf_id = player->getGUISmileyId();
 		scene::ISceneNode *nf = nullptr;
@@ -727,6 +756,8 @@ void SceneGameplay::updatePlayerPositions(float dtime)
 		if (c)
 			m_players->removeChild(c);
 	}
+
+	//printf("drawing %zu players\n", m_players->getChildren().size());
 }
 
 

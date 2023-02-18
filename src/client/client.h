@@ -65,9 +65,12 @@ private:
 	void pkt_WorldData(Packet &pkt);
 	void pkt_Join(Packet &pkt);
 	void pkt_Leave(Packet &pkt);
+	void pkt_SetPosition(Packet &pkt);
 	void pkt_Move(Packet &pkt);
 	void pkt_Chat(Packet &pkt);
 	void pkt_PlaceBlock(Packet &pkt);
+	void pkt_Key(Packet &pkt);
+	void pkt_GodMode(Packet &pkt);
 	void pkt_Deprecated(Packet &pkt);
 
 	// State used for packet filtering

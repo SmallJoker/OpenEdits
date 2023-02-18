@@ -55,12 +55,15 @@ enum class Packet2Client : uint16_t {
 	Hello,
 	Error,
 	Lobby,
-	WorldData,
+	WorldData, // initialization or reset
 	Join,
 	Leave,
+	SetPosition, // generally respawn
 	Move,
 	Chat,
 	PlaceBlock,
+	Key, // key blocks
+	GodMode,
 	MAX_END
 };
 
@@ -74,5 +77,7 @@ enum class Packet2Server : uint16_t {
 	Move,
 	Chat,
 	PlaceBlock,
+	TriggerBlock, // key/kill ?
+	GodMode,
 	MAX_END
 };
