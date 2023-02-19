@@ -1,6 +1,5 @@
 #include "database_world.h"
 #include "core/packet.h"
-#include "core/world.h"
 #include <sqlite3.h>
 
 DatabaseWorld::~DatabaseWorld()
@@ -24,6 +23,7 @@ bool DatabaseWorld::tryOpen(const char *filepath)
 		"`width`  INTEGER,"
 		"`height` INTEGER,"
 		"`owner`  TEXT,"
+		"`title`  TEXT,"
 		"`plays`  INTEGER,"
 		"`visibility`   INTEGER,"
 		"`player_flags` BLOB,"
@@ -43,9 +43,13 @@ bool DatabaseWorld::tryOpen(const char *filepath)
 		-1, &m_stmt_read, nullptr));
 	good &= ok("write", sqlite3_prepare_v2(m_database,
 		"REPLACE INTO `worlds` "
-		"(`id`, `width`, `height`, `owner`, `plays`, `visibility`, `player_flags`, `data`) "
-		"VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+		"(`id`, `width`, `height`, `owner`, `title`, `plays`, `visibility`, `player_flags`, `data`) "
+		"VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
 		-1, &m_stmt_write, nullptr));
+	good &= ok("by_player", sqlite3_prepare_v2(m_database,
+		"SELECT `id`, `width`, `height`, `title`, `plays`, `visibility` "
+		"FROM `worlds` WHERE `owner` = ?",
+		-1, &m_stmt_by_player, nullptr));
 
 	return good;
 }
@@ -61,6 +65,7 @@ void DatabaseWorld::close()
 	ok("~end", sqlite3_finalize(m_stmt_end));
 	ok("~read", sqlite3_finalize(m_stmt_read));
 	ok("~write", sqlite3_finalize(m_stmt_write));
+	ok("~by_player", sqlite3_finalize(m_stmt_by_player));
 
 	ok("close", sqlite3_close_v2(m_database));
 	m_database = nullptr;
@@ -70,14 +75,6 @@ void DatabaseWorld::close()
 static int custom_bind_string(sqlite3_stmt *s, int col, const std::string &text)
 {
 	return sqlite3_bind_text(s, col, text.c_str(), text.size(), nullptr);
-}
-
-static uint32_t stupid_worldid_hash(const std::string &id)
-{
-	uint32_t v = 0;
-	for (char c : id)
-		v ^= (v << 3) + (uint8_t)c;
-	return v;
 }
 
 bool DatabaseWorld::load(World *world)
@@ -107,21 +104,22 @@ bool DatabaseWorld::load(World *world)
 	world->createDummy(size);
 
 	meta.owner = (const char *)sqlite3_column_text(s, 3);
-	meta.plays = sqlite3_column_int(s, 4);
-	meta.is_public = sqlite3_column_int(s, 5) == 1;
+	meta.title = (const char *)sqlite3_column_text(s, 4);
+	meta.plays = sqlite3_column_int(s, 5);
+	meta.is_public = sqlite3_column_int(s, 6) == 1;
 
 	{
 		// Player flags
-		const void *blob = sqlite3_column_blob(s, 6);
-		const size_t len = sqlite3_column_bytes(s, 6);
+		const void *blob = sqlite3_column_blob(s, 7);
+		const size_t len = sqlite3_column_bytes(s, 7);
 		Packet pkt((const char *)blob, len);
 		meta.readPlayerFlags(pkt);
 	}
 
 	{
 		// World data
-		const void *blob = sqlite3_column_blob(s, 7);
-		const size_t len = sqlite3_column_bytes(s, 7);
+		const void *blob = sqlite3_column_blob(s, 8);
+		const size_t len = sqlite3_column_bytes(s, 8);
 		Packet pkt((const char *)blob, len);
 		world->read(pkt);
 	}
@@ -151,18 +149,19 @@ bool DatabaseWorld::save(const World *world)
 	sqlite3_bind_int(s, 2, world->getSize().X);
 	sqlite3_bind_int(s, 3, world->getSize().Y);
 	custom_bind_string(s, 4, meta.owner);
-	sqlite3_bind_int(s, 5, meta.plays);
-	sqlite3_bind_int(s, 6, meta.is_public ? 1 : 0);
+	custom_bind_string(s, 5, meta.title);
+	sqlite3_bind_int(s, 6, meta.plays);
+	sqlite3_bind_int(s, 7, meta.is_public ? 1 : 0);
 
 	// IMPORTANT: slite3_bind_*(...) does NOT copy the data.
 	// The packets must be alive until sqlite3_step(...)
 	Packet p_flags;
 	meta.writePlayerFlags(p_flags);
-	sqlite3_bind_blob(s, 7, p_flags.data(), p_flags.size(), nullptr);
+	sqlite3_bind_blob(s, 8, p_flags.data(), p_flags.size(), nullptr);
 
 	Packet p_world;
 	world->write(p_world, World::Method::Plain);
-	sqlite3_bind_blob(s, 8, p_world.data(), p_world.size(), nullptr);
+	sqlite3_bind_blob(s, 9, p_world.data(), p_world.size(), nullptr);
 
 	bool good = ok("save_s", sqlite3_step(s));
 	ok("save_r", sqlite3_reset(s));
@@ -185,8 +184,36 @@ bool DatabaseWorld::runCustomQuery(const char *query)
 	return good;
 }
 
+std::vector<LobbyWorld> DatabaseWorld::getByPlayer(const std::string &name) const
+{
+	std::vector<LobbyWorld> out;
+	if (!m_database)
+		return out;
 
-bool DatabaseWorld::ok(const char *where, int status)
+	auto s = m_stmt_by_player;
+	custom_bind_string(s, 1, name);
+
+	while (sqlite3_step(s) == SQLITE_ROW) {
+		std::string world_id = (const char *)sqlite3_column_text(s, 0);
+
+		LobbyWorld meta(world_id);
+		meta.size.X = sqlite3_column_int(s, 1);
+		meta.size.Y = sqlite3_column_int(s, 2);
+		meta.title = sqlite3_column_int(s, 3);
+		meta.owner = name;
+		meta.plays = sqlite3_column_int(s, 4);
+		meta.is_public = sqlite3_column_int(s, 5) == 1;
+
+		out.emplace_back(meta);
+	}
+
+	ok("byPlayer", sqlite3_errcode(m_database));
+	sqlite3_reset(s);
+	return out;
+}
+
+
+bool DatabaseWorld::ok(const char *where, int status)  const
 {
 	if (status == SQLITE_OK || status == SQLITE_DONE)
 		return true;

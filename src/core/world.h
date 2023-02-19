@@ -38,6 +38,9 @@ struct BlockUpdateHash {
 };
 
 struct WorldMeta {
+	WorldMeta(const std::string &id) :
+		id(id) {}
+
 	// For networking
 	void readCommon(Packet &pkt);
 	void writeCommon(Packet &pkt) const;
@@ -72,6 +75,12 @@ struct WorldMeta {
 	} keys[3] = {};
 };
 
+struct LobbyWorld : public WorldMeta {
+	LobbyWorld(const std::string &id) :
+		WorldMeta(id) {}
+
+	blockpos_t size;
+};
 
 class World : public IReferenceCounted {
 public:

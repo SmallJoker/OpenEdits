@@ -25,7 +25,9 @@ public:
 private:
 	void updateWorldList();
 	bool m_dirty_worldlist = false;
-	std::vector<std::string> m_index_to_worldid;
-	gui::IGUIListBox *m_worldlist = nullptr;
+	std::vector<std::string> m_public_index_to_worldid,
+		m_my_index_to_worldid;
+	gui::IGUIListBox *m_publiclist = nullptr;
+	gui::IGUIListBox *m_mylist = nullptr;
 	gui::IGUIButton *m_refreshbtn = nullptr;
 };

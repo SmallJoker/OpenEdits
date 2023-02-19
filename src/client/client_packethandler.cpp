@@ -57,7 +57,7 @@ void Client::pkt_Lobby(Packet &pkt)
 
 		std::string world_id(pkt.readStr16());
 
-		LobbyWorld world;
+		LobbyWorld world(world_id);
 		world.readCommon(pkt);
 		world.size.X = pkt.read<u16>();
 		world.size.Y = pkt.read<u16>();

@@ -1,5 +1,6 @@
 #include "lobby.h"
 #include "client/client.h"
+#include "client/localplayer.h"
 #include <IGUIButton.h>
 #include <IGUIEnvironment.h>
 #include <IGUIListBox.h>
@@ -9,7 +10,8 @@
 enum ElementId : int {
 	ID_LabelLobby = 100,
 	ID_BtnRefresh,
-	ID_ListWorlds,
+	ID_ListPublic,
+	ID_ListMine,
 	ID_BoxWorldID,
 	ID_BtnJoin,
 };
@@ -33,7 +35,7 @@ void SceneLobby::draw()
 
 	{
 		auto rect = m_gui->getRect({10, 15}, {80, 30});
-		m_worldlist = gui->addListBox(rect, nullptr, ID_ListWorlds, true);
+		m_publiclist = gui->addListBox(rect, nullptr, ID_ListPublic, true);
 
 		core::recti rect_lab(
 			rect.UpperLeftCorner + core::vector2di(0, -25),
@@ -50,8 +52,20 @@ void SceneLobby::draw()
 	}
 
 	{
+		auto rect = m_gui->getRect({10, 51}, {80, 25});
+		m_mylist = gui->addListBox(rect, nullptr, ID_ListMine, true);
+
+		core::recti rect_lab(
+			rect.UpperLeftCorner + core::vector2di(0, -25),
+			core::dimension2di(100, 25)
+		);
+		auto e = gui->addStaticText(L"My worlds", rect_lab);
+		e->setOverrideColor(Gui::COLOR_ON_BG);
+	}
+
+	{
 		// Custom world ID box
-		auto rect = m_gui->getRect({10, 75}, {20, -30});
+		auto rect = m_gui->getRect({10, 83}, {20, -30});
 		gui->addEditBox(L"", rect, true, nullptr, ID_BoxWorldID);
 
 		core::recti rect_lab(
@@ -61,7 +75,7 @@ void SceneLobby::draw()
 		auto e = gui->addStaticText(L"Custom world ID", rect_lab);
 		e->setOverrideColor(Gui::COLOR_ON_BG);
 
-		auto rect_btn =  m_gui->getRect({32, 75}, {-100, -30});
+		auto rect_btn =  m_gui->getRect({32, 83}, {-100, -30});
 		gui->addButton(rect_btn, nullptr, ID_BtnJoin, L"Join");
 	}
 
@@ -97,11 +111,22 @@ bool SceneLobby::OnEvent(const SEvent &e)
 				}
 				break;
 			case gui::EGET_LISTBOX_SELECTED_AGAIN:
-				if (e.GUIEvent.Caller->getID() == ID_ListWorlds) {
+				if (e.GUIEvent.Caller->getID() == ID_ListPublic) {
 					gui::IGUIListBox *list = (gui::IGUIListBox *)e.GUIEvent.Caller;
 
 					try {
-						world_id = m_index_to_worldid.at(list->getSelected());
+						world_id = m_public_index_to_worldid.at(list->getSelected());
+					} catch (std::exception &) {
+						break;
+					}
+
+					m_gui->joinWorld(this);
+				}
+				if (e.GUIEvent.Caller->getID() == ID_ListMine) {
+					gui::IGUIListBox *list = (gui::IGUIListBox *)e.GUIEvent.Caller;
+
+					try {
+						world_id = m_my_index_to_worldid.at(list->getSelected());
 					} catch (std::exception &) {
 						break;
 					}
@@ -134,26 +159,38 @@ void SceneLobby::updateWorldList()
 		return;
 	m_dirty_worldlist = false;
 
-	m_worldlist->clear();
-	m_index_to_worldid.clear();
+	m_publiclist->clear();
+	m_mylist->clear();
+	m_public_index_to_worldid.clear();
+	m_my_index_to_worldid.clear();
 
+	auto player = m_gui->getClient()->getMyPlayer();
 	auto worlds = m_gui->getClient()->world_list;
 
 	for (const auto &it : worlds) {
+		bool is_mine = player->name == it.second.owner;
 		auto size = it.second.size;
 
 		std::ostringstream os;
 		os << "[" << it.second.online << " online]";
 		os << " id=" << it.first;
 		os << " ( " << size.X << "x" << size.Y << " )";
-		os << " by " << it.second.owner;
+		if (is_mine)
+			os << (it.second.is_public ? " - public" : " - private");
+		else
+			os << " by " << it.second.owner;
 
 		core::stringw textw;
 		core::multibyteToWString(textw, os.str().c_str());
-		auto i = m_worldlist->addItem(textw.c_str());
-		m_worldlist->setItemOverrideColor(i, 0xFFFFFFFF);
+		auto dst = is_mine ? m_mylist : m_publiclist;
 
-		m_index_to_worldid.push_back(it.first);
+		auto i = dst->addItem(textw.c_str());
+		dst->setItemOverrideColor(i, 0xFFFFFFFF);
+
+		if (is_mine)
+			m_my_index_to_worldid.push_back(it.first);
+		else
+			m_public_index_to_worldid.push_back(it.first);
 	}
 
 	m_refreshbtn->setEnabled(true);

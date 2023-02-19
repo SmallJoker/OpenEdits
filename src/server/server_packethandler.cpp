@@ -94,12 +94,6 @@ void Server::pkt_GetLobby(peer_t peer_id, Packet &)
 			worlds.insert(world);
 	}
 
-
-	World demo("dummytest");
-	demo.getMeta().owner = "foo mc bar";
-	demo.createEmpty(blockpos_t(30, 20));
-	worlds.insert(&demo);
-
 	for (auto world : worlds) {
 		const auto &meta = world->getMeta();
 		if (!meta.is_public)
@@ -113,6 +107,20 @@ void Server::pkt_GetLobby(peer_t peer_id, Packet &)
 		blockpos_t size = world->getSize();
 		out.write(size.X);
 		out.write(size.Y);
+	}
+
+	if (m_world_db) {
+		auto player = getPlayerNoLock(peer_id);
+		auto found = m_world_db->getByPlayer(player->name);
+		for (const auto &meta : found) {
+			out.write<u8>(true); // continue!
+
+			out.writeStr16(meta.id); // world ID
+			meta.writeCommon(out);
+			// Additional Lobby fields
+			out.write(meta.size.X);
+			out.write(meta.size.Y);
+		}
 	}
 
 	out.write<u8>(false); // terminate

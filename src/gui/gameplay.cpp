@@ -218,8 +218,11 @@ void SceneGameplay::step(float dtime)
 
 bool SceneGameplay::OnEvent(const SEvent &e)
 {
-	if (m_blockselector->OnEvent(e))
-		return true;
+	auto element = m_gui->guienv->getFocus();
+	if (!element || element->getID() != ID_BoxChat) {
+		if (m_blockselector->OnEvent(e))
+			return true;
+	}
 
 	if (e.EventType == EET_GUI_EVENT) {
 		switch (e.GUIEvent.EventType) {
@@ -263,6 +266,7 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 				m_ignore_keys = true;
 				break;
 			case gui::EGET_ELEMENT_FOCUS_LOST:
+				// !! This is not triggered when dragging & releasing the mouse
 				m_ignore_keys = false;
 				break;
 			default: break;

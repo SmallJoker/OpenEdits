@@ -24,10 +24,6 @@ struct ClientStartData {
 	std::string nickname;
 };
 
-struct LobbyWorld : public WorldMeta {
-	blockpos_t size;
-};
-
 // Abstract for inheritance
 class Client : public Environment, public GameEventHandler {
 public:
