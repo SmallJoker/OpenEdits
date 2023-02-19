@@ -9,6 +9,7 @@ namespace irr {
 	namespace gui {
 		class IGUIElement;
 		class IGUIEnvironment;
+		class IGUIImage;
 	}
 }
 
@@ -29,6 +30,7 @@ public:
 private:
 	bool drawBlockButton(bid_t bid, const core::recti &rect, gui::IGUIElement *parent, int id);
 	void drawBlockSelector();
+	bool selectBlockId(int what, bool is_element_id);
 
 	gui::IGUIEnvironment *m_gui = nullptr;
 
@@ -39,4 +41,5 @@ private:
 	bool m_show_selector = false;
 	bid_t m_dragged_bid = Block::ID_INVALID;
 	gui::IGUIElement *m_showmore = nullptr;
+	gui::IGUIImage *m_highlight = nullptr;
 };

@@ -377,13 +377,6 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 
 		// The Client performs physics of all players, including ours.
 		switch (keycode) {
-			case KEY_KEY_E:
-				if (down) {
-					if (m_blockselector)
-						m_blockselector->toggleShowMore();
-					return true;
-				}
-				break;
 			case KEY_KEY_M:
 				if (down) {
 					if (m_minimap)

@@ -5,6 +5,22 @@
 A 2D game block building inspired by Everybody Edits.
 Code structure inspired by Minetest practices.
 
+## Gameplay
+
+**Hotkeys**
+
+ * W/A/S/D or arrow keys: move player
+ * Space: Jump
+ * Left click: Place the selected block
+ * Right click or Shift+Left click: Block eraser
+ * 1-9: Hotbar block selector
+ * `/` or T: Focus chat
+ * Enter: Send chat message
+ * E: Toggle block selector
+ * G: Toggle god mode
+ * M: Toggle minimap
+
+
 ## Available archives
 
 ### Linux

@@ -3,8 +3,10 @@
 #include "core/blockmanager.h"
 #include <IGUIButton.h>
 #include <IGUIEnvironment.h>
+#include <IGUIImage.h>
 #include <IGUITabControl.h>
 #include <ITexture.h>
+#include <IVideoDriver.h>
 
 enum ElementId : int {
 	ID_HOTBAR_0 = 300, // Counted by button number
@@ -44,6 +46,11 @@ void SceneBlockSelector::draw()
 	rect += core::vector2di(5, 0);
 	m_showmore = m_gui->addButton(rect, nullptr, ID_SHOWMORE);
 	drawBlockSelector();
+
+	m_highlight = m_gui->addImage(rect);
+	// Texture size must match BTN_SIZE to display properly
+	m_highlight->setImage(m_gui->getVideoDriver()->getTexture("assets/textures/block_selected.png"));
+	selectBlockId(m_selected_bid, false);
 }
 
 void SceneBlockSelector::step(float dtime)
@@ -97,15 +104,13 @@ bool SceneBlockSelector::OnEvent(const SEvent &e)
 	if (e.EventType == EET_GUI_EVENT && e.GUIEvent.EventType == gui::EGET_BUTTON_CLICKED) {
 		int id = e.GUIEvent.Caller->getID();
 		// Select one from the hotbar
-		if (id >= ID_HOTBAR_0 && id < ID_HOTBAR_0 + (int)m_hotbar_ids.size()) {
-			m_selected_bid = m_hotbar_ids.at(id - ID_HOTBAR_0);
-
+		if (selectBlockId(id, true)) {
 			m_gui->setFocus(nullptr);
 			return true;
 		}
 		if (id >= ID_SELECTOR_0 && id < ID_SELECTOR_MAX) {
 			// Almost the same as with the hotbar
-			m_selected_bid = id - ID_SELECTOR_0;
+			selectBlockId(id - ID_SELECTOR_0, false);
 
 			m_gui->setFocus(nullptr);
 			return true;
@@ -115,6 +120,32 @@ bool SceneBlockSelector::OnEvent(const SEvent &e)
 			toggleShowMore();
 			m_gui->setFocus(nullptr);
 			return true;
+		}
+	}
+	if (e.EventType == EET_KEY_INPUT_EVENT) {
+		if (!e.KeyInput.PressedDown)
+			return false;
+
+		switch (e.KeyInput.Key) {
+			case KEY_KEY_E:
+				toggleShowMore();
+				return true;
+			case KEY_KEY_1:
+			case KEY_KEY_2:
+			case KEY_KEY_3:
+			case KEY_KEY_4:
+			case KEY_KEY_5:
+			case KEY_KEY_6:
+			case KEY_KEY_7:
+			case KEY_KEY_8:
+			case KEY_KEY_9:
+				{
+					int id = e.KeyInput.Key - KEY_KEY_1 + ID_HOTBAR_0;
+					if (selectBlockId(id, true))
+						return true;
+				}
+				break;
+			default: break;
 		}
 	}
 	return false;
@@ -216,3 +247,38 @@ void SceneBlockSelector::drawBlockSelector()
 	}
 }
 
+bool SceneBlockSelector::selectBlockId(int what, bool is_element_id)
+{
+	bid_t selected;
+	s32 hotbar_index = -1;
+	if (is_element_id) {
+		// Get block ID from element ID
+		if (what < ID_HOTBAR_0 || what >= ID_HOTBAR_0 + (int)m_hotbar_ids.size())
+			return false;
+
+		hotbar_index = what - ID_HOTBAR_0;
+		selected = m_hotbar_ids.at(hotbar_index);
+	} else {
+		// Try to get element ID based on block ID
+		selected = what;
+		for (size_t i = 0; i < m_hotbar_ids.size(); ++i) {
+			if (m_hotbar_ids[i] == selected) {
+				hotbar_index = i;
+				break;
+			}
+		}
+	}
+
+	if (hotbar_index >= 0) {
+		m_highlight->setVisible(true);
+		m_highlight->setRelativePosition(
+			m_hotbar_pos + core::vector2di(BTN_SIZE.Width * hotbar_index, 0)
+		);
+
+	} else {
+		m_highlight->setVisible(false);
+	}
+
+	m_selected_bid = selected;
+	return true;
+}
