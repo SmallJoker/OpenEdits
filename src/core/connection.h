@@ -8,6 +8,10 @@ const uint16_t PROTOCOL_VERSION = 1;
 const uint16_t PROTOCOL_VERSION_MIN = 1;
 extern size_t CONNECTION_MTU;
 
+namespace std {
+	class thread;
+}
+
 struct _ENetHost;
 struct _ENetPeer;
 class Packet;
@@ -48,7 +52,7 @@ private:
 	_ENetPeer *findPeer(peer_t peer_id);
 
 	const char *m_name = "";
-	pthread_t m_thread = 0;
+	std::thread *m_thread = nullptr;
 	bool m_running = false;
 
 	std::mutex m_host_lock;

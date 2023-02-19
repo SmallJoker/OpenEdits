@@ -1,7 +1,7 @@
 #include "blockmanager.h"
 #include <ITexture.h>
 #include <IVideoDriver.h>
-#include <exception>
+#include <stdexcept>
 
 BlockManager *g_blockmanager = nullptr;
 

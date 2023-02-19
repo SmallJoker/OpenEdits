@@ -7,8 +7,8 @@
 std::string strtrim(const std::string &str);
 std::string get_next_part(std::string &input);
 
-bool utf32_to_utf8(std::string &dst, const wchar_t *str);
-bool utf8_to_utf32(std::wstring &dst, const char *str);
+bool wide_to_utf8(std::string &dst, const wchar_t *str);
+bool utf8_to_wide(std::wstring &dst, const char *str);
 
 bool isalnum_nolocale(const std::string &str);
 

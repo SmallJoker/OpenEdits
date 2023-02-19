@@ -50,9 +50,14 @@ Server::~Server()
 {
 	puts("Server: stopping...");
 
-	for (auto it : m_players)
-		delete it.second;
-	m_players.clear();
+	{
+		// In case a packet is being processed
+		SimpleLock lock(m_players_lock);
+
+		for (auto it : m_players)
+			delete it.second;
+		m_players.clear();
+	}
 
 	delete m_con;
 	delete m_world_db;

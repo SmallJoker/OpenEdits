@@ -99,7 +99,7 @@ bool SceneLobby::OnEvent(const SEvent &e)
 					auto root = m_gui->guienv->getRootGUIElement();
 					auto editbox = root->getElementFromId(ID_BoxWorldID);
 
-					utf32_to_utf8(world_id, editbox->getText());
+					wide_to_utf8(world_id, editbox->getText());
 					m_gui->joinWorld(this);
 					return true;
 				}

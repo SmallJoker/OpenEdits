@@ -253,7 +253,7 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 					{
 						GameEvent e(GameEvent::G2C_CHAT);
 						e.text = new std::string();
-						utf32_to_utf8(*e.text, textw);
+						wide_to_utf8(*e.text, textw);
 						m_gui->sendNewEvent(e);
 					}
 
@@ -462,7 +462,7 @@ bool SceneGameplay::OnEvent(GameEvent &e)
 				);
 
 				std::wstring line;
-				utf8_to_utf32(line, buf);
+				utf8_to_wide(line, buf);
 				m_chathistory_text.append(line.c_str());
 				m_chathistory->setText(m_chathistory_text.c_str());
 			}

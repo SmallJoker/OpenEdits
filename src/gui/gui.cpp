@@ -19,7 +19,7 @@ Gui::Gui()
 	SIrrlichtCreationParameters params;
 	params.DriverType = video::EDT_OPENGL;
 	params.Vsync = true;
-	params.AntiAlias = 32;
+	//params.AntiAlias = 32; -- only does something on Windows?
 	params.WindowSize = window_size;
 	params.Stencilbuffer = false;
 	params.EventReceiver = this;
@@ -237,8 +237,8 @@ void Gui::connect(SceneConnect *sc)
 		init.address = "127.0.0.1";
 	}
 
-	utf32_to_utf8(init.address, sc->address.c_str());
-	utf32_to_utf8(init.nickname, sc->nickname.c_str());
+	wide_to_utf8(init.address, sc->address.c_str());
+	wide_to_utf8(init.nickname, sc->nickname.c_str());
 
 
 	m_client = new Client(init);
@@ -352,7 +352,7 @@ void Gui::showPopupText(const std::string &str)
 	printf("GUI popup: %s\n", str.c_str());
 
 	std::wstring wstr;
-	utf8_to_utf32(wstr, str.c_str());
+	utf8_to_wide(wstr, str.c_str());
 
 	m_popup_timer += 7;
 	if (m_popup_text.empty()) {

@@ -3,9 +3,9 @@
 
 #include <enet/enet.h>
 #include <iostream>
-#include <pthread.h>
 #include <string.h> // strerror
 #include <sstream>
+#include <thread>
 
 #if 0
 	#define DEBUGLOG(...) printf(__VA_ARGS__)
@@ -81,12 +81,10 @@ Connection::~Connection()
 	enet_host_flush(m_host);
 
 	if (m_thread) {
-		if (pthread_join(m_thread, nullptr) < 0) {
-			ERRORLOG("--- ENet %s: Failed to join thread status=%d\n", m_name, errno);
-		}
+		m_thread->join();
+		delete m_thread;
+		//ERRORLOG("--- ENet %s: Failed to join thread status=%d\n", m_name, errno);
 	}
-	while (m_thread)
-		sleep(1);
 
 	// Apply force if needed
 	for (size_t i = 0; i < m_host->peerCount; ++i)
@@ -146,14 +144,14 @@ bool Connection::listenAsync(PacketProcessor &proc)
 	m_running = true;
 	m_processor = &proc;
 
-	int status = pthread_create(&m_thread, nullptr, &recvAsync, this);
+	m_thread = new std::thread(&recvAsync, this);
 
-	if (status != 0) {
+	/*if (status != 0) {
 		m_running = false;
 		ERRORLOG("-!- ENet %s: Failed to start pthread: %s\n",
 			m_name, strerror(status));
 		return false;
-	}
+	}*/
 
 	return m_running;
 }
@@ -208,7 +206,6 @@ void *Connection::recvAsync(void *con_p)
 	con->recvAsyncInternal();
 
 	printf("<-- ENet %s: Thread stop\n", con->m_name);
-	con->m_thread = 0;
 	return nullptr;
 }
 

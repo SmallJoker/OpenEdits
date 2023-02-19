@@ -95,7 +95,7 @@ bool WorldMeta::Key::step(float dtime)
 // -------------- World class -------------
 
 World::World(const std::string &id) :
-	m_meta({ .id = id })
+	m_meta(id)
 {
 	ASSERT_FORCED(g_blockmanager, "BlockManager is required");
 	printf("World: Create %s\n", id.c_str());

@@ -54,7 +54,7 @@ const void *Packet::data() const
 
 std::string Packet::dump(size_t n)
 {
-	n = std::min(n, m_write_offset);
+	n = std::min<size_t>(n, m_write_offset);
 
 	std::stringstream ss;
 	ss << "[len=" << size() <<" : ";

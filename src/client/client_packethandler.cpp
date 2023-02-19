@@ -253,10 +253,10 @@ void Client::pkt_Chat(Packet &pkt)
 	std::string message(pkt.readStr16());
 
 	GameEvent e(GameEvent::C2G_PLAYER_CHAT);
-	e.player_chat = new GameEvent::PlayerChat {
-		.player = player,
-		.message = message
-	};
+	e.player_chat = new GameEvent::PlayerChat();
+	e.player_chat->player = player;
+	e.player_chat->message = message;
+
 	sendNewEvent(e);
 }
 

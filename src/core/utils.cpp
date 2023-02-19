@@ -1,5 +1,9 @@
 #include "utils.h"
 #include <string.h>
+#ifdef _WIN32
+	// For string conversion
+	#include <windows.h>
+#endif
 
 std::string strtrim(const std::string &str)
 {
@@ -43,9 +47,11 @@ std::string get_next_part(std::string &input)
 	return value;
 }
 
+#ifndef _WIN32
+
 // #include <codecvt> is no more in C++17, hence rely on some weird-ass conversion code instead
 static_assert(sizeof(wchar_t) == 4);
-bool utf32_to_utf8(std::string &dst, const wchar_t *str)
+bool wide_to_utf8(std::string &dst, const wchar_t *str)
 {
 	// Source: https://github.com/deqoder/utf8_to_utf32/blob/main/utf8_to_utf32.hpp
 	dst.resize(sizeof(wchar_t) * wcslen(str));
@@ -76,7 +82,7 @@ bool utf32_to_utf8(std::string &dst, const wchar_t *str)
 	return true;
 }
 
-bool utf8_to_utf32(std::wstring &dst, const char *str)
+bool utf8_to_wide(std::wstring &dst, const char *str)
 {
 	const size_t length = strlen(str);
 	dst.resize(length);
@@ -124,6 +130,42 @@ bool utf8_to_utf32(std::wstring &dst, const char *str)
 	dst.resize(x);
 	return true;
 }
+
+#else
+
+// Based on code written by est31, https://github.com/minetest/minetest/commit/572990dcd
+bool utf8_to_wide(std::wstring &dst, const char *str)
+{
+	const size_t length = strlen(str);
+	size_t outbuf_size = length + 1;
+	wchar_t *outbuf = new wchar_t[outbuf_size];
+	memset(outbuf, 0, outbuf_size * sizeof(wchar_t));
+	// Windows does not seem to like "CP_UTF8" -> results in unittest fail
+	int hr = MultiByteToWideChar(CP_ACP, 0, str, length,
+		outbuf, outbuf_size);
+	if (hr >= 0)
+		dst.assign(outbuf);
+	delete[] outbuf;
+	return hr >= 0;
+}
+
+bool wide_to_utf8(std::string &dst, const wchar_t *str)
+{
+	const size_t length = wcslen(str);
+	size_t outbuf_size = (length + 1) * 6;
+	char *outbuf = new char[outbuf_size];
+	memset(outbuf, 0, outbuf_size);
+	// Windows does not seem to like "CP_UTF8" -> results in unittest fail
+	int hr = WideCharToMultiByte(CP_ACP, 0, str, length,
+		outbuf, outbuf_size, NULL, NULL);
+	if (hr >= 0)
+		dst.assign(outbuf);
+	delete[] outbuf;
+	return hr >= 0;
+}
+
+
+#endif
 
 static const char *ALNUM_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 bool isalnum_nolocale(const std::string &str)

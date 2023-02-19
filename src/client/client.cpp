@@ -37,6 +37,7 @@ Client::~Client()
 	puts("Client: stopping...");
 
 	{
+		// In case a packet is being processed
 		SimpleLock lock(m_players_lock);
 
 		for (auto it : m_players)
