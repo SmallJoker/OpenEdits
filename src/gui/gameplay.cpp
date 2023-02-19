@@ -286,7 +286,7 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 					bool l_pressed = e.MouseInput.Event == EMIE_LMOUSE_PRESSED_DOWN;
 					// Place bid=0
 					bool r_pressed = e.MouseInput.Event == EMIE_RMOUSE_PRESSED_DOWN;
-					if (!((m_may_drag_draw && m_drag_draw_block != BLOCKID_INVALID) || l_pressed || r_pressed))
+					if (!((m_may_drag_draw && m_drag_draw_block != Block::ID_INVALID) || l_pressed || r_pressed))
 						break;
 
 					blockpos_t bp;
@@ -321,7 +321,7 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 						bu.id = m_drag_draw_block;
 
 					if (!m_may_drag_draw)
-						m_drag_draw_block = BLOCKID_INVALID;
+						m_drag_draw_block = Block::ID_INVALID;
 
 					m_gui->getClient()->updateBlock(bu);
 					return true;
@@ -346,7 +346,7 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 				break;
 			case EMIE_LMOUSE_LEFT_UP:
 			case EMIE_RMOUSE_LEFT_UP:
-				m_drag_draw_block = BLOCKID_INVALID;
+				m_drag_draw_block = Block::ID_INVALID;
 				break;
 			default: break;
 		}
@@ -672,7 +672,7 @@ bool SceneGameplay::assignBlockTexture(const BlockTile tile, scene::ISceneNode *
 		return true;
 	}
 
-	if (tile.type == BlockDrawType::Action)
+	if (tile.type == BlockDrawType::Action || tile.have_alpha)
 		mat.MaterialType = video::EMT_TRANSPARENT_ALPHA_CHANNEL_REF;
 	else if (tile.type == BlockDrawType::Decoration)
 		mat.MaterialType = video::EMT_TRANSPARENT_ALPHA_CHANNEL;
@@ -729,7 +729,7 @@ void SceneGameplay::updatePlayerlist()
 	{
 		rect.UpperLeftCorner.Y = 5;
 		rect.LowerRightCorner.X += 200;
-		auto meta = world->getMeta();
+		const auto &meta = world->getMeta();
 		std::string src_text;
 		src_text.append("ID: " + meta.id);
 		src_text.append("\r\nOwner: " + meta.owner);

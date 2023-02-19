@@ -40,7 +40,7 @@ struct BlockUpdateHash {
 struct WorldMeta {
 	// For networking
 	void readCommon(Packet &pkt);
-	void writeCommon(Packet &pkt);
+	void writeCommon(Packet &pkt) const;
 
 	const std::string id;
 	std::string title;
@@ -57,6 +57,19 @@ struct WorldMeta {
 	void readPlayerFlags(Packet &pkt);
 	void writePlayerFlags(Packet &pkt) const;
 	std::map<std::string, playerflags_t> player_flags;
+
+	// Activated keys
+	struct Key {
+		// refill <  0: restart counting only when expired
+		// refill >= 0: restart counting
+		bool trigger(float refill);
+		bool step(float dtime);
+
+		// Client: cooldown until next sending
+		// Server: time until disable
+		float cooldown = 0;
+		bool active = false;
+	} keys[3] = {};
 };
 
 
@@ -90,8 +103,8 @@ public:
 	bool setBlock(blockpos_t pos, const Block block);
 	bool updateBlock(const BlockUpdate bu);
 
-	std::vector<blockpos_t> getBlocks(bid_t block_id) const;
-	void setParam1(bid_t block_id, u8 param1);
+	// Result is added when callback is nullptr or returns true
+	std::vector<blockpos_t> getBlocks(bid_t block_id, std::function<bool(Block &b)> callback) const;
 
 	blockpos_t getSize() const { return m_size; }
 	const WorldMeta &getMeta() const { return m_meta; }

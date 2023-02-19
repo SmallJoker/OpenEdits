@@ -19,13 +19,17 @@ namespace irr {
 
 typedef core::vector2d<u16> blockpos_t;
 typedef uint16_t bid_t;
-constexpr bid_t BLOCKID_INVALID = UINT16_MAX;
+constexpr u16 BLOCKPOS_INVALID = UINT16_MAX;
 
 struct Block {
 	enum BlockIDs : bid_t {
+		ID_KEY_R = 6,
+		ID_KEY_G,
+		ID_KEY_B,
 		ID_DOOR_R = 23,
 		ID_DOOR_G,
 		ID_DOOR_B,
+		ID_SECRET = 50,
 		ID_SPAWN = 255,
 		ID_INVALID = UINT16_MAX
 	};

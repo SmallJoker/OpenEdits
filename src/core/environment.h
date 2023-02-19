@@ -17,11 +17,4 @@ protected:
 
 	std::mutex m_players_lock;
 	std::map<peer_t, Player *> m_players;
-
-	struct Key {
-		// Client: cooldown until next sending
-		// Server: time until disable
-		float cooldown = 0;
-		bool active = false;
-	} m_keys[3];
 };

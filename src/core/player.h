@@ -23,7 +23,7 @@ struct PlayerControls {
 
 class Player {
 public:
-	virtual ~Player() {}
+	virtual ~Player();
 
 	void setWorld(World *world);
 	World *getWorld();
@@ -81,4 +81,5 @@ protected:
 	core::vector2d<s8> m_collision;
 
 	float m_jump_cooldown = 0;
+	blockpos_t m_last_pos;
 };

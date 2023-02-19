@@ -43,7 +43,7 @@ void unittest_world()
 	// Invalid block ID
 	BlockUpdate bu;
 	bu.pos = blockpos_t(1, 1);
-	bu.id = BLOCKID_INVALID;
+	bu.id = Block::ID_INVALID;
 	CHECK(!w.updateBlock(bu))
 
 	// Background on empty foreground

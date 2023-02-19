@@ -51,6 +51,7 @@ struct BlockPack {
 
 struct BlockTile {
 	BlockDrawType type = BlockDrawType::Invalid;
+	bool have_alpha = false; // false: use BlockDrawType
 	video::ITexture *texture = nullptr;
 	u8 texture_offset = 0; // e.g. when specifying a material
 };
@@ -60,6 +61,7 @@ struct BlockProperties {
 
 	BlockPack *pack = nullptr;
 
+	bool trigger_on_touch = false;
 	u32 color = 0; // minimap
 
 	BlockTile tiles[2]; // normal, active
@@ -82,10 +84,12 @@ public:
 	BlockManager();
 	~BlockManager();
 
+	void doPackRegistration();
+
 	void registerPack(BlockPack *pack);
 	void populateTextures(video::IVideoDriver *driver);
 
-	BlockProperties *getProps(bid_t block_id);
+	const BlockProperties *getProps(bid_t block_id) const;
 	BlockPack *getPack(const std::string &name);
 	const std::vector<BlockPack *> &getPacks() { return m_packs; }
 	video::ITexture *getMissingTexture() { return m_missing_texture; }

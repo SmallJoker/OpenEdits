@@ -77,7 +77,7 @@ enum class Packet2Server : uint16_t {
 	Move,
 	Chat,
 	PlaceBlock,
-	TriggerBlock, // key/kill ?
+	TriggerBlocks, // key/kill ?
 	GodMode,
 	MAX_END
 };

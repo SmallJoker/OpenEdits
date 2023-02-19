@@ -30,9 +30,6 @@ Client::Client(ClientStartData &init)
 	}
 
 	m_nickname = init.nickname;
-
-	for (auto &k : m_keys)
-		k = Environment::Key();
 }
 
 Client::~Client()
@@ -93,11 +90,66 @@ void Client::step(float dtime)
 
 	// Run physics engine
 	if (world.ptr()) {
+		std::set<blockpos_t> triggered_blocks;
 		SimpleLock lock(m_players_lock);
 		for (auto it : m_players) {
-			it.second->step(dtime);
+			if (it.first == m_my_peer_id) {
+				it.second->triggered_blocks = &triggered_blocks;
+				it.second->step(dtime);
+				it.second->triggered_blocks = nullptr;
+			} else {
+				it.second->step(dtime);
+			}
 		}
-		//printf("Client players: %zu\n", m_players.size());
+
+		auto &meta = world->getMeta();
+		for (auto &kdata : meta.keys) {
+			kdata.step(dtime);
+		}
+
+		// Process triggers
+		bool trigger_event = false;
+		Packet pkt;
+		pkt.write(Packet2Server::TriggerBlocks);
+
+		for (blockpos_t bp : triggered_blocks) {
+			Block b;
+			if (!world->getBlock(bp, &b))
+				continue;
+
+			switch (b.id) {
+				case Block::ID_KEY_R:
+				case Block::ID_KEY_G:
+				case Block::ID_KEY_B:
+				{
+					int key_id = b.id - Block::ID_KEY_R;
+					auto &kdata = meta.keys[key_id];
+					if (kdata.trigger(-1.0f)) {
+						pkt.write(bp.X);
+						pkt.write(bp.Y);
+					}
+				}
+				break;
+				case Block::ID_SECRET:
+				if (!b.param1) {
+					b.param1 = true;
+					world->setBlock(bp, b);
+					trigger_event = true;
+				}
+				break;
+			}
+		} // for
+
+		if (pkt.size() > 4) {
+			pkt.write(BLOCKPOS_INVALID); // end
+
+			m_con->send(0, 1, pkt);
+		}
+
+		if (trigger_event) {
+			GameEvent e(GameEvent::C2G_MAP_UPDATE);
+			sendNewEvent(e);
+		}
 	}
 }
 

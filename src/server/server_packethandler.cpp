@@ -16,7 +16,7 @@ const ServerPacketHandler Server::packet_actions[] = {
 	{ RemotePlayerState::WorldPlay, &Server::pkt_Move }, // 5
 	{ RemotePlayerState::WorldPlay, &Server::pkt_Chat },
 	{ RemotePlayerState::WorldPlay, &Server::pkt_PlaceBlock },
-	{ RemotePlayerState::WorldPlay, &Server::pkt_TriggerBlock },
+	{ RemotePlayerState::WorldPlay, &Server::pkt_TriggerBlocks },
 	{ RemotePlayerState::WorldPlay, &Server::pkt_GodMode },
 	{ RemotePlayerState::Invalid, 0 } // 10
 };
@@ -101,7 +101,7 @@ void Server::pkt_GetLobby(peer_t peer_id, Packet &)
 	worlds.insert(&demo);
 
 	for (auto world : worlds) {
-		auto meta = world->getMeta();
+		const auto &meta = world->getMeta();
 		if (!meta.is_public)
 			continue;
 
@@ -312,8 +312,39 @@ void Server::pkt_PlaceBlock(peer_t peer_id, Packet &pkt)
 	}
 }
 
-void Server::pkt_TriggerBlock(peer_t peer_id, Packet &pkt)
+void Server::pkt_TriggerBlocks(peer_t peer_id, Packet &pkt)
 {
+	RemotePlayer *player = getPlayerNoLock(peer_id);
+	auto world = player->getWorld();
+	auto &meta = world->getMeta();
+
+	while (true) {
+		blockpos_t pos;
+		pkt.read(pos.X);
+		if (pos.X == BLOCKPOS_INVALID)
+			break;
+		pkt.read(pos.Y);
+
+		Block b;
+		world->getBlock(pos, &b);
+		switch (b.id) {
+			case Block::ID_KEY_R:
+			case Block::ID_KEY_G:
+			case Block::ID_KEY_B:
+				{
+					int key_id = b.id - Block::ID_KEY_R;
+					auto &kdata = meta.keys[key_id];
+					if (kdata.trigger(5.0f)) {
+						Packet out;
+						out.write(Packet2Client::Key);
+						out.write(b.id);
+						out.write<u8>(kdata.active);
+						broadcastInWorld(player, 1, out);
+					}
+				}
+				break;
+		}
+	}
 }
 
 void Server::pkt_GodMode(peer_t peer_id, Packet &pkt)

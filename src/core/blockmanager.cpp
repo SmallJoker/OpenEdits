@@ -15,6 +15,9 @@ BlockTile BlockProperties::getTile(const Block b) const
 		case BlockTileCondition::None:
 			return tiles[0];
 	}
+
+	// Not reachable
+	return tiles[0];
 }
 
 BlockProperties::BlockProperties(BlockDrawType type)
@@ -150,10 +153,11 @@ void BlockManager::populateTextures(video::IVideoDriver *driver)
 	printf("BlockManager: Registered textures of %d blocks in %zu packs\n", count, m_packs.size());
 }
 
-BlockProperties *BlockManager::getProps(bid_t block_id)
+const BlockProperties *BlockManager::getProps(bid_t block_id) const
 {
 	if (block_id >= m_props.size())
 		return nullptr;
+
 	return m_props[block_id];
 }
 
@@ -288,4 +292,3 @@ u32 BlockManager::getBlockColor(const BlockTile tile) const
 
 	return color.color;
 }
-

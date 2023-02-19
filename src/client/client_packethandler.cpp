@@ -155,7 +155,6 @@ void Client::pkt_Leave(Packet &pkt)
 		sendNewEvent(e);
 	}
 
-	delete player;
 
 	if (peer_id == m_my_peer_id) {
 		for (auto it : m_players) {
@@ -163,17 +162,25 @@ void Client::pkt_Leave(Packet &pkt)
 		}
 		m_players.clear();
 
+		// Keep myself in the list
+		m_players.emplace(peer_id, player);
+		player->setWorld(nullptr);
+
 		m_state = ClientState::LobbyIdle;
 
 		GameEvent e(GameEvent::C2G_LEAVE);
 		sendNewEvent(e);
+	} else {
+		delete player;
 	}
-
 }
 
 void Client::pkt_SetPosition(Packet &pkt)
 {
 	SimpleLock lock(m_players_lock);
+
+	bool is_respawn = pkt.read<u8>();
+	bool my_player_affected = false;
 
 	while (true) {
 		peer_t peer_id = pkt.read<peer_t>();
@@ -189,6 +196,23 @@ void Client::pkt_SetPosition(Packet &pkt)
 			player->pos = pos;
 			player->vel = core::vector2df();
 		}
+
+		if (peer_id == m_my_peer_id)
+			my_player_affected = true;
+	}
+
+	if (!is_respawn || !my_player_affected)
+		return;
+
+	LocalPlayer *player = getPlayerNoLock(m_my_peer_id);
+	auto out = player->getWorld()->getBlocks(Block::ID_SECRET, [](Block &b) -> bool {
+		b.param1 = 0;
+		return true;
+	});
+
+	if (!out.empty()) {
+		GameEvent e(GameEvent::C2G_MAP_UPDATE);
+		sendNewEvent(e);
 	}
 }
 
@@ -266,7 +290,33 @@ void Client::pkt_PlaceBlock(Packet &pkt)
 
 void Client::pkt_Key(Packet &pkt)
 {
-	// ??
+	SimpleLock lock(m_players_lock);
+	LocalPlayer *player = getPlayerNoLock(m_my_peer_id);
+
+	bid_t key_id = pkt.read<bid_t>();
+	bool state = pkt.read<u8>();
+
+	bid_t block_id = 0;
+	switch (key_id) {
+		case Block::ID_KEY_R:
+		case Block::ID_KEY_G:
+		case Block::ID_KEY_B:
+			block_id = key_id - Block::ID_KEY_R + Block::ID_DOOR_R;
+			break;
+		default:
+			// Unknown key
+			return;
+	};
+
+	auto out = player->getWorld()->getBlocks(block_id, [state](Block &b) -> bool {
+		b.param1 = state;
+		return true;
+	});
+
+	if (!out.empty()) {
+		GameEvent e(GameEvent::C2G_MAP_UPDATE);
+		sendNewEvent(e);
+	}
 }
 
 void Client::pkt_GodMode(Packet &pkt)
@@ -280,6 +330,22 @@ void Client::pkt_GodMode(Packet &pkt)
 	if (player) {
 		player->godmode = state;
 		player->acc = core::vector2df();
+	}
+	if (peer_id == m_my_peer_id) {
+		auto out = player->getWorld()->getBlocks(Block::ID_SECRET, [state](Block &b) -> bool {
+			if (state)
+				b.param1++;
+			else if (b.param1)
+				b.param1--;
+			else
+				return false;
+			return true;
+		});
+
+		if (!out.empty()) {
+			GameEvent e(GameEvent::C2G_MAP_UPDATE);
+			sendNewEvent(e);
+		}
 	}
 }
 

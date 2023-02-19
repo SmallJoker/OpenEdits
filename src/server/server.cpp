@@ -67,10 +67,13 @@ void Server::step(float dtime)
 
 	// always player lock first, world lock after.
 	SimpleLock players_lock(m_players_lock);
+	std::set<World *> worlds;
 	for (auto p : m_players) {
 		auto world = p.second->getWorld();
 		if (!world)
 			continue;
+
+		worlds.emplace(world);
 
 		auto &queue = world->proc_queue;
 		if (queue.empty())
@@ -111,6 +114,29 @@ void Server::step(float dtime)
 		}
 	}
 
+	for (World *world : worlds) {
+		auto &meta = world->getMeta();
+
+		for (auto &kdata : meta.keys) {
+			if (kdata.step(dtime)) {
+				// Disable keys
+
+				kdata.active = false;
+				bid_t block_id = (&kdata - meta.keys) + Block::ID_KEY_R;
+				Packet out;
+				out.write(Packet2Client::Key);
+				out.write(block_id);
+				out.write<u8>(false);
+
+				for (auto it : m_players) {
+					if (it.second->getWorld() != world)
+						continue;
+
+					m_con->send(it.first, 0, out);
+				}
+			}
+		}
+	}
 	// No player physics (yet?)
 }
 
@@ -213,7 +239,7 @@ void Server::processPacket(peer_t peer_id, Packet &pkt)
 
 void Server::respawnPlayer(Player *player, bool send_packet)
 {
-	auto blocks = player->getWorld()->getBlocks(Block::ID_SPAWN);
+	auto blocks = player->getWorld()->getBlocks(Block::ID_SPAWN, nullptr);
 
 	if (blocks.empty()) {
 		player->pos = core::vector2df();
@@ -232,6 +258,7 @@ void Server::respawnPlayer(Player *player, bool send_packet)
 
 	Packet pkt;
 	pkt.write(Packet2Client::SetPosition);
+	pkt.write<u8>(true);
 	pkt.write(player->peer_id);
 	pkt.write(player->pos.X);
 	pkt.write(player->pos.Y);

@@ -7,6 +7,10 @@
 
 constexpr float DISTANCE_STEP = 0.4f; // absolute max is 0.5f
 
+Player::~Player()
+{
+}
+
 
 void Player::setWorld(World *world)
 {
@@ -21,6 +25,8 @@ void Player::setWorld(World *world)
 	pos = core::vector2df();
 	vel = core::vector2df();
 	acc = core::vector2df();
+
+	m_last_pos = blockpos_t(-1, -1);
 }
 
 World *Player::getWorld()
@@ -142,6 +148,19 @@ void Player::stepInternal(float dtime)
 	// Evaluate center position
 	blockpos_t bp(pos.X + 0.5f, pos.Y + 0.5f);
 
+	if (triggered_blocks && bp != m_last_pos) {
+		Block block;
+		m_world->getBlock(bp, &block);
+
+		auto props = g_blockmanager->getProps(block.id);
+		if (props && props->trigger_on_touch) {
+			if (bp != m_last_pos) {
+				triggered_blocks->emplace(bp);
+			}
+		}
+		m_last_pos = bp;
+	}
+
 	if (!godmode) {
 		if (!stepCollisions(dtime))
 			return;
@@ -169,7 +188,7 @@ void Player::stepInternal(float dtime)
 
 	{
 		// Stokes friction to stop movement after releasing keys
-		const float coeff_s = godmode ? 1.5f : 2.0f; // Stokes
+		const float coeff_s = godmode ? 1.5f : 4.0f; // Stokes
 		if (std::fabs(acc.X) < 0.01f && !m_controls.dir.X)
 			acc.X += -coeff_s * vel.X;
 		if (std::fabs(acc.Y) < 0.01f && !m_controls.dir.Y)
@@ -242,11 +261,11 @@ bool Player::stepCollisions(float dtime)
 	return true;
 }
 
-
 void Player::collideWith(float dtime, int x, int y)
 {
 	Block b;
-	bool ok = m_world->getBlock(blockpos_t(x, y), &b);
+	blockpos_t bp(x, y);
+	bool ok = m_world->getBlock(bp, &b);
 	if (!ok)
 		return;
 
@@ -271,6 +290,9 @@ void Player::collideWith(float dtime, int x, int y)
 		if (dir.Y)
 			m_collision.Y = dir.Y;
 		if (!props->onCollide || props->onCollide(*this, dir)) {
+			if (triggered_blocks && props->trigger_on_touch)
+				triggered_blocks->emplace(bp);
+
 			vel.Y = 0;
 		}
 	} else {
@@ -279,6 +301,9 @@ void Player::collideWith(float dtime, int x, int y)
 		if (dir.X)
 			m_collision.X = dir.X;
 		if (!props->onCollide || props->onCollide(*this, dir)) {
+			if (triggered_blocks && props->trigger_on_touch)
+				triggered_blocks->emplace(bp);
+
 			vel.X = 0;
 		}
 	}

@@ -65,7 +65,8 @@ void SceneMinimap::step(float dtime)
 			auto props = g_blockmanager->getProps(b.id);
 			video::SColor color(0xFFFF0000); // default red
 			if (props) {
-				if (props->getTile(b).type != BlockDrawType::Solid)
+				auto tile = props->getTile(b);
+				if (tile.have_alpha || tile.type != BlockDrawType::Solid)
 					break;
 				color = props->color;
 			}

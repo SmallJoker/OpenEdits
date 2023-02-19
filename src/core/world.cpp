@@ -12,7 +12,7 @@ void WorldMeta::readCommon(Packet &pkt)
 	plays = pkt.read<u32>();
 }
 
-void WorldMeta::writeCommon(Packet &pkt)
+void WorldMeta::writeCommon(Packet &pkt) const
 {
 	pkt.writeStr16(title);
 	pkt.writeStr16(owner);
@@ -61,6 +61,34 @@ void WorldMeta::writePlayerFlags(Packet &pkt) const
 
 	}
 	pkt.write<u8>(false); // end
+}
+
+bool WorldMeta::Key::trigger(float refill)
+{
+	bool changed = !active;
+
+	if (refill < 0) {
+		// No re-filling if active
+		if (!active)
+			cooldown = -refill;
+	} else {
+		// Refill regardless
+		cooldown = refill;
+	}
+	active = true;
+	return changed;
+}
+
+
+bool WorldMeta::Key::step(float dtime)
+{
+	if (cooldown > 0)
+		cooldown -= dtime;
+	if (cooldown <= 0 && active) {
+		active = false;
+		return true;
+	}
+	return false;
 }
 
 
@@ -223,33 +251,26 @@ bool World::updateBlock(const BlockUpdate bu)
 		return false;
 
 	id_ref = new_id;
+	if (!is_background)
+		ref.param1 = 0;
+
 	return true;
 }
 
-std::vector<blockpos_t> World::getBlocks(bid_t block_id) const
+std::vector<blockpos_t> World::getBlocks(bid_t block_id, std::function<bool(Block &b)> callback) const
 {
 	std::vector<blockpos_t> found;
-	found.reserve(std::hypot(m_size.X, m_size.Y) * 10);
+	found.reserve(std::hypot(m_size.X, m_size.Y) * 2);
 
-	for (size_t y = 0; y < m_size.Y; ++y)
-	for (size_t x = 0; x < m_size.X; ++x) {
-		blockpos_t pos(x, y);
-		if (getBlockRefNoCheck(pos).id == block_id)
-			found.emplace_back(pos);
-	}
-
-	return found;
-}
-
-void World::setParam1(bid_t block_id, u8 param1)
-{
 	for (size_t y = 0; y < m_size.Y; ++y)
 	for (size_t x = 0; x < m_size.X; ++x) {
 		blockpos_t pos(x, y);
 		Block &b = getBlockRefNoCheck(pos);
-		if (b.id == block_id)
-			b.param1 = param1;
+		if (b.id == block_id) {
+			if (!callback || callback(b))
+				found.emplace_back(pos);
+		}
 	}
 
+	return found;
 }
-

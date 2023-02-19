@@ -144,7 +144,7 @@ bool DatabaseWorld::save(const World *world)
 	sqlite3_step(m_stmt_begin);
 	sqlite3_reset(m_stmt_begin);
 
-	auto &meta = world->getMeta();
+	const auto &meta = world->getMeta();
 
 	auto s = m_stmt_write;
 	custom_bind_string(s, 1, meta.id);
