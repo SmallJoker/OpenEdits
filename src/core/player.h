@@ -35,6 +35,8 @@ public:
 	// True: outdated controls
 	bool setControls(const PlayerControls &ctrl);
 
+	void setPosition(core::vector2df newpos, bool reset_progress);
+
 	void step(float dtime);
 
 	const peer_t peer_id;
@@ -48,6 +50,7 @@ public:
 
 	bool godmode = false;
 	bool controls_enabled = true;
+	u8 coins = 0;
 
 	static constexpr float GRAVITY_NORMAL = 100.0f;
 	static constexpr float CONTROLS_ACCEL = 60.0f;

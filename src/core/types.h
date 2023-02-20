@@ -29,9 +29,16 @@ struct Block {
 		ID_DOOR_R = 23,
 		ID_DOOR_G,
 		ID_DOOR_B,
+		ID_GATE_R = 26,
+		ID_GATE_G,
+		ID_GATE_B,
+		ID_COINDOOR = 43,
 		ID_SECRET = 50,
 		ID_SPAWN = 255,
 		ID_INVALID = UINT16_MAX
+	};
+	enum Param1Flag : uint8_t {
+		P1_FLAG_TILE1 = 0x80
 	};
 
 	bool operator ==(const Block &o)

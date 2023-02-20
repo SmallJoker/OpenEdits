@@ -24,18 +24,29 @@ static BP_STEP_CALLBACK(step_arrow_none)
 {
 }
 
+static BP_COLLIDE_CALLBACK(onCollide_coindoor)
+{
+	u8 coins = b.param1 & ~Block::P1_FLAG_TILE1;
+	return player.coins >= coins
+		? BlockProperties::CollisionType::None
+		: BlockProperties::CollisionType::Position;
+}
+
 static BP_COLLIDE_CALLBACK(onCollide_b10_bouncy)
 {
-	if (dir.X) {
+	if (is_x) {
+		player.pos.X = std::roundf(player.pos.X);
 		player.vel.X *= -0.4f;
-	} else if (dir.Y) {
+	} else {
+		player.pos.Y = std::roundf(player.pos.Y);
 		player.vel.Y *= -1.5f;
 	}
-	return false;
+	return BlockProperties::CollisionType::None;
 }
 
 void BlockManager::doPackRegistration()
 {
+	using TC = BlockProperties::TileCondition;
 	{
 		BlockPack *pack = new BlockPack("basic");
 		pack->default_type = BlockDrawType::Solid;
@@ -46,14 +57,21 @@ void BlockManager::doPackRegistration()
 	{
 		BlockPack *pack = new BlockPack("doors");
 		pack->default_type = BlockDrawType::Solid;
-		pack->block_ids = { Block::ID_DOOR_R, Block::ID_DOOR_G, Block::ID_DOOR_B };
+		pack->block_ids = {
+			Block::ID_DOOR_R, Block::ID_DOOR_G, Block::ID_DOOR_B,
+			Block::ID_GATE_R, Block::ID_GATE_G, Block::ID_GATE_B
+		};
 		g_blockmanager->registerPack(pack);
 
 		for (bid_t id : pack->block_ids) {
 			auto props = m_props[id];
-			props->condition = BlockTileCondition::NotZero;
-			props->tiles[1].type = BlockDrawType::Action;
-			props->tiles[1].texture_offset = 3;
+			props->condition = TC::NotZero;
+			if (id >= Block::ID_GATE_R) {
+				props->tiles[0].type = BlockDrawType::Action;
+				props->tiles[1].type = BlockDrawType::Solid;
+			} else {
+				props->tiles[1].type = BlockDrawType::Action;
+			}
 		}
 	}
 
@@ -96,13 +114,20 @@ void BlockManager::doPackRegistration()
 		pack->block_ids = { Block::ID_SPAWN, Block::ID_SECRET };
 		g_blockmanager->registerPack(pack);
 
+		/*auto props = m_props[Block::ID_COINDOOR];
+		props->condition = TC::MSBFlagSet;
+		// Walk-though is player-specific, hence using the onCollide callback
+		props->tiles[0].type = BlockDrawType::Solid;
+		props->tiles[1].type = BlockDrawType::Solid;
+		props->tiles[1].have_alpha = true;
+		props->onCollide = onCollide_coindoor;*/
+
 		auto props = m_props[Block::ID_SECRET];
 		props->trigger_on_touch = true;
-		props->condition = BlockTileCondition::NotZero;
+		props->condition = TC::NotZero;
 		props->tiles[0].type = BlockDrawType::Solid;
 		props->tiles[0].have_alpha = true;
 		props->tiles[1].type = BlockDrawType::Solid;
-		props->tiles[1].texture_offset = 1;
 	}
 
 	// Decoration

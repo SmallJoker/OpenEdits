@@ -26,6 +26,7 @@ void Player::setWorld(World *world)
 	vel = core::vector2df();
 	acc = core::vector2df();
 
+	coins = 0;
 	m_last_pos = blockpos_t(-1, -1);
 }
 
@@ -78,6 +79,16 @@ bool Player::setControls(const PlayerControls &ctrl)
 	m_controls = ctrl;
 
 	return changed;
+}
+
+void Player::setPosition(core::vector2df newpos, bool reset_progress)
+{
+	if (reset_progress) {
+		coins = 0;
+	}
+
+	pos = newpos;
+	vel = core::vector2df();
 }
 
 
@@ -283,29 +294,41 @@ void Player::collideWith(float dtime, int x, int y)
 
 	//printf("collision x=%d,y=%d\n", x, y);
 
-	core::vector2d<s8> dir;
-	if (player.getWidth() > player.getHeight()) {
-		pos.Y = std::roundf(pos.Y);
-		dir.Y = get_sign(vel.Y);
-		if (dir.Y)
-			m_collision.Y = dir.Y;
-		if (!props->onCollide || props->onCollide(*this, dir)) {
+	const bool is_x = player.getWidth() < player.getHeight();
+
+	using CT = BlockProperties::CollisionType;
+	CT type = CT::Position;
+	if (props->onCollide)
+		type = props->onCollide(*this, b, is_x);
+
+	switch (type) {
+		case CT::Position:
+			if (is_x) {
+				pos.X = std::roundf(pos.X);
+				int sign = get_sign(vel.X);
+				if (sign)
+					m_collision.X = sign;
+			} else {
+				pos.Y = std::roundf(pos.Y);
+				int sign = get_sign(vel.Y);
+				if (sign)
+					m_collision.Y = sign;
+			}
+
+			// fall through
+		case CT::Velocity:
+			if (is_x)
+				vel.X = 0;
+			else
+				vel.Y = 0;
+
+			// fall through
+		case CT::None:
 			if (triggered_blocks && props->trigger_on_touch)
 				triggered_blocks->emplace(bp);
 
-			vel.Y = 0;
-		}
-	} else {
-		pos.X = std::roundf(pos.X);
-		dir.X = get_sign(vel.X);
-		if (dir.X)
-			m_collision.X = dir.X;
-		if (!props->onCollide || props->onCollide(*this, dir)) {
-			if (triggered_blocks && props->trigger_on_touch)
-				triggered_blocks->emplace(bp);
-
-			vel.X = 0;
-		}
+			break;
 	}
+
 }
 

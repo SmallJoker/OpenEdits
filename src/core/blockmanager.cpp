@@ -8,11 +8,11 @@ BlockManager *g_blockmanager = nullptr;
 BlockTile BlockProperties::getTile(const Block b) const
 {
 	switch (condition) {
-		case BlockTileCondition::NotZero:
+		case BlockProperties::TileCondition::NotZero:
 			return tiles[b.param1 != 0];
-		case BlockTileCondition::Zero:
-			return tiles[b.param1 == 0];
-		case BlockTileCondition::None:
+		case BlockProperties::TileCondition::MSBFlagSet:
+			return tiles[(b.param1 & Block::P1_FLAG_TILE1) > 0];
+		case BlockProperties::TileCondition::None:
 			return tiles[0];
 	}
 
@@ -122,15 +122,27 @@ void BlockManager::populateTextures(video::IVideoDriver *driver)
 			auto prop = m_props[id];
 			if (i < max_tiles) {
 				prop->tiles[0].texture = texture;
-				prop->tiles[0].texture_offset = i;
+				u8 &offset = prop->tiles[0].texture_offset;
+
+				if (offset == 0)
+					offset = i; // take last position
+				else
+					i = offset; // Continue from this index
+
 				split_texture(driver, &prop->tiles[0]);
 
-				if (prop->condition != BlockTileCondition::None) {
+				if (prop->condition != BlockProperties::TileCondition::None) {
 					if (prop->tiles[1].type == BlockDrawType::Invalid) {
 						fprintf(stderr, "BlockManager: Unspecified tiles[1] type for block_id=%d\n", id);
 					}
 					prop->tiles[1].texture = texture;
-					prop->tiles[1].texture_offset += i;
+					// Relative offset from parent
+					u8 &offset = prop->tiles[1].texture_offset;
+					if (offset == 0)
+						offset = ++i; // next texture. !! increment !!
+					else
+						offset += i; // specified offset
+
 					split_texture(driver, &prop->tiles[1]);
 				}
 

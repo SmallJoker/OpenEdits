@@ -179,7 +179,7 @@ void Client::pkt_SetPosition(Packet &pkt)
 {
 	SimpleLock lock(m_players_lock);
 
-	bool is_respawn = pkt.read<u8>();
+	bool reset_progress = pkt.read<u8>();
 	bool my_player_affected = false;
 
 	while (true) {
@@ -192,19 +192,27 @@ void Client::pkt_SetPosition(Packet &pkt)
 		pkt.read(pos.Y);
 
 		LocalPlayer *player = getPlayerNoLock(peer_id);
-		if (player) {
-			player->pos = pos;
-			player->vel = core::vector2df();
-		}
+		if (player)
+			player->setPosition(pos, reset_progress);
 
 		if (peer_id == m_my_peer_id)
 			my_player_affected = true;
 	}
 
-	if (!is_respawn || !my_player_affected)
+	if (!reset_progress || !my_player_affected)
 		return;
 
 	LocalPlayer *player = getPlayerNoLock(m_my_peer_id);
+	auto world = player->getWorld();
+
+	for (Block *b = world->begin(); b < world->end(); ++b) {
+		switch (b->id) {
+			case Block::ID_SECRET:
+			case Block::ID_COINDOOR:
+				break;
+		}
+	}
+
 	auto out = player->getWorld()->getBlocks(Block::ID_SECRET, [](Block &b) -> bool {
 		b.param1 = 0;
 		return true;
@@ -296,24 +304,30 @@ void Client::pkt_Key(Packet &pkt)
 	bid_t key_id = pkt.read<bid_t>();
 	bool state = pkt.read<u8>();
 
-	bid_t block_id = 0;
 	switch (key_id) {
 		case Block::ID_KEY_R:
 		case Block::ID_KEY_G:
 		case Block::ID_KEY_B:
-			block_id = key_id - Block::ID_KEY_R + Block::ID_DOOR_R;
+			// good
 			break;
 		default:
 			// Unknown key
 			return;
 	};
 
-	auto out = player->getWorld()->getBlocks(block_id, [state](Block &b) -> bool {
-		b.param1 = state;
-		return true;
-	});
+	bid_t bid_door = (key_id - Block::ID_KEY_R) + Block::ID_DOOR_R;
+	bid_t bid_gate = (key_id - Block::ID_KEY_R) + Block::ID_GATE_R;
 
-	if (!out.empty()) {
+	size_t n = 0;
+	auto world = player->getWorld();
+	for (Block *b = world->begin(); b < world->end(); ++b) {
+		if (b->id == bid_door || b->id == bid_gate) {
+			b->param1 = state;
+			n++;
+		}
+	}
+
+	if (n > 0) {
 		GameEvent e(GameEvent::C2G_MAP_UPDATE);
 		sendNewEvent(e);
 	}

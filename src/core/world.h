@@ -114,6 +114,8 @@ public:
 
 	// Result is added when callback is nullptr or returns true
 	std::vector<blockpos_t> getBlocks(bid_t block_id, std::function<bool(Block &b)> callback) const;
+	Block *begin() const { return m_data; };
+	const Block *end() const { return &m_data[m_size.X * m_size.Y]; };
 
 	blockpos_t getSize() const { return m_size; }
 	const WorldMeta &getMeta() const { return m_meta; }

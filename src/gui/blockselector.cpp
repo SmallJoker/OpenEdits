@@ -123,7 +123,7 @@ bool SceneBlockSelector::OnEvent(const SEvent &e)
 		}
 	}
 	if (e.EventType == EET_KEY_INPUT_EVENT) {
-		if (!e.KeyInput.PressedDown)
+		if (!e.KeyInput.PressedDown || e.KeyInput.Shift)
 			return false;
 
 		switch (e.KeyInput.Key) {

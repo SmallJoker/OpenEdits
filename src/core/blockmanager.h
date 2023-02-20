@@ -29,13 +29,6 @@ enum class BlockDrawType {
 	Invalid
 };
 
-// Depends on param1
-enum class BlockTileCondition {
-	NotZero,
-	Zero,
-	None
-};
-
 extern BlockManager *g_blockmanager;
 
 struct BlockPack {
@@ -66,7 +59,19 @@ struct BlockProperties {
 
 	BlockTile tiles[2]; // normal, active
 	BlockTile getTile(const Block b) const;
-	BlockTileCondition condition = BlockTileCondition::None;
+
+	// Depends on param1
+	enum class TileCondition {
+		NotZero,
+		MSBFlagSet, // 0x80
+		None
+	} condition = TileCondition::None;
+
+	enum class CollisionType {
+		Position, // and velocity
+		Velocity, // just velocity
+		None
+	};
 
 	// Callback when a player intersects with the block
 	#define BP_STEP_CALLBACK(name) \
@@ -75,7 +80,7 @@ struct BlockProperties {
 
 	// Callback when colliding: true -> set velocity to 0
 	#define BP_COLLIDE_CALLBACK(name) \
-		bool (name)(Player &player, const core::vector2d<s8> dir)
+		BlockProperties::CollisionType (name)(Player &player, const Block b, const bool is_x)
 	BP_COLLIDE_CALLBACK(*onCollide) = nullptr;
 };
 
