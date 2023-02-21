@@ -43,7 +43,9 @@ public:
 
 private:
 	bool getBlockFromPixel(int x, int y, blockpos_t &bp);
-	video::ITexture *generateTexture(const wchar_t *text, u32 color = 0xFFFFFFFF);
+
+	video::ITexture *generateTexture(const std::string &text, u32 color = 0xFFFFFFFF, u32 bgcolor = 0xFF000000);
+	std::map<std::string, video::ITexture *> m_cached_textures;
 
 	void drawBlocksInView();
 	bool assignBlockTexture(const BlockTile tile, scene::ISceneNode *node);
@@ -69,7 +71,6 @@ private:
 	BlockUpdate m_drag_draw_block; // drawing mode
 	bool m_erase_mode = false;     // removes the pointed block : shift down
 
-	bool m_ignore_keys = false;    // ignore key inputs e.g. when typing
 	core::vector3df m_camera_pos;  // setter camera position (smoothed)
 	scene::ISceneManager *m_world_smgr = nullptr;
 

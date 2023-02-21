@@ -46,6 +46,8 @@ void Player::readPhysics(Packet &pkt)
 	pkt.read(acc.X);
 	pkt.read(acc.Y);
 
+	pkt.read<u8>(coins); // type safety!
+
 	pkt.read<u8>(); // flags
 
 	m_controls.jump = pkt.read<u8>();
@@ -63,6 +65,8 @@ void Player::writePhysics(Packet &pkt)
 
 	pkt.write(acc.X);
 	pkt.write(acc.Y);
+
+	pkt.write<u8>(coins);
 
 	u8 flags = 0;
 	pkt.write(flags);

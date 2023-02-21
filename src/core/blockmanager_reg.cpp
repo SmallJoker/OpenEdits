@@ -114,20 +114,34 @@ void BlockManager::doPackRegistration()
 		pack->block_ids = { Block::ID_SPAWN, Block::ID_SECRET };
 		g_blockmanager->registerPack(pack);
 
-		/*auto props = m_props[Block::ID_COINDOOR];
-		props->condition = TC::MSBFlagSet;
-		// Walk-though is player-specific, hence using the onCollide callback
-		props->tiles[0].type = BlockDrawType::Solid;
-		props->tiles[1].type = BlockDrawType::Solid;
-		props->tiles[1].have_alpha = true;
-		props->onCollide = onCollide_coindoor;*/
-
 		auto props = m_props[Block::ID_SECRET];
 		props->trigger_on_touch = true;
 		props->condition = TC::NotZero;
 		props->tiles[0].type = BlockDrawType::Solid;
 		props->tiles[0].have_alpha = true;
 		props->tiles[1].type = BlockDrawType::Solid;
+	}
+
+	{
+		BlockPack *pack = new BlockPack("coins");
+		pack->default_type = BlockDrawType::Action;
+		pack->block_ids = { Block::ID_COIN, Block::ID_COINDOOR };
+		g_blockmanager->registerPack(pack);
+
+		auto props = m_props[Block::ID_COIN];
+		props->trigger_on_touch = true;
+		props->condition = TC::NotZero;
+		props->tiles[0].type = BlockDrawType::Decoration; // draw above players
+
+
+		props = m_props[Block::ID_COINDOOR];
+		props->persistent_param1 = true;
+		props->condition = TC::MSBFlagSet;
+		// Walk-through is player-specific, hence using the onCollide callback
+		props->tiles[0].type = BlockDrawType::Solid;
+		props->tiles[1].type = BlockDrawType::Solid;
+		props->tiles[1].have_alpha = true;
+		props->onCollide = onCollide_coindoor;
 	}
 
 	// Decoration

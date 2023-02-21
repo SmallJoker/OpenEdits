@@ -1,7 +1,9 @@
 #include "blockselector.h"
 
 #include "core/blockmanager.h"
+#include "core/world.h" // BlockUpdate
 #include <IGUIButton.h>
+#include <IGUIEditBox.h>
 #include <IGUIEnvironment.h>
 #include <IGUIImage.h>
 #include <IGUITabControl.h>
@@ -11,8 +13,9 @@
 enum ElementId : int {
 	ID_HOTBAR_0 = 300, // Counted by button number
 	ID_SHOWMORE = 350, // [+] [-] button
+	ID_BoxCoinDoor,
 
-	ID_SELECTOR_TAB_0 = 351, // Offset for BlockDrawType tabs
+	ID_SELECTOR_TAB_0, // Offset for BlockDrawType tabs
 	ID_SELECTOR_0 = 400, // Offset for the block ID
 	ID_SELECTOR_MAX = ID_SELECTOR_0 + 1200,
 };
@@ -70,9 +73,6 @@ bool SceneBlockSelector::OnEvent(const SEvent &e)
 				if (id >= ID_SELECTOR_0 && id < ID_SELECTOR_MAX) {
 					m_dragged_bid = id - ID_SELECTOR_0;
 				}
-
-				if (element && element != m_showmore)
-					return element->OnEvent(e);
 			}
 			break;
 			case EMIE_LMOUSE_LEFT_UP:
@@ -100,9 +100,40 @@ bool SceneBlockSelector::OnEvent(const SEvent &e)
 			break;
 			default: break;
 		}
+
+		core::vector2di pos(e.MouseInput.X, e.MouseInput.Y);
+		auto element = m_showmore->getElementFromPoint(pos);
+		auto focused = m_gui->getFocus();
+		if (!element && focused && focused->getID() == ID_BoxCoinDoor) {
+			switch (e.MouseInput.Event) {
+			case EMIE_LMOUSE_PRESSED_DOWN:
+			case EMIE_RMOUSE_PRESSED_DOWN:
+			case EMIE_MMOUSE_PRESSED_DOWN:
+				m_gui->setFocus(nullptr);
+				break;
+			default: break;
+			}
+		}
+	}
+	if (e.EventType == EET_GUI_EVENT && e.GUIEvent.EventType == gui::EGET_EDITBOX_CHANGED) {
+		int id = e.GUIEvent.Caller->getID();
+		if (id == ID_BoxCoinDoor) {
+			auto box = (gui::IGUIEditBox *)e.GUIEvent.Caller;
+			auto wtext = box->getText();
+			int val = -1;
+			int n = swscanf(wtext, L"%d", &val);
+			if (n == 1 && val >= 0 && val <= 127) {
+				m_selected_param1 = val;
+				box->setOverrideColor(0xFF000000);
+			} else {
+				// red highlight
+				box->setOverrideColor(0xFFCC0000);
+			}
+		}
 	}
 	if (e.EventType == EET_GUI_EVENT && e.GUIEvent.EventType == gui::EGET_BUTTON_CLICKED) {
-		int id = e.GUIEvent.Caller->getID();
+		auto btn = e.GUIEvent.Caller;
+		int id = btn->getID();
 		// Select one from the hotbar
 		if (selectBlockId(id, true)) {
 			m_gui->setFocus(nullptr);
@@ -110,7 +141,24 @@ bool SceneBlockSelector::OnEvent(const SEvent &e)
 		}
 		if (id >= ID_SELECTOR_0 && id < ID_SELECTOR_MAX) {
 			// Almost the same as with the hotbar
-			selectBlockId(id - ID_SELECTOR_0, false);
+			if (!selectBlockId(id - ID_SELECTOR_0, false))
+				return false;
+
+			auto elem = m_showmore->getElementFromId(ID_BoxCoinDoor, true);
+			if (!elem && m_selected_bid == Block::ID_COINDOOR) {
+				core::recti rect(
+					core::vector2di(-BTN_SIZE.Width * 0.5f, BTN_SIZE.Height + 2),
+					core::dimension2di(BTN_SIZE.Width * 2, 35)
+				);
+
+				wchar_t buf[10];
+				swprintf(buf, 10, L"%d", (int)m_selected_param1);
+				auto element = m_gui->addEditBox(buf, rect, true, btn, ID_BoxCoinDoor);
+				element->setNotClipped(true);
+				m_gui->setFocus(element);
+			} else if (elem) {
+				elem->remove();
+			}
 
 			m_gui->setFocus(nullptr);
 			return true;
@@ -123,6 +171,12 @@ bool SceneBlockSelector::OnEvent(const SEvent &e)
 		}
 	}
 	if (e.EventType == EET_KEY_INPUT_EVENT) {
+		{
+			auto element = m_gui->getFocus();
+			if (element && element->getType() == gui::EGUIET_EDIT_BOX)
+				return false;
+		}
+
 		if (!e.KeyInput.PressedDown || e.KeyInput.Shift)
 			return false;
 
@@ -155,6 +209,15 @@ void SceneBlockSelector::toggleShowMore()
 {
 	m_show_selector ^= true;
 	drawBlockSelector();
+}
+
+void SceneBlockSelector::getBlockUpdate(BlockUpdate &bu)
+{
+	bu.id = m_selected_bid;
+
+	auto props = g_blockmanager->getProps(m_selected_bid);
+	if (props && props->persistent_param1)
+		bu.param1 = m_selected_param1;
 }
 
 

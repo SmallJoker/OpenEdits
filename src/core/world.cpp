@@ -38,10 +38,30 @@ bool BlockUpdate::check(bid_t *block_id, bool *background) const
 	if (id > 0 && (props->tiles[0].type == BlockDrawType::Background) != is_background)
 		return false;
 
+	if (!is_background && !props->persistent_param1 && param1 != 0)
+		return false;
+
 	*block_id = id;
 	*background = is_background;
 	return true;
 }
+
+void BlockUpdate::read(Packet &pkt)
+{
+	pkt.read(pos.X);
+	pkt.read(pos.Y);
+	pkt.read(id);
+	pkt.read(param1);
+}
+
+void BlockUpdate::write(Packet &pkt) const
+{
+	pkt.write(pos.X);
+	pkt.write(pos.Y);
+	pkt.write(id);
+	pkt.write(param1);
+}
+
 
 void WorldMeta::readCommon(Packet &pkt)
 {
@@ -219,7 +239,7 @@ void World::write(Packet &pkt, Method method) const
 void World::readPlain(Packet &pkt)
 {
 	u8 version = pkt.read<u8>();
-	if (version != 2)
+	if (version < 2 || version > 3)
 		throw std::runtime_error("Unsupported read version");
 
 	for (size_t y = 0; y < m_size.Y; ++y)
@@ -227,13 +247,15 @@ void World::readPlain(Packet &pkt)
 		Block b;
 		pkt.read(b.id);
 		pkt.read(b.bg);
+		if (version >= 3)
+			pkt.read(b.param1);
 		getBlockRefNoCheck(blockpos_t(x, y)) = b;
 	}
 }
 
 void World::writePlain(Packet &pkt) const
 {
-	pkt.write<u8>(2); // version
+	pkt.write<u8>(3); // version
 
 	pkt.ensureCapacity(m_size.X * m_size.Y * sizeof(Block));
 	for (size_t y = 0; y < m_size.Y; ++y)
@@ -241,6 +263,7 @@ void World::writePlain(Packet &pkt) const
 		Block &b = getBlockRefNoCheck(blockpos_t(x, y));
 		pkt.write(b.id);
 		pkt.write(b.bg);
+		pkt.write(b.param1);
 	}
 }
 
@@ -279,14 +302,18 @@ bool World::updateBlock(const BlockUpdate bu)
 		return false;
 
 	Block &ref = getBlockRefNoCheck(bu.pos);
-	bid_t &id_ref = is_background ? ref.bg : ref.id;
+	if (is_background) {
+		if (new_id == ref.bg)
+			return false;
 
-	if (id_ref == new_id)
-		return false;
+		ref.bg = new_id;
+	} else {
+		if (new_id == ref.id && bu.param1 == ref.param1)
+			return false;
 
-	id_ref = new_id;
-	if (!is_background)
+		ref.id = new_id;
 		ref.param1 = bu.param1;
+	}
 
 	return true;
 }

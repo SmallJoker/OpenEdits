@@ -205,20 +205,22 @@ void Client::pkt_SetPosition(Packet &pkt)
 	LocalPlayer *player = getPlayerNoLock(m_my_peer_id);
 	auto world = player->getWorld();
 
+	bool need_update = false;
 	for (Block *b = world->begin(); b < world->end(); ++b) {
 		switch (b->id) {
 			case Block::ID_SECRET:
+			case Block::ID_COIN:
+				b->param1 = 0;
+				need_update = true;
+				break;
 			case Block::ID_COINDOOR:
+				b->param1 &= Block::P1_FLAG_TILE1;
+				need_update = true;
 				break;
 		}
 	}
 
-	auto out = player->getWorld()->getBlocks(Block::ID_SECRET, [](Block &b) -> bool {
-		b.param1 = 0;
-		return true;
-	});
-
-	if (!out.empty()) {
+	if (need_update) {
 		GameEvent e(GameEvent::C2G_MAP_UPDATE);
 		sendNewEvent(e);
 	}
@@ -274,6 +276,7 @@ void Client::pkt_PlaceBlock(Packet &pkt)
 	if (!world)
 		throw std::runtime_error("Got block but the world is not ready");
 
+	auto player = getMyPlayer();
 	SimpleLock lock(world->mutex);
 
 	while (true) {
@@ -283,10 +286,17 @@ void Client::pkt_PlaceBlock(Packet &pkt)
 
 		BlockUpdate bu;
 		bu.peer_id = peer_id; // ... nothing to do with this?
-		pkt.read(bu.pos.X);
-		pkt.read(bu.pos.Y);
-		pkt.read(bu.id);
+		bu.read(pkt);
 
+		switch (bu.id) {
+			case Block::ID_SECRET:
+				bu.param1 = player->godmode;
+				break;
+			case Block::ID_COINDOOR:
+				if (player->coins >= bu.param1)
+					bu.param1 |= Block::P1_FLAG_TILE1;
+				break;
+		}
 		world->updateBlock(bu);
 	}
 
@@ -298,8 +308,7 @@ void Client::pkt_PlaceBlock(Packet &pkt)
 
 void Client::pkt_Key(Packet &pkt)
 {
-	SimpleLock lock(m_players_lock);
-	LocalPlayer *player = getPlayerNoLock(m_my_peer_id);
+	auto player = getMyPlayer();
 
 	bid_t key_id = pkt.read<bid_t>();
 	bool state = pkt.read<u8>();

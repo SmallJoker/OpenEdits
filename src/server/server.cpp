@@ -93,11 +93,8 @@ void Server::step(float dtime)
 			// Distribute valid changes to players
 
 			out.write(it->peer_id); // continue
-			// blockpos_t
-			out.write(it->pos.X);
-			out.write(it->pos.Y);
-			// Block
-			out.write(it->id);
+			// Write BlockUpdate
+			it->write(out);
 
 			DEBUGLOG("Server: sending block x=%d,y=%d,id=%d\n",
 				it->pos.X, it->pos.Y, it->id);

@@ -13,6 +13,8 @@ namespace irr {
 	}
 }
 
+struct BlockUpdate;
+
 class SceneBlockSelector : public IEventReceiver {
 public:
 	SceneBlockSelector(gui::IGUIEnvironment *gui);
@@ -25,7 +27,7 @@ public:
 	bool OnEvent(const SEvent &e) override;
 	void toggleShowMore();
 
-	bid_t getSelectedBid() const { return m_selected_bid; }
+	void getBlockUpdate(BlockUpdate &bu);
 
 private:
 	bool drawBlockButton(bid_t bid, const core::recti &rect, gui::IGUIElement *parent, int id);
@@ -37,6 +39,7 @@ private:
 	std::vector<bid_t> m_hotbar_ids;
 	core::position2di m_hotbar_pos;
 	bid_t m_selected_bid = 0;
+	u8 m_selected_param1 = 0;
 
 	bool m_show_selector = false;
 	bid_t m_dragged_bid = Block::ID_INVALID;

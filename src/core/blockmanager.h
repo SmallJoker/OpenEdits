@@ -54,10 +54,14 @@ struct BlockProperties {
 
 	BlockPack *pack = nullptr;
 
+	// whether to acknowledge param1 block updates
+	bool persistent_param1 = false;
+
+	// whether to add the block position to the triggered blocks list
 	bool trigger_on_touch = false;
 	u32 color = 0; // minimap
 
-	BlockTile tiles[2]; // normal, active
+	BlockTile tiles[2]; // [0] = normal, [1] = active
 	BlockTile getTile(const Block b) const;
 
 	// Depends on param1

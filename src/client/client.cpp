@@ -68,11 +68,8 @@ void Client::step(float dtime)
 		for (auto it = queue.cbegin(); it != queue.cend();) {
 
 			out.write<u8>(true); // begin
-			// blockpos_t
-			out.write(it->pos.X);
-			out.write(it->pos.Y);
-			// Block
-			out.write(it->id);
+			// Write BlockUpdate
+			it->write(out);
 
 			DEBUGLOG("Client: sending block x=%d,y=%d,id=%d\n",
 				it->pos.X, it->pos.Y, it->id);
@@ -131,9 +128,10 @@ void Client::step(float dtime)
 					}
 				}
 				break;
+				case Block::ID_COIN:
 				case Block::ID_SECRET:
 				if (!b.param1) {
-					b.param1 = true;
+					b.param1 = 1;
 					world->setBlock(bp, b);
 					trigger_event = true;
 				}
@@ -148,6 +146,23 @@ void Client::step(float dtime)
 		}
 
 		if (trigger_event) {
+			// Triggering an event anyway. Update coin doors.
+			auto collected = world->getBlocks(Block::ID_COIN, [](Block &b) -> bool {
+				return b.param1 > 0;
+			});
+			const int coins = collected.size();
+			getPlayerNoLock(m_my_peer_id)->coins = std::min(127, coins);
+
+			world->getBlocks(Block::ID_COINDOOR, [coins](Block &b) -> bool {
+				u8 required = b.param1 & ~Block::P1_FLAG_TILE1;
+				if (coins >= required)
+					b.param1 |= Block::P1_FLAG_TILE1;
+				else
+					b.param1 = required;
+
+				return false;
+			});
+
 			GameEvent e(GameEvent::C2G_MAP_UPDATE);
 			sendNewEvent(e);
 		}

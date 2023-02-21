@@ -34,9 +34,12 @@ struct Block {
 		ID_GATE_B,
 		ID_COINDOOR = 43,
 		ID_SECRET = 50,
+		ID_COIN = 100,
 		ID_SPAWN = 255,
 		ID_INVALID = UINT16_MAX
 	};
+
+	// Client-side only flags
 	enum Param1Flag : uint8_t {
 		P1_FLAG_TILE1 = 0x80
 	};

@@ -75,6 +75,11 @@ void SceneGameplay::OnClose()
 	m_chathistory_text.clear();
 	if (m_minimap)
 		m_minimap->markDirty();
+
+	for (auto it : m_cached_textures) {
+		m_gui->driver->removeTexture(it.second);
+	}
+	m_cached_textures.clear();
 }
 
 
@@ -82,8 +87,6 @@ void SceneGameplay::draw()
 {
 	const auto wsize = m_gui->window_size;
 	auto gui = m_gui->guienv;
-
-	m_ignore_keys = false;
 
 	{
 		SIZEW = wsize.Width * 0.7f;
@@ -218,11 +221,11 @@ void SceneGameplay::step(float dtime)
 
 bool SceneGameplay::OnEvent(const SEvent &e)
 {
-	auto element = m_gui->guienv->getFocus();
-	if (!element || element->getID() != ID_BoxChat) {
-		if (m_blockselector->OnEvent(e))
-			return true;
-	}
+	//if (e.EventType == EET_GUI_EVENT)
+	//	printf("event %d, %s\n", e.GUIEvent.EventType, e.GUIEvent.Caller->getTypeName());
+
+	if (m_blockselector->OnEvent(e))
+		return true;
 
 	if (e.EventType == EET_GUI_EVENT) {
 		switch (e.GUIEvent.EventType) {
@@ -262,13 +265,6 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 					return true;
 				}
 				break;
-			case gui::EGET_ELEMENT_FOCUSED:
-				m_ignore_keys = true;
-				break;
-			case gui::EGET_ELEMENT_FOCUS_LOST:
-				// !! This is not triggered when dragging & releasing the mouse
-				m_ignore_keys = false;
-				break;
 			default: break;
 		}
 	}
@@ -277,6 +273,14 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 			m_erase_mode = e.KeyInput.PressedDown;
 	}
 	if (e.EventType == EET_MOUSE_INPUT_EVENT) {
+
+		{
+			auto root = m_gui->guienv->getRootGUIElement();
+			auto element = root->getElementFromPoint({e.MouseInput.X, e.MouseInput.Y});
+			if (element && element != root)
+				return false;
+		}
+
 		switch (e.MouseInput.Event) {
 			case EMIE_MOUSE_MOVED:
 			case EMIE_LMOUSE_PRESSED_DOWN:
@@ -299,11 +303,9 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 
 					bool guess_layer = false;
 					if (l_pressed) {
-						bid_t block_id = m_blockselector->getSelectedBid();
-						if (block_id == 0)
-							guess_layer = true;
-						else
-							m_drag_draw_block.set(block_id);
+						m_blockselector->getBlockUpdate(m_drag_draw_block);
+						if (m_drag_draw_block.id == 0)
+							guess_layer = true;;
 					}
 
 					if (r_pressed || guess_layer) {
@@ -352,7 +354,14 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 			default: break;
 		}
 	}
-	if (e.EventType == EET_KEY_INPUT_EVENT && !m_ignore_keys) {
+	if (e.EventType == EET_KEY_INPUT_EVENT) {
+
+		{
+			auto element = m_gui->guienv->getFocus();
+			if (element && element->getType() == gui::EGUIET_EDIT_BOX)
+				return false;
+		}
+
 		auto player = m_gui->getClient()->getMyPlayer();
 		if (!player)
 			return false;
@@ -427,6 +436,7 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 			m_gui->getClient()->sendPlayerMove();
 		}
 	}
+
 	return false;
 }
 
@@ -511,20 +521,28 @@ bool SceneGameplay::getBlockFromPixel(int x, int y, blockpos_t &bp)
 	return true;
 }
 
-video::ITexture *SceneGameplay::generateTexture(const wchar_t *text, u32 color)
+video::ITexture *SceneGameplay::generateTexture(const std::string &text, u32 color, u32 bgcolor)
 {
+	auto it = m_cached_textures.find(text);
+	if (it != m_cached_textures.end())
+		return it->second;
+
+	core::stringw textw;
+	core::multibyteToWString(textw, text.c_str());
+
 	auto driver = m_gui->driver;
-	auto dim = m_gui->font->getDimension(text);
-	dim.Width += 2; dim.Height += 2;
+	auto dim = m_gui->font->getDimension(textw.c_str());
+	dim.Width += 2;
 
 	auto texture = driver->addRenderTargetTexture(dim); //, "rt", video::ECF_A8R8G8B8);
-	driver->setRenderTarget(texture); //, true, true, video::SColor(0));
+	driver->setRenderTarget(texture, true, true, video::SColor(bgcolor));
 
-	m_gui->font->draw(text, core::recti(core::vector2di(2,0), dim), 0xFF555555); // Shadow
-	m_gui->font->draw(text, core::recti(core::vector2di(1,-1), dim), color);
+	m_gui->font->draw(textw.c_str(), core::recti(core::vector2di(2,0), dim), 0xFF555555); // Shadow
+	m_gui->font->draw(textw.c_str(), core::recti(core::vector2di(1,-1), dim), color);
 
 	driver->setRenderTarget(nullptr, video::ECBF_ALL);
 
+	m_cached_textures.emplace(text, texture);
 	return texture;
 }
 
@@ -560,6 +578,10 @@ void SceneGameplay::drawBlocksInView()
 	}
 
 	//printf("center: %i, %i, %i, %i\n", x_center, y_center, x_extent, y_extent);
+
+	auto player = m_gui->getClient()->getMyPlayer();
+	if (!player)
+		return;
 
 	SimpleLock lock(world->mutex);
 	const auto world_size = world->getSize();
@@ -627,6 +649,21 @@ void SceneGameplay::drawBlocksInView()
 			);
 			have_solid_above = assignBlockTexture(tile, bb);
 
+			// Hacky. Replace this with something better.
+			if (b.id == Block::ID_COINDOOR && (b.param1 & Block::P1_FLAG_TILE1) == 0) {
+				int required = b.param1 & ~Block::P1_FLAG_TILE1;
+				required -= player->coins;
+
+				auto texture = generateTexture(std::to_string(required), 0xFF000000, 0xFFFFFFFF);
+				auto dim = texture->getOriginalSize();
+
+				auto nb = smgr->addBillboardSceneNode(bb,
+					core::dimension2d<f32>((float)dim.Width / dim.Height * 5, 5),
+					core::vector3df(0, -2, -0.05)
+				);
+				nb->setMaterialFlag(video::EMF_LIGHTING, false);
+				nb->setMaterialTexture(0, texture);
+			}
 		} while (false);
 
 
@@ -806,9 +843,7 @@ void SceneGameplay::updatePlayerPositions(float dtime)
 
 
 			// Add nametag
-			core::stringw namew;
-			core::multibyteToWString(namew, it.second->name.c_str());
-			auto nt_texture = generateTexture(namew.c_str());
+			auto nt_texture = generateTexture(it.second->name);
 			auto nt_size = nt_texture->getOriginalSize();
 			auto nt = smgr->addBillboardSceneNode(nf,
 				core::dimension2d<f32>(nt_size.Width * 0.4f, nt_size.Height * 0.4f),

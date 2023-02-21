@@ -305,9 +305,7 @@ void Server::pkt_PlaceBlock(peer_t peer_id, Packet &pkt)
 
 		BlockUpdate bu;
 		bu.peer_id = peer_id;
-		pkt.read(bu.pos.X);
-		pkt.read(bu.pos.Y);
-		pkt.read(bu.id);
+		bu.read(pkt);
 
 		bool ok = world->updateBlock(bu);
 		if (!ok) {

@@ -20,9 +20,12 @@ struct BlockUpdate {
 	inline bool isBackground() const { return (id & BG_FLAG) > 0; }
 	inline bid_t getBlockId() const { return id & ~BG_FLAG; }
 
+	void read(Packet &pkt);
+	void write(Packet &pkt) const;
+
 	bool operator ==(const BlockUpdate &o) const
 	{
-		return pos == o.pos && peer_id == o.peer_id && id == o.id;
+		return pos == o.pos && id == o.id;
 	}
 
 	blockpos_t pos;
