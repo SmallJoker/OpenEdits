@@ -216,7 +216,20 @@ void SceneGameplay::step(float dtime)
 		m_camera_pos.Y += ((player->pos.Y * -10) - m_camera_pos.Y) * 5 * dtime;
 
 		setCamera(m_camera_pos);
+
+		if (player->coins > 0) {
+			// Coins text
+			core::recti rect(
+				core::vector2di(SIZEW - 100, 10),
+				core::dimension2di(90, 20)
+			);
+
+			wchar_t buf[100];
+			swprintf(buf, 100, L"Coins: %d", (int)player->coins);
+			m_gui->font->draw(buf, rect, 0xFFFFFF00);
+		}
 	} while (false);
+
 }
 
 bool SceneGameplay::OnEvent(const SEvent &e)

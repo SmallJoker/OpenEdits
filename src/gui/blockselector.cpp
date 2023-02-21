@@ -13,6 +13,7 @@
 enum ElementId : int {
 	ID_HOTBAR_0 = 300, // Counted by button number
 	ID_SHOWMORE = 350, // [+] [-] button
+	ID_TabControl,
 	ID_BoxCoinDoor,
 
 	ID_SELECTOR_TAB_0, // Offset for BlockDrawType tabs
@@ -170,6 +171,10 @@ bool SceneBlockSelector::OnEvent(const SEvent &e)
 			return true;
 		}
 	}
+	if (e.EventType == EET_GUI_EVENT && e.GUIEvent.EventType == gui::EGET_TAB_CHANGED) {
+		auto element = (gui::IGUITabControl *)e.GUIEvent.Caller;
+		m_last_selected_tab = element->getActiveTab();
+	}
 	if (e.EventType == EET_KEY_INPUT_EVENT) {
 		{
 			auto element = m_gui->getFocus();
@@ -275,17 +280,19 @@ void SceneBlockSelector::drawBlockSelector()
 	video::SColor color(skin->getColor(gui::EGDC_3D_HIGH_LIGHT));
 
 	auto tc = m_gui->addTabControl(rect_tab, m_showmore);
+	tc->setID(ID_TabControl);
 	tc->setTabHeight(30);
 	tc->setNotClipped(true);
 
 	// Add category tabs
 	for (TabData &td : tabs_data) {
-		auto e = tc->addTab(td.name, (&td -  tabs_data) + ID_SELECTOR_TAB_0);
+		auto e = tc->addTab(td.name, (&td - tabs_data) + ID_SELECTOR_TAB_0);
 		e->setBackgroundColor(color);
 		e->setDrawBackground(true);
 		td.tab = e;
 		td.pos = SPACING;
 	}
+	tc->setActiveTab(m_last_selected_tab);
 
 	// Iterate through packs
 	auto &packs = g_blockmanager->getPacks();

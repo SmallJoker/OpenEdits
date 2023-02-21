@@ -297,7 +297,7 @@ void Client::pkt_PlaceBlock(Packet &pkt)
 					bu.param1 |= Block::P1_FLAG_TILE1;
 				break;
 		}
-		world->updateBlock(bu);
+		world->updateBlock(bu, false);
 	}
 
 	lock.unlock();

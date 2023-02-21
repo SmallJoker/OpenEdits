@@ -16,7 +16,7 @@ struct BlockUpdate {
 	bool set(bid_t block_id);
 	void setErase(bool background);
 
-	bool check(bid_t *block_id, bool *background) const;
+	bool check(bid_t *block_id, bool *background, bool param1_check) const;
 	inline bool isBackground() const { return (id & BG_FLAG) > 0; }
 	inline bid_t getBlockId() const { return id & ~BG_FLAG; }
 
@@ -123,7 +123,7 @@ public:
 
 	bool getBlock(blockpos_t pos, Block *block) const;
 	bool setBlock(blockpos_t pos, const Block block);
-	bool updateBlock(const BlockUpdate bu);
+	bool updateBlock(const BlockUpdate bu, bool param1_check = true);
 
 	// Result is added when callback is nullptr or returns true
 	std::vector<blockpos_t> getBlocks(bid_t block_id, std::function<bool(Block &b)> callback) const;

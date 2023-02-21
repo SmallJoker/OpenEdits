@@ -75,7 +75,7 @@ void unittest_world()
 	bool isbg;
 	bu.pos = blockpos_t(1, 2);
 	bu.id = 501;
-	CHECK(!bu.check(&newid, &isbg));
+	CHECK(!bu.check(&newid, &isbg, true));
 	CHECK(!w.updateBlock(bu));
 
 

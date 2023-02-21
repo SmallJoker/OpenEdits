@@ -45,4 +45,6 @@ private:
 	bid_t m_dragged_bid = Block::ID_INVALID;
 	gui::IGUIElement *m_showmore = nullptr;
 	gui::IGUIImage *m_highlight = nullptr;
+
+	int m_last_selected_tab = 0;
 };

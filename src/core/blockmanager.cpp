@@ -262,7 +262,7 @@ u32 BlockManager::getBlockColor(const BlockTile tile) const
 	}
 
 	// Get dominant HSV
-	video::SColor color;
+	video::SColor color = 0;
 	int highest = 0;
 	for (auto it : histogram) {
 		if (it.second <= highest)

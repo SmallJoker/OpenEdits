@@ -25,7 +25,7 @@ void BlockUpdate::setErase(bool background)
 	param1 = 0;
 }
 
-bool BlockUpdate::check(bid_t *block_id, bool *background) const
+bool BlockUpdate::check(bid_t *block_id, bool *background, bool param1_check) const
 {
 	// For server-side validation
 	bid_t id = getBlockId();
@@ -38,7 +38,7 @@ bool BlockUpdate::check(bid_t *block_id, bool *background) const
 	if (id > 0 && (props->tiles[0].type == BlockDrawType::Background) != is_background)
 		return false;
 
-	if (!is_background && !props->persistent_param1 && param1 != 0)
+	if (param1_check && !is_background && !props->persistent_param1 && param1 != 0)
 		return false;
 
 	*block_id = id;
@@ -291,14 +291,14 @@ bool World::setBlock(blockpos_t pos, const Block block)
 	return true;
 }
 
-bool World::updateBlock(const BlockUpdate bu)
+bool World::updateBlock(const BlockUpdate bu, bool param1_check)
 {
 	if (bu.pos.X >= m_size.X || bu.pos.Y >= m_size.Y)
 		return false;
 
 	bid_t new_id;
 	bool is_background;
-	if (!bu.check(&new_id, &is_background))
+	if (!bu.check(&new_id, &is_background, param1_check))
 		return false;
 
 	Block &ref = getBlockRefNoCheck(bu.pos);

@@ -132,6 +132,7 @@ void BlockManager::doPackRegistration()
 		props->trigger_on_touch = true;
 		props->condition = TC::NotZero;
 		props->tiles[0].type = BlockDrawType::Decoration; // draw above players
+		props->tiles[1].type = BlockDrawType::Action;
 
 
 		props = m_props[Block::ID_COINDOOR];
