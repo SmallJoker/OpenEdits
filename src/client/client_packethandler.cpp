@@ -215,6 +215,7 @@ void Client::pkt_SetPosition(Packet &pkt)
 				need_update = true;
 				break;
 			case Block::ID_COINDOOR:
+			case Block::ID_COINGATE:
 				b->param1 &= ~Block::P1_FLAG_TILE1;
 				need_update = true;
 				break;
@@ -294,6 +295,7 @@ void Client::pkt_PlaceBlock(Packet &pkt)
 				bu.param1 = player->godmode;
 				break;
 			case Block::ID_COINDOOR:
+			case Block::ID_COINGATE:
 				if (player->coins >= bu.param1)
 					bu.param1 |= Block::P1_FLAG_TILE1;
 				break;

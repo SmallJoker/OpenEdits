@@ -663,7 +663,8 @@ void SceneGameplay::drawBlocksInView()
 			have_solid_above = assignBlockTexture(tile, bb);
 
 			// Hacky. Replace this with something better.
-			if (b.id == Block::ID_COINDOOR && (b.param1 & Block::P1_FLAG_TILE1) == 0) {
+			if ((b.id == Block::ID_COINDOOR || b.id == Block::ID_COINGATE)
+					&& (b.param1 & Block::P1_FLAG_TILE1) == 0) {
 				int required = b.param1 & ~Block::P1_FLAG_TILE1;
 				required -= player->coins;
 

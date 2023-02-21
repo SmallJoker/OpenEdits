@@ -26,16 +26,23 @@ bool LocalPlayer::updateCoinCount()
 	if (coins == old_coins)
 		return false;
 
-	int new_coins = coins; // move to stack
-	m_world->getBlocks(Block::ID_COINDOOR, [new_coins](Block &b) -> bool {
-		u8 required = b.param1 & ~Block::P1_FLAG_TILE1;
-		if (new_coins >= required)
-			b.param1 |= Block::P1_FLAG_TILE1;
-		else
-			b.param1 = required;
+	int my_coins = coins; // move to stack
+	for (Block *b = m_world->begin(); b != m_world->end(); ++b) {
+		switch (b->id) {
+			case Block::ID_COINDOOR:
+			case Block::ID_COINGATE:
+			{
 
-		return false;
-	});
+				u8 howmany = b->param1 & ~Block::P1_FLAG_TILE1;
+				if (my_coins >= howmany)
+					b->param1 |= Block::P1_FLAG_TILE1;
+				else
+					b->param1 = howmany;
+			}
+			break;
+		}
+
+	}
 
 	return true;
 }

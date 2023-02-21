@@ -146,7 +146,7 @@ bool SceneBlockSelector::OnEvent(const SEvent &e)
 				return false;
 
 			auto elem = m_showmore->getElementFromId(ID_BoxCoinDoor, true);
-			if (!elem && m_selected_bid == Block::ID_COINDOOR) {
+			if (!elem && (m_selected_bid == Block::ID_COINDOOR || m_selected_bid == Block::ID_COINGATE)) {
 				core::recti rect(
 					core::vector2di(-BTN_SIZE.Width * 0.5f, BTN_SIZE.Height + 2),
 					core::dimension2di(BTN_SIZE.Width * 2, 35)

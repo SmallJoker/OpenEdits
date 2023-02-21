@@ -33,6 +33,7 @@ struct Block {
 		ID_GATE_G,
 		ID_GATE_B,
 		ID_COINDOOR = 43,
+		ID_COINGATE = 165,
 		ID_SECRET = 50,
 		ID_COIN = 100,
 		ID_SPAWN = 255,

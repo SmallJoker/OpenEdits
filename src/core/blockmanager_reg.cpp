@@ -32,6 +32,14 @@ static BP_COLLIDE_CALLBACK(onCollide_coindoor)
 		: BlockProperties::CollisionType::Position;
 }
 
+static BP_COLLIDE_CALLBACK(onCollide_coingate)
+{
+	u8 coins = b.param1 & ~Block::P1_FLAG_TILE1;
+	return player.coins < coins
+		? BlockProperties::CollisionType::None
+		: BlockProperties::CollisionType::Position;
+}
+
 static BP_COLLIDE_CALLBACK(onCollide_b10_bouncy)
 {
 	if (is_x) {
@@ -125,7 +133,7 @@ void BlockManager::doPackRegistration()
 	{
 		BlockPack *pack = new BlockPack("coins");
 		pack->default_type = BlockDrawType::Action;
-		pack->block_ids = { Block::ID_COIN, Block::ID_COINDOOR };
+		pack->block_ids = { Block::ID_COIN, Block::ID_COINDOOR, Block::ID_COINGATE };
 		g_blockmanager->registerPack(pack);
 
 		auto props = m_props[Block::ID_COIN];
@@ -143,6 +151,15 @@ void BlockManager::doPackRegistration()
 		props->tiles[1].type = BlockDrawType::Solid;
 		props->tiles[1].have_alpha = true;
 		props->onCollide = onCollide_coindoor;
+
+		props = m_props[Block::ID_COINGATE];
+		props->persistent_param1 = true;
+		props->condition = TC::MSBFlagSet;
+		// Walk-through is player-specific, hence using the onCollide callback
+		props->tiles[0].type = BlockDrawType::Solid;
+		props->tiles[0].have_alpha = true;
+		props->tiles[1].type = BlockDrawType::Solid;
+		props->onCollide = onCollide_coingate;
 	}
 
 	// Decoration
@@ -161,15 +178,5 @@ void BlockManager::doPackRegistration()
 		pack->block_ids = { 500, 501, 502, 503, 504, 505, 506 };
 		g_blockmanager->registerPack(pack);
 	}
-
-/*
-	Key RGB: 6
-	Door RGB: 23
-	Gate RGB: 26
-	Coin: 100
-	Coin door: 43
-	Spawn: 255
-	Secret (invisible): 50
-*/
 }
 
