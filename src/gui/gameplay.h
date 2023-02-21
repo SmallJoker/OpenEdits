@@ -66,7 +66,7 @@ private:
 
 	// Statis indicators for mouse inputs
 	bool m_may_drag_draw = true;   // permission: free drawing
-	bid_t m_drag_draw_block = Block::ID_INVALID; // drawing mode
+	BlockUpdate m_drag_draw_block; // drawing mode
 	bool m_erase_mode = false;     // removes the pointed block : shift down
 
 	bool m_ignore_keys = false;    // ignore key inputs e.g. when typing

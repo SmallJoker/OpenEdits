@@ -4,6 +4,45 @@
 #include "packet.h"
 #include <cstring> // memset
 
+bool BlockUpdate::set(bid_t block_id)
+{
+	auto props = g_blockmanager->getProps(block_id);
+	if (!props) {
+		id = Block::ID_INVALID;
+		param1 = 0;
+		return false;
+	}
+
+	bool background = props->tiles[0].type == BlockDrawType::Background;
+	id = block_id | (BG_FLAG * background);
+	param1 = 0;
+	return true;
+}
+
+void BlockUpdate::setErase(bool background)
+{
+	id = 0 | (BG_FLAG * background);
+	param1 = 0;
+}
+
+bool BlockUpdate::check(bid_t *block_id, bool *background) const
+{
+	// For server-side validation
+	bid_t id = getBlockId();
+	auto props = g_blockmanager->getProps(id);
+	if (!props)
+		return false;
+
+	// Special case: Always allow ID 0, but not others
+	bool is_background = isBackground();
+	if (id > 0 && (props->tiles[0].type == BlockDrawType::Background) != is_background)
+		return false;
+
+	*block_id = id;
+	*background = is_background;
+	return true;
+}
+
 void WorldMeta::readCommon(Packet &pkt)
 {
 	title = pkt.readStr16();
@@ -234,14 +273,9 @@ bool World::updateBlock(const BlockUpdate bu)
 	if (bu.pos.X >= m_size.X || bu.pos.Y >= m_size.Y)
 		return false;
 
-	bid_t new_id = bu.id & ~BlockUpdate::BG_FLAG;
-	auto props = g_blockmanager->getProps(new_id);
-	if (!props)
-		return false;
-
-	// Special case: Always allow ID 0, but not others
-	bool is_background = (bu.id & BlockUpdate::BG_FLAG) > 0;
-	if (new_id > 0 && (props->tiles[0].type == BlockDrawType::Background) != is_background)
+	bid_t new_id;
+	bool is_background;
+	if (!bu.check(&new_id, &is_background))
 		return false;
 
 	Block &ref = getBlockRefNoCheck(bu.pos);
@@ -252,7 +286,7 @@ bool World::updateBlock(const BlockUpdate bu)
 
 	id_ref = new_id;
 	if (!is_background)
-		ref.param1 = 0;
+		ref.param1 = bu.param1;
 
 	return true;
 }

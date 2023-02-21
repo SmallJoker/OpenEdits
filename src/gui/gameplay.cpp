@@ -290,7 +290,7 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 					bool l_pressed = e.MouseInput.Event == EMIE_LMOUSE_PRESSED_DOWN;
 					// Place bid=0
 					bool r_pressed = e.MouseInput.Event == EMIE_RMOUSE_PRESSED_DOWN;
-					if (!((m_may_drag_draw && m_drag_draw_block != Block::ID_INVALID) || l_pressed || r_pressed))
+					if (!((m_may_drag_draw && m_drag_draw_block.id != Block::ID_INVALID) || l_pressed || r_pressed))
 						break;
 
 					blockpos_t bp;
@@ -299,12 +299,11 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 
 					bool guess_layer = false;
 					if (l_pressed) {
-						m_drag_draw_block = m_blockselector->getSelectedBid();
-						auto props = g_blockmanager->getProps(m_drag_draw_block);
-						if (m_drag_draw_block == 0)
+						bid_t block_id = m_blockselector->getSelectedBid();
+						if (block_id == 0)
 							guess_layer = true;
-						else if (props)
-							m_drag_draw_block |= (BlockUpdate::BG_FLAG * (props->tiles[0].type == BlockDrawType::Background));
+						else
+							m_drag_draw_block.set(block_id);
 					}
 
 					if (r_pressed || guess_layer) {
@@ -314,18 +313,16 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 							break;
 
 						// Pick background if there is no foreground
-						m_drag_draw_block = 0 | (BlockUpdate::BG_FLAG * (bt.id == 0));
+						m_drag_draw_block.setErase(bt.id == 0);
 					}
 
-					BlockUpdate bu;
+					BlockUpdate bu = m_drag_draw_block;
 					bu.pos = bp;
 					if (m_erase_mode)
-						bu.id = 0 | (m_drag_draw_block & BlockUpdate::BG_FLAG);
-					else
-						bu.id = m_drag_draw_block;
+						bu.setErase(m_drag_draw_block.isBackground());
 
 					if (!m_may_drag_draw)
-						m_drag_draw_block = Block::ID_INVALID;
+						m_drag_draw_block.set(Block::ID_INVALID);
 
 					m_gui->getClient()->updateBlock(bu);
 					return true;
@@ -350,7 +347,7 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 				break;
 			case EMIE_LMOUSE_LEFT_UP:
 			case EMIE_RMOUSE_LEFT_UP:
-				m_drag_draw_block = Block::ID_INVALID;
+				m_drag_draw_block.set(Block::ID_INVALID);
 				break;
 			default: break;
 		}

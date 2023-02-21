@@ -48,7 +48,8 @@ void unittest_world()
 
 	// Background on empty foreground
 	bu.pos = blockpos_t(0, 2);
-	bu.id = 502 | BlockUpdate::BG_FLAG;
+	CHECK(bu.set(502));
+	CHECK(bu.getBlockId() == 502);
 	CHECK(w.updateBlock(bu));
 	CHECK(w.getBlock(bu.pos, &b))
 	CHECK(b.id == 0);
@@ -56,22 +57,25 @@ void unittest_world()
 
 	// Background on non-empty foreground
 	bu.pos = blockpos_t(2, 1);
-	bu.id = 501 | BlockUpdate::BG_FLAG;
+	CHECK(bu.set(501));
 	CHECK(w.updateBlock(bu));
 	CHECK(w.getBlock(bu.pos, &b))
 	CHECK(b.id == 9);
 	CHECK(b.bg == 501);
 
 	// Remove background
-	bu.id = 0 | BlockUpdate::BG_FLAG;
+	bu.setErase(true);
 	CHECK(w.updateBlock(bu));
 	CHECK(w.getBlock(bu.pos, &b))
 	CHECK(b.id == 9);
 	CHECK(b.bg == 0);
 
 	// Wrong background
+	bid_t newid;
+	bool isbg;
 	bu.pos = blockpos_t(1, 2);
 	bu.id = 501;
+	CHECK(!bu.check(&newid, &isbg));
 	CHECK(!w.updateBlock(bu));
 
 

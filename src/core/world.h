@@ -13,7 +13,12 @@ class Packet;
 static_assert(sizeof(size_t) >= sizeof(u64));
 
 struct BlockUpdate {
-	static constexpr bid_t BG_FLAG { 0x8000 };
+	bool set(bid_t block_id);
+	void setErase(bool background);
+
+	bool check(bid_t *block_id, bool *background) const;
+	inline bool isBackground() const { return (id & BG_FLAG) > 0; }
+	inline bid_t getBlockId() const { return id & ~BG_FLAG; }
 
 	bool operator ==(const BlockUpdate &o) const
 	{
@@ -23,15 +28,20 @@ struct BlockUpdate {
 	blockpos_t pos;
 
 	peer_t peer_id = -1; // specified by server
+
 	// New block ID (BlockUpdate::BG_FLAG for backgrounds)
 	bid_t id = Block::ID_INVALID;
+	u8 param1 = 0;
+
+private:
+	static constexpr bid_t BG_FLAG { 0x8000 };
 };
 
 struct BlockUpdateHash {
 	size_t operator ()(const BlockUpdate &v) const
 	{
 		// 33 bits needs an u64
-		return ((u64)((v.id & BlockUpdate::BG_FLAG) > 0) << 32)
+		return ((u64)v.isBackground() << 32)
 			| ((u64)v.pos.Y << 16)
 			| ((u64)v.pos.X << 0);
 	}
