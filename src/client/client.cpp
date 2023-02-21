@@ -147,21 +147,8 @@ void Client::step(float dtime)
 
 		if (trigger_event) {
 			// Triggering an event anyway. Update coin doors.
-			auto collected = world->getBlocks(Block::ID_COIN, [](Block &b) -> bool {
-				return b.param1 > 0;
-			});
-			const int coins = collected.size();
-			getPlayerNoLock(m_my_peer_id)->coins = std::min(127, coins);
-
-			world->getBlocks(Block::ID_COINDOOR, [coins](Block &b) -> bool {
-				u8 required = b.param1 & ~Block::P1_FLAG_TILE1;
-				if (coins >= required)
-					b.param1 |= Block::P1_FLAG_TILE1;
-				else
-					b.param1 = required;
-
-				return false;
-			});
+			auto player = getPlayerNoLock(m_my_peer_id);
+			player->updateCoinCount();
 
 			GameEvent e(GameEvent::C2G_MAP_UPDATE);
 			sendNewEvent(e);

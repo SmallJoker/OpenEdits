@@ -205,6 +205,7 @@ void Client::pkt_SetPosition(Packet &pkt)
 	LocalPlayer *player = getPlayerNoLock(m_my_peer_id);
 	auto world = player->getWorld();
 
+	// semi-duplicate of Player::updateCoinCount
 	bool need_update = false;
 	for (Block *b = world->begin(); b < world->end(); ++b) {
 		switch (b->id) {
@@ -214,7 +215,7 @@ void Client::pkt_SetPosition(Packet &pkt)
 				need_update = true;
 				break;
 			case Block::ID_COINDOOR:
-				b->param1 &= Block::P1_FLAG_TILE1;
+				b->param1 &= ~Block::P1_FLAG_TILE1;
 				need_update = true;
 				break;
 		}
@@ -300,8 +301,9 @@ void Client::pkt_PlaceBlock(Packet &pkt)
 		world->updateBlock(bu, false);
 	}
 
-	lock.unlock();
+	player->updateCoinCount();
 
+	lock.unlock();
 	GameEvent e(GameEvent::C2G_MAP_UPDATE);
 	sendNewEvent(e);
 }

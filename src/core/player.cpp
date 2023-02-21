@@ -87,14 +87,12 @@ bool Player::setControls(const PlayerControls &ctrl)
 
 void Player::setPosition(core::vector2df newpos, bool reset_progress)
 {
-	if (reset_progress) {
+	if (reset_progress)
 		coins = 0;
-	}
 
 	pos = newpos;
 	vel = core::vector2df();
 }
-
 
 void Player::step(float dtime)
 {

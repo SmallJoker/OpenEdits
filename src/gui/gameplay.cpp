@@ -968,7 +968,7 @@ void SceneGameplay::setupCamera()
 void SceneGameplay::setCamera(core::vector3df pos)
 {
 	m_camera->setPosition(pos);
-	pos.Z += 1E6;
+	pos.Z += 1000;
 	m_camera->setTarget(pos);
 	m_camera->updateAbsolutePosition();
 }

@@ -156,6 +156,7 @@ bool SceneBlockSelector::OnEvent(const SEvent &e)
 				swprintf(buf, 10, L"%d", (int)m_selected_param1);
 				auto element = m_gui->addEditBox(buf, rect, true, btn, ID_BoxCoinDoor);
 				element->setNotClipped(true);
+				element->setTextAlignment(gui::EGUIA_CENTER, gui::EGUIA_CENTER);
 				m_gui->setFocus(element);
 			} else if (elem) {
 				elem->remove();
