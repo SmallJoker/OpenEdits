@@ -90,7 +90,7 @@ void Client::pkt_WorldData(Packet &pkt)
 	blockpos_t size;
 	pkt.read<u16>(size.X);
 	pkt.read<u16>(size.Y);
-	world->createDummy(size);
+	world->createEmpty(size);
 	if (mode == 1) {
 		world->read(pkt);
 	} // else: clear
@@ -111,6 +111,9 @@ void Client::pkt_WorldData(Packet &pkt)
 		m_state = ClientState::WorldPlay;
 
 		GameEvent e(GameEvent::C2G_JOIN);
+		sendNewEvent(e);
+	} else {
+		GameEvent e(GameEvent::C2G_MAP_UPDATE);
 		sendNewEvent(e);
 	}
 }

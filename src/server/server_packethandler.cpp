@@ -361,8 +361,7 @@ void Server::pkt_GodMode(peer_t peer_id, Packet &pkt)
 
 	// TODO: enable permission check after implementing permissions
 	if (status && false) {
-		const auto &meta = player->getWorld()->getMeta();
-		if ((meta.getPlayerFlags(player->name) & Player::FLAG_GODMODE) == 0)
+		if (player->getFlags().check(PlayerFlags::PF_MASK_GODMODE))
 			return;
 	}
 

@@ -2,6 +2,7 @@
 #include "remoteplayer.h"
 #include "core/chatcommand.h"
 #include "core/packet.h"
+#include "core/utils.h" // get_next_part
 #include "core/world.h"
 #include "server/database_world.h"
 
@@ -31,7 +32,10 @@ Server::Server() :
 
 	{
 		m_chatcmd.add("/help", (ChatCommandAction)&Server::chat_Help);
+		m_chatcmd.add("/flags", (ChatCommandAction)&Server::chat_Flags);
+		// Owner
 		m_chatcmd.add("/respawn", (ChatCommandAction)&Server::chat_Respawn);
+		m_chatcmd.add("/clear", (ChatCommandAction)&Server::chat_Clear);
 		m_chatcmd.add("/save", (ChatCommandAction)&Server::chat_Save);
 	}
 
@@ -260,7 +264,7 @@ void Server::respawnPlayer(Player *player, bool send_packet)
 
 	Packet pkt;
 	pkt.write(Packet2Client::SetPosition);
-	pkt.write<u8>(true);
+	pkt.write<u8>(true); // reset progress
 	pkt.write(player->peer_id);
 	pkt.write(player->pos.X);
 	pkt.write(player->pos.Y);
@@ -287,9 +291,53 @@ CHATCMD_FUNC(Server::chat_Help)
 	systemChatSend(player, "Available commands: " + m_chatcmd.dumpUI());
 }
 
+CHATCMD_FUNC(Server::chat_Flags)
+{
+	std::string who(get_next_part(msg));
+	if (who.empty())
+		who = player->name;
+	else
+		for (char &c : who)
+			c = toupper(c);
+
+	std::string ret;
+	ret.append("Flags of player ");
+	ret.append(who);
+	ret.append(": ");
+	// oh my fucking god
+	ret.append(player->getWorld()->getMeta().getPlayerFlags(who).toHumanReadable());
+
+	systemChatSend(player, ret);
+}
+
 CHATCMD_FUNC(Server::chat_Respawn)
 {
 	respawnPlayer(player, true);
+}
+
+CHATCMD_FUNC(Server::chat_Clear)
+{
+	if (!player->getFlags().check(PlayerFlags::PF_OWNER)) {
+		systemChatSend(player, "Missing permissions");
+		return;
+	}
+
+	auto world = player->getWorld();
+	for (Block *b = world->begin(); b != world->end(); ++b)
+		*b = Block();
+
+	const auto &meta = world->getMeta();
+	Packet out;
+	out.write(Packet2Client::WorldData);
+	out.write<u8>(2); // clear
+	meta.writeCommon(out);
+	blockpos_t size = world->getSize();
+	out.write(size.X);
+	out.write(size.Y);
+
+	broadcastInWorld(player, 0, out);
+
+	systemChatSend(player, "Cleared!");
 }
 
 CHATCMD_FUNC(Server::chat_Save)
@@ -299,7 +347,7 @@ CHATCMD_FUNC(Server::chat_Save)
 
 	auto world = player->getWorld();
 
-	if (player->name != world->getMeta().owner) {
+	if (player->getFlags().check(PlayerFlags::PF_OWNER)) {
 		systemChatSend(player, "Missing permissions");
 		return;
 	}

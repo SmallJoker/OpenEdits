@@ -15,7 +15,6 @@
 // -------------- Player specific types -------------
 
 typedef uint32_t peer_t; // same as in ENetPeer
-typedef uint32_t playerflags_t;
 
 // -------------- Uncategorized functions -------------
 

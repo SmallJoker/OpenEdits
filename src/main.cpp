@@ -1,7 +1,10 @@
 #include "core/blockmanager.h"
-#include "core/player.h"
 #include "gui/gui.h"
 #include <string.h> // strcmp
+
+#ifdef __unix__
+	#include <signal.h>
+#endif
 
 #include <chrono>
 #include <thread>
@@ -21,16 +24,32 @@ const char *VERSION_STRING = "OpenEdits v1.0.6-dev"
 
 void unittest();
 
+static Gui *my_gui = nullptr;
 static void exit_cleanup()
 {
-	delete g_blockmanager;
+	if (my_gui)
+		my_gui->requestShutdown();
 }
 
+static void sigint_handler(int signal)
+{
+	printf("\nmain: Received signal %i\n", signal);
+	exit_cleanup();
+}
 
 int main(int argc, char *argv[])
 {
 	atexit(exit_cleanup);
 	srand(time(nullptr));
+
+#ifdef __unix__
+	{
+		struct sigaction act;
+		act.sa_handler = sigint_handler;
+		sigaction(SIGINT, &act, NULL);
+		sigaction(SIGTERM, &act, NULL);
+	}
+#endif
 
 	g_blockmanager = new BlockManager();
 	g_blockmanager->doPackRegistration();
@@ -50,7 +69,10 @@ int main(int argc, char *argv[])
 	}
 
 	Gui gui;
+	my_gui = &gui;
 	gui.run();
+
+	delete g_blockmanager;
 
 	return EXIT_SUCCESS;
 }

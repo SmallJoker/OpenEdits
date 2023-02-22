@@ -46,6 +46,7 @@ public:
 	~Gui();
 
 	void run();
+	void requestShutdown() { m_scenetype_next = SceneHandlerType::CTRL_QUIT; }
 
 	// Global callbacks
 	bool OnEvent(const SEvent &event) override;

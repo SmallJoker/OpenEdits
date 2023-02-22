@@ -173,6 +173,7 @@ void Gui::run()
 
 	scenemgr->clear();
 	guienv->clear();
+	puts("Gui: Terminated properly.");
 }
 
 
@@ -228,7 +229,10 @@ SceneHandler *Gui::getHandler(SceneHandlerType type)
 
 void Gui::connect(SceneConnect *sc)
 {
-	ASSERT_FORCED(!m_server && !m_client, "Already initialized");
+	if (m_server|| m_client) {
+		showPopupText("Already initialized");
+		return;
+	}
 
 	ClientStartData init;
 

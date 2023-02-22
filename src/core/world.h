@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/macros.h"
+#include "core/playerflags.h"
 #include "core/types.h"
 #include <string>
 #include <map>
@@ -68,11 +69,11 @@ struct WorldMeta {
 	u16 online = 0;
 	std::string edit_code;
 
-	const playerflags_t getPlayerFlags(const std::string &name) const;
+	PlayerFlags getPlayerFlags(const std::string &name) const;
+	void setPlayerFlags(const std::string &name, const PlayerFlags pf);
 	// For database
 	void readPlayerFlags(Packet &pkt);
 	void writePlayerFlags(Packet &pkt) const;
-	std::map<std::string, playerflags_t> player_flags;
 
 	// Activated keys
 	struct Key {
@@ -86,6 +87,9 @@ struct WorldMeta {
 		float cooldown = 0;
 		bool active = false;
 	} keys[3] = {};
+
+private:
+	std::map<std::string, PlayerFlags> player_flags;
 };
 
 struct LobbyWorld : public WorldMeta {

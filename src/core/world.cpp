@@ -79,47 +79,61 @@ void WorldMeta::writeCommon(Packet &pkt) const
 	pkt.write<u32>(plays);
 }
 
-const playerflags_t WorldMeta::getPlayerFlags(const std::string &name) const
+PlayerFlags WorldMeta::getPlayerFlags(const std::string &name) const
 {
+	if (name == owner)
+		return PlayerFlags(PlayerFlags::PF_OWNER);
+
 	auto it = player_flags.find(name);
-	return it != player_flags.end() ? it->second : 0;
+	return it != player_flags.end() ? it->second : PlayerFlags();
+}
+
+void WorldMeta::setPlayerFlags(const std::string &name, const PlayerFlags pf)
+{
+	player_flags.emplace(name, pf);
 }
 
 void WorldMeta::readPlayerFlags(Packet &pkt)
 {
 	u8 version = pkt.read<u8>();
-	if (version > 4 || version < 4)
+	if (version < 4 || version > 5)
 		throw std::runtime_error("Incompatible player flags version");
 
 	player_flags.clear();
 
+	if (version == 4)
+		return;
+
+	// Useful to enforce default flags in the future
+	pkt.read<playerflags_t>(); // known flags
+
 	while (true) {
-		bool is_ok = pkt.read<u8>();
-		if (!is_ok)
+		std::string name = pkt.readStr16();
+		if (name.empty())
 			break;
 
-		std::string name = pkt.readStr16();
-		playerflags_t flags = pkt.read<playerflags_t>();
+		PlayerFlags pf;
+		pkt.read(pf.flags);
 
-		player_flags.emplace(name, flags);
+		player_flags.emplace(name, pf);
 	}
 }
 
 void WorldMeta::writePlayerFlags(Packet &pkt) const
 {
-	pkt.write<u8>(4);
+	pkt.write<u8>(5);
+	pkt.write<playerflags_t>(PlayerFlags::PF_MASK_SAVE);
 
 	for (auto it : player_flags) {
-		if (it.second == 0)
+		if (!it.second.check(PlayerFlags::PF_MASK_SAVE))
+			continue;
+		if (it.first == owner)
 			continue;
 
-		pkt.write<u8>(true); // begin
-
 		pkt.writeStr16(it.first);
-		pkt.write(it.second);
-
+		pkt.write<playerflags_t>(it.second.flags & PlayerFlags::PF_MASK_SAVE);
 	}
-	pkt.write<u8>(false); // end
+	pkt.writeStr16(""); // end
 }
 
 bool WorldMeta::Key::trigger(float refill)

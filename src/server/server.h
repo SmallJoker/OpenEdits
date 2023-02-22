@@ -56,7 +56,9 @@ private:
 	void systemChatSend(Player *player, const std::string &msg);
 
 	CHATCMD_FUNC(chat_Help);
+	CHATCMD_FUNC(chat_Flags);
 	CHATCMD_FUNC(chat_Respawn);
+	CHATCMD_FUNC(chat_Clear);
 	CHATCMD_FUNC(chat_Save);
 
 	ChatCommand m_chatcmd;

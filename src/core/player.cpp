@@ -6,6 +6,7 @@
 #include <rect.h>
 
 constexpr float DISTANCE_STEP = 0.4f; // absolute max is 0.5f
+constexpr float VELOCITY_MAX = 200.0f;
 
 Player::~Player()
 {
@@ -22,12 +23,7 @@ void Player::setWorld(World *world)
 	if (m_world.ptr())
 		m_world->getMeta().online++;
 
-	pos = core::vector2df();
-	vel = core::vector2df();
-	acc = core::vector2df();
-
-	coins = 0;
-	m_last_pos = blockpos_t(-1, -1);
+	setPosition({0, 0}, true);
 }
 
 World *Player::getWorld()
@@ -92,7 +88,18 @@ void Player::setPosition(core::vector2df newpos, bool reset_progress)
 
 	pos = newpos;
 	vel = core::vector2df();
+	acc = core::vector2df();
+
+	m_last_pos = blockpos_t(-1, -1);
 }
+
+PlayerFlags Player::getFlags() const
+{
+	if (!m_world)
+		return PlayerFlags(0);
+	return m_world->getMeta().getPlayerFlags(name);
+}
+
 
 void Player::step(float dtime)
 {
@@ -107,12 +114,32 @@ void Player::step(float dtime)
 
 	// Maximal travel distance per iteration
 	while (true) {
-		float speed = (acc * dtime + vel).getLength();
-		if (speed * dtime < DISTANCE_STEP)
-			break;
+		float dtime2 = dtime;
 
-		float dtime2 = DISTANCE_STEP / speed;
-		if (dtime < dtime2)
+		float v = vel.getLength();
+		float a = acc.getLength();
+		if (a > 0.1f) {
+			// 0 = (0.5 * a) * t² + (v) * t - max_d
+			// t = (-v ± sqrt(v² + 2*a*max_d)) / a
+			float sq = sqrt(v * v + 2 * a * DISTANCE_STEP);
+			float t1 = (-v - sq) / a;
+			float t2 = (-v + sq) / a;
+			if (t1 > 0)
+				dtime2 = std::min(dtime2, t1);
+			if (t2 > 0)
+				dtime2 = std::min(dtime2, t2);
+		} else if (v > 0.01f) {
+			dtime2 = DISTANCE_STEP / v;
+		}
+
+		if (dtime2 * 30.0f < dtime) {
+			// The ratio 1/30 is acceptable on 60 FPS
+			printf("Player:step() takes too long. Approx. %i iterations. STOP!\n", (int)(dtime / dtime2));
+			dtime = dtime2;
+			break;
+		}
+
+		if (dtime2 >= dtime)
 			break;
 
 		stepInternal(dtime2);
@@ -131,11 +158,11 @@ void Player::stepInternal(float dtime)
 
 	{
 		// Don't make it get any worse
-		if (std::fabs(vel.X) > 1000.0f)
-			vel.X = get_sign(vel.X) * 1000.0f;
+		if (std::fabs(vel.X) > VELOCITY_MAX)
+			vel.X = get_sign(vel.X) * VELOCITY_MAX;
 
-		if (std::fabs(vel.Y) > 1000.0f)
-			vel.Y = get_sign(vel.Y) * 1000.0f;
+		if (std::fabs(vel.Y) > VELOCITY_MAX)
+			vel.Y = get_sign(vel.Y) * VELOCITY_MAX;
 	}
 
 	auto worldsize = m_world->getSize();
@@ -210,7 +237,7 @@ void Player::stepInternal(float dtime)
 		const float sign_x = get_sign(vel.X);
 		const float sign_y = get_sign(vel.Y);
 
-		const float coeff_n = 0.03f; // Newton
+		const float coeff_n = 0.04f; // Newton
 		acc.X += coeff_n * (vel.X * vel.X) * -sign_x;
 		acc.Y += coeff_n * (vel.Y * vel.Y) * -sign_y;
 
