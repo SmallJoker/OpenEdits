@@ -22,6 +22,9 @@ typedef uint16_t bid_t;
 constexpr u16 BLOCKPOS_INVALID = UINT16_MAX;
 
 struct Block {
+	explicit Block() {}
+	explicit Block(bid_t fg) : id(fg) {}
+
 	enum BlockIDs : bid_t {
 		ID_KEY_R = 6,
 		ID_KEY_G,

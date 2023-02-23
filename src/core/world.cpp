@@ -238,6 +238,15 @@ void World::write(Packet &pkt, Method method) const
 	pkt.write<u32>(SIGNATURE);
 	pkt.write((u8)method);
 
+
+	/*
+		Compatiblity solution: serialize the known param1 types
+		so that the reader can discard unknown ones or use placeholders
+
+		242:  portal_params = { INT16 }
+		1000: text_params = { STRING }
+	*/
+
 	switch (method) {
 		case Method::Dummy: break;
 		case Method::Plain:

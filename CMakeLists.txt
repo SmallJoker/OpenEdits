@@ -13,6 +13,7 @@ set(THREADS_PREFER_PTHREAD_FLAG TRUE)
 find_package(Threads REQUIRED) # pthread
 find_package(ENet REQUIRED)
 find_package(SQLite3 REQUIRED)
+find_package(ZLIB)
 
 # Irrlicht detection code imported from minetest/CMakeLists.cpp, commit 38ba813c by JosiahWI
 set(IRRLICHTMT_BUILD_DIR "" CACHE PATH "Path to IrrlichtMt build directory.")
@@ -62,6 +63,7 @@ include_directories(
 	${ENet_INCLUDE_DIRS}
 	${IRRLICHT_INCLUDES}
 	${SQLite3_INCLUDE_DIRS}
+	${ZLIB_INCLUDE_DIRS}
 )
 
 if(MSVC)
@@ -83,6 +85,13 @@ target_link_libraries(
 	Threads::Threads
 	IrrlichtMt::IrrlichtMt
 )
+
+if(ZLIB_FOUND)
+	message("--- Found ZLIB for EEO world import")
+	add_compile_definitions(HAVE_ZLIB)
+	include_directories(${ZLIB_INCLUDE_DIRS})
+	target_link_libraries(${PROJECT_NAME} ZLIB::ZLIB)
+endif()
 
 if(MSVC)
 	# For ENet

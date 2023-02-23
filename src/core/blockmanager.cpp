@@ -5,6 +5,14 @@
 
 BlockManager *g_blockmanager = nullptr;
 
+BlockProperties::BlockProperties(BlockDrawType type)
+{
+	tiles[0] = BlockTile();
+	tiles[0].type = type;
+
+	tiles[1] = BlockTile();
+}
+
 BlockTile BlockProperties::getTile(const Block b) const
 {
 	switch (condition) {
@@ -18,14 +26,6 @@ BlockTile BlockProperties::getTile(const Block b) const
 
 	// Not reachable
 	return tiles[0];
-}
-
-BlockProperties::BlockProperties(BlockDrawType type)
-{
-	tiles[0] = BlockTile();
-	tiles[0].type = type;
-
-	tiles[1] = BlockTile();
 }
 
 

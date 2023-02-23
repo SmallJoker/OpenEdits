@@ -53,7 +53,6 @@ struct BlockProperties {
 	BlockProperties(BlockDrawType type);
 
 	BlockPack *pack = nullptr;
-
 	// whether to acknowledge param1 block updates
 	bool persistent_param1 = false;
 

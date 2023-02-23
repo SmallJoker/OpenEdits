@@ -132,8 +132,9 @@ void Player::step(float dtime)
 			dtime2 = DISTANCE_STEP / v;
 		}
 
-		if (dtime2 * 30.0f < dtime) {
-			// The ratio 1/30 is acceptable on 60 FPS
+		if (dtime2 * 35.0f < dtime) {
+			// The ratio 1/30 is acceptable on 60 FPS, use a bit more just to
+			// be sure there are no server-side/unittest issues
 			printf("Player:step() takes too long. Approx. %i iterations. STOP!\n", (int)(dtime / dtime2));
 			dtime = dtime2;
 			break;
