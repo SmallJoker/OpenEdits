@@ -9,12 +9,13 @@ class World;
 
 class EEOconverter {
 public:
-	static World *import(const std::string &filename);
+	EEOconverter(World &world) : m_world(world) {}
+
+	void import(const std::string &filename);
+	static void inflate(const std::string &filename);
 
 private:
-	static void decompress(Packet &dst, const std::string &filename);
-	static World *parse(Packet &pkt);
-
+	World &m_world;
 };
 
 #endif // HAVE_ZLIB

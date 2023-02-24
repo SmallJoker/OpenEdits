@@ -42,15 +42,6 @@ int main(int argc, char *argv[])
 	atexit(exit_cleanup);
 	srand(time(nullptr));
 
-#ifdef __unix__
-	{
-		struct sigaction act;
-		act.sa_handler = sigint_handler;
-		sigaction(SIGINT, &act, NULL);
-		sigaction(SIGTERM, &act, NULL);
-	}
-#endif
-
 	g_blockmanager = new BlockManager();
 	g_blockmanager->doPackRegistration();
 
@@ -67,6 +58,15 @@ int main(int argc, char *argv[])
 		puts("-!- Unknown command line option.");
 		return EXIT_FAILURE;
 	}
+
+#ifdef __unix__
+	{
+		struct sigaction act;
+		act.sa_handler = sigint_handler;
+		sigaction(SIGINT, &act, NULL);
+		sigaction(SIGTERM, &act, NULL);
+	}
+#endif
 
 	Gui gui;
 	my_gui = &gui;

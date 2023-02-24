@@ -2,6 +2,7 @@
 
 void unittest_chatcommand();
 void unittest_connection();
+void unittest_eeo_converter();
 void unittest_database();
 void unittest_packet();
 void unittest_physics();
@@ -15,6 +16,7 @@ void unittest()
 		unittest_chatcommand();
 		unittest_utilities();
 		unittest_world();
+		unittest_eeo_converter(); // depends on world
 		unittest_physics(); // depends on world
 		unittest_packet();
 		unittest_database(); // depends on world & packet
