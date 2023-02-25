@@ -17,3 +17,7 @@ experimental/
 .kdev4/
 *.kdev4
 *.tmp
+
+# Other files
+*.eelvl
+*.log

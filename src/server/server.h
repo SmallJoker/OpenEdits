@@ -47,8 +47,8 @@ private:
 
 	static const ServerPacketHandler packet_actions[];
 
+	void writeWorldData(Packet &out, World &world, bool is_clear);
 	void respawnPlayer(Player *player, bool send_packet);
-	int m_spawn_index = -1;
 
 	DatabaseWorld *m_world_db = nullptr;
 
@@ -59,6 +59,7 @@ private:
 	CHATCMD_FUNC(chat_Flags);
 	CHATCMD_FUNC(chat_Respawn);
 	CHATCMD_FUNC(chat_Clear);
+	CHATCMD_FUNC(chat_Import);
 	CHATCMD_FUNC(chat_Save);
 
 	ChatCommand m_chatcmd;

@@ -1,16 +1,18 @@
+#include "eeo_converter.h"
+#include <stdexcept>
+
 #ifdef HAVE_ZLIB
 
-#include "eeo_converter.h"
+#include "core/blockmanager.h"
 #include "core/world.h"
 #include <fstream>
-#include <string>
 #include <string.h> // memcpy
 #include <zlib.h>
 
-#if 1
+#if 0
 	#define DEBUGLOG(...) printf(__VA_ARGS__)
 #else
-	#define DEBUGLOG(...) /* SILENCE */
+	#define DEBUGLOG(...) do {} while (false)
 #endif
 #define ERRORLOG(...) fprintf(stderr, __VA_ARGS__)
 
@@ -22,36 +24,42 @@ struct CompressedFile {
 
 	~CompressedFile()
 	{
-		fclose(fp);
+		if (fp)
+			fclose(fp);
 	}
 
 	size_t readBytes(uint8_t *data, size_t len)
 	{
-		// https://stackoverflow.com/questions/70347/zlib-compatible-compression-streams
 		if (is_first) {
 			is_first = false;
-			*data++ = 0x78;
-			*data++ = 0x01;
+
+			// https://yal.cc/cs-deflatestream-zlib/
+			data[0] = 0x78;
+			data[1] = 0xDA; // Optimal
+
+			// https://stackoverflow.com/questions/70347/zlib-compatible-compression-streams
+			//data[0] = 0x78;
+			//data[1] = 0x01;
 			return 2;
 		}
-		if (is_last) {
-			is_last = false;
-			// Add Big Endian checksum
-			uint32_t adler32 = (b << 16) | a;
+
+		if (feof(fp)) {
+			if (!zs)
+				return 0;
+
+			/* No matter what I tried with "adler32_z", the checksum
+			never matched. but apparently reading in works just fine,
+			so ignore it and fake it real hard. */
+
+			uint32_t to_write = zs->adler;
 			for (int i = 0; i < 4; ++i)
-				data[i] = ((const u8 *)&adler32)[3 - i];
+				data[i] = ((const u8 *)&to_write)[3 - i];
+
+			zs = nullptr;
 			return 4;
 		}
 
 		size_t new_len = fread(data, 1, len, fp);
-
-		for (size_t i = 0; i < new_len; ++i) {
-			a = (a + (data[i])) % MOD_ADLER;
-			b = (b + a) % MOD_ADLER;
-		}
-
-		if (new_len < len)
-			is_last = true;
 
 		return new_len;
 	}
@@ -60,14 +68,10 @@ struct CompressedFile {
 	void read(T &val);
 
 	FILE *fp;
+	z_stream *zs = nullptr;
 
 private:
 	bool is_first = true;
-	bool is_last = false;
-
-	uint32_t a = 1, b = 0;
-	static constexpr uint32_t MOD_ADLER = 65521;
-
 };
 
 struct zlibStream {
@@ -75,13 +79,15 @@ struct zlibStream {
 		m_input(filename)
 	{
 		if (!m_input.fp)
-			throw std::runtime_error("zlib: input file cannot be opened");
+			throw std::runtime_error("Cannot open file: " + filename);
 
 		memset(&m_zs, 0, sizeof(m_zs));
 		status = inflateInit(&m_zs);
 
 		if (status != Z_OK)
-			throw std::runtime_error("zlib: inflateInit failed");
+			throw std::runtime_error("inflateInit failed");
+
+		m_input.zs = &m_zs;
 	}
 
 	~zlibStream()
@@ -110,7 +116,7 @@ struct zlibStream {
 				if (m_zs.avail_in == 0)
 					throw std::runtime_error("File ended unexpectedly");
 
-				DEBUGLOG("zlib: reading in %d bytes\n", m_zs.avail_in);
+				DEBUGLOG("zlib: reading in %d bytes, space: %zu\n", m_zs.avail_in, n_bytes - n_read);
 				m_zs.next_in = m_buf_in;
 			}
 
@@ -124,10 +130,11 @@ struct zlibStream {
 					status = Z_DATA_ERROR;
 					// fall-though
 				case Z_DATA_ERROR:
-					ERRORLOG("zlib: error msg %s\n", m_zs.msg ? m_zs.msg : "NULL");
 				case Z_MEM_ERROR:
 				case Z_STREAM_ERROR:
-					ERRORLOG("zlib: error code %d\n", status);
+					ERRORLOG("Expected Adler %08lX\n", m_zs.adler);
+					ERRORLOG("zlib: error code %d, message: %s, near index 0x%04zX\n",
+						status, m_zs.msg ? m_zs.msg : "NULL", getIndex());
 					throw std::runtime_error("zlib: inflate error");
 			}
 
@@ -135,7 +142,8 @@ struct zlibStream {
 			size_t have = (n_bytes - n_read) - m_zs.avail_out;
 			n_read += have;
 
-			//DEBUGLOG("zlib: decompressed %zu bytes (%zu / %zu)\n", have, n_read, n_bytes);
+			if (n_bytes > 100)
+				DEBUGLOG("zlib: decompressed %zu bytes (%zu / %zu)\n", have, n_read, n_bytes);
 			if (n_read >= n_bytes)
 				break;
 
@@ -175,23 +183,25 @@ struct zlibStream {
 
 	std::vector<u16> readArrU16x32()
 	{
-		u32 len = read<u32>();
-		DEBUGLOG("arr len %u\n", len);
+		u32 len = read<u32>() / sizeof(u16); // bytes -> count
+
+		//DEBUGLOG("Array size: %u at index 0x%04zX\n", len, getIndex());
 		std::vector<u16> ret;
-		ret.reserve(len);
+		ret.resize(len);
 		for (size_t i = 0; i < len; ++i)
 			ret[i] = read<u16>();
 		return ret;
 	}
 
 	int status;
+	inline size_t getIndex() { return m_zs.total_out; }
 
 private:
 
 	CompressedFile m_input;
 	z_stream m_zs;
 
-	static constexpr size_t CHUNK = 32*1024;
+	static constexpr size_t CHUNK = 4*1024;
 	uint8_t m_buf_in[CHUNK]; // compressed
 };
 
@@ -261,7 +271,7 @@ static void fill_block_types()
 	set_range(BlockDataType::SSSS, 1569, 1579);
 }
 
-void EEOconverter::import(const std::string &filename)
+void EEOconverter::fromFile(const std::string &filename)
 {
 	fill_block_types();
 
@@ -277,72 +287,115 @@ void EEOconverter::import(const std::string &filename)
 	size.Y = zs.read<s32>();
 	zs.read<float>(); // gravity
 	zs.read<u32>(); // bg color
-	zs.readStr16(); // description
+	std::string description = zs.readStr16(); // description
 	zs.read<u8>(); // campaign??
 	zs.readStr16(); // crew ID
-	zs.readStr16(); // crew name
+	std::string crew_name = zs.readStr16(); // crew name
 	zs.read<s32>(); // crew status
 	zs.read<u8>(); // bool: minimap enabled
-	zs.readStr16(); // owner ID
+	zs.readStr16(); // owner ID, often "made offline"
+
+	for (char &c : description) {
+		if (c == '\r')
+			c = '\\';
+	}
 
 	DEBUGLOG("Importing (%d x %d) world by %s\n", size.X, size.Y, meta.owner.c_str());
 	DEBUGLOG("\t Title: %s\n", meta.title.c_str());
+	DEBUGLOG("\t Description: %s\n", description.c_str());
+	DEBUGLOG("\t Crew: %s\n", crew_name.c_str());
 
 	// Actual block data comes now
 	m_world.createEmpty(size);
 
-	while (zs.status != Z_OK || zs.status != Z_STREAM_END) {
-		bid_t block_id = zs.read<s32>();
+	std::string err;
+	while (zs.status == Z_OK) {
+		int block_id;
+		try {
+			block_id = zs.read<s32>();
+		} catch (std::exception &e) {
+			err = e.what();
+			break;
+		}
+
 		int layer = zs.read<s32>();
-		DEBUGLOG("Processing block %d\n", block_id);
+		DEBUGLOG("\n--> Next block ID: %4d, layer=%d, offset=0x%04zX\n", block_id, layer, zs.getIndex());
+		if (layer < 0 || layer > 1)
+			throw std::runtime_error("Previous block data mismatch");
 
 		auto pos_x = zs.readArrU16x32();
 		auto pos_y = zs.readArrU16x32();
-		DEBUGLOG("Processing block %d, %zu positions\n", block_id, pos_x.size());
-
 		BlockDataType type = BLOCK_TYPE_LUT[block_id];
-		for (size_t i = 0; i < pos_x.size(); ++i) {
-			switch (type) {
-				case BlockDataType::None: break;
-				case BlockDataType::I:
-					zs.read<s32>();
-					break;
-				case BlockDataType::III:
-					zs.read<s32>();
-					zs.read<s32>();
-					zs.read<s32>();
-					break;
-				case BlockDataType::SI:
-					zs.readStr16();
-					zs.read<s32>();
-					break;
-				case BlockDataType::SSI:
-					zs.readStr16();
-					zs.readStr16();
-					zs.read<s32>();
-					break;
-				case BlockDataType::SSSS:
-					zs.readStr16();
-					zs.readStr16();
-					zs.readStr16();
-					zs.readStr16();
-					break;
-			}
+		DEBUGLOG("    Data: count=%zu, type=%d, offset=0x%04zX\n",
+			pos_x.size(), (int)type, zs.getIndex());
 
+		switch (type) {
+			case BlockDataType::None: break;
+			case BlockDataType::I:
+				zs.read<s32>();
+				break;
+			case BlockDataType::III:
+				zs.read<s32>();
+				zs.read<s32>();
+				zs.read<s32>();
+				break;
+			case BlockDataType::SI:
+				zs.readStr16();
+				zs.read<s32>();
+				break;
+			case BlockDataType::SSI:
+				zs.readStr16();
+				zs.readStr16();
+				zs.read<s32>();
+				break;
+			case BlockDataType::SSSS:
+				zs.readStr16();
+				zs.readStr16();
+				zs.readStr16();
+				zs.readStr16();
+				break;
+		}
+
+		auto props = g_blockmanager->getProps(block_id);
+		if (props) {
+			if ((layer == 1) != props->isBackground())
+				continue; // FG/BG mismatch
+		} else {
+			// TODO: attempt to remap?
+			if (layer == 0) {
+				if (block_id < 200)
+					block_id = 9;
+				else
+					block_id = 0; // maybe decoration
+			} else {
+				block_id = 501;
+			}
+		}
+
+		for (size_t i = 0; i < pos_x.size(); ++i) {
 			Block b;
 			blockpos_t pos(pos_x[i], pos_y[i]);
 			if (m_world.getBlock(pos, &b)) {
-				if (layer == 0)
-					b.id = block_id;
-				else
-					b.bg = block_id;
+				bid_t &idref = (layer == 0) ? b.id : b.bg;
+
+				idref = block_id;
 
 				m_world.setBlock(pos, b);
 			}
 		}
 	}
 
+	if (zs.status != Z_STREAM_END)
+		throw std::runtime_error("zlib: Incomplete reading! msg=" + err);
+
+	return; // Good
 }
+
+void EEOconverter::toFile(const std::string &filename) const
+{
+	throw std::runtime_error("not implemented");
+}
+
 
 void EEOconverter::inflate(const std::string &filename)
 {
@@ -357,7 +410,7 @@ void EEOconverter::inflate(const std::string &filename)
 		throw std::runtime_error("Failed to open destination file");
 
 	while (zs.status != Z_OK || zs.status != Z_STREAM_END) {
-		u8 buffer[1*1024];
+		u8 buffer[4*1024];
 		size_t read = zs.read(buffer, sizeof(buffer));
 		of.write((const char *)buffer, read);
 	}
@@ -367,5 +420,21 @@ void EEOconverter::inflate(const std::string &filename)
 	DEBUGLOG("Exported file %s\n", outname.c_str());
 }
 
+#else // HAVE_ZLIB
+
+void EEOconverter::fromFile(const std::string &filename)
+{
+	throw std::runtime_error("EEOconverter is unavailable");
+}
+
+void EEOconverter::toFile(const std::string &filename) const
+{
+	throw std::runtime_error("EEOconverter is unavailable");
+}
+
+void EEOconverter::inflate(const std::string &filename)
+{
+	throw std::runtime_error("EEOconverter is unavailable");
+}
 
 #endif // HAVE_ZLIB

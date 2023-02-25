@@ -88,6 +88,8 @@ struct WorldMeta {
 		bool active = false;
 	} keys[3] = {};
 
+	int spawn_index = -1;
+
 private:
 	std::map<std::string, PlayerFlags> player_flags;
 };

@@ -152,6 +152,12 @@ void Player::step(float dtime)
 
 void Player::stepInternal(float dtime)
 {
+	/*
+		Physics issues
+		- Sliding into a 1 block gap does not work
+			-> Snap feature?
+	*/
+
 	pos += ((0.5f * acc * dtime) + vel) * dtime;
 	vel += acc * dtime;
 	acc = core::vector2df(0, 0);

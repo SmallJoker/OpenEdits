@@ -4,13 +4,16 @@
 
 void unittest_eeo_converter()
 {
+#ifndef HAVE_ZLIB
+	puts("EEOconverter is not available");
+#else
 	//EEOconverter::inflate("../8s9kvu.eelvl");
 
 	World output("eeo_import");
 	EEOconverter conv(output);
-	conv.import("../8s9kvu.eelvl");
+	conv.fromFile("../8s9kvu.eelvl");
 
 	auto meta = output.getMeta();
 
-	throw std::runtime_error("Stop");
+#endif
 }

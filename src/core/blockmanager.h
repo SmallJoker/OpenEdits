@@ -62,6 +62,7 @@ struct BlockProperties {
 
 	BlockTile tiles[2]; // [0] = normal, [1] = active
 	BlockTile getTile(const Block b) const;
+	bool isBackground() const { return tiles[0].type == BlockDrawType::Background; }
 
 	// Depends on param1
 	enum class TileCondition {

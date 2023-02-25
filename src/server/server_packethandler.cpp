@@ -165,9 +165,11 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 	}
 	world->drop(); // kept alive by RefCnt
 
-	Packet out;
-	out.write(Packet2Client::WorldData);
-	out.write<u8>(1); // 1: new data. 2: clear
+	{
+		Packet out;
+		writeWorldData(out, *world.ptr(), false);
+		m_con->send(peer_id, 0, out);
+	}
 
 	{
 		// Update player information
@@ -175,15 +177,6 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 		respawnPlayer(player, false);
 		player->state = RemotePlayerState::WorldPlay;
 	}
-
-	world->getMeta().writeCommon(out);
-	blockpos_t size = world->getSize();
-	out.write(size.X); // dimensions
-	out.write(size.Y);
-	world->write(out, World::Method::Plain);
-
-	m_con->send(peer_id, 0, out);
-
 
 	// Notify about new player
 	Packet pkt_new;

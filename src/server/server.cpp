@@ -5,6 +5,7 @@
 #include "core/utils.h" // get_next_part
 #include "core/world.h"
 #include "server/database_world.h"
+#include "server/eeo_converter.h"
 
 #if 0
 	#define DEBUGLOG(...) printf(__VA_ARGS__)
@@ -36,7 +37,8 @@ Server::Server() :
 		// Owner
 		m_chatcmd.add("/respawn", (ChatCommandAction)&Server::chat_Respawn);
 		m_chatcmd.add("/clear", (ChatCommandAction)&Server::chat_Clear);
-		m_chatcmd.add("/save", (ChatCommandAction)&Server::chat_Save);
+		m_chatcmd.add("/import", (ChatCommandAction)&Server::chat_Import);
+		m_chatcmd.add("/save", (ChatCommandAction)&Server::chat_Save);;
 	}
 
 	{
@@ -243,20 +245,35 @@ void Server::processPacket(peer_t peer_id, Packet &pkt)
 	}
 }
 
+void Server::writeWorldData(Packet &out, World &world, bool is_clear)
+{
+	out.write(Packet2Client::WorldData);
+	out.write<u8>(1 + is_clear); // 1: new data. 2: clear
+
+	world.getMeta().writeCommon(out);
+	blockpos_t size = world.getSize();
+	out.write(size.X); // dimensions
+	out.write(size.Y);
+	if (!is_clear) {
+		world.write(out, World::Method::Plain);
+	}
+}
+
 void Server::respawnPlayer(Player *player, bool send_packet)
 {
+	auto &meta = player->getWorld()->getMeta();
 	auto blocks = player->getWorld()->getBlocks(Block::ID_SPAWN, nullptr);
 
 	if (blocks.empty()) {
 		player->pos = core::vector2df();
 	} else {
-		int index = m_spawn_index;
+		int index = meta.spawn_index;
 		if (++index >= (int)blocks.size())
 			index = 0;
 
 		player->pos.X = blocks[index].X;
 		player->pos.Y = blocks[index].Y;
-		m_spawn_index = index;
+		meta.spawn_index = index;
 	}
 
 	if (!send_packet)
@@ -326,18 +343,55 @@ CHATCMD_FUNC(Server::chat_Clear)
 	for (Block *b = world->begin(); b != world->end(); ++b)
 		*b = Block();
 
-	const auto &meta = world->getMeta();
 	Packet out;
-	out.write(Packet2Client::WorldData);
-	out.write<u8>(2); // clear
-	meta.writeCommon(out);
-	blockpos_t size = world->getSize();
-	out.write(size.X);
-	out.write(size.Y);
-
+	writeWorldData(out, *world, true);
 	broadcastInWorld(player, 0, out);
 
 	systemChatSend(player, "Cleared!");
+}
+
+CHATCMD_FUNC(Server::chat_Import)
+{
+	if (!player->getFlags().check(PlayerFlags::PF_OWNER)) {
+		systemChatSend(player, "Missing permissions");
+		return;
+	}
+
+	std::string filename(strtrim(msg));
+	filename += ".eelvl";
+
+	if (filename.find('/') != std::string::npos
+			|| filename.find('\\') != std::string::npos) {
+		systemChatSend(player, "The file must be located next to the server executable.");
+		return;
+	}
+
+	auto old_world = player->getWorld();
+
+	RefCnt<World> world(new World(old_world->getMeta().id));
+	world->drop(); // kept alive by RefCnt
+
+	EEOconverter conv(*world.ptr());
+
+	try {
+		conv.fromFile(filename);
+	} catch (std::runtime_error &e) {
+		systemChatSend(player, std::string("ERROR: ") + e.what());
+		return;
+	}
+
+	systemChatSend(player, "Imported!");
+
+	Packet out;
+	writeWorldData(out, *world.ptr(), false);
+
+	for (auto it : m_players) {
+		if (it.second->getWorld() == old_world) {
+			it.second->setWorld(world.ptr());
+			m_con->send(it.first, 0, out);
+			respawnPlayer(it.second, true);
+		}
+	}
 }
 
 CHATCMD_FUNC(Server::chat_Save)
@@ -347,7 +401,7 @@ CHATCMD_FUNC(Server::chat_Save)
 
 	auto world = player->getWorld();
 
-	if (player->getFlags().check(PlayerFlags::PF_OWNER)) {
+	if (!player->getFlags().check(PlayerFlags::PF_OWNER)) {
 		systemChatSend(player, "Missing permissions");
 		return;
 	}
