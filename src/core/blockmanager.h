@@ -43,9 +43,9 @@ struct BlockPack {
 
 struct BlockTile {
 	BlockDrawType type = BlockDrawType::Invalid;
-	bool have_alpha = false; // false: use BlockDrawType
 	video::ITexture *texture = nullptr;
 	u8 texture_offset = 0; // e.g. when specifying a material
+	bool have_alpha = false; // false: use BlockDrawType
 };
 
 struct BlockProperties {
@@ -93,6 +93,9 @@ public:
 	~BlockManager();
 
 	void doPackRegistration();
+
+	void read(Packet &pkt, u16 protocol_version);
+	void write(Packet &pkt, u16 protocol_version) const;
 
 	void registerPack(BlockPack *pack);
 	void populateTextures(video::IVideoDriver *driver);

@@ -49,11 +49,11 @@ static BP_COLLIDE_CALLBACK(onCollide_oneway)
 {
 	// depends on player::DISTANCE_STEP
 
-	if (player.vel.Y >= 0 && player.pos.Y + 0.55f < pos.Y)
+	if (!is_x && player.vel.Y >= 0 && player.pos.Y + 0.55f < pos.Y)
 		return BlockProperties::CollisionType::Position; // normal step-up
 
 	// Sideway gate
-	return (std::roundf(player.pos.Y) == pos.Y && !player.getControls().jump)
+	return (is_x && player.pos.Y == pos.Y && !player.getControls().jump)
 		? BlockProperties::CollisionType::Position
 		: BlockProperties::CollisionType::None;
 }

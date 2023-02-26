@@ -1,4 +1,5 @@
 #include "blockmanager.h"
+#include "packet.h"
 #include <ITexture.h>
 #include <IVideoDriver.h>
 #include <stdexcept>
@@ -39,6 +40,104 @@ BlockManager::~BlockManager()
 
 	printf("BlockManager: Freed registered data\n");
 }
+
+void BlockManager::read(Packet &pkt, u16 protocol_version)
+{
+	for (auto &p : m_props) {
+		delete p;
+		p = nullptr;
+	}
+
+	// TODO: How to read/write the physics functions?
+	while (true) {
+		bid_t block_id = pkt.read<bid_t>();
+		if (block_id == Block::ID_INVALID)
+			break;
+
+		BlockProperties props(BlockDrawType::Invalid);
+		props.paramtypes = (BlockParams::Type)pkt.read<u8>();
+		props.viscosity = pkt.read<float>();
+
+		u8 num_tiles = pkt.read<u8>();
+		for (size_t t = 0; t < num_tiles; ++t) {
+			auto &tile = props.tiles[t];
+			tile.type = (BlockDrawType)pkt.read<u8>();
+			tile.texture_offset = pkt.read<u8>();
+			tile.have_alpha = pkt.read<u8>();
+		}
+
+		// Get more space (should not be neccessary)
+		if (m_props.size() <= block_id)
+			m_props.resize(block_id * 2);
+
+		m_props[block_id] = new BlockProperties(props);
+	}
+
+	// Read packs
+	for (auto p : m_packs)
+		delete p;
+
+	u8 num_packs = pkt.read<u8>();
+	m_packs.resize(num_packs);
+	for (size_t i = 0; i < num_packs; ++i) {
+		BlockPack pack(pkt.readStr16());
+
+		pack.block_ids.resize(pkt.read<u8>());
+		for (bid_t &block_id : pack.block_ids)
+			pkt.read(block_id);
+
+		m_packs[i] = new BlockPack(pack);
+	}
+
+	// Resolve pack data
+	for (auto pack : m_packs) {
+		for (bid_t block_id : pack->block_ids) {
+			// BlockProperties is created based on this list,
+			// hence it should never be nullptr (or error)
+			auto props = m_props.at(block_id);
+			if (!props)
+				throw std::runtime_error("Missing props");
+
+			props->pack = pack;
+		}
+	}
+	// TODO: resolve all textures
+}
+
+void BlockManager::write(Packet &pkt, u16 protocol_version) const
+{
+	// Data of each block
+	for (size_t i = 0; i < m_props.size(); ++i) {
+		auto props = m_props[i];
+		if (!props)
+			continue;
+
+		pkt.write<bid_t>(i);
+		pkt.write((u8)props->paramtypes);
+		pkt.write<float>(props->viscosity);
+
+		u8 num_tiles = BlockProperties::MAX_TILES;
+		pkt.write<u8>(num_tiles); // amount of tiles
+		for (size_t t = 0; t < num_tiles; ++t) {
+			auto &tile = props->tiles[t];
+			pkt.write((u8)tile.type);
+			pkt.write<u8>(tile.texture_offset);
+			pkt.write<u8>(tile.have_alpha);
+		}
+	}
+	pkt.write<bid_t>(Block::ID_INVALID); // terminator
+
+	// Serialize all pack data (there are no gaps)
+	pkt.write<u8>(m_packs.size());
+	for (auto pack : m_packs) {
+		pkt.writeStr16(pack->name);
+
+		pkt.write<u8>(pack->block_ids.size());
+		for (bid_t block_id : pack->block_ids)
+			pkt.write(block_id);
+	}
+}
+
 
 void BlockManager::registerPack(BlockPack *pack)
 {
