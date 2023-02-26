@@ -8,17 +8,17 @@
 
 static BP_STEP_CALLBACK(step_arrow_left)
 {
-	player.acc.X -= Player::GRAVITY_NORMAL;
+	player.acc.X = -Player::GRAVITY_NORMAL;
 }
 
 static BP_STEP_CALLBACK(step_arrow_up)
 {
-	player.acc.Y -= Player::GRAVITY_NORMAL;
+	player.acc.Y = -Player::GRAVITY_NORMAL;
 }
 
 static BP_STEP_CALLBACK(step_arrow_right)
 {
-	player.acc.X += Player::GRAVITY_NORMAL;
+	player.acc.X = +Player::GRAVITY_NORMAL;
 }
 
 static BP_STEP_CALLBACK(step_arrow_none)
@@ -103,6 +103,7 @@ void BlockManager::doPackRegistration()
 		m_props[2]->step = step_arrow_up;
 		m_props[3]->step = step_arrow_right;
 		m_props[4]->step = step_arrow_none;
+		m_props[4]->viscosity = 0.25f;
 	}
 
 	{

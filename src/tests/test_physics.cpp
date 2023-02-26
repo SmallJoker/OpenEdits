@@ -2,7 +2,7 @@
 #include "core/world.h"
 #include "server/remoteplayer.h"
 
-static bool fuzzy_check(core::vector2df a, core::vector2df b, float maxdiff)
+static bool fuzzy_check(core::vector2df a, core::vector2df b, float maxdiff = 0.1f)
 {
 	float diff = (a - b).getLengthSQ();
 	if (diff < maxdiff * maxdiff)
@@ -32,19 +32,20 @@ void unittest_physics()
 
 	RemotePlayer p1(1337, 42);
 	{
-		World w1(g_blockmanager, "physics1");
+		// Test gravity arrows
+		World w1(g_blockmanager, "physics_arrows");
 		w1.createEmpty(blockpos_t(8, 11));
 		p1.setWorld(&w1);
 
 		// Must reach the ground
 		run_steps(p1, 2);
-		CHECK(fuzzy_check(p1.pos, {0, 10}, 0.1f));
+		CHECK(fuzzy_check(p1.pos, {0, 10}));
 
 		// No motion after respawn
 		p1.setPosition({0, 0}, true);
 		w1.setBlock({0, 0}, b_0g);
 		run_steps(p1, 2);
-		CHECK(fuzzy_check(p1.pos, {0, 0}, 0.1f));
+		CHECK(fuzzy_check(p1.pos, {0, 0}));
 
 		// Horizontal >>><<<
 		w1.setBlock({0, 0}, Block());
@@ -59,13 +60,52 @@ void unittest_physics()
 		w1.setBlock({0, 5}, b_up);
 		p1.setPosition({0, 4}, true);
 		run_steps(p1, 10);
-		CHECK(fuzzy_check(p1.pos, {0, 10}, 0.1f));
+		CHECK(fuzzy_check(p1.pos, {0, 10}));
 
 		// Vertical ____<<< (stable)
 		w1.setBlock({0, 6}, b_up);
 		p1.setPosition({0, 4}, true);
 		run_steps(p1, 10);
 		CHECK(fuzzy_check(p1.pos, {0, 5}, 3.99f));
+
+		p1.setWorld(nullptr);
+	}
+
+	Block b_solid(9);
+	{
+		// Test player inputs
+		World w2(g_blockmanager, "physics_ctrl");
+		w2.createEmpty(blockpos_t(6, 6));
+		p1.setWorld(&w2);
+
+		// 1x3 pillar
+		w2.setBlock({2, 3}, b_solid);
+		w2.setBlock({2, 4}, b_solid);
+		w2.setBlock({2, 5}, b_solid);
+		p1.setPosition({0, 0}, true);
+
+		PlayerControls ctrl;
+		ctrl.dir.X = 1; // move left
+		ctrl.jump = true;
+		p1.setControls(ctrl);
+
+		run_steps(p1, 2);
+		p1.setControls(PlayerControls());
+		run_steps(p1, 2);
+
+		CHECK(fuzzy_check(p1.pos, {5, 5}));
+
+		// 1x4 pillar
+		w2.setBlock({2, 2}, b_solid);
+		p1.setPosition({0, 0}, true);
+
+		p1.setControls(ctrl);
+
+		run_steps(p1, 2);
+		p1.setControls(PlayerControls());
+		run_steps(p1, 2);
+
+		CHECK(fuzzy_check(p1.pos, {1, 5}));
 
 		p1.setWorld(nullptr);
 	}

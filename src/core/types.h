@@ -21,8 +21,6 @@ typedef core::vector2d<u16> blockpos_t;
 typedef uint16_t bid_t;
 constexpr u16 BLOCKPOS_INVALID = UINT16_MAX;
 
-struct BlockParams;
-
 struct Block {
 	explicit Block() : Block(0) {}
 	explicit Block(bid_t fg) : id(fg), tile(0) {}

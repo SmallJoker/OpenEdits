@@ -194,12 +194,15 @@ void Player::stepInternal(float dtime)
 
 	// Evaluate center position
 	blockpos_t bp(pos.X + 0.5f, pos.Y + 0.5f);
-
-	if (triggered_blocks && bp != m_last_pos) {
+	const BlockProperties *props;
+	{
 		Block block;
 		m_world->getBlock(bp, &block);
 
-		auto props = g_blockmanager->getProps(block.id);
+		props = g_blockmanager->getProps(block.id);
+	}
+
+	if (triggered_blocks && bp != m_last_pos) {
 		if (props && props->trigger_on_touch) {
 			if (bp != m_last_pos) {
 				triggered_blocks->emplace(bp);
@@ -235,7 +238,8 @@ void Player::stepInternal(float dtime)
 
 	{
 		// Stokes friction to stop movement after releasing keys
-		const float coeff_s = godmode ? 1.5f : 4.0f; // Stokes
+		const float viscosity = props ? props->viscosity : 1.0f;
+		const float coeff_s = godmode ? 1.5f : 4.0f * viscosity; // Stokes
 		if (std::fabs(acc.X) < 0.01f && !m_controls.dir.X)
 			acc.X += -coeff_s * vel.X;
 		if (std::fabs(acc.Y) < 0.01f && !m_controls.dir.Y)

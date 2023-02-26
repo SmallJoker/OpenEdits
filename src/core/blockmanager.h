@@ -15,9 +15,7 @@ namespace irr {
 }
 
 class Player;
-class World;
 class BlockManager;
-struct CollisionData;
 
 constexpr size_t TEXTURE_SIZE = 32;
 
@@ -53,19 +51,24 @@ struct BlockTile {
 struct BlockProperties {
 	BlockProperties(BlockDrawType type);
 
-	static constexpr size_t MAX_TILES = 2;
-
 	BlockPack *pack = nullptr;
 	BlockParams::Type paramtypes = BlockParams::Type::None;
 
 	// whether to add the block position to the triggered blocks list
 	bool trigger_on_touch = false;
-	u32 color = 0; // minimap
 
-	bool persistent_tiles = false; // "tile" value in Block
+	// -------------- Visuals -------------
+
+	static constexpr size_t MAX_TILES = 2;
+
+	u32 color = 0; // minimap
 	BlockTile tiles[MAX_TILES]; // [0] = normal, [1] = active
 	BlockTile getTile(const Block b) const;
 	bool isBackground() const { return tiles[0].type == BlockDrawType::Background; }
+
+	// -------------- Physics -------------
+
+	float viscosity = 1;
 
 	enum class CollisionType {
 		Position, // and velocity

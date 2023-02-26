@@ -33,6 +33,9 @@ void Client::pkt_Hello(Packet &pkt)
 	m_nickname = player->name = pkt.readStr16();
 	m_players.emplace(m_my_peer_id, player);
 
+	// TODO: send and receive BlockProperties from the server
+	// to ensure compatibility to a certain degree
+
 	m_state = ClientState::LobbyIdle;
 	printf("Client: got HELLO. my peer_id=%u\n", m_my_peer_id);
 }
@@ -277,7 +280,7 @@ void Client::pkt_PlaceBlock(Packet &pkt)
 	auto player = getMyPlayer();
 	SimpleLock lock(world->mutex);
 
-	BlockUpdate bu(g_blockmanager);
+	BlockUpdate bu(m_bmgr);
 	while (true) {
 		peer_t peer_id = pkt.read<peer_t>();
 		if (!peer_id)
