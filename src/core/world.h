@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/blockparams.h"
 #include "core/macros.h"
 #include "core/playerflags.h"
 #include "core/types.h"
@@ -7,37 +8,46 @@
 #include <map>
 #include <unordered_set>
 
+class BlockManager;
 class Player;
 class Packet;
+
+extern BlockManager *g_blockmanager; // TODO remove me
 
 // Requirement for the hash function
 static_assert(sizeof(size_t) >= sizeof(u64));
 
 struct BlockUpdate {
+	BlockUpdate(const BlockManager *bmgr) : m_mgr(bmgr) {}
+
 	bool set(bid_t block_id);
 	void setErase(bool background);
 
-	bool check(bid_t *block_id, bool *background, bool param1_check) const;
+	bool check(bid_t *block_id, bool *is_bg) const;
 	inline bool isBackground() const { return (id & BG_FLAG) > 0; }
-	inline bid_t getBlockId() const { return id & ~BG_FLAG; }
+	inline bid_t getId() const
+	{
+		return (id != Block::ID_INVALID) ? (id & ~BG_FLAG) : Block::ID_INVALID;
+	}
 
 	void read(Packet &pkt);
 	void write(Packet &pkt) const;
 
 	bool operator ==(const BlockUpdate &o) const
 	{
+		// ID check includes FG/BG
 		return pos == o.pos && id == o.id;
 	}
 
 	blockpos_t pos;
-
+	BlockParams params;
 	peer_t peer_id = -1; // specified by server
 
+private:
 	// New block ID (BlockUpdate::BG_FLAG for backgrounds)
 	bid_t id = Block::ID_INVALID;
-	u8 param1 = 0;
+	const BlockManager *m_mgr;
 
-private:
 	static constexpr bid_t BG_FLAG { 0x8000 };
 };
 
@@ -103,7 +113,7 @@ struct LobbyWorld : public WorldMeta {
 
 class World : public IReferenceCounted {
 public:
-	World(const std::string &id);
+	World(const BlockManager *bmgr, const std::string &id);
 	~World();
 
 	enum class Method : u8 {
@@ -119,7 +129,7 @@ public:
 	void createDummy(blockpos_t size);
 
 	void read(Packet &pkt);
-	void write(Packet &pkt, Method method) const;
+	void write(Packet &pkt, Method method, u16 protocol_version) const;
 
 	inline bool isValidPosition(int x, int y) const
 	{
@@ -129,7 +139,9 @@ public:
 
 	bool getBlock(blockpos_t pos, Block *block) const;
 	bool setBlock(blockpos_t pos, const Block block);
-	bool updateBlock(const BlockUpdate bu, bool param1_check = true);
+	blockpos_t getBlockPos(const Block *b) const;
+	Block *updateBlock(const BlockUpdate bu);
+	bool getParams(blockpos_t pos, BlockParams *params) const;
 
 	// Result is added when callback is nullptr or returns true
 	std::vector<blockpos_t> getBlocks(bid_t block_id, std::function<bool(Block &b)> callback) const;
@@ -150,9 +162,11 @@ protected:
 	}
 
 	void readPlain(Packet &pkt);
-	void writePlain(Packet &pkt) const;
+	void writePlain(Packet &pkt, u16 protocol_version) const;
 
 	blockpos_t m_size;
+	const BlockManager *m_bmgr;
 	WorldMeta m_meta;
 	Block *m_data = nullptr;
+	std::map<blockpos_t, BlockParams> m_params;
 };

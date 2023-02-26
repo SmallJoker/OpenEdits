@@ -18,7 +18,7 @@ bool LocalPlayer::updateCoinCount()
 	int old_coins = coins;
 
 	auto collected = m_world->getBlocks(Block::ID_COIN, [](Block &b) -> bool {
-		return b.param1 > 0;
+		return b.tile > 0;
 	});
 
 	coins = std::min<size_t>(127, collected.size());
@@ -32,12 +32,12 @@ bool LocalPlayer::updateCoinCount()
 			case Block::ID_COINDOOR:
 			case Block::ID_COINGATE:
 			{
-
-				u8 howmany = b->param1 & ~Block::P1_FLAG_TILE1;
-				if (my_coins >= howmany)
-					b->param1 |= Block::P1_FLAG_TILE1;
+				BlockParams params;
+				m_world->getParams(m_world->getBlockPos(b), &params);
+				if (my_coins >= params.gate.value)
+					b->tile = 1;
 				else
-					b->param1 = howmany;
+					b->tile = 0;
 			}
 			break;
 		}

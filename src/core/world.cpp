@@ -6,43 +6,41 @@
 
 bool BlockUpdate::set(bid_t block_id)
 {
-	auto props = g_blockmanager->getProps(block_id);
+	auto props = m_mgr->getProps(block_id);
 	if (!props) {
 		id = Block::ID_INVALID;
-		param1 = 0;
 		return false;
 	}
 
-	bool background = props->tiles[0].type == BlockDrawType::Background;
-	id = block_id | (BG_FLAG * background);
-	param1 = 0;
+	id = block_id | (BG_FLAG * props->isBackground());
+	params = BlockParams(props->paramtypes);
 	return true;
 }
 
 void BlockUpdate::setErase(bool background)
 {
 	id = 0 | (BG_FLAG * background);
-	param1 = 0;
+	params = BlockParams();
 }
 
-bool BlockUpdate::check(bid_t *block_id, bool *background, bool param1_check) const
+bool BlockUpdate::check(bid_t *block_id, bool *is_bg) const
 {
 	// For server-side validation
-	bid_t id = getBlockId();
-	auto props = g_blockmanager->getProps(id);
+	bid_t id = getId();
+	auto props = m_mgr->getProps(id);
 	if (!props)
 		return false;
 
 	// Special case: Always allow ID 0, but not others
 	bool is_background = isBackground();
-	if (id > 0 && (props->tiles[0].type == BlockDrawType::Background) != is_background)
+	if (id > 0 && props->isBackground() != is_background)
 		return false;
 
-	if (param1_check && !is_background && !props->persistent_param1 && param1 != 0)
+	if (params != props->paramtypes)
 		return false;
 
 	*block_id = id;
-	*background = is_background;
+	*is_bg = is_background;
 	return true;
 }
 
@@ -51,15 +49,23 @@ void BlockUpdate::read(Packet &pkt)
 	pkt.read(pos.X);
 	pkt.read(pos.Y);
 	pkt.read(id);
-	pkt.read(param1);
+	auto props = m_mgr->getProps(getId());
+	if (!props)
+		throw std::runtime_error("Unknown block ID");
+
+	params = BlockParams(props->paramtypes);
+	params.read(pkt);
 }
 
 void BlockUpdate::write(Packet &pkt) const
 {
+	if (id == Block::ID_INVALID)
+		throw std::runtime_error("Uninitialized BlockUpdate");
+
 	pkt.write(pos.X);
 	pkt.write(pos.Y);
 	pkt.write(id);
-	pkt.write(param1);
+	params.write(pkt);
 }
 
 
@@ -167,10 +173,11 @@ bool WorldMeta::Key::step(float dtime)
 
 // -------------- World class -------------
 
-World::World(const std::string &id) :
+World::World(const BlockManager *bmgr, const std::string &id) :
+	m_bmgr(bmgr),
 	m_meta(id)
 {
-	ASSERT_FORCED(g_blockmanager, "BlockManager is required");
+	ASSERT_FORCED(m_bmgr, "BlockManager is required");
 	printf("World: Create %s\n", id.c_str());
 }
 
@@ -233,7 +240,7 @@ void World::read(Packet &pkt)
 	// good. done
 }
 
-void World::write(Packet &pkt, Method method) const
+void World::write(Packet &pkt, Method method, u16 protocol_version) const
 {
 	pkt.write<u32>(SIGNATURE);
 	pkt.write((u8)method);
@@ -250,7 +257,7 @@ void World::write(Packet &pkt, Method method) const
 	switch (method) {
 		case Method::Dummy: break;
 		case Method::Plain:
-			writePlain(pkt);
+			writePlain(pkt, protocol_version);
 			break;
 		default:
 			throw std::runtime_error("Unsupported world write method");
@@ -262,31 +269,96 @@ void World::write(Packet &pkt, Method method) const
 void World::readPlain(Packet &pkt)
 {
 	u8 version = pkt.read<u8>();
-	if (version < 2 || version > 3)
+	if (version < 2 || version > 4)
 		throw std::runtime_error("Unsupported read version");
 
+	// Describes the block parameters (thus length) that are to be expected
+	std::map<bid_t, BlockParams::Type> mapper;
+	if (version >= 4) {
+		while (true) {
+			bid_t id = pkt.read<bid_t>();
+			if (!id)
+				break;
+
+			mapper.emplace(id, (BlockParams::Type)pkt.read<uint8_t>());
+		}
+	}
+
+	m_params.clear();
 	for (size_t y = 0; y < m_size.Y; ++y)
 	for (size_t x = 0; x < m_size.X; ++x) {
+		blockpos_t pos(x, y);
+
 		Block b;
-		pkt.read(b.id);
-		pkt.read(b.bg);
-		if (version >= 3)
-			pkt.read(b.param1);
-		getBlockRefNoCheck(blockpos_t(x, y)) = b;
+		pkt.read<bid_t>(b.raw_id);
+		pkt.read<bid_t>(b.bg);
+
+		if (version == 3)
+			pkt.read<u8>(); // param1
+
+		if (version >= 4) {
+			BlockParams val;
+			auto it = mapper.find(b.id);
+			if (it != mapper.end()) {
+				val = BlockParams(it->second);
+				val.read(pkt);
+			}
+
+			if (val != BlockParams::Type::None) {
+				auto props = m_bmgr->getProps(b.id);
+				if (props && val == props->paramtypes)
+					m_params.emplace(pos, val);
+			}
+		}
+
+		getBlockRefNoCheck(pos) = b;
 	}
 }
 
-void World::writePlain(Packet &pkt) const
+void World::writePlain(Packet &pkt, u16 protocol_version) const
 {
-	pkt.write<u8>(3); // version
+	u8 version = 4;
+	// if (protocol_version < ??)
+	//     version = 3;
+	pkt.write(version);
+
+	{
+		// Mapping of the known types
+		auto &list = m_bmgr->getProps();
+		for (size_t i = 0; i < list.size(); ++i) {
+			auto props = list[i];
+			if (!props || props->paramtypes == BlockParams::Type::None)
+				continue;
+
+			pkt.write<bid_t>(i);
+			pkt.write<u8>((u8)props->paramtypes);
+		}
+		pkt.write<bid_t>(0); // terminator
+	}
 
 	pkt.ensureCapacity(m_size.X * m_size.Y * sizeof(Block));
 	for (size_t y = 0; y < m_size.Y; ++y)
 	for (size_t x = 0; x < m_size.X; ++x) {
-		Block &b = getBlockRefNoCheck(blockpos_t(x, y));
+		blockpos_t pos(x, y);
+
+		Block &b = getBlockRefNoCheck(pos);
 		pkt.write(b.id);
 		pkt.write(b.bg);
-		pkt.write(b.param1);
+
+		auto props = m_bmgr->getProps(b.id);
+		if (!props || props->paramtypes == BlockParams::Type::None)
+			continue;
+
+		// Write paramtype if there is any
+		auto it = m_params.find(pos);
+		if (it != m_params.end()) {
+			if (it->second != props->paramtypes)
+				throw std::runtime_error("Unexpected param format");
+			it->second.write(pkt);
+		} else {
+			BlockParams params(props->paramtypes);
+			params.write(pkt);
+		}
 	}
 }
 
@@ -306,40 +378,61 @@ bool World::setBlock(blockpos_t pos, const Block block)
 	if (pos.X >= m_size.X || pos.Y >= m_size.Y)
 		return false;
 
-	Block &ref = getBlockRefNoCheck(pos);
-	if (ref == block)
-		return false;
-
-	ref = block;
+	getBlockRefNoCheck(pos) = block;
 	return true;
 }
 
-bool World::updateBlock(const BlockUpdate bu, bool param1_check)
+blockpos_t World::getBlockPos(const Block *b) const
+{
+	if (b < begin() || b >= end())
+		return blockpos_t(BLOCKPOS_INVALID, BLOCKPOS_INVALID);
+
+	size_t index = b - begin();
+	blockpos_t pos;
+	pos.Y = index / m_size.X;
+	pos.X = index - (pos.Y * m_size.X);
+	return pos;
+}
+
+Block *World::updateBlock(const BlockUpdate bu)
 {
 	if (bu.pos.X >= m_size.X || bu.pos.Y >= m_size.Y)
-		return false;
+		return nullptr;
 
 	bid_t new_id;
 	bool is_background;
-	if (!bu.check(&new_id, &is_background, param1_check))
-		return false;
+	if (!bu.check(&new_id, &is_background))
+		return nullptr;
 
 	Block &ref = getBlockRefNoCheck(bu.pos);
 	if (is_background) {
 		if (new_id == ref.bg)
-			return false;
+			return nullptr;
 
 		ref.bg = new_id;
 	} else {
-		if (new_id == ref.id && bu.param1 == ref.param1)
-			return false;
+		if (new_id == ref.id && bu.params == BlockParams::Type::None)
+			return nullptr;
 
-		ref.id = new_id;
-		ref.param1 = bu.param1;
+		m_params.erase(bu.pos);
+		ref.raw_id = new_id; // reset tile information
+		if (bu.params != BlockParams::Type::None)
+			m_params.emplace(bu.pos, bu.params);
 	}
 
+	return &ref;
+}
+
+bool World::getParams(blockpos_t pos, BlockParams *params) const
+{
+	auto it = m_params.find(pos);
+	if (it == m_params.end())
+		return false;
+
+	*params = it->second;
 	return true;
 }
+
 
 std::vector<blockpos_t> World::getBlocks(bid_t block_id, std::function<bool(Block &b)> callback) const
 {

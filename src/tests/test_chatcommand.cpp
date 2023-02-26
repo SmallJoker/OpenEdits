@@ -6,6 +6,8 @@ static int call_counter = 0;
 
 class TestEnvironment : public Environment {
 public:
+	TestEnvironment() : Environment(nullptr) {}
+
 	void step(float dtime) override {}
 	void processPacket(peer_t peer_id, Packet &pkt) override {}
 

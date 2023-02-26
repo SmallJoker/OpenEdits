@@ -376,9 +376,10 @@ void EEOconverter::fromFile(const std::string &filename)
 			Block b;
 			blockpos_t pos(pos_x[i], pos_y[i]);
 			if (m_world.getBlock(pos, &b)) {
-				bid_t &idref = (layer == 0) ? b.id : b.bg;
-
-				idref = block_id;
+				if (layer == 0)
+					b.id = block_id;
+				else
+					b.bg = block_id;
 
 				m_world.setBlock(pos, b);
 			}

@@ -15,17 +15,7 @@ BlockProperties::BlockProperties(BlockDrawType type)
 
 BlockTile BlockProperties::getTile(const Block b) const
 {
-	switch (condition) {
-		case BlockProperties::TileCondition::NotZero:
-			return tiles[b.param1 != 0];
-		case BlockProperties::TileCondition::MSBFlagSet:
-			return tiles[(b.param1 & Block::P1_FLAG_TILE1) > 0];
-		case BlockProperties::TileCondition::None:
-			return tiles[0];
-	}
-
-	// Not reachable
-	return tiles[0];
+	return tiles[b.tile < MAX_TILES ? b.tile : (MAX_TILES - 1)];
 }
 
 
@@ -131,10 +121,7 @@ void BlockManager::populateTextures(video::IVideoDriver *driver)
 
 				split_texture(driver, &prop->tiles[0]);
 
-				if (prop->condition != BlockProperties::TileCondition::None) {
-					if (prop->tiles[1].type == BlockDrawType::Invalid) {
-						fprintf(stderr, "BlockManager: Unspecified tiles[1] type for block_id=%d\n", id);
-					}
+				if (prop->tiles[1].type != BlockDrawType::Invalid) {
 					prop->tiles[1].texture = texture;
 					// Relative offset from parent
 					u8 &offset = prop->tiles[1].texture_offset;

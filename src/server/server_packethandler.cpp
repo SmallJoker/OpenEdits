@@ -150,7 +150,7 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 	auto world = getWorldNoLock(world_id);
 	if (!world && m_world_db) {
 		// try to load from the database
-		world = new World(world_id);
+		world = new World(m_bmgr, world_id);
 		bool found = m_world_db->load(world.ptr());
 		if (!found) {
 			world->drop();
@@ -159,7 +159,7 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 	}
 	if (!world) {
 		// create a new one
-		world = new World(world_id);
+		world = new World(m_bmgr, world_id);
 		world->createDummy({100, 75});
 		world->getMeta().owner = player->name;
 	}
@@ -291,12 +291,12 @@ void Server::pkt_PlaceBlock(peer_t peer_id, Packet &pkt)
 	auto world = player->getWorld();
 	SimpleLock lock(world->mutex);
 
+	BlockUpdate bu(g_blockmanager);
 	while (true) {
 		bool is_ok = pkt.read<u8>();
 		if (!is_ok)
 			break;
 
-		BlockUpdate bu;
 		bu.peer_id = peer_id;
 		bu.read(pkt);
 
@@ -307,7 +307,7 @@ void Server::pkt_PlaceBlock(peer_t peer_id, Packet &pkt)
 		}
 
 		// Put into queue to keep the world lock as short as possible
-		world->proc_queue.emplace(bu);
+		world->proc_queue.insert(bu);
 	}
 }
 

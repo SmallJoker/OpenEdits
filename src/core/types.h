@@ -21,9 +21,11 @@ typedef core::vector2d<u16> blockpos_t;
 typedef uint16_t bid_t;
 constexpr u16 BLOCKPOS_INVALID = UINT16_MAX;
 
+struct BlockParams;
+
 struct Block {
-	explicit Block() {}
-	explicit Block(bid_t fg) : id(fg) {}
+	explicit Block() : Block(0) {}
+	explicit Block(bid_t fg) : id(fg), tile(0) {}
 
 	enum BlockIDs : bid_t {
 		ID_KEY_R = 6,
@@ -43,21 +45,19 @@ struct Block {
 		ID_INVALID = UINT16_MAX
 	};
 
-	// Client-side only flags
-	enum Param1Flag : uint8_t {
-		P1_FLAG_TILE1 = 0x80
+	union {
+		struct {
+			bid_t id : 13;    // Foreground block ID (max. 8000)
+			uint8_t tile : 3; // Tile number (for rendering)
+		};
+		bid_t raw_id;
 	};
-
-	bool operator ==(const Block &o)
-	{
-		return id == o.id && bg == o.bg && param1 == o.param1;
-	}
-
-	bid_t id = 0; // Foreground block ID
 	bid_t bg = 0; // Background block ID
 
 	/*
 	Parameter for the foreground blocks
+	Used on client-side only (so far)
+
 	Portals
 		Represents the configuration ID
 		Separate list provides:
@@ -69,8 +69,8 @@ struct Block {
 	Coins & hidden block (temporary, client-only)
 		Collected/activated indicator [0,1]
 	*/
-	uint8_t param1 = 0;
 };
+static_assert(sizeof(Block) == 4, "Block size mismatch");
 
 // Automatic grab & drop for irr::IReferenceCounted classes
 // Similar to std::shared_ptr but less thread-safe

@@ -28,7 +28,8 @@ enum ElementId : int {
 	ID_PlayerOffset = 300,
 };
 
-SceneGameplay::SceneGameplay()
+SceneGameplay::SceneGameplay() :
+	m_drag_draw_block(g_blockmanager)
 {
 	LocalPlayer::gui_smiley_counter = ID_PlayerOffset;
 }
@@ -68,6 +69,8 @@ void SceneGameplay::OnOpen()
 		m_camera_pos.X += player->pos.X *  10;
 		m_camera_pos.Y += player->pos.Y * -10;
 	}
+
+	m_drag_draw_block.set(Block::ID_INVALID);
 }
 
 void SceneGameplay::OnClose()
@@ -307,7 +310,7 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 					bool l_pressed = e.MouseInput.Event == EMIE_LMOUSE_PRESSED_DOWN;
 					// Place bid=0
 					bool r_pressed = e.MouseInput.Event == EMIE_RMOUSE_PRESSED_DOWN;
-					if (!((m_may_drag_draw && m_drag_draw_block.id != Block::ID_INVALID) || l_pressed || r_pressed))
+					if (!((m_may_drag_draw && m_drag_draw_block.getId() != Block::ID_INVALID) || l_pressed || r_pressed))
 						break;
 
 					blockpos_t bp;
@@ -317,7 +320,7 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 					bool guess_layer = false;
 					if (l_pressed) {
 						m_blockselector->getBlockUpdate(m_drag_draw_block);
-						if (m_drag_draw_block.id == 0)
+						if (m_drag_draw_block.getId() == 0)
 							guess_layer = true;;
 					}
 
@@ -638,7 +641,8 @@ void SceneGameplay::drawBlocksInView()
 	for (int y = upperleft.Y; y <= lowerright.Y; y++)
 	for (int x = upperleft.X; x <= lowerright.X; x++) {
 		Block b;
-		if (!world->getBlock(blockpos_t(x, y), &b))
+		blockpos_t bp(x, y);
+		if (!world->getBlock(bp, &b))
 			continue;
 
 		bool have_solid_above = false;
@@ -662,10 +666,9 @@ void SceneGameplay::drawBlocksInView()
 			);
 			have_solid_above = assignBlockTexture(tile, bb);
 
-			// Hacky. Replace this with something better.
-			if ((b.id == Block::ID_COINDOOR || b.id == Block::ID_COINGATE)
-					&& (b.param1 & Block::P1_FLAG_TILE1) == 0) {
-				int required = b.param1 & ~Block::P1_FLAG_TILE1;
+			BlockParams params;
+			if (b.tile == 0 && world->getParams(bp, &params) && params == BlockParams::Type::Gate) {
+				int required = params.gate.value;
 				required -= player->coins;
 
 				auto texture = generateTexture(std::to_string(required), 0xFF000000, 0xFFFFFFFF);

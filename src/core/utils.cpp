@@ -167,12 +167,17 @@ bool wide_to_utf8(std::string &dst, const wchar_t *str)
 
 #endif
 
-static const char *ALNUM_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 bool isalnum_nolocale(const std::string &str)
 {
 	for (auto c : str) {
-		if (!strchr(ALNUM_CHARS, c))
-			return false;
+		if (c >= 'A' && c <= 'Z')
+			continue;
+		if (c >= 'a' && c <= 'z')
+			continue;
+		if (c >= '0' && c <= '9')
+			continue;
+
+		return false;
 	}
 	return true;
 }

@@ -335,7 +335,7 @@ void Player::collideWith(float dtime, int x, int y)
 	using CT = BlockProperties::CollisionType;
 	CT type = CT::Position;
 	if (props->onCollide)
-		type = props->onCollide(*this, b, is_x);
+		type = props->onCollide(*this, bp, is_x);
 
 	switch (type) {
 		case CT::Position:

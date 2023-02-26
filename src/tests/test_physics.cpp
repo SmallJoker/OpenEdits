@@ -32,7 +32,7 @@ void unittest_physics()
 
 	RemotePlayer p1(1337, 42);
 	{
-		World w1("physics1");
+		World w1(g_blockmanager, "physics1");
 		w1.createEmpty(blockpos_t(8, 11));
 		p1.setWorld(&w1);
 

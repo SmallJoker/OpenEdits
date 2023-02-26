@@ -83,7 +83,7 @@ void Client::pkt_WorldData(Packet &pkt)
 		return;
 	}
 
-	RefCnt<World> world(new World(m_world_id));
+	RefCnt<World> world(new World(m_bmgr, m_world_id));
 	world->drop(); // kept alive by RefCnt
 
 	world->getMeta().readCommon(pkt);
@@ -211,18 +211,11 @@ void Client::pkt_SetPosition(Packet &pkt)
 	// semi-duplicate of Player::updateCoinCount
 	bool need_update = false;
 	for (Block *b = world->begin(); b < world->end(); ++b) {
-		switch (b->id) {
-			case Block::ID_SECRET:
-			case Block::ID_COIN:
-				b->param1 = 0;
-				need_update = true;
-				break;
-			case Block::ID_COINDOOR:
-			case Block::ID_COINGATE:
-				b->param1 &= ~Block::P1_FLAG_TILE1;
-				need_update = true;
-				break;
-		}
+		if (b->tile == 0)
+			continue;
+
+		b->tile = 0;
+		need_update = true;
 	}
 
 	if (need_update) {
@@ -284,26 +277,34 @@ void Client::pkt_PlaceBlock(Packet &pkt)
 	auto player = getMyPlayer();
 	SimpleLock lock(world->mutex);
 
+	BlockUpdate bu(g_blockmanager);
 	while (true) {
 		peer_t peer_id = pkt.read<peer_t>();
 		if (!peer_id)
 			break;
 
-		BlockUpdate bu;
 		bu.peer_id = peer_id; // ... nothing to do with this?
 		bu.read(pkt);
 
-		switch (bu.id) {
+		Block *b = world->updateBlock(bu);
+		if (!b)
+			continue;
+
+		switch (bu.getId()) {
+			case Block::ID_DOOR_R:
 			case Block::ID_SECRET:
-				bu.param1 = player->godmode;
+				b->tile = player->godmode;
 				break;
 			case Block::ID_COINDOOR:
 			case Block::ID_COINGATE:
-				if (player->coins >= bu.param1)
-					bu.param1 |= Block::P1_FLAG_TILE1;
+				{
+					BlockParams params;
+					world->getParams(bu.pos, &params);
+					if (player->coins >= params.gate.value)
+						b->tile = 1;
+				}
 				break;
 		}
-		world->updateBlock(bu, false);
 	}
 
 	player->updateCoinCount();
@@ -338,7 +339,7 @@ void Client::pkt_Key(Packet &pkt)
 	auto world = player->getWorld();
 	for (Block *b = world->begin(); b < world->end(); ++b) {
 		if (b->id == bid_door || b->id == bid_gate) {
-			b->param1 = state;
+			b->tile = state;
 			n++;
 		}
 	}
@@ -364,9 +365,9 @@ void Client::pkt_GodMode(Packet &pkt)
 	if (peer_id == m_my_peer_id) {
 		auto out = player->getWorld()->getBlocks(Block::ID_SECRET, [state](Block &b) -> bool {
 			if (state)
-				b.param1++;
-			else if (b.param1)
-				b.param1--;
+				b.tile++;
+			else if (b.tile)
+				b.tile--;
 			else
 				return false;
 			return true;

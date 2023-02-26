@@ -16,6 +16,7 @@
 static uint16_t PACKET_ACTIONS_MAX; // initialized in ctor
 
 Server::Server() :
+	Environment(g_blockmanager),
 	m_chatcmd(this)
 {
 	puts("Server: startup");
@@ -255,7 +256,8 @@ void Server::writeWorldData(Packet &out, World &world, bool is_clear)
 	out.write(size.X); // dimensions
 	out.write(size.Y);
 	if (!is_clear) {
-		world.write(out, World::Method::Plain);
+		// TODO: make player-specific
+		world.write(out, World::Method::Plain, 9999);
 	}
 }
 
@@ -368,7 +370,7 @@ CHATCMD_FUNC(Server::chat_Import)
 
 	auto old_world = player->getWorld();
 
-	RefCnt<World> world(new World(old_world->getMeta().id));
+	RefCnt<World> world(new World(m_bmgr, old_world->getMeta().id));
 	world->drop(); // kept alive by RefCnt
 
 	EEOconverter conv(*world.ptr());

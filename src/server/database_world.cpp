@@ -160,7 +160,7 @@ bool DatabaseWorld::save(const World *world)
 	sqlite3_bind_blob(s, 8, p_flags.data(), p_flags.size(), nullptr);
 
 	Packet p_world;
-	world->write(p_world, World::Method::Plain);
+	world->write(p_world, World::Method::Plain, UINT16_MAX);
 	sqlite3_bind_blob(s, 9, p_world.data(), p_world.size(), nullptr);
 
 	bool good = ok("save_s", sqlite3_step(s));

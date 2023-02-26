@@ -1,5 +1,6 @@
 #include "blockmanager.h"
 #include "player.h"
+#include "world.h"
 
 
 // -------------- Block registrations -------------
@@ -26,16 +27,20 @@ static BP_STEP_CALLBACK(step_arrow_none)
 
 static BP_COLLIDE_CALLBACK(onCollide_coindoor)
 {
-	u8 coins = b.param1 & ~Block::P1_FLAG_TILE1;
-	return player.coins >= coins
+	BlockParams params;
+	player.getWorld()->getParams(pos, &params);
+
+	return player.coins >= params.gate.value
 		? BlockProperties::CollisionType::None
 		: BlockProperties::CollisionType::Position;
 }
 
 static BP_COLLIDE_CALLBACK(onCollide_coingate)
 {
-	u8 coins = b.param1 & ~Block::P1_FLAG_TILE1;
-	return player.coins < coins
+	BlockParams params;
+	player.getWorld()->getParams(pos, &params);
+
+	return player.coins < params.gate.value
 		? BlockProperties::CollisionType::None
 		: BlockProperties::CollisionType::Position;
 }
@@ -54,7 +59,6 @@ static BP_COLLIDE_CALLBACK(onCollide_b10_bouncy)
 
 void BlockManager::doPackRegistration()
 {
-	using TC = BlockProperties::TileCondition;
 	{
 		BlockPack *pack = new BlockPack("basic");
 		pack->default_type = BlockDrawType::Solid;
@@ -73,7 +77,6 @@ void BlockManager::doPackRegistration()
 
 		for (bid_t id : pack->block_ids) {
 			auto props = m_props[id];
-			props->condition = TC::NotZero;
 			if (id >= Block::ID_GATE_R) {
 				props->tiles[0].type = BlockDrawType::Action;
 				props->tiles[1].type = BlockDrawType::Solid;
@@ -124,7 +127,6 @@ void BlockManager::doPackRegistration()
 
 		auto props = m_props[Block::ID_SECRET];
 		props->trigger_on_touch = true;
-		props->condition = TC::NotZero;
 		props->tiles[0].type = BlockDrawType::Solid;
 		props->tiles[0].have_alpha = true;
 		props->tiles[1].type = BlockDrawType::Solid;
@@ -138,14 +140,11 @@ void BlockManager::doPackRegistration()
 
 		auto props = m_props[Block::ID_COIN];
 		props->trigger_on_touch = true;
-		props->condition = TC::NotZero;
 		props->tiles[0].type = BlockDrawType::Decoration; // draw above players
 		props->tiles[1].type = BlockDrawType::Action;
 
-
 		props = m_props[Block::ID_COINDOOR];
-		props->persistent_param1 = true;
-		props->condition = TC::MSBFlagSet;
+		props->paramtypes = BlockParams::Type::Gate;
 		// Walk-through is player-specific, hence using the onCollide callback
 		props->tiles[0].type = BlockDrawType::Solid;
 		props->tiles[1].type = BlockDrawType::Solid;
@@ -153,8 +152,7 @@ void BlockManager::doPackRegistration()
 		props->onCollide = onCollide_coindoor;
 
 		props = m_props[Block::ID_COINGATE];
-		props->persistent_param1 = true;
-		props->condition = TC::MSBFlagSet;
+		props->paramtypes = BlockParams::Type::Gate;
 		// Walk-through is player-specific, hence using the onCollide callback
 		props->tiles[0].type = BlockDrawType::Solid;
 		props->tiles[0].have_alpha = true;

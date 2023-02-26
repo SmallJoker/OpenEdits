@@ -10,7 +10,7 @@ void unittest_database()
 	CHECK(db.tryOpen(filepath));
 
 	{
-		World world("dummyworldname");
+		World world(g_blockmanager, "dummyworldname");
 		world.createEmpty({5, 2});
 		world.getMeta().owner = "test";
 
@@ -18,7 +18,7 @@ void unittest_database()
 	}
 
 	{
-		World world("dummyworldname");
+		World world(g_blockmanager, "dummyworldname");
 		CHECK(db.load(&world));
 		CHECK(world.getSize().X == 5);
 		CHECK(world.getSize().Y == 2);
@@ -26,7 +26,7 @@ void unittest_database()
 	}
 
 	{
-		World world("_does_not_exist_");
+		World world(g_blockmanager, "_does_not_exist_");
 		CHECK(!db.load(&world));
 	}
 

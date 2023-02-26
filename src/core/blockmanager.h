@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/blockparams.h" // enum
 #include "core/types.h"
 #include <string>
 #include <map>
@@ -52,24 +53,19 @@ struct BlockTile {
 struct BlockProperties {
 	BlockProperties(BlockDrawType type);
 
+	static constexpr size_t MAX_TILES = 2;
+
 	BlockPack *pack = nullptr;
-	// whether to acknowledge param1 block updates
-	bool persistent_param1 = false;
+	BlockParams::Type paramtypes = BlockParams::Type::None;
 
 	// whether to add the block position to the triggered blocks list
 	bool trigger_on_touch = false;
 	u32 color = 0; // minimap
 
-	BlockTile tiles[2]; // [0] = normal, [1] = active
+	bool persistent_tiles = false; // "tile" value in Block
+	BlockTile tiles[MAX_TILES]; // [0] = normal, [1] = active
 	BlockTile getTile(const Block b) const;
 	bool isBackground() const { return tiles[0].type == BlockDrawType::Background; }
-
-	// Depends on param1
-	enum class TileCondition {
-		NotZero,
-		MSBFlagSet, // 0x80
-		None
-	} condition = TileCondition::None;
 
 	enum class CollisionType {
 		Position, // and velocity
@@ -84,7 +80,7 @@ struct BlockProperties {
 
 	// Callback when colliding: true -> set velocity to 0
 	#define BP_COLLIDE_CALLBACK(name) \
-		BlockProperties::CollisionType (name)(Player &player, const Block b, const bool is_x)
+		BlockProperties::CollisionType (name)(Player &player, blockpos_t pos, const bool is_x)
 	BP_COLLIDE_CALLBACK(*onCollide) = nullptr;
 };
 
@@ -99,6 +95,7 @@ public:
 	void populateTextures(video::IVideoDriver *driver);
 
 	const BlockProperties *getProps(bid_t block_id) const;
+	const std::vector<BlockProperties *> &getProps() const { return m_props; }
 	BlockPack *getPack(const std::string &name);
 	const std::vector<BlockPack *> &getPacks() { return m_packs; }
 	video::ITexture *getMissingTexture() { return m_missing_texture; }

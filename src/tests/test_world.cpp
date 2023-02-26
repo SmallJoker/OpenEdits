@@ -5,9 +5,9 @@
 static void test_readwrite(World &w)
 {
 	Packet out;
-	w.write(out, World::Method::Plain);
+	w.write(out, World::Method::Plain, UINT16_MAX);
 
-	World w2("foobar_check");
+	World w2(g_blockmanager, "foobar_check");
 	Packet in(out.data(), out.size());
 	w2.createEmpty(w.getSize());
 	w2.read(out);
@@ -24,12 +24,11 @@ static void test_readwrite(World &w)
 
 void unittest_world()
 {
-	World w("foobar");
+	World w(g_blockmanager, "foobar");
 	w.createEmpty({3,5});
 
 	Block b;
 	b.id = 9;
-	b.param1 = 0;
 
 	CHECK(w.setBlock({2, 1}, b))
 	b.id = 0;
@@ -41,15 +40,15 @@ void unittest_world()
 	CHECK(!w.setBlock({4, 2}, b))
 
 	// Invalid block ID
-	BlockUpdate bu;
+	BlockUpdate bu(g_blockmanager);
 	bu.pos = blockpos_t(1, 1);
-	bu.id = Block::ID_INVALID;
+	bu.set(Block::ID_INVALID);
 	CHECK(!w.updateBlock(bu))
 
 	// Background on empty foreground
 	bu.pos = blockpos_t(0, 2);
 	CHECK(bu.set(502));
-	CHECK(bu.getBlockId() == 502);
+	CHECK(bu.getId() == 502);
 	CHECK(w.updateBlock(bu));
 	CHECK(w.getBlock(bu.pos, &b))
 	CHECK(b.id == 0);
@@ -70,12 +69,12 @@ void unittest_world()
 	CHECK(b.id == 9);
 	CHECK(b.bg == 0);
 
-	// Wrong background
+	// Out of range
 	bid_t newid;
 	bool isbg;
-	bu.pos = blockpos_t(1, 2);
-	bu.id = 501;
-	CHECK(!bu.check(&newid, &isbg, true));
+	bu.pos = blockpos_t(40, 1);
+	bu.set(0);
+	CHECK(bu.check(&newid, &isbg));
 	CHECK(!w.updateBlock(bu));
 
 

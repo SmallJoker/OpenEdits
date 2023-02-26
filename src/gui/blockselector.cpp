@@ -219,11 +219,16 @@ void SceneBlockSelector::toggleShowMore()
 
 void SceneBlockSelector::getBlockUpdate(BlockUpdate &bu)
 {
-	bu.id = m_selected_bid;
+	bu.set(m_selected_bid);
 
-	auto props = g_blockmanager->getProps(m_selected_bid);
-	if (props && props->persistent_param1)
-		bu.param1 = m_selected_param1;
+	using T = BlockParams::Type;
+	switch (bu.params.getType()) {
+		case T::Gate:
+			bu.params.gate.value = m_selected_param1;
+			break;
+		default:
+			break;
+	}
 }
 
 

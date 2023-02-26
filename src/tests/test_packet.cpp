@@ -1,8 +1,28 @@
 #include "unittest_internal.h"
+#include "core/blockparams.h"
 #include "core/packet.h"
 
 static const std::string val_str = "Héllo wörld!"; // 14 length
 static const int32_t val_s32 = -2035832324;
+
+static void test_blockparams()
+{
+	BlockParams p1(BlockParams::Type::Text);
+	*p1.text = val_str;
+	BlockParams p2(BlockParams::Type::Teleporter);
+	p2.teleporter.visual = 0;
+	p2.teleporter.id = 10;
+	p2.teleporter.dst_id = 42;
+
+	Packet pkt;
+	p1.write(pkt);
+	p2.write(pkt);
+
+	CHECK(pkt.readStr16() == val_str);
+	CHECK(pkt.read<uint8_t>() == 0);
+	CHECK(pkt.read<uint8_t>() == 10);
+	CHECK(pkt.read<uint8_t>() == 42);
+}
 
 static void test_repeated()
 {
@@ -57,5 +77,6 @@ void unittest_packet()
 	}
 
 	test_repeated();
+	test_blockparams();
 }
 

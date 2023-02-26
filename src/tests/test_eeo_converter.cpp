@@ -9,9 +9,9 @@ void unittest_eeo_converter()
 #else
 	//EEOconverter::inflate("../8s9kvu.eelvl");
 
-	World output("eeo_import");
+	World output(g_blockmanager, "eeo_import");
 	EEOconverter conv(output);
-	conv.fromFile("../8s9kvu.eelvl");
+	conv.fromFile("8s9kvu.eelvl");
 
 	auto meta = output.getMeta();
 

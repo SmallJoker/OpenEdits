@@ -11,7 +11,8 @@
 
 static uint16_t PACKET_ACTIONS_MAX; // initialized in ctor
 
-Client::Client(ClientStartData &init)
+Client::Client(ClientStartData &init) :
+	Environment(g_blockmanager)
 {
 	puts("Client: startup");
 
@@ -130,8 +131,8 @@ void Client::step(float dtime)
 				break;
 				case Block::ID_COIN:
 				case Block::ID_SECRET:
-				if (!b.param1) {
-					b.param1 = 1;
+				if (!b.tile) {
+					b.tile = 1;
 					world->setBlock(bp, b);
 					trigger_event = true;
 				}
@@ -340,4 +341,3 @@ void Client::processPacket(peer_t peer_id, Packet &pkt)
 		printf("Client: Action %d general error: %s\n", action, e.what());
 	}
 }
-
