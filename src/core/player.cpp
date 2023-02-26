@@ -326,7 +326,8 @@ void Player::collideWith(float dtime, int x, int y)
 
 	core::rectf player(0, 0, 1, 1);
 	core::rectf block(0, 0, 1, 1);
-	block += core::vector2df(x - pos.X, y - pos.Y);
+	core::vector2df diff(x - pos.X, y - pos.Y);
+	block += diff;
 
 	player.clipAgainst(block);
 	if (player.getArea() < 0.001f)

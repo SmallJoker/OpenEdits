@@ -83,7 +83,7 @@ struct BlockProperties {
 
 	// Callback when colliding: true -> set velocity to 0
 	#define BP_COLLIDE_CALLBACK(name) \
-		BlockProperties::CollisionType (name)(Player &player, blockpos_t pos, const bool is_x)
+		BlockProperties::CollisionType (name)(Player &player, blockpos_t pos, bool is_x)
 	BP_COLLIDE_CALLBACK(*onCollide) = nullptr;
 };
 

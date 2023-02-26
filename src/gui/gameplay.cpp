@@ -290,14 +290,20 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 	}
 	if (e.EventType == EET_MOUSE_INPUT_EVENT) {
 
+		auto emie = e.MouseInput.Event;
+		if (emie == EMIE_LMOUSE_LEFT_UP || emie == EMIE_RMOUSE_LEFT_UP)
+			m_drag_draw_block.set(Block::ID_INVALID);
+
 		{
+			// Pass through other events
 			auto root = m_gui->guienv->getRootGUIElement();
 			auto element = root->getElementFromPoint({e.MouseInput.X, e.MouseInput.Y});
-			if (element && element != root)
+			if (element && element != root) {
 				return false;
+			}
 		}
 
-		switch (e.MouseInput.Event) {
+		switch (emie) {
 			case EMIE_MOUSE_MOVED:
 			case EMIE_LMOUSE_PRESSED_DOWN:
 			case EMIE_RMOUSE_PRESSED_DOWN:
@@ -362,10 +368,6 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 
 					m_camera_pos.Z *= (1 - dir * 0.1);
 				}
-				break;
-			case EMIE_LMOUSE_LEFT_UP:
-			case EMIE_RMOUSE_LEFT_UP:
-				m_drag_draw_block.set(Block::ID_INVALID);
 				break;
 			default: break;
 		}

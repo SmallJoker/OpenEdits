@@ -32,3 +32,18 @@ Server-only build:
 
 1. >= 32x32 px textures
 2. Where it matters, use [color-blind friendly colors](https://www.nature.com/articles/nmeth.1618.pdf)
+
+Helpful GIMP tools for texture creation:
+
+ * Block borders:
+     1. Select -> Shrink (1 px) : Adds a border
+     2. Select -> Feather (5 px) : Smoother selection
+     3. Select -> Invert : Actually selects the border
+     4. Bucket Fill Tool with 100% threshold to fill the border (black?)
+ * For rounded borders (e.g. candy pack)
+     1. Select -> Rounded Rectangle (35%)
+     2. Select -> Invert
+     3. Delete (needs alpha channel)
+ * Basic shading
+     1. New layer, Mode "Multiply"
+     2. Gradient Tool : White to grey gradient on new layer

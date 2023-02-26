@@ -45,6 +45,19 @@ static BP_COLLIDE_CALLBACK(onCollide_coingate)
 		: BlockProperties::CollisionType::Position;
 }
 
+static BP_COLLIDE_CALLBACK(onCollide_oneway)
+{
+	// depends on player::DISTANCE_STEP
+
+	if (player.vel.Y >= 0 && player.pos.Y + 0.55f < pos.Y)
+		return BlockProperties::CollisionType::Position; // normal step-up
+
+	// Sideway gate
+	return (std::roundf(player.pos.Y) == pos.Y && !player.getControls().jump)
+		? BlockProperties::CollisionType::Position
+		: BlockProperties::CollisionType::None;
+}
+
 static BP_COLLIDE_CALLBACK(onCollide_b10_bouncy)
 {
 	if (is_x) {
@@ -91,6 +104,18 @@ void BlockManager::doPackRegistration()
 		pack->default_type = BlockDrawType::Solid;
 		pack->block_ids = { 45, 46, 47, 48, 49 };
 		g_blockmanager->registerPack(pack);
+	}
+
+	{
+		BlockPack *pack = new BlockPack("candy");
+		pack->default_type = BlockDrawType::Solid;
+		pack->block_ids = { 60, 61, 62, 63, 64, 65, 66, 67 };
+		g_blockmanager->registerPack(pack);
+		// one-way gates
+		for (size_t i = 61; i <= 64; ++i)
+			m_props[i]->onCollide = onCollide_oneway;
+		for (bid_t id : pack->block_ids)
+			m_props[id]->tiles[0].have_alpha = true;
 	}
 
 	{
