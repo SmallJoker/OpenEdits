@@ -308,6 +308,8 @@ void EEOconverter::fromFile(const std::string &filename)
 	// Actual block data comes now
 	m_world.createEmpty(size);
 
+	auto blockmgr = m_world.getBlockMgr();
+
 	std::string err;
 	while (zs.status == Z_OK) {
 		int block_id;
@@ -356,7 +358,7 @@ void EEOconverter::fromFile(const std::string &filename)
 				break;
 		}
 
-		auto props = g_blockmanager->getProps(block_id);
+		auto props = blockmgr->getProps(block_id);
 		if (props) {
 			if ((layer == 1) != props->isBackground())
 				continue; // FG/BG mismatch

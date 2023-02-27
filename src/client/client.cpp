@@ -10,6 +10,7 @@
 #endif
 
 static uint16_t PACKET_ACTIONS_MAX; // initialized in ctor
+extern BlockManager *g_blockmanager; // for client-only use
 
 Client::Client(ClientStartData &init) :
 	Environment(g_blockmanager)

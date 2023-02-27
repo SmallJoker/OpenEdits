@@ -199,7 +199,7 @@ void Player::stepInternal(float dtime)
 		Block block;
 		m_world->getBlock(bp, &block);
 
-		props = g_blockmanager->getProps(block.id);
+		props = m_world->getBlockMgr()->getProps(block.id);
 	}
 
 	if (triggered_blocks && bp != m_last_pos) {
@@ -281,7 +281,7 @@ bool Player::stepCollisions(float dtime)
 		return false;
 	}
 
-	auto props = g_blockmanager->getProps(block.id);
+	auto props = m_world->getBlockMgr()->getProps(block.id);
 	// single block effect
 	if (props && props->step) {
 		props->step(*this, bp);
@@ -320,7 +320,7 @@ void Player::collideWith(float dtime, int x, int y)
 	if (!ok)
 		return;
 
-	auto props = g_blockmanager->getProps(b.id);
+	auto props = m_world->getBlockMgr()->getProps(b.id);
 	if (!props || props->getTile(b).type != BlockDrawType::Solid)
 		return;
 

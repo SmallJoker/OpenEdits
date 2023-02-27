@@ -231,6 +231,7 @@ void SceneBlockSelector::getBlockUpdate(BlockUpdate &bu)
 	}
 }
 
+extern BlockManager *g_blockmanager;
 
 bool SceneBlockSelector::drawBlockButton(bid_t bid, const core::recti &rect, gui::IGUIElement *parent, int id)
 {

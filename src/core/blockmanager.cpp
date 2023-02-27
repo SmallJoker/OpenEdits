@@ -43,12 +43,29 @@ BlockManager::~BlockManager()
 
 void BlockManager::read(Packet &pkt, u16 protocol_version)
 {
+	// TODO: How to read/write the physics functions?
+	struct Hardcoded {
+		BP_STEP_CALLBACK(*step);
+		BP_COLLIDE_CALLBACK(*onCollide);
+	};
+	std::map<bid_t, Hardcoded> hardcoded;
+
 	for (auto &p : m_props) {
+		if (p->step || p ->onCollide) {
+			bid_t block_id = &p - &m_props[0];
+
+			Hardcoded hc;
+			hc.step = p->step;
+			hc.onCollide = p->onCollide;
+
+			hardcoded.emplace(block_id, hc);
+		}
+
+		// Reset all entries
 		delete p;
 		p = nullptr;
 	}
 
-	// TODO: How to read/write the physics functions?
 	while (true) {
 		bid_t block_id = pkt.read<bid_t>();
 		if (block_id == Block::ID_INVALID)
@@ -64,6 +81,12 @@ void BlockManager::read(Packet &pkt, u16 protocol_version)
 			tile.type = (BlockDrawType)pkt.read<u8>();
 			tile.texture_offset = pkt.read<u8>();
 			tile.have_alpha = pkt.read<u8>();
+		}
+
+		auto it = hardcoded.find(block_id);
+		if (it != hardcoded.end()) {
+			props.step = it->second.step;
+			props.onCollide = it->second.onCollide;
 		}
 
 		// Get more space (should not be neccessary)
@@ -101,7 +124,9 @@ void BlockManager::read(Packet &pkt, u16 protocol_version)
 			props->pack = pack;
 		}
 	}
+
 	// TODO: resolve all textures
+
 }
 
 void BlockManager::write(Packet &pkt, u16 protocol_version) const

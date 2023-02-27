@@ -291,7 +291,7 @@ void Server::pkt_PlaceBlock(peer_t peer_id, Packet &pkt)
 	auto world = player->getWorld();
 	SimpleLock lock(world->mutex);
 
-	BlockUpdate bu(g_blockmanager);
+	BlockUpdate bu(world->getBlockMgr());
 	while (true) {
 		bool is_ok = pkt.read<u8>();
 		if (!is_ok)

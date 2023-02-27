@@ -46,29 +46,16 @@ struct Block {
 	union {
 		struct {
 			bid_t id : 13;    // Foreground block ID (max. 8000)
-			uint8_t tile : 3; // Tile number (for rendering)
+			uint8_t tile : 3; // Tile number (client-side only, for rendering)
 		};
 		bid_t raw_id;
 	};
 	bid_t bg = 0; // Background block ID
-
-	/*
-	Parameter for the foreground blocks
-	Used on client-side only (so far)
-
-	Portals
-		Represents the configuration ID
-		Separate list provides:
-			rotation in 90° steps
-			target ID
-			own ID
-	Static texts
-		Represents the text number (separate list)
-	Coins & hidden block (temporary, client-only)
-		Collected/activated indicator [0,1]
-	*/
 };
-static_assert(sizeof(Block) == 4, "Block size mismatch");
+
+// 4 bytes with GCC, 6 bytes with MSVC
+static_assert(sizeof(Block) <= 6, "Block size us unexpectedly large");
+
 
 // Automatic grab & drop for irr::IReferenceCounted classes
 // Similar to std::shared_ptr but less thread-safe

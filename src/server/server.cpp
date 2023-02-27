@@ -1,5 +1,6 @@
 #include "server.h"
 #include "remoteplayer.h"
+#include "core/blockmanager.h"
 #include "core/chatcommand.h"
 #include "core/packet.h"
 #include "core/utils.h" // get_next_part
@@ -16,10 +17,13 @@
 static uint16_t PACKET_ACTIONS_MAX; // initialized in ctor
 
 Server::Server() :
-	Environment(g_blockmanager),
+	Environment(new BlockManager()),
 	m_chatcmd(this)
 {
 	puts("Server: startup");
+
+	m_bmgr->doPackRegistration();
+
 	m_con = new Connection(Connection::TYPE_SERVER, "Server");
 	m_con->listenAsync(*this);
 
@@ -68,6 +72,7 @@ Server::~Server()
 
 	delete m_con;
 	delete m_world_db;
+	delete m_bmgr;
 }
 
 

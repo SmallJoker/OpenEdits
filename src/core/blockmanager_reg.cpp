@@ -76,7 +76,7 @@ void BlockManager::doPackRegistration()
 		BlockPack *pack = new BlockPack("basic");
 		pack->default_type = BlockDrawType::Solid;
 		pack->block_ids = { 9, 10, 11, 12, 13, 14, 15 };
-		g_blockmanager->registerPack(pack);
+		registerPack(pack);
 	}
 
 	{
@@ -86,7 +86,7 @@ void BlockManager::doPackRegistration()
 			Block::ID_DOOR_R, Block::ID_DOOR_G, Block::ID_DOOR_B,
 			Block::ID_GATE_R, Block::ID_GATE_G, Block::ID_GATE_B
 		};
-		g_blockmanager->registerPack(pack);
+		registerPack(pack);
 
 		for (bid_t id : pack->block_ids) {
 			auto props = m_props[id];
@@ -103,14 +103,14 @@ void BlockManager::doPackRegistration()
 		BlockPack *pack = new BlockPack("factory");
 		pack->default_type = BlockDrawType::Solid;
 		pack->block_ids = { 45, 46, 47, 48, 49 };
-		g_blockmanager->registerPack(pack);
+		registerPack(pack);
 	}
 
 	{
 		BlockPack *pack = new BlockPack("candy");
 		pack->default_type = BlockDrawType::Solid;
 		pack->block_ids = { 60, 61, 62, 63, 64, 65, 66, 67 };
-		g_blockmanager->registerPack(pack);
+		registerPack(pack);
 		// one-way gates
 		for (size_t i = 61; i <= 64; ++i)
 			m_props[i]->onCollide = onCollide_oneway;
@@ -122,7 +122,7 @@ void BlockManager::doPackRegistration()
 		BlockPack *pack = new BlockPack("action");
 		pack->default_type = BlockDrawType::Action;
 		pack->block_ids = { 0, 1, 2, 3, 4 };
-		g_blockmanager->registerPack(pack);
+		registerPack(pack);
 
 		m_props[1]->step = step_arrow_left;
 		m_props[2]->step = step_arrow_up;
@@ -135,7 +135,7 @@ void BlockManager::doPackRegistration()
 		BlockPack *pack = new BlockPack("keys");
 		pack->default_type = BlockDrawType::Action;
 		pack->block_ids = { Block::ID_KEY_R, Block::ID_KEY_G, Block::ID_KEY_B };
-		g_blockmanager->registerPack(pack);
+		registerPack(pack);
 
 		for (bid_t id : pack->block_ids)
 			m_props[id]->trigger_on_touch = true;
@@ -149,7 +149,7 @@ void BlockManager::doPackRegistration()
 		BlockPack *pack = new BlockPack("owner");
 		pack->default_type = BlockDrawType::Action;
 		pack->block_ids = { Block::ID_SPAWN, Block::ID_SECRET };
-		g_blockmanager->registerPack(pack);
+		registerPack(pack);
 
 		auto props = m_props[Block::ID_SECRET];
 		props->trigger_on_touch = true;
@@ -162,7 +162,7 @@ void BlockManager::doPackRegistration()
 		BlockPack *pack = new BlockPack("coins");
 		pack->default_type = BlockDrawType::Action;
 		pack->block_ids = { Block::ID_COIN, Block::ID_COINDOOR, Block::ID_COINGATE };
-		g_blockmanager->registerPack(pack);
+		registerPack(pack);
 
 		auto props = m_props[Block::ID_COIN];
 		props->trigger_on_touch = true;
@@ -191,7 +191,7 @@ void BlockManager::doPackRegistration()
 		BlockPack *pack = new BlockPack("spring");
 		pack->default_type = BlockDrawType::Decoration;
 		pack->block_ids = { 233, 234, 235, 236, 237, 238, 239, 240 };
-		g_blockmanager->registerPack(pack);
+		registerPack(pack);
 	}
 
 	// Backgrounds
@@ -200,7 +200,7 @@ void BlockManager::doPackRegistration()
 		BlockPack *pack = new BlockPack("simple");
 		pack->default_type = BlockDrawType::Background;
 		pack->block_ids = { 500, 501, 502, 503, 504, 505, 506 };
-		g_blockmanager->registerPack(pack);
+		registerPack(pack);
 	}
 }
 

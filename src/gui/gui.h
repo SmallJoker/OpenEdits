@@ -40,6 +40,8 @@ enum class SceneHandlerType {
 	CTRL_RENEW
 };
 
+extern BlockManager *g_blockmanager;
+
 class Gui : public IEventReceiver, public GameEventHandler {
 public:
 	Gui();

@@ -12,8 +12,6 @@ class BlockManager;
 class Player;
 class Packet;
 
-extern BlockManager *g_blockmanager; // TODO remove me
-
 // Requirement for the hash function
 static_assert(sizeof(size_t) >= sizeof(u64));
 
@@ -142,6 +140,8 @@ public:
 	blockpos_t getBlockPos(const Block *b) const;
 	Block *updateBlock(const BlockUpdate bu);
 	bool getParams(blockpos_t pos, BlockParams *params) const;
+
+	const BlockManager *getBlockMgr() const { return m_bmgr; }
 
 	// Result is added when callback is nullptr or returns true
 	std::vector<blockpos_t> getBlocks(bid_t block_id, std::function<bool(Block &b)> callback) const;

@@ -28,8 +28,6 @@ enum class BlockDrawType {
 	Invalid
 };
 
-extern BlockManager *g_blockmanager;
-
 struct BlockPack {
 	BlockPack(const std::string &name) :
 		name(name) {}
