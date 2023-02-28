@@ -359,7 +359,7 @@ CHATCMD_FUNC(Server::chat_Clear)
 		height_i = old_world->getSize().Y;
 	} else if (string2int64(width_s.c_str(), &width_i)) {
 		if (height_s.empty())
-			height_i = old_world->getSize().Y;
+			height_i = width_i;
 		else
 			string2int64(height_s.c_str(), &height_i);
 	}
@@ -372,6 +372,8 @@ CHATCMD_FUNC(Server::chat_Clear)
 
 	RefCnt<World> world(new World(m_bmgr, old_world->getMeta().id));
 	world->drop(); // kept alive by RefCnt
+
+	world->getMeta() = old_world->getMeta();
 
 	try {
 		world->createEmpty(blockpos_t(width_i, height_i));
@@ -413,6 +415,8 @@ CHATCMD_FUNC(Server::chat_Import)
 
 	RefCnt<World> world(new World(m_bmgr, old_world->getMeta().id));
 	world->drop(); // kept alive by RefCnt
+
+	world->getMeta() = old_world->getMeta();
 
 	EEOconverter conv(*world.ptr());
 

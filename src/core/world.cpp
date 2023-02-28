@@ -272,6 +272,8 @@ void World::readPlain(Packet &pkt)
 	if (version < 2 || version > 4)
 		throw std::runtime_error("Unsupported read version");
 
+	// TODO: It is not necessary to send this header to the client (already filtered by server)
+
 	// Describes the block parameters (thus length) that are to be expected
 	std::map<bid_t, BlockParams::Type> mapper;
 	if (version >= 4) {

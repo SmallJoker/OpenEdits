@@ -67,7 +67,7 @@ struct WorldMeta {
 	void readCommon(Packet &pkt);
 	void writeCommon(Packet &pkt) const;
 
-	const std::string id;
+	std::string id;
 	std::string title;
 	std::string owner;
 	bool is_public = true;
