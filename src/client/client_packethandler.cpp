@@ -1,5 +1,6 @@
 #include "client.h"
 #include "localplayer.h"
+#include "core/blockmanager.h"
 #include "core/packet.h"
 
 const ClientPacketHandler Client::packet_actions[] = {
@@ -33,8 +34,8 @@ void Client::pkt_Hello(Packet &pkt)
 	m_nickname = player->name = pkt.readStr16();
 	m_players.emplace(m_my_peer_id, player);
 
-	// TODO: send and receive BlockProperties from the server
-	// to ensure compatibility to a certain degree
+	// Load the server's block properties
+	m_bmgr->read(pkt, m_protocol_version);
 
 	m_state = ClientState::LobbyIdle;
 	printf("Client: got HELLO. my peer_id=%u\n", m_my_peer_id);

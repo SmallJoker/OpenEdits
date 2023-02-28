@@ -45,16 +45,21 @@ void BlockManager::read(Packet &pkt, u16 protocol_version)
 {
 	// TODO: How to read/write the physics functions?
 	struct Hardcoded {
+		bool trigger_on_touch;
 		BP_STEP_CALLBACK(*step);
 		BP_COLLIDE_CALLBACK(*onCollide);
 	};
 	std::map<bid_t, Hardcoded> hardcoded;
 
 	for (auto &p : m_props) {
-		if (p->step || p ->onCollide) {
+		if (!p)
+			continue;
+
+		if (p->trigger_on_touch || p->step || p->onCollide) {
 			bid_t block_id = &p - &m_props[0];
 
 			Hardcoded hc;
+			hc.trigger_on_touch = p->trigger_on_touch;
 			hc.step = p->step;
 			hc.onCollide = p->onCollide;
 
@@ -66,6 +71,7 @@ void BlockManager::read(Packet &pkt, u16 protocol_version)
 		p = nullptr;
 	}
 
+	BlockTile dummy;
 	while (true) {
 		bid_t block_id = pkt.read<bid_t>();
 		if (block_id == Block::ID_INVALID)
@@ -77,14 +83,16 @@ void BlockManager::read(Packet &pkt, u16 protocol_version)
 
 		u8 num_tiles = pkt.read<u8>();
 		for (size_t t = 0; t < num_tiles; ++t) {
-			auto &tile = props.tiles[t];
+			auto &tile = t < BlockProperties::MAX_TILES ? props.tiles[t] : dummy;
 			tile.type = (BlockDrawType)pkt.read<u8>();
+			tile.texture = m_missing_texture;
 			tile.texture_offset = pkt.read<u8>();
 			tile.have_alpha = pkt.read<u8>();
 		}
 
 		auto it = hardcoded.find(block_id);
 		if (it != hardcoded.end()) {
+			props.trigger_on_touch = it->second.trigger_on_touch;
 			props.step = it->second.step;
 			props.onCollide = it->second.onCollide;
 		}
@@ -103,7 +111,8 @@ void BlockManager::read(Packet &pkt, u16 protocol_version)
 	u8 num_packs = pkt.read<u8>();
 	m_packs.resize(num_packs);
 	for (size_t i = 0; i < num_packs; ++i) {
-		BlockPack pack(pkt.readStr16());
+		BlockPack pack(pkt.readStr16()); // pack name
+		pack.default_type = (BlockDrawType)pkt.read<u8>();
 
 		pack.block_ids.resize(pkt.read<u8>());
 		for (bid_t &block_id : pack.block_ids)
@@ -125,8 +134,8 @@ void BlockManager::read(Packet &pkt, u16 protocol_version)
 		}
 	}
 
-	// TODO: resolve all textures
-
+	// Cannot populate textures here! It must happen in the main thread
+	m_populated = false;
 }
 
 void BlockManager::write(Packet &pkt, u16 protocol_version) const
@@ -156,6 +165,7 @@ void BlockManager::write(Packet &pkt, u16 protocol_version) const
 	pkt.write<u8>(m_packs.size());
 	for (auto pack : m_packs) {
 		pkt.writeStr16(pack->name);
+		pkt.write((u8)pack->default_type);
 
 		pkt.write<u8>(pack->block_ids.size());
 		for (bid_t block_id : pack->block_ids)
@@ -190,6 +200,12 @@ void BlockManager::registerPack(BlockPack *pack)
 	}
 }
 
+void BlockManager::setDriver(video::IVideoDriver *driver)
+{
+	m_driver = driver;
+	m_missing_texture = m_driver->getTexture("assets/textures/missing_texture.png");
+}
+
 static void split_texture(video::IVideoDriver *driver, BlockTile *tile)
 {
 	auto dim = tile->texture->getOriginalSize();
@@ -198,30 +214,29 @@ static void split_texture(video::IVideoDriver *driver, BlockTile *tile)
 		core::dimension2du(dim.Height, dim.Height)
 	);
 
-	std::string name = std::to_string((uint64_t)tile->texture);
-	name.append("&&");
-	name.append(std::to_string(tile->texture_offset));
+	char buf[255];
+	snprintf(buf, sizeof(buf), "%p__%i", tile->texture, (int)tile->texture_offset);
 
-	tile->texture = driver->addTexture(name.c_str(), img);
+	tile->texture = driver->addTexture(buf, img);
 	tile->texture_offset = 0;
 	img->drop();
 }
 
-void BlockManager::populateTextures(video::IVideoDriver *driver)
+void BlockManager::populateTextures()
 {
-	if (!driver || m_missing_texture)
+	if (m_populated)
 		return;
 
+	ASSERT_FORCED(m_driver && m_missing_texture, "Missing driver");
+
 	int count = 0;
-	m_missing_texture = driver->getTexture("assets/textures/missing_texture.png");
-	m_driver = driver;
 
 	for (auto pack : m_packs) {
 		if (pack->imagepath.empty())
 			pack->imagepath = "assets/textures/pack_" + pack->name + ".png";
 
 		// Assign texture ID and offset?
-		video::ITexture *texture = driver->getTexture(pack->imagepath.c_str());
+		video::ITexture *texture = m_driver->getTexture(pack->imagepath.c_str());
 
 		core::dimension2du dim;
 		int max_tiles = 0;
@@ -243,7 +258,7 @@ void BlockManager::populateTextures(video::IVideoDriver *driver)
 				else
 					i = offset; // Continue from this index
 
-				split_texture(driver, &prop->tiles[0]);
+				split_texture(m_driver, &prop->tiles[0]);
 
 				if (prop->tiles[1].type != BlockDrawType::Invalid) {
 					prop->tiles[1].texture = texture;
@@ -254,11 +269,12 @@ void BlockManager::populateTextures(video::IVideoDriver *driver)
 					else
 						offset += i; // specified offset
 
-					split_texture(driver, &prop->tiles[1]);
+					split_texture(m_driver, &prop->tiles[1]);
 				}
 
 				if (prop->color == 0)
 					prop->color = getBlockColor(prop->tiles[0]);
+
 				i++;
 			}
 			if (!prop->tiles[0].texture) {
@@ -274,6 +290,7 @@ void BlockManager::populateTextures(video::IVideoDriver *driver)
 	}
 
 	printf("BlockManager: Registered textures of %d blocks in %zu packs\n", count, m_packs.size());
+	m_populated = true;
 }
 
 const BlockProperties *BlockManager::getProps(bid_t block_id) const

@@ -339,6 +339,7 @@ CHATCMD_FUNC(Server::chat_Respawn)
 	respawnPlayer(player, true);
 }
 
+/// cmd: /clear [width] [height]
 CHATCMD_FUNC(Server::chat_Clear)
 {
 	if (!player->getFlags().check(PlayerFlags::PF_OWNER)) {
@@ -346,13 +347,48 @@ CHATCMD_FUNC(Server::chat_Clear)
 		return;
 	}
 
-	auto world = player->getWorld();
-	for (Block *b = world->begin(); b != world->end(); ++b)
-		*b = Block();
+	std::string width_s(get_next_part(msg));
+	std::string height_s(get_next_part(msg));
+
+	auto old_world = player->getWorld();
+	int64_t width_i = -1,
+		height_i = -1;
+
+	if (width_s.empty()) {
+		width_i = old_world->getSize().X;
+		height_i = old_world->getSize().Y;
+	} else if (string2int64(width_s.c_str(), &width_i)) {
+		if (height_s.empty())
+			height_i = old_world->getSize().Y;
+		else
+			string2int64(height_s.c_str(), &height_i);
+	}
+
+	if ((width_i < 3 || width_i > 300)
+			|| (height_i < 3 || height_i > 300)) {
+		systemChatSend(player, "Width and height must be in the range [3,300]");
+		return;
+	}
+
+	RefCnt<World> world(new World(m_bmgr, old_world->getMeta().id));
+	world->drop(); // kept alive by RefCnt
+
+	try {
+		world->createEmpty(blockpos_t(width_i, height_i));
+	} catch (std::runtime_error &e) {
+		systemChatSend(player, std::string("ERROR: ") + e.what());
+		return;
+	}
 
 	Packet out;
-	writeWorldData(out, *world, true);
-	broadcastInWorld(player, 0, out);
+	writeWorldData(out, *world.ptr(), true);
+
+	for (auto it : m_players) {
+		if (it.second->getWorld() == old_world) {
+			it.second->setWorld(world.ptr());
+			m_con->send(it.first, 0, out);
+		}
+	}
 
 	systemChatSend(player, "Cleared!");
 }

@@ -96,7 +96,8 @@ public:
 	void write(Packet &pkt, u16 protocol_version) const;
 
 	void registerPack(BlockPack *pack);
-	void populateTextures(video::IVideoDriver *driver);
+	void setDriver(video::IVideoDriver *driver);
+	void populateTextures();
 
 	const BlockProperties *getProps(bid_t block_id) const;
 	const std::vector<BlockProperties *> &getProps() const { return m_props; }
@@ -115,4 +116,5 @@ private:
 	BlockProperties m_fallback;
 	std::vector<BlockProperties *> m_props;
 	std::vector<BlockPack *> m_packs;
+	bool m_populated = false;
 };

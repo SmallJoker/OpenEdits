@@ -11,6 +11,8 @@ bool wide_to_utf8(std::string &dst, const wchar_t *str);
 bool utf8_to_wide(std::wstring &dst, const char *str);
 
 bool isalnum_nolocale(const std::string &str);
+/// Expects a trimmed string, indicates success
+bool string2int64(const char *str, int64_t *val);
 
 // ------------------ Numeric ------------------
 
@@ -22,3 +24,4 @@ inline float get_sign(float f)
 		return -1;
 	return 0;
 }
+

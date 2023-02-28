@@ -1,5 +1,6 @@
 #include "server.h"
 #include "remoteplayer.h"
+#include "core/blockmanager.h"
 #include "core/packet.h"
 #include "core/utils.h"
 #include "core/world.h"
@@ -75,6 +76,8 @@ void Server::pkt_Hello(peer_t peer_id, Packet &pkt)
 		reply.write(player->protocol_version);
 		reply.write(player->peer_id);
 		reply.writeStr16(player->name);
+
+		m_bmgr->write(reply, player->protocol_version);
 
 		m_con->send(peer_id, 0, reply);
 	}

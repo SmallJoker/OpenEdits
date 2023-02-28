@@ -304,6 +304,7 @@ void Client::onPeerConnected(peer_t peer_id)
 	pkt.write(PROTOCOL_VERSION);
 	pkt.write(PROTOCOL_VERSION_MIN);
 	pkt.writeStr16(m_nickname);
+
 	m_con->send(0, 0, pkt);
 }
 

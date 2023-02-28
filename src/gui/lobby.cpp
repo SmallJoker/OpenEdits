@@ -1,4 +1,5 @@
 #include "lobby.h"
+#include "core/blockmanager.h" // populateTextures
 #include "client/client.h"
 #include "client/localplayer.h"
 #include <IGUIButton.h>
@@ -23,6 +24,10 @@ SceneLobby::SceneLobby()
 
 void SceneLobby::draw()
 {
+	// only on demand
+	g_blockmanager->populateTextures();
+
+
 	core::recti rect_title(
 		core::vector2di(m_gui->window_size.Width * 0.45f, 20),
 		core::dimension2di(100, 30)

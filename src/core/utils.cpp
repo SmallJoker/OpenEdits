@@ -181,3 +181,25 @@ bool isalnum_nolocale(const std::string &str)
 	}
 	return true;
 }
+
+bool string2int64(const char *str, int64_t *val)
+{
+	if (!*str)
+		return false;
+
+	int64_t sval = 0;
+	int sign = 1;
+	if (*str == '-') {
+		sign = -1;
+		str++;
+	}
+
+	for (; *str; str++) {
+		if (!std::isdigit(*str))
+			return false;
+
+		sval = sval * 10 + (*str - '0');
+	}
+	*val = sval * sign;
+	return true;
+}
