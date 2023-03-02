@@ -4,6 +4,7 @@
 #include <IGUIEnvironment.h>
 #include <IGUIFont.h>
 #include <IGUIStaticText.h>
+#include <IVideoDriver.h>
 #include <vector2d.h>
 
 enum ElementId : int {
@@ -22,13 +23,27 @@ SceneConnect::SceneConnect()
 
 void SceneConnect::draw()
 {
-	core::recti rect_1(
-		core::vector2di(200, 100),
-		core::dimension2du(150, 30)
-	);
+	auto gui = m_gui->guienv;
+
+	auto rect_1 = m_gui->getRect({50, 20}, {-160, -30});
+
+	{
+		// Logo
+		auto texture = gui->getVideoDriver()->getTexture("assets/logo.png");
+		auto dim = texture->getOriginalSize();
+
+		core::vector2di pos = rect_1.getCenter() - core::vector2di(rect_1.getWidth() + dim.Width, dim.Height) / 2;
+		gui->addImage(texture, pos, false, 0, -1, L"test test");
+
+		rect_1 += core::vector2di(0, dim.Height);
+	}
+
+
+	// Label column
+	rect_1 += core::vector2di(-120 * 2, 0);
+	// Editbox column
 	core::recti rect_2 = rect_1 + core::vector2di(120, -5);
 
-	auto gui = m_gui->guienv;
 
 	{
 		auto rect = rect_2 + core::vector2di(180, 0);
@@ -67,12 +82,6 @@ void SceneConnect::draw()
 
 void SceneConnect::step(float dtime)
 {
-	video::SColor red(0xFFFF0000);
-
-	if (x >= 0) {
-		core::recti rect(x - 6, y - 10, 200, 30);;
-		m_gui->font->draw(L"X", rect, red);
-	}
 }
 
 bool SceneConnect::OnEvent(const SEvent &e)
@@ -82,15 +91,6 @@ bool SceneConnect::OnEvent(const SEvent &e)
 			case gui::EGET_BUTTON_CLICKED:
 				onSubmit(e.GUIEvent.Caller->getID());
 				return true;
-			default: break;
-		}
-	}
-	if (e.EventType == irr::EET_MOUSE_INPUT_EVENT) {
-		switch (e.MouseInput.Event) {
-			case EMIE_MOUSE_MOVED:
-				x = e.MouseInput.X;
-				y = e.MouseInput.Y;
-				break;
 			default: break;
 		}
 	}

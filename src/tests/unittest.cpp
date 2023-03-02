@@ -12,6 +12,7 @@ void unittest_world();
 void unittest()
 {
 	puts("==> Start unittest");
+
 	try {
 		unittest_chatcommand();
 		unittest_utilities();

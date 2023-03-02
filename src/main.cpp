@@ -1,6 +1,7 @@
 #include "core/blockmanager.h"
 #include "gui/gui.h"
 #include <string.h> // strcmp
+#include "version.h"
 
 #ifdef __unix__
 	#include <signal.h>
@@ -12,14 +13,6 @@ void sleep_ms(long delay)
 {
 	std::this_thread::sleep_for(std::chrono::milliseconds(delay));
 }
-
-const char *VERSION_STRING = "OpenEdits v1.0.7-dev"
-#ifdef NDEBUG
-	" (Release)"
-#else
-	" (Debug)"
-#endif
-	;
 
 
 void unittest();
@@ -42,6 +35,7 @@ int main(int argc, char *argv[])
 	atexit(exit_cleanup);
 	srand(time(nullptr));
 
+	// This is the instance used by the client and GUI
 	g_blockmanager = new BlockManager();
 	g_blockmanager->doPackRegistration();
 

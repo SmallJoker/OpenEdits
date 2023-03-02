@@ -6,6 +6,10 @@ set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/" ${CMAKE_MODULE_PATH})
 
 message("--- Setting up OpenEdits")
 
+if(NOT CMAKE_BUILD_TYPE)
+	set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type: Release or Debug" FORCE)
+endif()
+
 
 ### Libraries
 
@@ -52,6 +56,15 @@ else()
 	set(CMAKE_SHARED_LINKER_FLAGS "-Wl,--no-undefined")
 endif()
 
+### Inline version information
+
+add_custom_target(SetVersion
+	COMMAND ${CMAKE_COMMAND}
+	-D "PROJECT_SOURCE_DIR=${PROJECT_SOURCE_DIR}"
+	-D "CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}"
+	-P "${PROJECT_SOURCE_DIR}/cmake/SetVersion.cmake"
+)
+
 
 ### Source files
 
@@ -77,7 +90,12 @@ endif()
 
 ### Executable
 
+file(WRITE "${PROJECT_SOURCE_DIR}/src/version.cpp" "#error file needs update")
 add_executable(${PROJECT_NAME} ${SRC_FILES})
+add_dependencies(${PROJECT_NAME} SetVersion)
+
+
+### Libraries
 
 target_link_libraries(
 	${PROJECT_NAME}

@@ -69,7 +69,7 @@ void BlockUpdate::write(Packet &pkt) const
 }
 
 
-void WorldMeta::readCommon(Packet &pkt)
+void IWorldMeta::readCommon(Packet &pkt)
 {
 	title = pkt.readStr16();
 	owner = pkt.readStr16();
@@ -77,7 +77,7 @@ void WorldMeta::readCommon(Packet &pkt)
 	plays = pkt.read<u32>();
 }
 
-void WorldMeta::writeCommon(Packet &pkt) const
+void IWorldMeta::writeCommon(Packet &pkt) const
 {
 	pkt.writeStr16(title);
 	pkt.writeStr16(owner);
@@ -173,17 +173,23 @@ bool WorldMeta::Key::step(float dtime)
 
 // -------------- World class -------------
 
-World::World(const BlockManager *bmgr, const std::string &id) :
+
+World::World(const BlockManager *bmgr, WorldMeta *meta) :
 	m_bmgr(bmgr),
-	m_meta(id)
+	m_meta(meta)
 {
 	ASSERT_FORCED(m_bmgr, "BlockManager is required");
-	printf("World: Create %s\n", id.c_str());
+	printf("World: Create %s\n", m_meta->id.c_str());
+}
+
+World::World(const BlockManager *bmgr, const std::string &id) :
+	World(bmgr, new WorldMeta(id))
+{
 }
 
 World::~World()
 {
-	printf("World: Delete %s\n", m_meta.id.c_str());
+	printf("World: Delete %s\n", m_meta->id.c_str());
 	delete[] m_data;
 }
 
@@ -292,8 +298,9 @@ void World::readPlain(Packet &pkt)
 		blockpos_t pos(x, y);
 
 		Block b;
-		pkt.read<bid_t>(b.raw_id);
-		pkt.read<bid_t>(b.bg);
+		// Discard tile information (0 is always the default)
+		b.id = pkt.read<bid_t>();
+		b.bg = pkt.read<bid_t>();
 
 		if (version == 3)
 			pkt.read<u8>(); // param1
@@ -417,7 +424,8 @@ Block *World::updateBlock(const BlockUpdate bu)
 			return nullptr;
 
 		m_params.erase(bu.pos);
-		ref.raw_id = new_id; // reset tile information
+		ref.tile = 0;
+		ref.id = new_id; // reset tile information
 		if (bu.params != BlockParams::Type::None)
 			m_params.emplace(bu.pos, bu.params);
 	}

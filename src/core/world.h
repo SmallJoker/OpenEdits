@@ -59,10 +59,7 @@ struct BlockUpdateHash {
 	}
 };
 
-struct WorldMeta {
-	WorldMeta(const std::string &id) :
-		id(id) {}
-
+struct IWorldMeta {
 	// For networking
 	void readCommon(Packet &pkt);
 	void writeCommon(Packet &pkt) const;
@@ -72,9 +69,28 @@ struct WorldMeta {
 	std::string owner;
 	bool is_public = true;
 	u32 plays = 0;
+	u16 online = 0;
+
+protected:
+	IWorldMeta(const std::string &id) :
+		id(id) {}
+};
+
+struct LobbyWorld : public IWorldMeta {
+	LobbyWorld(const std::string &id) :
+		IWorldMeta(id) {}
+
+	blockpos_t size;
+};
+
+// Per-world shared pointer to safely clear and set new world data (swap)
+struct WorldMeta : public IWorldMeta, public irr::IReferenceCounted {
+	WorldMeta(const std::string &id) :
+		IWorldMeta(id) {}
+
+	DISABLE_COPY(WorldMeta);
 
 	bool is_persistent = true; // for testing
-	u16 online = 0;
 	std::string edit_code;
 
 	PlayerFlags getPlayerFlags(const std::string &name) const;
@@ -102,15 +118,9 @@ private:
 	std::map<std::string, PlayerFlags> player_flags;
 };
 
-struct LobbyWorld : public WorldMeta {
-	LobbyWorld(const std::string &id) :
-		WorldMeta(id) {}
-
-	blockpos_t size;
-};
-
 class World : public IReferenceCounted {
 public:
+	World(const BlockManager *bmgr, WorldMeta *meta);
 	World(const BlockManager *bmgr, const std::string &id);
 	~World();
 
@@ -149,8 +159,8 @@ public:
 	const Block *end() const { return &m_data[m_size.X * m_size.Y]; };
 
 	blockpos_t getSize() const { return m_size; }
-	const WorldMeta &getMeta() const { return m_meta; }
-	WorldMeta &getMeta() { return m_meta; }
+	const WorldMeta &getMeta() const { return *m_meta.ptr(); }
+	WorldMeta &getMeta() { return *m_meta.ptr(); }
 
 	mutable std::mutex mutex; // used by Server/Client
 	std::unordered_set<BlockUpdate, BlockUpdateHash> proc_queue; // for networking
@@ -166,7 +176,7 @@ protected:
 
 	blockpos_t m_size;
 	const BlockManager *m_bmgr;
-	WorldMeta m_meta;
+	RefCnt<WorldMeta> m_meta;
 	Block *m_data = nullptr;
 	std::map<blockpos_t, BlockParams> m_params;
 };

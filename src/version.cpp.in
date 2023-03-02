@@ -1,0 +1,2 @@
+
+const char *VERSION_STRING = "OpenEdits v1.0.7-${GIT_SHA1} (${CMAKE_BUILD_TYPE})";

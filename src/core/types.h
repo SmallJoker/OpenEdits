@@ -43,13 +43,10 @@ struct Block {
 		ID_INVALID = UINT16_MAX
 	};
 
-	union {
-		struct {
-			bid_t id : 13;    // Foreground block ID (max. 8000)
-			uint8_t tile : 3; // Tile number (client-side only, for rendering)
-		};
-		bid_t raw_id;
-	};
+	// Apparently we cannot use "union" to write to both fields at once because MSVC is a bitch
+	bid_t id : 13;    // Foreground block ID (max. 8000)
+	uint8_t tile : 3; // Tile number (client-side only, for rendering)
+
 	bid_t bg = 0; // Background block ID
 };
 

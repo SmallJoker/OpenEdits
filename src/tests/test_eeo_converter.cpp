@@ -13,7 +13,7 @@ void unittest_eeo_converter()
 	EEOconverter conv(output);
 	conv.fromFile("8s9kvu.eelvl");
 
-	auto meta = output.getMeta();
+	auto &meta = output.getMeta();
 
 #endif
 }

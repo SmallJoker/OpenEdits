@@ -9,8 +9,7 @@
 #include "connect.h"
 #include "lobby.h"
 #include "gameplay.h"
-
-extern const char *VERSION_STRING;
+#include "version.h"
 
 Gui::Gui()
 {

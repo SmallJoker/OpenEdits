@@ -370,10 +370,8 @@ CHATCMD_FUNC(Server::chat_Clear)
 		return;
 	}
 
-	RefCnt<World> world(new World(m_bmgr, old_world->getMeta().id));
+	RefCnt<World> world(new World(m_bmgr, &old_world->getMeta()));
 	world->drop(); // kept alive by RefCnt
-
-	world->getMeta() = old_world->getMeta();
 
 	try {
 		world->createEmpty(blockpos_t(width_i, height_i));
@@ -413,10 +411,8 @@ CHATCMD_FUNC(Server::chat_Import)
 
 	auto old_world = player->getWorld();
 
-	RefCnt<World> world(new World(m_bmgr, old_world->getMeta().id));
+	RefCnt<World> world(new World(m_bmgr, &old_world->getMeta()));
 	world->drop(); // kept alive by RefCnt
-
-	world->getMeta() = old_world->getMeta();
 
 	EEOconverter conv(*world.ptr());
 
