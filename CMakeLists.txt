@@ -10,6 +10,8 @@ if(NOT CMAKE_BUILD_TYPE)
 	set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type: Release or Debug" FORCE)
 endif()
 
+set(BUILD_CLIENT TRUE CACHE BOOL "Whether to include the client part")
+
 
 ### Libraries
 
@@ -19,22 +21,53 @@ find_package(ENet REQUIRED)
 find_package(SQLite3 REQUIRED)
 find_package(ZLIB)
 
-# Irrlicht detection code imported from minetest/CMakeLists.cpp, commit 38ba813c by JosiahWI
-set(IRRLICHTMT_BUILD_DIR "" CACHE PATH "Path to IrrlichtMt build directory.")
-find_package(IrrlichtMt QUIET
-	PATHS "${IRRLICHTMT_BUILD_DIR}"
-	NO_DEFAULT_PATH
-)
+set(IRRLICHTMT_BUILD_DIR "" CACHE PATH "Client: Path to IrrlichtMt build directory. Server: Include path")
+if (BUILD_CLIENT)
+	message(NOTICE "--- Type: Client (GUI) & Server")
 
-if(NOT TARGET IrrlichtMt::IrrlichtMt)
-	# find_package() searches certain subdirectories. ${PATH}/cmake is not
-	# the only one, but it is the one where IrrlichtMt is supposed to export
-	# IrrlichtMtConfig.cmake
-	message(FATAL_ERROR "Could not find IrrlichtMtConfig.cmake in ${IRRLICHTMT_BUILD_DIR}/cmake.")
+	# Irrlicht detection code imported from minetest/CMakeLists.cpp, commit 38ba813c by JosiahWI
+	find_package(IrrlichtMt QUIET
+		PATHS "${IRRLICHTMT_BUILD_DIR}"
+		NO_DEFAULT_PATH
+	)
+
+	if(NOT TARGET IrrlichtMt::IrrlichtMt)
+		# find_package() searches certain subdirectories. ${PATH}/cmake is not
+		# the only one, but it is the one where IrrlichtMt is supposed to export
+		# IrrlichtMtConfig.cmake
+		message(FATAL_ERROR "Could not find IrrlichtMtConfig.cmake in ${IRRLICHTMT_BUILD_DIR}/cmake.")
+	endif()
+else()
+	message(NOTICE "--- Type: Server only")
+	project(OpenEdits-server)
+
+	# The server only needs headers, so give it headers.
+	find_path(IRRLICHT_INCLUDE_DIR NAMES irrlicht.h
+		PATHS
+		"${IRRLICHTMT_BUILD_DIR}"
+		"${IRRLICHTMT_BUILD_DIR}/include"
+		"${IRRLICHTMT_BUILD_DIR}/include/irrlichtmt"
+	)
+	if (NOT IRRLICHT_INCLUDE_DIR)
+		unset(IRRLICHT_INCLUDE_DIR CACHE)
+		message(FATAL_ERROR "Cannot find irrlicht.h inside IRRLICHT_INCLUDE_DIR")
+	endif()
+
+	add_library(IrrlichtMt::IrrlichtMt INTERFACE IMPORTED)
+	set_target_properties(IrrlichtMt::IrrlichtMt PROPERTIES
+		INTERFACE_INCLUDE_DIRECTORIES "${IRRLICHT_INCLUDE_DIR}")
+	unset(IRRLICHT_INCLUDE_DIR CACHE)
 endif()
 
 
 ### Compiler options
+
+# Is there no easier way?
+if (BUILD_CLIENT)
+	add_compile_definitions(BUILD_CLIENT=1)
+else()
+	add_compile_definitions(BUILD_CLIENT=0)
+endif()
 
 if (MSVC)
 	# Need .pdb
@@ -79,7 +112,7 @@ include_directories(
 	${ZLIB_INCLUDE_DIRS}
 )
 
-if(MSVC)
+if (MSVC)
 	file(TO_CMAKE_PATH ${SQLite3_INCLUDE_DIR} SQLite3_INCLUDE_DIR)
 	# idk. I cannot get this to link properly otherwise
 	set(SRC_FILES
@@ -87,6 +120,7 @@ if(MSVC)
 		${SQLite3_INCLUDE_DIR}/sqlite3.c
 	)
 endif()
+
 
 ### Executable
 
@@ -101,8 +135,11 @@ target_link_libraries(
 	${PROJECT_NAME}
 	${ENet_LIBRARY}
 	Threads::Threads
-	IrrlichtMt::IrrlichtMt
 )
+
+if(BUILD_CLIENT)
+	target_link_libraries(${PROJECT_NAME} IrrlichtMt::IrrlichtMt)
+endif()
 
 if(ZLIB_FOUND)
 	message("--- Found ZLIB for EEO world import")

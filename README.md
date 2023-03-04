@@ -49,6 +49,13 @@ Project compiling:
 
 	cmake -B build
 
+**Headless server compiling**
+
+1. Install the required libraries
+2. Put the IrrlichtMt headers (include directory) somewhere
+3. `cmake -B build -DBUILD_CLIENT=0 -DIRRLICHTMT_BUILD_DIR="/path/to/irrlicht/include/"`
+4. `cd build` -> build `make -j` -> start `./OpenEdits-server`
+
 
 ## Licenses
 
