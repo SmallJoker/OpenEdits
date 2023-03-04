@@ -36,7 +36,12 @@ void Server::pkt_Hello(peer_t peer_id, Packet &pkt)
 
 	protocol_ver = std::min(PROTOCOL_VERSION, protocol_ver);
 	if (protocol_ver < protocol_min || protocol_ver < PROTOCOL_VERSION_MIN) {
-		printf("Old peer_id=%u tried to connect\n", peer_id);
+		char buf[255];
+		snprintf(buf, sizeof(buf), "server=[%d,%d], client=[%d,%d]",
+			protocol_min, protocol_ver, PROTOCOL_VERSION_MIN, PROTOCOL_VERSION);
+
+		printf("Protocol mismatch. peer_id=%u tried to connect: %s\n", peer_id, buf);
+		sendError(peer_id, std::string("Incompatible protocol versions. ") + buf);
 		m_con->disconnect(peer_id);
 		return;
 	}
@@ -186,6 +191,7 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 	pkt_new.write(peer_id);
 	pkt_new.writeStr16(player->name);
 	pkt_new.write<u8>(player->godmode);
+	pkt_new.write<u8>(player->smiley_id);
 	player->writePhysics(pkt_new);
 
 	for (auto it : m_players) {
@@ -202,6 +208,7 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 		out.write(p->peer_id);
 		out.writeStr16(p->name);
 		out.write<u8>(p->godmode);
+		out.write<u8>(p->smiley_id);
 		p->writePhysics(out);
 		m_con->send(peer_id, 0, out);
 	}
@@ -372,12 +379,12 @@ void Server::pkt_Smiley(peer_t peer_id, Packet &pkt)
 {
 	RemotePlayer *player = getPlayerNoLock(peer_id);
 
-	int smiley_id = pkt.read<u8>();
+	player->smiley_id = pkt.read<u8>();
 
 	Packet out;
 	out.write(Packet2Client::Smiley);
 	out.write(peer_id);
-	out.write<u8>(smiley_id);
+	out.write<u8>(player->smiley_id);
 
 	broadcastInWorld(player, 1, out);
 }

@@ -35,7 +35,8 @@ struct GameEvent {
 		C2G_MAP_UPDATE,
 		C2G_PLAYER_JOIN,
 		C2G_PLAYER_LEAVE,
-		C2G_PLAYER_CHAT
+		C2G_PLAYER_CHAT,
+		C2G_PLAYERFLAGS
 	} type_c2g = C2G_INVALID;
 
 	GameEvent(G2C_Enum v) : type_g2c(v) {}

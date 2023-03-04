@@ -45,6 +45,7 @@ bool GameEventHandler::sendNewEvent(GameEvent &e)
 		case C::C2G_MAP_UPDATE:
 		case C::C2G_PLAYER_JOIN:
 		case C::C2G_PLAYER_LEAVE:
+		case C::C2G_PLAYERFLAGS:
 			break;
 	}
 

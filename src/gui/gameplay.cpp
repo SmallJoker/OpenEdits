@@ -252,7 +252,7 @@ void SceneGameplay::step(float dtime)
 
 }
 
-static bool editbox_move_to_end(gui::IGUIEnvironment *guienv)
+static bool editbox_move_to_end(gui::IGUIEnvironment *guienv, wchar_t charval = L'\0')
 {
 	auto root = guienv->getRootGUIElement();
 	auto element = root->getElementFromId(ID_BoxChat);
@@ -261,6 +261,7 @@ static bool editbox_move_to_end(gui::IGUIEnvironment *guienv)
 		memset(&ev, 0, sizeof(ev));
 		ev.EventType = EET_KEY_INPUT_EVENT;
 		ev.KeyInput.PressedDown = true;
+		ev.KeyInput.Char = charval;
 		ev.KeyInput.Key = KEY_END;
 		element->OnEvent(ev);
 
@@ -479,7 +480,7 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 		bool down = e.KeyInput.PressedDown;
 		if (e.KeyInput.Char == L'/' || (keycode == KEY_KEY_T && !down)) {
 			// Focus chat window
-			if (editbox_move_to_end(m_gui->guienv))
+			if (editbox_move_to_end(m_gui->guienv, e.KeyInput.Char))
 				return true;
 		}
 

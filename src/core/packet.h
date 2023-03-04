@@ -65,6 +65,7 @@ enum class Packet2Client : uint16_t {
 	Key, // key blocks
 	GodMode,
 	Smiley,
+	PlayerFlags,
 	MAX_END
 };
 

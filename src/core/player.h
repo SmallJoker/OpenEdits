@@ -54,6 +54,8 @@ public:
 	bool controls_enabled = true;
 	u8 coins = 0;
 
+	u8 smiley_id = 0;
+
 	static constexpr float GRAVITY_NORMAL = 100.0f;
 	static constexpr float CONTROLS_ACCEL = 60.0f;
 	static constexpr float JUMP_SPEED = 30.0f;
