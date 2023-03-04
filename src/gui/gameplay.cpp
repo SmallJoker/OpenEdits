@@ -252,6 +252,24 @@ void SceneGameplay::step(float dtime)
 
 }
 
+static bool editbox_move_to_end(gui::IGUIEnvironment *guienv)
+{
+	auto root = guienv->getRootGUIElement();
+	auto element = root->getElementFromId(ID_BoxChat);
+	if (element) {
+		SEvent ev;
+		memset(&ev, 0, sizeof(ev));
+		ev.EventType = EET_KEY_INPUT_EVENT;
+		ev.KeyInput.PressedDown = true;
+		ev.KeyInput.Key = KEY_END;
+		element->OnEvent(ev);
+
+		guienv->setFocus(element);
+		return true;
+	}
+	return false;
+}
+
 bool SceneGameplay::OnEvent(const SEvent &e)
 {
 	//if (e.EventType == EET_GUI_EVENT)
@@ -393,11 +411,65 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 	}
 	if (e.EventType == EET_KEY_INPUT_EVENT) {
 
-		{
-			auto element = m_gui->guienv->getFocus();
-			if (element && element->getType() == gui::EGUIET_EDIT_BOX)
-				return false;
+		auto focused = m_gui->guienv->getFocus();
+		if (focused && focused->getID() == ID_BoxChat) {
+			// dynamic_cast does not work and I don't know why
+			auto element = static_cast<gui::IGUIEditBox *>(focused);
+
+			if (e.KeyInput.Key == KEY_ESCAPE) {
+				element->setText(L"");
+				m_gui->guienv->setFocus(nullptr);
+				return true;
+			}
+
+			if (e.KeyInput.Key != KEY_TAB)
+				return false; // only handle tab inputs afterwards
+
+			if (e.KeyInput.PressedDown)
+				return true; // eat it
+
+			// Nickname autocompletion
+			std::wstring text(element->getText());
+			if (text.empty())
+				return true;
+
+			size_t word_start = 0;
+			for (size_t i = 1; i < text.size(); ++i) {
+				if (std::isspace(text[i - 1]) && !std::isspace(text[i]))
+					word_start = i;
+			}
+
+			std::string last_word;
+			wide_to_utf8(last_word, &text[word_start]);
+			for (char &c : last_word)
+				c = toupper(c);
+
+			auto players = m_gui->getClient()->getPlayerList();
+			std::string playername;
+			for (auto p : *players.ptr()) {
+				if (p.second->name.rfind(last_word, 0) == 0) {
+					playername = p.second->name;
+					break;
+				}
+			}
+			if (playername.empty())
+				return true;
+
+			std::wstring namew;
+			utf8_to_wide(namew, playername.c_str());
+			text.resize(word_start);
+			text.append(namew);
+			text.append(L" ");
+
+			element->setText(text.c_str());
+			editbox_move_to_end(m_gui->guienv);
+			return true;
 		}
+
+		// Skip other inputs if an edit box is selected
+		if (focused && focused->getType() == gui::EGUIET_EDIT_BOX)
+			return false;
+
 
 		auto player = m_gui->getClient()->getMyPlayer();
 		if (!player)
@@ -407,17 +479,8 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 		bool down = e.KeyInput.PressedDown;
 		if (e.KeyInput.Char == L'/' || (keycode == KEY_KEY_T && !down)) {
 			// Focus chat window
-			auto root = m_gui->guienv->getRootGUIElement();
-			auto element = root->getElementFromId(ID_BoxChat);
-			if (element) {
-				SEvent ev;
-				memcpy(&ev, &e, sizeof(e));
-				ev.KeyInput.Key = KEY_END;
-				element->OnEvent(ev);
-
-				m_gui->guienv->setFocus(element);
+			if (editbox_move_to_end(m_gui->guienv))
 				return true;
-			}
 		}
 
 		auto controls = player->getControls();

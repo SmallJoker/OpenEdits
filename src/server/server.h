@@ -58,6 +58,8 @@ private:
 
 	CHATCMD_FUNC(chat_Help);
 	CHATCMD_FUNC(chat_Flags);
+	CHATCMD_FUNC(chat_FSet);
+	CHATCMD_FUNC(chat_FDel);
 	CHATCMD_FUNC(chat_Respawn);
 	CHATCMD_FUNC(chat_Clear);
 	CHATCMD_FUNC(chat_Import);

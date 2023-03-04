@@ -37,3 +37,28 @@ std::string PlayerFlags::toHumanReadable() const
 	}
 	return out;
 }
+
+static const struct {
+	std::string str;
+	playerflags_t flags;
+} STRING_TO_FLAGS_LUT[] = {
+	{ "banned",          PlayerFlags::PF_BANNED },
+	{ "edit-simple",     PlayerFlags::PF_EDIT },
+	{ "edit-draw",       PlayerFlags::PF_EDIT_DRAW },
+	{ "godmode",         PlayerFlags::PF_GODMODE },
+	{ "helper",          PlayerFlags::PF_HELPER },
+	{ "tmp-heavykick",   PlayerFlags::PF_TMP_HEAVYKICK },
+	{ "tmp-edit-simple", PlayerFlags::PF_TMP_EDIT },
+	{ "tmp-edit-draw",   PlayerFlags::PF_TMP_EDIT_DRAW },
+};
+
+bool PlayerFlags::stringToPlayerFlags(const std::string &input, playerflags_t *out)
+{
+	for (auto &v : STRING_TO_FLAGS_LUT) {
+		if (input == v.str) {
+			*out = v.flags;
+			return true;
+		}
+	}
+	return false;
+}

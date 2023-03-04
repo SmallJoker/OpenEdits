@@ -18,6 +18,7 @@ struct PlayerFlags {
 		flags = (flags & ~mask) | nf;
 	}
 	std::string toHumanReadable() const;
+	static bool stringToPlayerFlags(const std::string &input, playerflags_t *out);
 
 	playerflags_t flags;
 

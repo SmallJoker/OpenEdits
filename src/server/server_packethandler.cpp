@@ -43,10 +43,8 @@ void Server::pkt_Hello(peer_t peer_id, Packet &pkt)
 
 	std::string name(pkt.readStr16());
 	name = strtrim(name);
-	if (name.size() > 30)
-		name.resize(30);
 
-	bool ok = !name.empty() && isalnum_nolocale(name);
+	bool ok = name.size() <= 16 && name.size() >= 3 && isalnum_nolocale(name);
 	for (char &c : name) {
 		c = toupper(c);
 	}
@@ -59,7 +57,7 @@ void Server::pkt_Hello(peer_t peer_id, Packet &pkt)
 	}
 
 	if (!ok) {
-		sendError(peer_id, "Invalid nickname or player is already online");
+		sendError(peer_id, "Invalid nickname (must be [A-z0-9]{3,16}) or player is already online");
 		m_con->disconnect(peer_id);
 		return;
 	}

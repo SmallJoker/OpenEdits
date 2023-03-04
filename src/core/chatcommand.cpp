@@ -31,6 +31,16 @@ ChatCommand &ChatCommand::add(const std::string &subcmd, Environment *env)
 	return it->second;
 }
 
+const ChatCommand *ChatCommand::get(const std::string &subcmd) const
+{
+	auto it = m_subcommands.find(subcmd);
+	if (it == m_subcommands.end())
+		return nullptr;
+
+	return &it->second;
+}
+
+
 bool ChatCommand::run(Player *player, std::string msg) const
 {
 	// Main command
@@ -57,10 +67,9 @@ bool ChatCommand::run(Player *player, std::string msg) const
 
 std::string ChatCommand::dumpUI() const
 {
-	bool first = true;
 	std::string str;
 	for (const auto &it : m_subcommands) {
-		if (!first)
+		if (!str.empty())
 			str.append(", ");
 
 		str.append(it.first);
@@ -68,7 +77,6 @@ std::string ChatCommand::dumpUI() const
 			// Contains subcommands
 			str.append(" [+...]");
 		}
-		first = false;
 	}
 	return str;
 }

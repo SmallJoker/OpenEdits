@@ -178,6 +178,8 @@ World::World(const BlockManager *bmgr, WorldMeta *meta) :
 	m_bmgr(bmgr),
 	m_meta(meta)
 {
+	meta->drop(); // Kept alive by RefCnt
+
 	ASSERT_FORCED(m_bmgr, "BlockManager is required");
 	printf("World: Create %s\n", m_meta->id.c_str());
 }

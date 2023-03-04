@@ -20,6 +20,7 @@ public:
 
 	void         add(const std::string &subcmd, ChatCommandAction action, Environment *env = nullptr);
 	ChatCommand &add(const std::string &subcmd, Environment *env = nullptr);
+	const ChatCommand *get(const std::string &subcmd) const;
 
 	bool run(Player *player, std::string msg) const;
 

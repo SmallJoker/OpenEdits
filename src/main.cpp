@@ -70,13 +70,12 @@ int main(int argc, char *argv[])
 	}
 
 run:
+
 #ifdef __unix__
-	{
-		struct sigaction act;
-		act.sa_handler = sigint_handler;
-		sigaction(SIGINT, &act, NULL);
-		sigaction(SIGTERM, &act, NULL);
-	}
+	struct sigaction act;
+	act.sa_handler = sigint_handler;
+	sigaction(SIGINT, &act, NULL);
+	sigaction(SIGTERM, &act, NULL);
 #endif
 
 	if (run_server) {

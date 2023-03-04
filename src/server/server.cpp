@@ -7,6 +7,7 @@
 #include "core/world.h"
 #include "server/database_world.h"
 #include "server/eeo_converter.h"
+#include "version.h"
 
 #if 0
 	#define DEBUGLOG(...) printf(__VA_ARGS__)
@@ -39,11 +40,13 @@ Server::Server() :
 	{
 		m_chatcmd.add("/help", (ChatCommandAction)&Server::chat_Help);
 		m_chatcmd.add("/flags", (ChatCommandAction)&Server::chat_Flags);
+		m_chatcmd.add("/fset", (ChatCommandAction)&Server::chat_FSet);
+		m_chatcmd.add("/fdel", (ChatCommandAction)&Server::chat_FDel);
 		// Owner
 		m_chatcmd.add("/respawn", (ChatCommandAction)&Server::chat_Respawn);
 		m_chatcmd.add("/clear", (ChatCommandAction)&Server::chat_Clear);
 		m_chatcmd.add("/import", (ChatCommandAction)&Server::chat_Import);
-		m_chatcmd.add("/save", (ChatCommandAction)&Server::chat_Save);;
+		m_chatcmd.add("/save", (ChatCommandAction)&Server::chat_Save);
 	}
 
 	{
@@ -312,7 +315,45 @@ void Server::systemChatSend(Player *player, const std::string &msg)
 
 CHATCMD_FUNC(Server::chat_Help)
 {
-	systemChatSend(player, "Available commands: " + m_chatcmd.dumpUI());
+	std::string cmd(get_next_part(msg));
+	if (cmd.empty()) {
+		systemChatSend(player, "Available commands: " + m_chatcmd.dumpUI());
+		return;
+	}
+
+	static const struct {
+		const std::string cmd;
+		const std::string text;
+	} help_LUT[] = {
+		{ "flags", "[WIP!] Lists the player's flags (permissions)!" },
+		{ "fset", "[WIP!] Syntax: /fset PLAYERNAME FLAG1 [...]\nSets one or more flags for a player." },
+		{ "fdel", "The complement of /fset" },
+		// respawn
+		{ "clear", "Syntax: /clear [W] [H]\nW,H: integer (optional) to specify the new world dimensions." },
+		{ "import", "Syntax: /import FILENAME\nFILENAME: .eelvl format without the file extension" },
+		// save
+		{ "version", std::string("Server version: ") + VERSION_STRING },
+	};
+
+	for (auto v : help_LUT) {
+		if (cmd != v.cmd)
+			continue;
+
+		std::string answer = v.text;
+
+		auto main = m_chatcmd.get("/" + v.cmd);
+		if (main) {
+			std::string subcmds = main->dumpUI();
+			if (!subcmds.empty()) {
+				answer.append("\nSubcommands: ");
+				answer.append(subcmds);
+			}
+		}
+		systemChatSend(player, answer);
+		return;
+	}
+
+	systemChatSend(player, "No help available for command " + cmd);
 }
 
 CHATCMD_FUNC(Server::chat_Flags)
@@ -334,6 +375,70 @@ CHATCMD_FUNC(Server::chat_Flags)
 	systemChatSend(player, ret);
 }
 
+CHATCMD_FUNC(Server::chat_FSet)
+{
+	if (!player->getFlags().check(PlayerFlags::PF_HELPER)) {
+		systemChatSend(player, "Insufficient permissions");
+		return;
+	}
+
+	auto world = player->getWorld();
+	auto &meta = player->getWorld()->getMeta();
+
+	std::string playername(get_next_part(msg));
+	for (char &c : playername)
+		c = toupper(c);
+
+	bool player_found = false;
+	// Search for existing records
+	PlayerFlags playerflags = meta.getPlayerFlags(playername);
+	if (playerflags.flags != 0)
+		player_found = true;
+
+	if (!player_found) {
+		// Search for online players
+		for (auto p : m_players) {
+			if (p.second->getWorld() != world)
+				continue;
+			if (p.second->name != playername)
+				continue;
+
+			player_found = true;
+			break;
+		}
+	}
+
+	if (!player_found) {
+		systemChatSend(player, "Cannot find player " + playername);
+		return;
+	}
+
+	if (playerflags.check(PlayerFlags::PF_HELPER)
+			&& !player->getFlags().check(PlayerFlags::PF_OWNER)) {
+		systemChatSend(player, "Insufficient permissions");
+		return;
+	}
+
+	std::string flag_string(get_next_part(msg));
+	while (!flag_string.empty()) {
+		playerflags_t flags_new;
+		if (!PlayerFlags::stringToPlayerFlags(flag_string, &flags_new)) {
+			systemChatSend(player, "Unknown flag: " + flag_string);
+			return;
+		}
+		playerflags.flags |= flags_new;
+
+		flag_string = get_next_part(msg);
+	}
+
+	//meta.setPlayerFlags(playername, playerflags);
+	// TODO
+}
+
+CHATCMD_FUNC(Server::chat_FDel)
+{
+}
+
 CHATCMD_FUNC(Server::chat_Respawn)
 {
 	respawnPlayer(player, true);
@@ -343,7 +448,7 @@ CHATCMD_FUNC(Server::chat_Respawn)
 CHATCMD_FUNC(Server::chat_Clear)
 {
 	if (!player->getFlags().check(PlayerFlags::PF_OWNER)) {
-		systemChatSend(player, "Missing permissions");
+		systemChatSend(player, "Insufficient permissions");
 		return;
 	}
 
