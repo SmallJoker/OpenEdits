@@ -20,7 +20,8 @@ struct GameEvent {
 		G2C_JOIN,
 		G2C_LEAVE,
 		G2C_CHAT,
-		G2C_GODMODE
+		G2C_GODMODE,
+		G2C_SMILEY
 	} type_g2c = G2C_INVALID;
 
 	// Client --> GUI

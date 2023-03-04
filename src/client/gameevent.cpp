@@ -59,6 +59,7 @@ bool GameEventHandler::sendNewEvent(GameEvent &e)
 		case G::G2C_LOBBY_REQUEST:
 		case G::G2C_LEAVE:
 		case G::G2C_GODMODE:
+		case G::G2C_SMILEY:
 			break;
 	}
 

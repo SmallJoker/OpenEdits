@@ -45,21 +45,15 @@ Gui::Gui()
 
 		gui::IGUISkin *skin = guienv->getSkin();
 		skin->setFont(font);
-		auto make_opaque = [&skin] (gui::EGUI_DEFAULT_COLOR what) {
-			auto color = skin->getColor(what);
-			u32 alpha = color.getAlpha();
-			if (alpha > 220)
-				return;
 
-			color.setAlpha((alpha + 2 * 0xFF + 1) / 3);
-			skin->setColor(what, color);
-		};
-		make_opaque(gui::EGDC_3D_DARK_SHADOW);
-		make_opaque(gui::EGDC_3D_FACE); // Tab header
-		make_opaque(gui::EGDC_3D_SHADOW);
-		make_opaque(gui::EGDC_3D_LIGHT);
-		skin->setColor(gui::EGDC_HIGH_LIGHT, 0xDD113388); // selected items
-		skin->setColor(gui::EGDC_3D_HIGH_LIGHT, 0xCC666666); // list 3D sunken pane BG
+		skin->setColor(gui::EGDC_HIGH_LIGHT, 0xFF3344EE); // text highlight
+		skin->setColor(gui::EGDC_EDITABLE, 0xFFDDDDDD); // edit box bg
+		skin->setColor(gui::EGDC_FOCUSED_EDITABLE, 0xFFFFFFFF); // edit box bg
+		skin->setColor(gui::EGDC_BUTTON_TEXT, 0xFF000000);
+		skin->setColor(gui::EGDC_3D_DARK_SHADOW, 0xDD999999); // button bottom/right
+		skin->setColor(gui::EGDC_3D_HIGH_LIGHT, 0x66DDDDDD); // button top/left & list background
+		skin->setColor(gui::EGDC_3D_SHADOW, 0xDD666666); // button 2nd level bottom/right
+		skin->setColor(gui::EGDC_3D_FACE, 0xDDCCCCCC); // button face (interpolated)
 	}
 
 	{

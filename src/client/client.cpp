@@ -220,6 +220,14 @@ bool Client::OnEvent(GameEvent &e)
 				m_con->send(0, 1, pkt);
 			}
 			break;
+		case E::G2C_SMILEY:
+			{
+				Packet pkt;
+				pkt.write(Packet2Server::Smiley);
+				pkt.write<u8>(e.intval);
+				m_con->send(0, 1, pkt);
+			}
+			break;
 	}
 	return false;
 }

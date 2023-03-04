@@ -67,6 +67,7 @@ private:
 	void pkt_PlaceBlock(Packet &pkt);
 	void pkt_Key(Packet &pkt);
 	void pkt_GodMode(Packet &pkt);
+	void pkt_Smiley(Packet &pkt);
 	void pkt_Deprecated(Packet &pkt);
 
 	static const ClientPacketHandler packet_actions[];

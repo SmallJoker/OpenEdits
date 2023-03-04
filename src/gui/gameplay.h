@@ -24,6 +24,7 @@ struct BlockTile;
 struct BlockProperties;
 class SceneBlockSelector;
 class SceneMinimap;
+class SceneSmileySelector;
 
 class SceneGameplay : public SceneHandler {
 public:
@@ -63,6 +64,7 @@ private:
 
 	SceneBlockSelector *m_blockselector = nullptr;
 	SceneMinimap *m_minimap = nullptr;
+	SceneSmileySelector *m_smileyselector = nullptr;
 
 	core::recti m_draw_area; // rendering area
 
@@ -79,6 +81,7 @@ private:
 
 	gui::IGUIEditBox *m_chathistory = nullptr;
 	core::stringw m_chathistory_text;
+	bool m_chathistory_text_dirty = false;
 
 	scene::ISceneNode *m_players = nullptr;
 };

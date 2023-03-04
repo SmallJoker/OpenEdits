@@ -37,5 +37,5 @@ private:
 	core::dimension2du m_imgsize;
 
 	bool m_is_dirty = true;
-	bool m_is_visible = true;
+	bool m_is_visible = false;
 };

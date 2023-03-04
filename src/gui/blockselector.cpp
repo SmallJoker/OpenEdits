@@ -53,12 +53,9 @@ void SceneBlockSelector::draw()
 
 	m_highlight = m_gui->addImage(rect);
 	// Texture size must match BTN_SIZE to display properly
-	m_highlight->setImage(m_gui->getVideoDriver()->getTexture("assets/textures/block_selected.png"));
+	m_highlight->setImage(m_gui->getVideoDriver()->getTexture("assets/textures/selected_30px.png"));
+	m_highlight->setScaleImage(true);
 	selectBlockId(m_selected_bid, false);
-}
-
-void SceneBlockSelector::step(float dtime)
-{
 }
 
 bool SceneBlockSelector::OnEvent(const SEvent &e)
@@ -231,6 +228,39 @@ void SceneBlockSelector::getBlockUpdate(BlockUpdate &bu)
 	}
 }
 
+static video::ITexture *make_pressed_image(video::IVideoDriver *driver, video::ITexture *source)
+{
+	static std::map<video::ITexture *, video::ITexture *> cache;
+
+	auto it = cache.find(source);
+	if (it != cache.end())
+		return it->second;
+
+	auto dim = source->getOriginalSize();
+	video::IImage *img = driver->createImage(source,
+		core::vector2di(),
+		core::dimension2du(dim.Height, dim.Height)
+	);
+
+	for (u32 y = 0; y < dim.Height; ++y)
+	for (u32 x = 0; x < dim.Width; ++x) {
+		auto color = img->getPixel(x, y);
+		color.setRed(color.getRed() * 0.7f);
+		color.setGreen(color.getGreen() * 0.7f);
+		color.setBlue(color.getBlue() * 0.7f);
+		img->setPixel(x, y, color);
+	}
+
+	char buf[255];
+	snprintf(buf, sizeof(buf), "%p__pressed", source);
+
+	video::ITexture *out = driver->addTexture(buf, img);
+	img->drop();
+
+	cache.emplace(source, out);
+	return out;
+}
+
 extern BlockManager *g_blockmanager;
 
 bool SceneBlockSelector::drawBlockButton(bid_t bid, const core::recti &rect, gui::IGUIElement *parent, int id)
@@ -247,6 +277,10 @@ bool SceneBlockSelector::drawBlockButton(bid_t bid, const core::recti &rect, gui
 			core::dimension2di(dim.Height, dim.Height)
 		);
 		e->setImage(tile.texture, rect);
+		e->setScaleImage(true);
+		e->setUseAlphaChannel(false);
+		e->setDrawBorder(false);
+		e->setPressedImage(make_pressed_image(m_gui->getVideoDriver(), tile.texture));
 	} else {
 		e->setText(L"E");
 	}
@@ -284,7 +318,7 @@ void SceneBlockSelector::drawBlockSelector()
 
 	// Prepare to add tabs
 	auto skin = m_gui->getSkin();
-	video::SColor color(skin->getColor(gui::EGDC_3D_HIGH_LIGHT));
+	video::SColor color(skin->getColor(gui::EGDC_3D_SHADOW));
 
 	auto tc = m_gui->addTabControl(rect_tab, m_showmore);
 	tc->setID(ID_TabControl);

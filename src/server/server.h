@@ -39,6 +39,7 @@ private:
 	void pkt_PlaceBlock(peer_t peer_id, Packet &pkt);
 	void pkt_TriggerBlocks(peer_t peer_id, Packet &pkt);
 	void pkt_GodMode(peer_t peer_id, Packet &pkt);
+	void pkt_Smiley(peer_t peer_id, Packet &pkt);
 	void pkt_Deprecated(peer_t peer_id, Packet &pkt);
 
 	void sendError(peer_t peer_id, const std::string &text);

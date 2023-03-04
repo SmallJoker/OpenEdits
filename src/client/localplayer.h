@@ -10,6 +10,8 @@ public:
 	static s32 gui_smiley_counter;
 	s32 getGUISmileyId();
 
+	int smiley_id = 0;
+
 	// Executa only on the own player!
 	bool updateCoinCount();
 

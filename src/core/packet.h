@@ -64,6 +64,7 @@ enum class Packet2Client : uint16_t {
 	PlaceBlock,
 	Key, // key blocks
 	GodMode,
+	Smiley,
 	MAX_END
 };
 
@@ -79,5 +80,6 @@ enum class Packet2Server : uint16_t {
 	PlaceBlock,
 	TriggerBlocks, // key/kill ?
 	GodMode,
+	Smiley,
 	MAX_END
 };

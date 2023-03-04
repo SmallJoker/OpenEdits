@@ -23,7 +23,6 @@ public:
 	void setHotbarPos(const core::position2di &pos) { m_hotbar_pos = pos; }
 
 	void draw();
-	void step(float dtime);
 	bool OnEvent(const SEvent &e) override;
 	void toggleShowMore();
 

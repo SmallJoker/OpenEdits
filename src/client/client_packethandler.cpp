@@ -17,6 +17,7 @@ const ClientPacketHandler Client::packet_actions[] = {
 	{ ClientState::WorldPlay, &Client::pkt_PlaceBlock }, // 10
 	{ ClientState::WorldPlay, &Client::pkt_Key },
 	{ ClientState::WorldJoin, &Client::pkt_GodMode },
+	{ ClientState::WorldJoin, &Client::pkt_Smiley },
 	{ ClientState::Invalid, 0 }
 };
 
@@ -382,6 +383,20 @@ void Client::pkt_GodMode(Packet &pkt)
 			sendNewEvent(e);
 		}
 	}
+}
+
+void Client::pkt_Smiley(Packet &pkt)
+{
+	SimpleLock lock(m_players_lock);
+
+	peer_t peer_id = pkt.read<peer_t>();
+	int smiley_id = pkt.read<u8>();
+
+	LocalPlayer *player = getPlayerNoLock(peer_id);
+	if (!player)
+		return;
+
+	player->smiley_id = smiley_id;
 }
 
 void Client::pkt_Deprecated(Packet &pkt)

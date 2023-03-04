@@ -4,6 +4,7 @@
 #include "core/blockmanager.h"
 #include "blockselector.h"
 #include "minimap.h"
+#include "smileyselector.h"
 #include <irrlicht.h>
 
 static int SIZEW = 650; // world render size
@@ -43,6 +44,7 @@ SceneGameplay::~SceneGameplay()
 
 	delete m_blockselector;
 	delete m_minimap;
+	delete m_smileyselector;
 }
 
 #if 0
@@ -111,7 +113,7 @@ void SceneGameplay::draw()
 	gui->addButton(
 		rect_1, nullptr, ID_BtnBack, L"<< Lobby");
 
-	x_pos += 120 + 250; // lobby + block selector
+	x_pos += 120 + 280; // lobby + block selector
 
 	{
 		// God mode toggle button
@@ -179,12 +181,22 @@ void SceneGameplay::draw()
 	}
 
 	{
+		if (!m_smileyselector)
+			m_smileyselector = new SceneSmileySelector(m_gui);
+
+		m_smileyselector->setSelectorPos(
+			rect_1.UpperLeftCorner + core::position2di(110, 0)
+		);
+		m_smileyselector->draw();
+	}
+
+	{
 		// Block selector GUI
 		if (!m_blockselector)
 			m_blockselector = new SceneBlockSelector(gui);
 
 		m_blockselector->setHotbarPos(
-			rect_1.UpperLeftCorner + core::position2di(120, 0)
+			rect_1.UpperLeftCorner + core::position2di(150, 0)
 		);
 		m_blockselector->draw();
 	}
@@ -195,8 +207,13 @@ void SceneGameplay::step(float dtime)
 	drawBlocksInView();
 	updatePlayerlist();
 	updatePlayerPositions(dtime);
-	m_blockselector->step(dtime);
 	m_minimap->step(dtime);
+
+	if (m_chathistory_text_dirty) {
+		m_chathistory_text_dirty = false;
+		// GUI elements must be updated in sync with the render thread to avoid segfaults
+		m_chathistory->setText(m_chathistory_text.c_str());
+	}
 
 	{
 		// Actually draw the world contents
@@ -241,6 +258,8 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 	//	printf("event %d, %s\n", e.GUIEvent.EventType, e.GUIEvent.Caller->getTypeName());
 
 	if (m_blockselector->OnEvent(e))
+		return true;
+	if (m_smileyselector->OnEvent(e))
 		return true;
 
 	if (e.EventType == EET_GUI_EVENT) {
@@ -489,7 +508,7 @@ bool SceneGameplay::OnEvent(GameEvent &e)
 				std::wstring line;
 				utf8_to_wide(line, buf);
 				m_chathistory_text.append(line.c_str());
-				m_chathistory->setText(m_chathistory_text.c_str());
+				m_chathistory_text_dirty = true;
 			}
 			return true;
 		default: break;
@@ -798,11 +817,8 @@ void SceneGameplay::updatePlayerPositions(float dtime)
 	auto smiley_texture = m_gui->driver->getTexture("assets/textures/smileys.png");
 	auto godmode_texture = m_gui->driver->getTexture("assets/textures/god_aura.png");
 
-	int texture_tiles = 4; // TODO: add a better check
-	if (0) {
-		auto dim = smiley_texture->getOriginalSize();
-		texture_tiles = dim.Width / dim.Height;
-	}
+	auto dim = smiley_texture->getOriginalSize();
+	int texture_tiles = dim.Width / dim.Height;
 
 	do {
 		// Hide nametags after a certain duration
@@ -845,7 +861,7 @@ void SceneGameplay::updatePlayerPositions(float dtime)
 			nf->setPosition(nf_pos);
 		} else {
 			nf = smgr->addBillboardSceneNode(m_players,
-				core::dimension2d<f32>(10, 10),
+				core::dimension2d<f32>(15, 15),
 				nf_pos,
 				nf_id
 			);
@@ -854,12 +870,6 @@ void SceneGameplay::updatePlayerPositions(float dtime)
 			nf->setMaterialFlag(video::EMF_BILINEAR_FILTER, false);
 			nf->setMaterialType(video::EMT_TRANSPARENT_ALPHA_CHANNEL_REF);
 			nf->setMaterialTexture(0, smiley_texture);
-
-			// Set texture
-			auto &mat = nf->getMaterial(0).getTextureMatrix(0);
-			mat.setTextureTranslate((it.first % texture_tiles) / (float)texture_tiles, 0);
-			mat.setTextureScale(1.0f / texture_tiles, 1);
-
 
 			// Add nametag
 			auto nt_texture = generateTexture(it.second->name);
@@ -873,6 +883,13 @@ void SceneGameplay::updatePlayerPositions(float dtime)
 			nt->setMaterialFlag(video::EMF_ZWRITE_ENABLE, true);
 			//nt->setMaterialType(video::EMT_TRANSPARENT_ALPHA_CHANNEL_REF);
 			nt->setMaterialTexture(0, nt_texture);
+		}
+
+		if (player->smiley_id < texture_tiles) {
+			// Assign smiley texture offset
+			auto &mat = nf->getMaterial(0).getTextureMatrix(0);
+			mat.setTextureTranslate(player->smiley_id / (float)texture_tiles, 0);
+			mat.setTextureScale(1.0f / texture_tiles, 1);
 		}
 
 		scene::ISceneNode *ga = nullptr;

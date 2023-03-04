@@ -19,6 +19,7 @@ const ServerPacketHandler Server::packet_actions[] = {
 	{ RemotePlayerState::WorldPlay, &Server::pkt_PlaceBlock },
 	{ RemotePlayerState::WorldPlay, &Server::pkt_TriggerBlocks },
 	{ RemotePlayerState::WorldPlay, &Server::pkt_GodMode },
+	{ RemotePlayerState::WorldPlay, &Server::pkt_Smiley },
 	{ RemotePlayerState::Invalid, 0 } // 10
 };
 
@@ -365,6 +366,20 @@ void Server::pkt_GodMode(peer_t peer_id, Packet &pkt)
 	out.write(Packet2Client::GodMode);
 	out.write(peer_id);
 	out.write<u8>(status);
+
+	broadcastInWorld(player, 1, out);
+}
+
+void Server::pkt_Smiley(peer_t peer_id, Packet &pkt)
+{
+	RemotePlayer *player = getPlayerNoLock(peer_id);
+
+	int smiley_id = pkt.read<u8>();
+
+	Packet out;
+	out.write(Packet2Client::Smiley);
+	out.write(peer_id);
+	out.write<u8>(smiley_id);
 
 	broadcastInWorld(player, 1, out);
 }
