@@ -4,16 +4,12 @@
 
 DatabaseWorld::~DatabaseWorld()
 {
-	if (m_database)
-		close();
+	close();
 }
 
 bool DatabaseWorld::tryOpen(const char *filepath)
 {
-	printf("DatabaseWorld: Opening database %s\n", filepath);
-
-	int status = sqlite3_open(filepath, &m_database);
-	if (!ok("open", status))
+	if (!Database::tryOpen(filepath))
 		return false;
 
 	// Thanks "DB Browser for SQLite"
@@ -32,12 +28,7 @@ bool DatabaseWorld::tryOpen(const char *filepath)
 		")",
 		nullptr, nullptr, nullptr));
 
-	good &= ok("begin", sqlite3_prepare_v2(m_database,
-		"BEGIN;",
-		-1, &m_stmt_begin, nullptr));
-	good &= ok("end", sqlite3_prepare_v2(m_database,
-		"COMMIT;",
-		-1, &m_stmt_end, nullptr));
+
 	good &= ok("read", sqlite3_prepare_v2(m_database,
 		"SELECT * FROM `worlds` WHERE `id` = ? LIMIT 1",
 		-1, &m_stmt_read, nullptr));
@@ -59,17 +50,11 @@ void DatabaseWorld::close()
 	if (!m_database)
 		return;
 
-	printf("DatabaseWorld: Closing database\n");
-
-	ok("~begim", sqlite3_finalize(m_stmt_begin));
-	ok("~end", sqlite3_finalize(m_stmt_end));
 	ok("~read", sqlite3_finalize(m_stmt_read));
 	ok("~write", sqlite3_finalize(m_stmt_write));
 	ok("~by_player", sqlite3_finalize(m_stmt_by_player));
 
-	ok("close", sqlite3_close_v2(m_database));
-	m_database = nullptr;
-
+	Database::close();
 }
 
 static int custom_bind_string(sqlite3_stmt *s, int col, const std::string &text)
@@ -171,19 +156,6 @@ bool DatabaseWorld::save(const World *world)
 	return good;
 }
 
-bool DatabaseWorld::runCustomQuery(const char *query)
-{
-	if (!m_database)
-		return false;
-
-	char *errmsg = nullptr;
-	bool good = ok(query, sqlite3_exec(m_database, query, nullptr, nullptr, &errmsg));
-	if (!good && errmsg)
-		printf("\t Message: %s\n", errmsg);
-
-	return good;
-}
-
 std::vector<LobbyWorld> DatabaseWorld::getByPlayer(const std::string &name) const
 {
 	std::vector<LobbyWorld> out;
@@ -211,15 +183,3 @@ std::vector<LobbyWorld> DatabaseWorld::getByPlayer(const std::string &name) cons
 	sqlite3_reset(s);
 	return out;
 }
-
-
-bool DatabaseWorld::ok(const char *where, int status)  const
-{
-	if (status == SQLITE_OK || status == SQLITE_DONE)
-		return true;
-
-	printf("DatabaseWorld: '%s' returned error code %d: %s\n",
-		where, status, sqlite3_errmsg(m_database));
-	return false;
-}
-
