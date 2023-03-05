@@ -93,6 +93,16 @@ void SceneGameplay::draw()
 	const auto wsize = m_gui->window_size;
 	auto gui = m_gui->guienv;
 
+	PlayerFlags pflags;
+	{
+		//  Update permission stuff
+		auto player = m_gui->getClient()->getMyPlayer();
+		pflags = player->getFlags();
+
+		m_may_drag_draw = pflags.check(PlayerFlags::PF_EDIT_DRAW)
+			|| pflags.check(PlayerFlags::PF_TMP_EDIT_DRAW);
+	}
+
 	{
 		SIZEW = wsize.Width * 0.7f;
 
@@ -123,6 +133,8 @@ void SceneGameplay::draw()
 		);
 
 		gui->addButton(rect_3, nullptr, ID_BtnGodMode, L"G");
+		// Always enabled so that they can turn godmode off again
+
 		x_pos += 40;
 	}
 
@@ -133,8 +145,10 @@ void SceneGameplay::draw()
 			core::dimension2du(250, 30)
 		);
 
-		gui->addEditBox(
+		auto e = gui->addEditBox(
 			L"", rect_2, true, nullptr, ID_BoxChat);
+		e->setEnabled(!pflags.check(PlayerFlags::PF_TMP_MUTED));
+
 		x_pos += 260;
 	}
 
@@ -198,6 +212,8 @@ void SceneGameplay::draw()
 		m_blockselector->setHotbarPos(
 			rect_1.UpperLeftCorner + core::position2di(150, 0)
 		);
+
+		m_blockselector->setEnabled(pflags.flags & PlayerFlags::PF_MASK_EDIT);
 		m_blockselector->draw();
 	}
 }
@@ -314,6 +330,9 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 						m_gui->sendNewEvent(e);
 					}
 
+					if (m_previous_chat_message != textw)
+						m_previous_chat_message = textw;
+
 					e.GUIEvent.Caller->setText(L"");
 					m_gui->guienv->setFocus(nullptr);
 					return true;
@@ -411,66 +430,21 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 		}
 	}
 	if (e.EventType == EET_KEY_INPUT_EVENT) {
-
 		auto focused = m_gui->guienv->getFocus();
-		if (focused && focused->getID() == ID_BoxChat) {
-			// dynamic_cast does not work and I don't know why
-			auto element = static_cast<gui::IGUIEditBox *>(focused);
-
-			if (e.KeyInput.Key == KEY_ESCAPE) {
-				element->setText(L"");
-				m_gui->guienv->setFocus(nullptr);
-				return true;
+		if (focused) {
+			if (focused->getID() == ID_BoxChat) {
+				if (handleChatInput(e))
+					return true;
 			}
 
-			if (e.KeyInput.Key != KEY_TAB)
-				return false; // only handle tab inputs afterwards
-
-			if (e.KeyInput.PressedDown)
-				return true; // eat it
-
-			// Nickname autocompletion
-			std::wstring text(element->getText());
-			if (text.empty())
-				return true;
-
-			size_t word_start = 0;
-			for (size_t i = 1; i < text.size(); ++i) {
-				if (std::isspace(text[i - 1]) && !std::isspace(text[i]))
-					word_start = i;
+			if (focused->getType() == gui::EGUIET_EDIT_BOX) {
+				// Skip other inputs if an edit box is selected
+				return false;
 			}
-
-			std::string last_word;
-			wide_to_utf8(last_word, &text[word_start]);
-			for (char &c : last_word)
-				c = toupper(c);
-
-			auto players = m_gui->getClient()->getPlayerList();
-			std::string playername;
-			for (auto p : *players.ptr()) {
-				if (p.second->name.rfind(last_word, 0) == 0) {
-					playername = p.second->name;
-					break;
-				}
-			}
-			if (playername.empty())
-				return true;
-
-			std::wstring namew;
-			utf8_to_wide(namew, playername.c_str());
-			text.resize(word_start);
-			text.append(namew);
-			text.append(L" ");
-
-			element->setText(text.c_str());
-			editbox_move_to_end(m_gui->guienv);
-			return true;
 		}
 
-		// Skip other inputs if an edit box is selected
-		if (focused && focused->getType() == gui::EGUIET_EDIT_BOX)
-			return false;
-
+		if (handleChatInput(e))
+			return true;
 
 		auto player = m_gui->getClient()->getMyPlayer();
 		if (!player)
@@ -478,12 +452,6 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 
 		EKEY_CODE keycode = e.KeyInput.Key;
 		bool down = e.KeyInput.PressedDown;
-		if (e.KeyInput.Char == L'/' || (keycode == KEY_KEY_T && !down)) {
-			// Focus chat window
-			if (editbox_move_to_end(m_gui->guienv, e.KeyInput.Char))
-				return true;
-		}
-
 		auto controls = player->getControls();
 
 		// The Client performs physics of all players, including ours.
@@ -575,10 +543,97 @@ bool SceneGameplay::OnEvent(GameEvent &e)
 				m_chathistory_text_dirty = true;
 			}
 			return true;
+		case E::C2G_PLAYERFLAGS:
+			m_gui->requestRenew();
+			return true;
 		default: break;
 	}
 	return false;
 }
+
+bool SceneGameplay::handleChatInput(const SEvent &e)
+{
+	// dynamic_cast does not work and I don't know why
+	auto root = m_gui->guienv->getRootGUIElement();
+	auto element = static_cast<gui::IGUIEditBox *>(root->getElementFromId(ID_BoxChat));
+
+	if (!element)
+		return false;
+
+	bool focused = element == m_gui->guienv->getFocus();
+	EKEY_CODE key = e.KeyInput.Key;
+	bool down = e.KeyInput.PressedDown;
+
+	if (key == KEY_ESCAPE && focused) {
+		element->setText(L"");
+		m_gui->guienv->setFocus(nullptr);
+		return true;
+	}
+
+	if (key == KEY_UP && focused) {
+		if (!m_previous_chat_message.empty()) {
+			element->setText(m_previous_chat_message.c_str());
+			return true;
+		}
+	}
+
+	if (key == KEY_DOWN && focused) {
+		element->setText(L"");
+		return true;
+	}
+
+	if (key == KEY_TAB && focused) {
+		if (down)
+			return true; // eat it
+
+		// Nickname autocompletion
+		std::wstring text(element->getText());
+		if (text.empty())
+			return true;
+
+		size_t word_start = 0;
+		for (size_t i = 1; i < text.size(); ++i) {
+			if (std::isspace(text[i - 1]) && !std::isspace(text[i]))
+				word_start = i;
+		}
+
+		std::string last_word;
+		wide_to_utf8(last_word, &text[word_start]);
+		for (char &c : last_word)
+			c = toupper(c);
+
+		auto players = m_gui->getClient()->getPlayerList();
+		std::string playername;
+		for (auto p : *players.ptr()) {
+			if (p.second->name.rfind(last_word, 0) == 0) {
+				playername = p.second->name;
+				break;
+			}
+		}
+		if (playername.empty())
+			return true;
+
+		std::wstring namew;
+		utf8_to_wide(namew, playername.c_str());
+		text.resize(word_start);
+		text.append(namew);
+		text.append(L" ");
+
+		element->setText(text.c_str());
+		editbox_move_to_end(m_gui->guienv);
+		return true;
+	}
+
+	if (!focused) {
+		if (e.KeyInput.Char == L'/' || (key == KEY_KEY_T && !down)) {
+			// Focus chat window
+			if (editbox_move_to_end(m_gui->guienv, e.KeyInput.Char))
+				return true;
+		}
+	}
+	return false;
+}
+
 
 bool SceneGameplay::getBlockFromPixel(int x, int y, blockpos_t &bp)
 {

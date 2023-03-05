@@ -95,6 +95,7 @@ struct WorldMeta : public IWorldMeta, public irr::IReferenceCounted {
 
 	PlayerFlags getPlayerFlags(const std::string &name) const;
 	void setPlayerFlags(const std::string &name, const PlayerFlags pf);
+	const std::map<std::string, PlayerFlags> &getAllPlayerFlags() const { return player_flags; }
 	// For database
 	void readPlayerFlags(Packet &pkt);
 	void writePlayerFlags(Packet &pkt) const;

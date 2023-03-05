@@ -49,6 +49,7 @@ public:
 
 	void run();
 	void requestShutdown() { m_scenetype_next = SceneHandlerType::CTRL_QUIT; }
+	void requestRenew() { m_scenetype_next = SceneHandlerType::CTRL_RENEW; }
 
 	// Global callbacks
 	bool OnEvent(const SEvent &event) override;

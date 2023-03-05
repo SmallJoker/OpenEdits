@@ -158,19 +158,33 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 	if (!world && m_world_db) {
 		// try to load from the database
 		world = new World(m_bmgr, world_id);
+		world->drop(); // kept alive by RefCnt
+
 		bool found = m_world_db->load(world.ptr());
 		if (!found) {
-			world->drop();
 			world = nullptr;
 		}
 	}
 	if (!world) {
 		// create a new one
 		world = new World(m_bmgr, world_id);
+		world->drop(); // kept alive by RefCnt
+
 		world->createDummy({100, 75});
 		world->getMeta().owner = player->name;
 	}
-	world->drop(); // kept alive by RefCnt
+
+	{
+		// Ban check
+		PlayerFlags pflags = world->getMeta().getPlayerFlags(player->name);
+		if (pflags.flags & (PlayerFlags::PF_BANNED | PlayerFlags::PF_TMP_HEAVYKICK)) {
+			Packet out;
+			out.write(Packet2Client::Error);
+			out.writeStr16("You may not enter this world. Reason: kicked or banned.");
+			m_con->send(peer_id, 0, out);
+			return;
+		}
+	}
 
 	{
 		Packet out;
@@ -210,6 +224,15 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 		out.write<u8>(p->godmode);
 		out.write<u8>(p->smiley_id);
 		p->writePhysics(out);
+		m_con->send(peer_id, 0, out);
+	}
+
+	{
+		// Set player flags
+		Packet out;
+		out.write(Packet2Client::PlayerFlags);
+		out.write<playerflags_t>(player->getFlags().flags); // new flags
+		out.write<playerflags_t>(PlayerFlags::PF_MASK_SEND_PLAYER); // mask
 		m_con->send(peer_id, 0, out);
 	}
 
@@ -258,6 +281,10 @@ void Server::pkt_Move(peer_t peer_id, Packet &pkt)
 
 void Server::pkt_Chat(peer_t peer_id, Packet &pkt)
 {
+	RemotePlayer *player = getPlayerNoLock(peer_id);
+	if (player->getFlags().check(PlayerFlags::PF_TMP_MUTED))
+		return;
+
 	std::string message(pkt.readStr16());
 	if (message.size() > 200)
 		message.resize(200);
@@ -280,10 +307,14 @@ void Server::pkt_Chat(peer_t peer_id, Packet &pkt)
 		return;
 	}
 
-	RemotePlayer *player = getPlayerNoLock(peer_id);
-
 	if (m_chatcmd.run(player, message))
 		return; // Handled
+
+	if (message[0] == '/') {
+		// Unknown command
+		systemChatSend(player, "Unknown command. See /help");
+		return;
+	}
 
 	Packet out;
 	out.write(Packet2Client::Chat);
@@ -296,6 +327,10 @@ void Server::pkt_Chat(peer_t peer_id, Packet &pkt)
 void Server::pkt_PlaceBlock(peer_t peer_id, Packet &pkt)
 {
 	RemotePlayer *player = getPlayerNoLock(peer_id);
+	PlayerFlags pflags = player->getFlags();
+	if ((pflags.flags & PlayerFlags::PF_MASK_EDIT_DRAW) == 0)
+		return; // Missing permissions
+	// TODO: Add cooldown check for non-draw users
 
 	auto world = player->getWorld();
 	SimpleLock lock(world->mutex);
@@ -326,6 +361,7 @@ void Server::pkt_TriggerBlocks(peer_t peer_id, Packet &pkt)
 	auto world = player->getWorld();
 	auto &meta = world->getMeta();
 
+	// TODO: CHeck if the player is nearby
 	while (true) {
 		blockpos_t pos;
 		pkt.read(pos.X);
@@ -361,9 +397,8 @@ void Server::pkt_GodMode(peer_t peer_id, Packet &pkt)
 
 	bool status = pkt.read<u8>();
 
-	// TODO: enable permission check after implementing permissions
-	if (status && false) {
-		if (player->getFlags().check(PlayerFlags::PF_MASK_GODMODE))
+	if (status) {
+		if ((player->getFlags().flags & PlayerFlags::PF_MASK_GODMODE) == 0)
 			return;
 	}
 

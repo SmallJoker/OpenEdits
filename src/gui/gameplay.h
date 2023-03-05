@@ -43,6 +43,9 @@ public:
 	core::recti getDrawArea() { return m_draw_area; }
 
 private:
+	bool handleChatInput(const SEvent &e);
+	std::wstring m_previous_chat_message;
+
 	bool getBlockFromPixel(int x, int y, blockpos_t &bp);
 
 	video::ITexture *generateTexture(const std::string &text, u32 color = 0xFFFFFFFF, u32 bgcolor = 0xFF000000);
@@ -68,7 +71,7 @@ private:
 
 	core::recti m_draw_area; // rendering area
 
-	// Statis indicators for mouse inputs
+	// Status indicators for mouse inputs
 	bool m_may_drag_draw = true;   // permission: free drawing
 	BlockUpdate m_drag_draw_block; // drawing mode
 	bool m_erase_mode = false;     // removes the pointed block : shift down

@@ -35,6 +35,9 @@ SceneBlockSelector::~SceneBlockSelector()
 
 void SceneBlockSelector::draw()
 {
+	if (!m_enabled)
+		return;
+
 	core::recti rect(
 		m_hotbar_pos,
 		BTN_SIZE
@@ -60,6 +63,9 @@ void SceneBlockSelector::draw()
 
 bool SceneBlockSelector::OnEvent(const SEvent &e)
 {
+	if (!m_enabled)
+		return false;
+
 	if (e.EventType == EET_MOUSE_INPUT_EVENT) {
 		switch (e.MouseInput.Event) {
 			case EMIE_LMOUSE_PRESSED_DOWN:
@@ -290,6 +296,9 @@ bool SceneBlockSelector::drawBlockButton(bid_t bid, const core::recti &rect, gui
 
 void SceneBlockSelector::drawBlockSelector()
 {
+	if (!m_enabled)
+		return;
+
 	m_showmore->removeAllChildren();
 	if (!m_show_selector) {
 		m_showmore->setText(L"+");

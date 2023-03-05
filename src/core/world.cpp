@@ -96,7 +96,7 @@ PlayerFlags WorldMeta::getPlayerFlags(const std::string &name) const
 
 void WorldMeta::setPlayerFlags(const std::string &name, const PlayerFlags pf)
 {
-	player_flags.emplace(name, pf);
+	player_flags[name] = pf;
 }
 
 void WorldMeta::readPlayerFlags(Packet &pkt)
@@ -107,19 +107,20 @@ void WorldMeta::readPlayerFlags(Packet &pkt)
 
 	player_flags.clear();
 
-	if (version == 4)
+	if (version < 5)
 		return;
 
 	// Useful to enforce default flags in the future
-	pkt.read<playerflags_t>(); // known flags
+	playerflags_t mask = pkt.read<playerflags_t>(); // known flags
 
 	while (true) {
 		std::string name = pkt.readStr16();
 		if (name.empty())
 			break;
 
-		PlayerFlags pf;
-		pkt.read(pf.flags);
+		PlayerFlags pf(0); // defaults
+		playerflags_t flags = pkt.read<playerflags_t>();
+		pf.flags |= flags & mask;
 
 		player_flags.emplace(name, pf);
 	}
@@ -131,7 +132,7 @@ void WorldMeta::writePlayerFlags(Packet &pkt) const
 	pkt.write<playerflags_t>(PlayerFlags::PF_MASK_SAVE);
 
 	for (auto it : player_flags) {
-		if (!it.second.check(PlayerFlags::PF_MASK_SAVE))
+		if ((it.second.flags & PlayerFlags::PF_MASK_SAVE) == 0)
 			continue;
 		if (it.first == owner)
 			continue;

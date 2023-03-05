@@ -60,8 +60,8 @@ Connection::Connection(Connection::ConnectionType type, const char *name)
 			&address,
 			CON_CLIENTS,
 			CON_CHANNELS,
-			0, // unlimited incoming bandwidth
-			0 // unlimited outgoing bandwidth
+			10 * CON_CLIENTS * 1024, // incoming bandwidth [bytes/s]
+			50 * CON_CLIENTS * 1024 // outgoing bandwidth [bytes/s]
 		);
 	}
 

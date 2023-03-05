@@ -18,7 +18,7 @@ const ClientPacketHandler Client::packet_actions[] = {
 	{ ClientState::WorldPlay, &Client::pkt_Key },
 	{ ClientState::WorldJoin, &Client::pkt_GodMode },
 	{ ClientState::WorldJoin, &Client::pkt_Smiley },
-	{ ClientState::WorldJoin, &Client::pkt_PlayerFlags },
+	{ ClientState::WorldPlay, &Client::pkt_PlayerFlags },
 	{ ClientState::Invalid, 0 }
 };
 
@@ -410,7 +410,11 @@ void Client::pkt_PlayerFlags(Packet &pkt)
 	if (!player)
 		return;
 
-	player->getFlags().set(flags, mask);
+	PlayerFlags myflags = player->getFlags();
+	myflags.set(flags, mask);
+
+	auto &meta = player->getWorld()->getMeta();
+	meta.setPlayerFlags(player->name, myflags);
 
 	GameEvent e(GameEvent::C2G_PLAYERFLAGS);
 	sendNewEvent(e);

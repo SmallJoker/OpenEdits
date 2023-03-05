@@ -58,6 +58,8 @@ private:
 
 	CHATCMD_FUNC(chat_Help);
 	CHATCMD_FUNC(chat_Flags);
+	CHATCMD_FUNC(chat_FFilter);
+	bool changePlayerFlags(Player *player, std::string msg, bool do_add);
 	CHATCMD_FUNC(chat_FSet);
 	CHATCMD_FUNC(chat_FDel);
 	CHATCMD_FUNC(chat_Respawn);

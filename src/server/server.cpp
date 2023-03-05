@@ -40,6 +40,7 @@ Server::Server() :
 	{
 		m_chatcmd.add("/help", (ChatCommandAction)&Server::chat_Help);
 		m_chatcmd.add("/flags", (ChatCommandAction)&Server::chat_Flags);
+		m_chatcmd.add("/ffilter", (ChatCommandAction)&Server::chat_FFilter);
 		m_chatcmd.add("/fset", (ChatCommandAction)&Server::chat_FSet);
 		m_chatcmd.add("/fdel", (ChatCommandAction)&Server::chat_FDel);
 		// Owner
@@ -317,7 +318,7 @@ CHATCMD_FUNC(Server::chat_Help)
 {
 	std::string cmd(get_next_part(msg));
 	if (cmd.empty()) {
-		systemChatSend(player, "Available commands: " + m_chatcmd.dumpUI());
+		systemChatSend(player, "Use '/help CMD' for details. Available commands: " + m_chatcmd.dumpUI());
 		return;
 	}
 
@@ -325,8 +326,9 @@ CHATCMD_FUNC(Server::chat_Help)
 		const std::string cmd;
 		const std::string text;
 	} help_LUT[] = {
-		{ "flags", "[WIP!] Lists the player's flags (permissions)!" },
-		{ "fset", "[WIP!] Syntax: /fset PLAYERNAME FLAG1 [...]\nSets one or more flags for a player." },
+		{ "flags", "Syntax: /flags [PLAYERNAME]\nLists the provided (or own) player's flags." },
+		{ "ffilter", "Syntax: //filter FLAG1 [...]\nLists all players matching the flag filter." },
+		{ "fset", "Syntax: /fset PLAYERNAME FLAG1 [...]\nSets one or more flags for a player." },
 		{ "fdel", "The complement of /fset" },
 		// respawn
 		{ "clear", "Syntax: /clear [W] [H]\nW,H: integer (optional) to specify the new world dimensions." },
@@ -334,6 +336,10 @@ CHATCMD_FUNC(Server::chat_Help)
 		// save
 		{ "version", std::string("Server version: ") + VERSION_STRING },
 	};
+
+	// Trim "/" if necessary
+	if (cmd[0] == '/')
+		cmd = cmd.substr(1);
 
 	for (auto v : help_LUT) {
 		if (cmd != v.cmd)
@@ -375,11 +381,44 @@ CHATCMD_FUNC(Server::chat_Flags)
 	systemChatSend(player, ret);
 }
 
-CHATCMD_FUNC(Server::chat_FSet)
+CHATCMD_FUNC(Server::chat_FFilter)
 {
-	if (!player->getFlags().check(PlayerFlags::PF_HELPER)) {
+	PlayerFlags specified(0);
+	std::string flag_string(get_next_part(msg));
+	while (!flag_string.empty()) {
+		playerflags_t flags_new;
+		if (!PlayerFlags::stringToPlayerFlags(flag_string, &flags_new)) {
+			systemChatSend(player, "Unknown flag: " + flag_string +
+				". Available flags: " + PlayerFlags::getFlagList());
+			return;
+		}
+		specified.flags |= flags_new;
+
+		flag_string = get_next_part(msg);
+	}
+
+	const auto &meta = player->getWorld()->getMeta();
+
+	// List all players with flags
+	std::string output("List of players with flags ");
+	output.append(specified.toHumanReadable());
+	output.append(":");
+
+	for (auto it : meta.getAllPlayerFlags()) {
+		if ((it.second.flags | specified.flags) == 0)
+			continue;
+		output.append(" " + it.first);
+	}
+
+	systemChatSend(player, output);
+}
+
+bool Server::changePlayerFlags(Player *player, std::string msg, bool do_add)
+{
+	const PlayerFlags myflags = player->getFlags();
+	if (!myflags.check(PlayerFlags::PF_HELPER)) {
 		systemChatSend(player, "Insufficient permissions");
-		return;
+		return false;
 	}
 
 	auto world = player->getWorld();
@@ -389,54 +428,107 @@ CHATCMD_FUNC(Server::chat_FSet)
 	for (char &c : playername)
 		c = toupper(c);
 
-	bool player_found = false;
 	// Search for existing records
-	PlayerFlags playerflags = meta.getPlayerFlags(playername);
-	if (playerflags.flags != 0)
-		player_found = true;
+	peer_t target_peer_id = 0;
+	PlayerFlags targetflags = meta.getPlayerFlags(playername);
 
-	if (!player_found) {
-		// Search for online players
-		for (auto p : m_players) {
-			if (p.second->getWorld() != world)
-				continue;
-			if (p.second->name != playername)
-				continue;
+	// Search for online players
+	for (auto p : m_players) {
+		if (p.second->getWorld() != world)
+			continue;
+		if (p.second->name != playername)
+			continue;
 
-			player_found = true;
-			break;
-		}
+		target_peer_id = p.first;
+		break;
 	}
 
-	if (!player_found) {
+	if (target_peer_id == 0 && targetflags.flags == 0) {
 		systemChatSend(player, "Cannot find player " + playername);
-		return;
+		return false;
 	}
 
-	if (playerflags.check(PlayerFlags::PF_HELPER)
-			&& !player->getFlags().check(PlayerFlags::PF_OWNER)) {
-		systemChatSend(player, "Insufficient permissions");
-		return;
-	}
+	// Flags that current player is allowed to change
+	playerflags_t allowed_to_change = 0;
+	if (player->name == meta.owner)
+		allowed_to_change = PlayerFlags::PF_CNG_MASK_OWNER;
+	else if (myflags.check(PlayerFlags::PF_OWNER))
+		allowed_to_change = PlayerFlags::PF_CNG_MASK_COOWNER;
+	else if (myflags.check(PlayerFlags::PF_HELPER))
+		allowed_to_change = PlayerFlags::PF_CNG_MASK_HELPER;
 
+	// Read in all specified flags
+	playerflags_t flags_specified = 0;
 	std::string flag_string(get_next_part(msg));
 	while (!flag_string.empty()) {
 		playerflags_t flags_new;
 		if (!PlayerFlags::stringToPlayerFlags(flag_string, &flags_new)) {
-			systemChatSend(player, "Unknown flag: " + flag_string);
-			return;
+			systemChatSend(player, "Unknown flag: " + flag_string +
+				". Available flags: " + PlayerFlags::getFlagList());
+			return false;
 		}
-		playerflags.flags |= flags_new;
+		flags_specified |= flags_new;
 
 		flag_string = get_next_part(msg);
 	}
 
-	//meta.setPlayerFlags(playername, playerflags);
-	// TODO
+	if ((flags_specified | allowed_to_change) != allowed_to_change) {
+		systemChatSend(player, "Insufficient permissions");
+		return false;
+	}
+
+	// Perform the operation
+	if (do_add) {
+		targetflags.set(flags_specified, flags_specified);
+	} else {
+		targetflags.set(0, flags_specified);
+	}
+
+	meta.setPlayerFlags(playername, targetflags);
+	// Get up-to-date information
+	targetflags = meta.getPlayerFlags(playername);
+
+	chat_Flags(player, playername);
+
+	// Notify the player about this change
+	if (target_peer_id != 0 && do_add
+			&& (targetflags.flags & (PlayerFlags::PF_BANNED | PlayerFlags::PF_TMP_HEAVYKICK))) {
+
+		{
+			Packet out;
+			out.write<Packet2Client>(Packet2Client::Error);
+			out.writeStr16(player->name + " kicked/banned you from this world.");
+			m_con->send(target_peer_id, 0, out);
+		}
+		{
+			Packet out;
+			out.write<Packet2Client>(Packet2Client::Leave);
+			out.write(target_peer_id);
+			m_con->send(target_peer_id, 0, out);
+		}
+
+		target_peer_id = 0;
+	}
+
+	if (target_peer_id != 0) {
+		Packet out;
+		out.write(Packet2Client::PlayerFlags);
+		out.write<playerflags_t>(targetflags.flags & flags_specified); // new flags
+		out.write<playerflags_t>(flags_specified); // mask
+		m_con->send(target_peer_id, 1, out);
+	}
+
+	return true;
+}
+
+CHATCMD_FUNC(Server::chat_FSet)
+{
+	changePlayerFlags(player, msg, true);
 }
 
 CHATCMD_FUNC(Server::chat_FDel)
 {
+	changePlayerFlags(player, msg, false);
 }
 
 CHATCMD_FUNC(Server::chat_Respawn)

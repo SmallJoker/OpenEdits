@@ -21,6 +21,7 @@ public:
 	~SceneBlockSelector();
 
 	void setHotbarPos(const core::position2di &pos) { m_hotbar_pos = pos; }
+	void setEnabled(bool enabled) { m_enabled = enabled; }
 
 	void draw();
 	bool OnEvent(const SEvent &e) override;
@@ -34,6 +35,8 @@ private:
 	bool selectBlockId(int what, bool is_element_id);
 
 	gui::IGUIEnvironment *m_gui = nullptr;
+
+	bool m_enabled = false;
 
 	std::vector<bid_t> m_hotbar_ids;
 	core::position2di m_hotbar_pos;

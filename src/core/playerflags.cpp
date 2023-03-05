@@ -7,6 +7,8 @@ std::string PlayerFlags::toHumanReadable() const
 
 	if (check(PF_TMP_HEAVYKICK))
 		temporary.append("HEAVYKICK ");
+	if (check(PF_TMP_MUTED))
+		temporary.append("MUTED ");
 
 	if (check(PF_TMP_EDIT_DRAW))
 		temporary.append("edit-draw ");
@@ -47,10 +49,26 @@ static const struct {
 	{ "edit-draw",       PlayerFlags::PF_EDIT_DRAW },
 	{ "godmode",         PlayerFlags::PF_GODMODE },
 	{ "helper",          PlayerFlags::PF_HELPER },
+	{ "owner",           PlayerFlags::PF_OWNER },
 	{ "tmp-heavykick",   PlayerFlags::PF_TMP_HEAVYKICK },
+	{ "tmp-muted",       PlayerFlags::PF_TMP_MUTED },
 	{ "tmp-edit-simple", PlayerFlags::PF_TMP_EDIT },
 	{ "tmp-edit-draw",   PlayerFlags::PF_TMP_EDIT_DRAW },
 };
+
+std::string PlayerFlags::getFlagList()
+{
+	std::string output;
+	for (auto &v : STRING_TO_FLAGS_LUT) {
+		if (!output.empty())
+			output.append(" ");
+
+		output.append(v.str);
+	}
+
+	return output;
+}
+
 
 bool PlayerFlags::stringToPlayerFlags(const std::string &input, playerflags_t *out)
 {
