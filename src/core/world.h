@@ -119,9 +119,11 @@ private:
 	std::map<std::string, PlayerFlags> player_flags;
 };
 
+constexpr u16 PROTOCOL_VERSION_FAKE_DISK = UINT16_MAX;
+
 class World : public IReferenceCounted {
 public:
-	World(const BlockManager *bmgr, WorldMeta *meta);
+	World(World *copy_from);
 	World(const BlockManager *bmgr, const std::string &id);
 	~World();
 
@@ -137,7 +139,7 @@ public:
 	void createEmpty(blockpos_t size);
 	void createDummy(blockpos_t size);
 
-	void read(Packet &pkt);
+	void read(Packet &pkt, u16 protocol_version);
 	void write(Packet &pkt, Method method, u16 protocol_version) const;
 
 	inline bool isValidPosition(int x, int y) const
@@ -172,7 +174,7 @@ protected:
 		return m_data[pos.Y * m_size.X + pos.X];
 	}
 
-	void readPlain(Packet &pkt);
+	void readPlain(Packet &pkt, u16 protocol_version);
 	void writePlain(Packet &pkt, u16 protocol_version) const;
 
 	blockpos_t m_size;

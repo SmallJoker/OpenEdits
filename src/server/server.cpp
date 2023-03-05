@@ -266,7 +266,7 @@ void Server::writeWorldData(Packet &out, World &world, bool is_clear)
 	out.write(size.Y);
 	if (!is_clear) {
 		// TODO: make player-specific
-		world.write(out, World::Method::Plain, 9999);
+		world.write(out, World::Method::Plain, PROTOCOL_VERSION);
 	}
 }
 
@@ -567,7 +567,7 @@ CHATCMD_FUNC(Server::chat_Clear)
 		return;
 	}
 
-	RefCnt<World> world(new World(m_bmgr, &old_world->getMeta()));
+	RefCnt<World> world(new World(old_world));
 	world->drop(); // kept alive by RefCnt
 
 	try {
@@ -608,7 +608,7 @@ CHATCMD_FUNC(Server::chat_Import)
 
 	auto old_world = player->getWorld();
 
-	RefCnt<World> world(new World(m_bmgr, &old_world->getMeta()));
+	RefCnt<World> world(new World(old_world));
 	world->drop(); // kept alive by RefCnt
 
 	EEOconverter conv(*world.ptr());

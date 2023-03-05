@@ -5,12 +5,12 @@
 static void test_readwrite(World &w)
 {
 	Packet out;
-	w.write(out, World::Method::Plain, UINT16_MAX);
+	w.write(out, World::Method::Plain, PROTOCOL_VERSION_FAKE_DISK);
 
 	World w2(g_blockmanager, "foobar_check");
 	Packet in(out.data(), out.size());
 	w2.createEmpty(w.getSize());
-	w2.read(out);
+	w2.read(out, PROTOCOL_VERSION_FAKE_DISK);
 
 	Block b;
 	CHECK(w2.getBlock({2, 1}, &b))

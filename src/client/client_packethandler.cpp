@@ -98,7 +98,7 @@ void Client::pkt_WorldData(Packet &pkt)
 	pkt.read<u16>(size.Y);
 	world->createEmpty(size);
 	if (mode == 1) {
-		world->read(pkt);
+		world->read(pkt, m_protocol_version);
 	} // else: clear
 
 	SimpleLock lock(m_players_lock);

@@ -175,19 +175,19 @@ bool WorldMeta::Key::step(float dtime)
 // -------------- World class -------------
 
 
-World::World(const BlockManager *bmgr, WorldMeta *meta) :
-	m_bmgr(bmgr),
-	m_meta(meta)
+World::World(World *copy_from) :
+	m_bmgr(copy_from->m_bmgr),
+	m_meta(copy_from->m_meta)
 {
-	meta->drop(); // Kept alive by RefCnt
-
 	ASSERT_FORCED(m_bmgr, "BlockManager is required");
 	printf("World: Create %s\n", m_meta->id.c_str());
 }
 
 World::World(const BlockManager *bmgr, const std::string &id) :
-	World(bmgr, new WorldMeta(id))
+	m_bmgr(bmgr),
+	m_meta(new WorldMeta(id))
 {
+	m_meta->drop(); // Kept alive by RefCnt
 }
 
 World::~World()
@@ -225,7 +225,7 @@ void World::createDummy(blockpos_t size)
 static constexpr u32 SIGNATURE = 0x6677454F; // OEwf
 static constexpr u16 VALIDATION = 0x4B4F; // OK
 
-void World::read(Packet &pkt)
+void World::read(Packet &pkt, u16 protocol_version)
 {
 	if (m_size.X == 0 || m_size.Y == 0)
 		throw std::runtime_error("World size error (not initialized?)");
@@ -237,7 +237,7 @@ void World::read(Packet &pkt)
 	switch (method) {
 		case Method::Dummy: break;
 		case Method::Plain:
-			readPlain(pkt);
+			readPlain(pkt, protocol_version);
 			break;
 		default:
 			throw std::runtime_error("Unsupported world read method");
@@ -275,23 +275,34 @@ void World::write(Packet &pkt, Method method, u16 protocol_version) const
 	pkt.write<u16>(VALIDATION); // validity check
 }
 
-void World::readPlain(Packet &pkt)
+void World::readPlain(Packet &pkt, u16 protocol_version)
 {
 	u8 version = pkt.read<u8>();
 	if (version < 2 || version > 4)
 		throw std::runtime_error("Unsupported read version");
 
-	// TODO: It is not necessary to send this header to the client (already filtered by server)
-
 	// Describes the block parameters (thus length) that are to be expected
 	std::map<bid_t, BlockParams::Type> mapper;
-	if (version >= 4) {
-		while (true) {
-			bid_t id = pkt.read<bid_t>();
-			if (!id)
-				break;
+	if (protocol_version == PROTOCOL_VERSION_FAKE_DISK) {
+		// Load params from the disk
+		if (version >= 4) {
+			while (true) {
+				bid_t id = pkt.read<bid_t>();
+				if (!id)
+					break;
 
-			mapper.emplace(id, (BlockParams::Type)pkt.read<uint8_t>());
+				mapper.emplace(id, (BlockParams::Type)pkt.read<uint8_t>());
+			}
+		}
+	} else {
+		// In sync with the server, sent params upon connect
+		const auto &props = m_bmgr->getProps();
+
+		for (size_t i = 0; i < props.size(); ++i) {
+			if (!props[i] || props[i]->paramtypes == BlockParams::Type::None)
+				continue;
+
+			mapper.emplace(i, props[i]->paramtypes);
 		}
 	}
 
@@ -334,7 +345,7 @@ void World::writePlain(Packet &pkt, u16 protocol_version) const
 	//     version = 3;
 	pkt.write(version);
 
-	{
+	if (protocol_version == PROTOCOL_VERSION_FAKE_DISK) {
 		// Mapping of the known types
 		auto &list = m_bmgr->getProps();
 		for (size_t i = 0; i < list.size(); ++i) {
