@@ -1,5 +1,6 @@
 #include "unittest_internal.h"
 
+void unittest_auth();
 void unittest_chatcommand();
 void unittest_connection();
 void unittest_eeo_converter();
@@ -14,6 +15,7 @@ void unittest()
 	puts("==> Start unittest");
 
 	try {
+		unittest_auth();
 		unittest_chatcommand();
 		unittest_utilities();
 		unittest_world();
