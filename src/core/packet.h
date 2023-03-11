@@ -53,7 +53,8 @@ private:
 enum class Packet2Client : uint16_t {
 	Quack = 0,
 	Hello,
-	Error,
+	Message,
+	Auth,
 	Lobby,
 	WorldData, // initialization or reset
 	Join,
@@ -73,6 +74,7 @@ enum class Packet2Client : uint16_t {
 enum class Packet2Server : uint16_t {
 	Quack = 0,
 	Hello,
+	Auth,
 	GetLobby,
 	Join,
 	Leave,

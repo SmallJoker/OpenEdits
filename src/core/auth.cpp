@@ -33,8 +33,7 @@ std::string Auth::generateRandom()
 std::string Auth::generatePass()
 {
 	static const char PASS_CHARACTERS[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrtstuvwxyz0123456789_+&#!";
-	size_t len = rand() % 5 + 15;
-	std::string random(len, '\0');
+	std::string random(rand() % 5 + 15, '\0');
 
 	for (char &c : random)
 		c = PASS_CHARACTERS[rand() % sizeof(PASS_CHARACTERS)];
@@ -65,6 +64,5 @@ bool Auth::verify(const std::string &combined_hash)
 		return false;
 	}
 
-	m_is_authenticated = m_combined_hash == combined_hash;
-	return m_is_authenticated;
+	return m_combined_hash == combined_hash;
 }

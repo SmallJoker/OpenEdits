@@ -4,6 +4,7 @@
 #include "core/packet.h"
 #include "core/utils.h"
 #include "core/world.h"
+#include "server/database_auth.h"
 #include "server/database_world.h"
 #include <set>
 
@@ -11,16 +12,17 @@
 const ServerPacketHandler Server::packet_actions[] = {
 	{ RemotePlayerState::Invalid,   &Server::pkt_Quack }, // 0
 	{ RemotePlayerState::Invalid,   &Server::pkt_Hello },
+	{ RemotePlayerState::Login,     &Server::pkt_Auth },
 	{ RemotePlayerState::Idle,      &Server::pkt_GetLobby },
 	{ RemotePlayerState::Idle,      &Server::pkt_Join },
-	{ RemotePlayerState::WorldJoin, &Server::pkt_Leave },
-	{ RemotePlayerState::WorldPlay, &Server::pkt_Move }, // 5
+	{ RemotePlayerState::WorldJoin, &Server::pkt_Leave }, // 5
+	{ RemotePlayerState::WorldPlay, &Server::pkt_Move },
 	{ RemotePlayerState::WorldPlay, &Server::pkt_Chat },
 	{ RemotePlayerState::WorldPlay, &Server::pkt_PlaceBlock },
 	{ RemotePlayerState::WorldPlay, &Server::pkt_TriggerBlocks },
-	{ RemotePlayerState::WorldPlay, &Server::pkt_GodMode },
+	{ RemotePlayerState::WorldPlay, &Server::pkt_GodMode }, // 10
 	{ RemotePlayerState::WorldPlay, &Server::pkt_Smiley },
-	{ RemotePlayerState::Invalid, 0 } // 10
+	{ RemotePlayerState::Invalid, 0 }
 };
 
 
@@ -41,7 +43,7 @@ void Server::pkt_Hello(peer_t peer_id, Packet &pkt)
 			protocol_min, protocol_ver, PROTOCOL_VERSION_MIN, PROTOCOL_VERSION);
 
 		printf("Protocol mismatch. peer_id=%u tried to connect: %s\n", peer_id, buf);
-		sendError(peer_id, std::string("Incompatible protocol versions. ") + buf);
+		sendMsg(peer_id, std::string("Incompatible protocol versions. ") + buf);
 		m_con->disconnect(peer_id);
 		return;
 	}
@@ -62,7 +64,7 @@ void Server::pkt_Hello(peer_t peer_id, Packet &pkt)
 	}
 
 	if (!ok) {
-		sendError(peer_id, "Invalid nickname (must be [A-z0-9]{3,16}) or player is already online");
+		sendMsg(peer_id, "Invalid nickname (must be [A-z0-9]{3,16}) or player is already online");
 		m_con->disconnect(peer_id);
 		return;
 	}
@@ -71,7 +73,7 @@ void Server::pkt_Hello(peer_t peer_id, Packet &pkt)
 	m_players.emplace(peer_id, player);
 
 	player->name = name;
-	player->state = RemotePlayerState::Idle;
+	player->state = RemotePlayerState::Login;
 
 	{
 		// Confirm
@@ -87,6 +89,185 @@ void Server::pkt_Hello(peer_t peer_id, Packet &pkt)
 	}
 
 	printf("Server: Hello from %s, proto_ver=%d\n", player->name.c_str(), player->protocol_version);
+
+	{
+		// Auth
+		bool is_guest = player->name.rfind("GUEST", 0) == 0;
+		if (is_guest) {
+			// Ensure digits only
+			for (char c : player->name.substr(5)) {
+				if (!std::isdigit(c)) {
+					is_guest = false;
+					break;
+				}
+			}
+		}
+
+		if (is_guest) {
+			player->auth.status = Auth::Status::Guest;
+			player->state = RemotePlayerState::Idle;
+
+			// Log in instantly
+			Packet out;
+			out.write(Packet2Client::Auth);
+			out.writeStr16("signed_in");
+			m_con->send(peer_id, 0, out);
+			return;
+		}
+
+		// Prompt for authentication if needed
+		if (m_auth_db) {
+			AuthInformation info;
+			bool ok = m_auth_db->load(player->name, &info);
+			if (ok) {
+				player->auth.random = Auth::generateRandom();
+
+				Packet out;
+				out.write(Packet2Client::Auth);
+				out.writeStr16("hash");
+				out.writeStr16(player->auth.random);
+				m_con->send(peer_id, 0, out);
+			} else {
+				player->auth.status = Auth::Status::Unregistered;
+
+				Packet out;
+				out.write(Packet2Client::Auth);
+				out.writeStr16("register");
+				m_con->send(peer_id, 0, out);
+			}
+		}
+	}
+}
+
+void Server::pkt_Auth(peer_t peer_id, Packet &pkt)
+{
+	if (!m_auth_db) {
+		sendMsg(peer_id, "Service unavailable");
+		return;
+	}
+
+	RemotePlayer *player = getPlayerNoLock(peer_id);
+	std::string action = pkt.readStr16();
+
+	if (player->auth.status == Auth::Status::Guest) {
+		sendMsg(peer_id, "Cannot perform auth actions for guests.");
+		return;
+	}
+
+	if (action == "hash") {
+		// Confirm the client-sent hash
+
+		AuthInformation info;
+		bool ok = m_auth_db->load(player->name, &info);
+		if (!ok) {
+			sendMsg(peer_id, "Invalid action");
+			return;
+		}
+
+		std::string hash = pkt.readStr16();
+
+		bool signed_in = false;
+		if (!info.password.empty()) {
+			// Try normal password
+			player->auth.fromHash(info.password);
+			player->auth.combine(player->auth.random);
+			signed_in = player->auth.verify(hash);
+		}
+
+		if (!signed_in && !info.password_reset.empty()) {
+			// Try temporary reset password
+			player->auth.fromHash(info.password_reset);
+			player->auth.combine(player->auth.random);
+			signed_in = player->auth.verify(hash);
+		}
+
+		if (!signed_in) {
+			sendMsg(peer_id, "Incorrect password");
+			m_con->disconnect(peer_id);
+			return;
+		}
+
+		Packet out;
+		out.write(Packet2Client::Auth);
+		out.writeStr16("signed_in");
+		m_con->send(peer_id, 0, out);
+
+		player->auth.status = Auth::Status::SignedIn;
+		return;
+	}
+
+	if (action == "register") {
+		// Register based on email
+
+		AuthInformation info;
+		bool ok = m_auth_db->load(player->name, &info);
+		if (ok) {
+			sendMsg(peer_id, "This user is already registered");
+			return;
+		}
+
+		info.name = player->name;
+		info.email = strtrim(pkt.readStr16());
+
+		bool email_ok = true;
+		bool email_at = false;
+		for (char c : info.email) {
+			if (!std::isgraph(c)) {
+				email_ok = false;
+				break;
+			}
+			if (c == '@')
+				email_at = true;
+		}
+		email_ok &= email_at;
+		if (!email_ok) {
+			sendMsg(peer_id, "Invalid email. Please use one where you can receive your temporary password.");
+			return;
+		}
+
+		m_auth_db->save(info);
+		m_auth_db->resetPassword(info.email);
+		return;
+	}
+
+	if (action == "setpass" && player->auth.status == Auth::Status::SignedIn) {
+		// Update password with specified hash
+		AuthInformation info;
+		bool ok = m_auth_db->load(player->name, &info);
+		if (!ok) {
+			sendMsg(peer_id, "Cannot change password: Auth not found.");
+			return;
+		}
+
+		info.password = pkt.readStr16(); // new hash
+		info.password_reset.clear();
+
+		ok = m_auth_db->save(info);
+		if (ok)
+			sendMsg(peer_id, "Password updated.");
+		else
+			sendMsg(peer_id, "Failed to update password.");
+		return;
+	}
+
+	if (action == "resetpass") {
+		// Send new password by email
+		AuthInformation info;
+		bool ok = m_auth_db->load(player->name, &info);
+		if (!ok) {
+			sendMsg(peer_id, "Cannot reset password: Auth not found.");
+			return;
+		}
+
+		ok = m_auth_db->resetPassword(info.email);
+		if (ok)
+			sendMsg(peer_id, "New password sent! Check your inbox.");
+		else
+			sendMsg(peer_id, "Cannot reset your password. Ask a system admin.");
+		return;
+	}
+
+	sendMsg(peer_id, "Unknown auth action: " + action);
 }
 
 void Server::pkt_GetLobby(peer_t peer_id, Packet &)
@@ -145,10 +326,7 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 		bool is_ok = !world_id.empty() && isalnum_nolocale(world_id);
 
 		if (!is_ok) {
-			Packet out;
-			out.write(Packet2Client::Error);
-			out.writeStr16("Invalid world ID. [A-z0-9]+ are allowed");
-			m_con->send(peer_id, 0, out);
+			sendMsg(peer_id, "Invalid world ID. [A-z0-9]+ are allowed");
 			return;
 		}
 	}
@@ -178,10 +356,7 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 		// Ban check
 		PlayerFlags pflags = world->getMeta().getPlayerFlags(player->name);
 		if (pflags.flags & (PlayerFlags::PF_BANNED | PlayerFlags::PF_TMP_HEAVYKICK)) {
-			Packet out;
-			out.write(Packet2Client::Error);
-			out.writeStr16("You may not enter this world. Reason: kicked or banned.");
-			m_con->send(peer_id, 0, out);
+			sendMsg(peer_id, "You may not enter this world. Reason: kicked or banned.");
 			return;
 		}
 	}
@@ -300,10 +475,7 @@ void Server::pkt_Chat(peer_t peer_id, Packet &pkt)
 	}
 
 	if (!ok) {
-		Packet out;
-		out.write(Packet2Client::Error);
-		out.writeStr16("Control characters are not allowed");
-		m_con->send(peer_id, 0, out);
+		sendMsg(peer_id, "Control characters are not allowed");
 		return;
 	}
 
@@ -436,10 +608,10 @@ void Server::pkt_Deprecated(peer_t peer_id, Packet &pkt)
 		name.c_str(), peer_id);
 }
 
-void Server::sendError(peer_t peer_id, const std::string &text)
+void Server::sendMsg(peer_t peer_id, const std::string &text)
 {
 	Packet pkt;
-	pkt.write<Packet2Client>(Packet2Client::Error);
+	pkt.write<Packet2Client>(Packet2Client::Message);
 	pkt.writeStr16(text);
 	m_con->send(peer_id, 0, pkt);
 }

@@ -5,6 +5,7 @@
 #include "core/packet.h"
 #include "core/utils.h" // get_next_part
 #include "core/world.h"
+#include "server/database_auth.h"
 #include "server/database_world.h"
 #include "server/eeo_converter.h"
 #include "version.h"
@@ -34,6 +35,15 @@ Server::Server() :
 		if (!m_world_db->tryOpen("server_worlddata.sqlite")) {
 			delete m_world_db;
 			m_world_db = nullptr;
+		}
+	}
+
+	{
+		// Initialize auth
+		m_auth_db = new DatabaseAuth();
+		if (!m_auth_db->tryOpen("server_auth.sqlite")) {
+			delete m_auth_db;
+			m_auth_db = nullptr;
 		}
 	}
 
@@ -75,6 +85,7 @@ Server::~Server()
 	}
 
 	delete m_con;
+	delete m_auth_db;
 	delete m_world_db;
 	delete m_bmgr;
 }
@@ -187,13 +198,6 @@ void Server::onPeerConnected(peer_t peer_id)
 		Packet pkt;
 		pkt.write<Packet2Client>(Packet2Client::Quack);
 		pkt.writeStr16("hello world");
-		m_con->send(peer_id, 0, pkt);
-	}
-
-	if (0) {
-		Packet pkt;
-		pkt.write<Packet2Client>(Packet2Client::Error);
-		pkt.writeStr16("No error. Everything's fine");
 		m_con->send(peer_id, 0, pkt);
 	}
 }
@@ -494,12 +498,7 @@ bool Server::changePlayerFlags(Player *player, std::string msg, bool do_add)
 	if (target_peer_id != 0 && do_add
 			&& (targetflags.flags & (PlayerFlags::PF_BANNED | PlayerFlags::PF_TMP_HEAVYKICK))) {
 
-		{
-			Packet out;
-			out.write<Packet2Client>(Packet2Client::Error);
-			out.writeStr16(player->name + " kicked/banned you from this world.");
-			m_con->send(target_peer_id, 0, out);
-		}
+		sendMsg(target_peer_id, player->name + " kicked/banned you from this world.");
 		{
 			Packet out;
 			out.write<Packet2Client>(Packet2Client::Leave);

@@ -34,6 +34,7 @@ class SceneGameplay;
 
 enum class SceneHandlerType {
 	Connect,
+	Register,
 	Lobby,
 	Gameplay,
 	CTRL_QUIT,

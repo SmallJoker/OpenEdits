@@ -251,7 +251,7 @@ bool DatabaseAuth::getBanRecord(const std::string &what, AuthBanEntry *entry)
 	bool good = ok("read f2b", sqlite3_step(s));
 	sqlite3_reset(s);
 
-	return good;
+	return good && entry->expiry > time(nullptr);
 }
 
 bool DatabaseAuth::cleanupBans()

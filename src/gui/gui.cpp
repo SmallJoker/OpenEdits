@@ -7,6 +7,7 @@
 #include <chrono>
 // Scene handlers
 #include "connect.h"
+#include "register.h"
 #include "lobby.h"
 #include "gameplay.h"
 #include "version.h"
@@ -59,6 +60,7 @@ Gui::Gui()
 	{
 		// Scene handler registration
 		registerHandler(SceneHandlerType::Connect, new SceneConnect());
+		registerHandler(SceneHandlerType::Register, new SceneRegister());
 		registerHandler(SceneHandlerType::Lobby, new SceneLobby());
 		registerHandler(SceneHandlerType::Gameplay, new SceneGameplay());
 	}
@@ -222,7 +224,7 @@ SceneHandler *Gui::getHandler(SceneHandlerType type)
 
 void Gui::connect(SceneConnect *sc)
 {
-	if (m_server|| m_client) {
+	if (m_server || m_client) {
 		showPopupText("Already initialized");
 		return;
 	}
@@ -236,16 +238,24 @@ void Gui::connect(SceneConnect *sc)
 
 	wide_to_utf8(init.address, sc->address.c_str());
 	wide_to_utf8(init.nickname, sc->nickname.c_str());
+	wide_to_utf8(init.password, sc->password.c_str());
 
 
 	m_client = new Client(init);
 	m_client->setEventHandler(this);
 
-	for (int i = 0; i < 10 && m_client->getState() != ClientState::LobbyIdle; ++i) {
+	ClientState state;
+	for (int i = 0; i < 10; ++i) {
+		state = m_client->getState();
+		if (state == ClientState::LobbyIdle || state == ClientState::Register)
+			break;
+
 		sleep_ms(200);
 	}
 
-	if (m_client->getState() == ClientState::LobbyIdle) {
+	if (state == ClientState::Register) {
+		setNextScene(SceneHandlerType::Register);
+	} else if (state == ClientState::LobbyIdle) {
 		setNextScene(SceneHandlerType::Lobby);
 
 		GameEvent e(GameEvent::G2C_LOBBY_REQUEST);

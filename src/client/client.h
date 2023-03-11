@@ -14,6 +14,7 @@ enum class ClientState {
 	Invalid,
 	None,
 	Connected,
+	Register,
 	LobbyIdle,
 	WorldJoin,
 	WorldPlay
@@ -22,6 +23,7 @@ enum class ClientState {
 struct ClientStartData {
 	std::string address;
 	std::string nickname;
+	std::string password;
 };
 
 // Abstract for inheritance
@@ -56,7 +58,8 @@ public:
 private:
 	void pkt_Quack(Packet &pkt);
 	void pkt_Hello(Packet &pkt);
-	void pkt_Error(Packet &pkt);
+	void pkt_Message(Packet &pkt);
+	void pkt_Auth(Packet &pkt);
 	void pkt_Lobby(Packet &pkt);
 	void pkt_WorldData(Packet &pkt);
 	void pkt_Join(Packet &pkt);
@@ -78,7 +81,7 @@ private:
 	uint16_t m_protocol_version = 0;
 
 	std::string m_world_id = "foobar";
-	std::string m_nickname;
+	ClientStartData m_start_data;
 	peer_t m_my_peer_id = 0;
 };
 

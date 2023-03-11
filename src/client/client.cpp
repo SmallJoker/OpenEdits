@@ -13,7 +13,8 @@ static uint16_t PACKET_ACTIONS_MAX; // initialized in ctor
 extern BlockManager *g_blockmanager; // for client-only use
 
 Client::Client(ClientStartData &init) :
-	Environment(g_blockmanager)
+	Environment(g_blockmanager),
+	m_start_data(init)
 {
 	puts("Client: startup");
 
@@ -30,8 +31,6 @@ Client::Client(ClientStartData &init) :
 		PACKET_ACTIONS_MAX = handler - packet_actions;
 		ASSERT_FORCED(PACKET_ACTIONS_MAX == (int)Packet2Client::MAX_END, "Packet handler mismatch");
 	}
-
-	m_nickname = init.nickname;
 }
 
 Client::~Client()
@@ -311,7 +310,7 @@ void Client::onPeerConnected(peer_t peer_id)
 	pkt.write(Packet2Server::Hello);
 	pkt.write(PROTOCOL_VERSION);
 	pkt.write(PROTOCOL_VERSION_MIN);
-	pkt.writeStr16(m_nickname);
+	pkt.writeStr16(m_start_data.nickname);
 
 	m_con->send(0, 0, pkt);
 }

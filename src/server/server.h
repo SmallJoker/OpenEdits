@@ -7,6 +7,7 @@
 enum class RemotePlayerState;
 
 class ChatCommand;
+class DatabaseAuth;
 class DatabaseWorld;
 class RemotePlayer;
 struct ServerPacketHandler;
@@ -31,6 +32,7 @@ public:
 private:
 	void pkt_Quack(peer_t peer_id, Packet &pkt);
 	void pkt_Hello(peer_t peer_id, Packet &pkt);
+	void pkt_Auth(peer_t peer_id, Packet &pkt);
 	void pkt_GetLobby(peer_t peer_id, Packet &pkt);
 	void pkt_Join(peer_t peer_id, Packet &pkt);
 	void pkt_Leave(peer_t peer_id, Packet &pkt);
@@ -42,7 +44,7 @@ private:
 	void pkt_Smiley(peer_t peer_id, Packet &pkt);
 	void pkt_Deprecated(peer_t peer_id, Packet &pkt);
 
-	void sendError(peer_t peer_id, const std::string &text);
+	void sendMsg(peer_t peer_id, const std::string &text);
 
 	void broadcastInWorld(Player *player, int flags, Packet &pkt);
 
@@ -51,6 +53,7 @@ private:
 	void writeWorldData(Packet &out, World &world, bool is_clear);
 	void respawnPlayer(Player *player, bool send_packet);
 
+	DatabaseAuth *m_auth_db = nullptr;
 	DatabaseWorld *m_world_db = nullptr;
 
 	// ----------- Chat commands -----------

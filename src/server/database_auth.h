@@ -12,8 +12,7 @@ struct AuthInformation {
 
 	enum AccountLevel : int {
 		AL_INVALID = 0,
-		AL_PENDING = 1,
-		AL_REGISTERED = 2,
+		AL_REGISTERED = 5,
 		AL_ADMIN = 10
 	};
 	int level = 0;
@@ -45,6 +44,7 @@ public:
 	bool resetPassword(const std::string &email);
 
 	bool ban(const AuthBanEntry &entry);
+	// returns whether an active ban was found
 	bool getBanRecord(const std::string &what, AuthBanEntry *entry);
 	bool cleanupBans();
 

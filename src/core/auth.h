@@ -4,6 +4,12 @@
 
 class Auth {
 public:
+	void clear()
+	{
+		m_pw_hash.clear();
+		m_combined_hash.clear();
+	}
+
 	// To hash a password from the GUI
 	void fromPass(const std::string &password);
 
@@ -17,14 +23,19 @@ public:
 	static std::string generatePass();
 	void combine(const std::string &random);
 	bool verify(const std::string &combined_hash);
-	bool mayLogin() { return is_guest || m_is_authenticated; }
 
-	bool is_guest = false;
+	enum class Status {
+		Unauthenticated, // needs to login
+		Guest,
+		Unregistered,
+		SignedIn,
+	};
+	Status status = Status::Unauthenticated;
+
+	std::string random; // for server use
 
 private:
 	std::string m_pw_hash;
 	std::string m_combined_hash;
-
-	bool m_is_authenticated = false;
 };
 

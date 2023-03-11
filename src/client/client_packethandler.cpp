@@ -1,24 +1,26 @@
 #include "client.h"
 #include "localplayer.h"
+#include "core/auth.h"
 #include "core/blockmanager.h"
 #include "core/packet.h"
 
 const ClientPacketHandler Client::packet_actions[] = {
 	{ ClientState::None,      &Client::pkt_Quack }, // 0
 	{ ClientState::None,      &Client::pkt_Hello },
-	{ ClientState::None,      &Client::pkt_Error },
+	{ ClientState::None,      &Client::pkt_Message },
+	{ ClientState::None,      &Client::pkt_Auth },
 	{ ClientState::Connected, &Client::pkt_Lobby },
-	{ ClientState::WorldJoin, &Client::pkt_WorldData },
-	{ ClientState::WorldJoin, &Client::pkt_Join }, // 5
+	{ ClientState::WorldJoin, &Client::pkt_WorldData }, // 5
+	{ ClientState::WorldJoin, &Client::pkt_Join },
 	{ ClientState::WorldJoin, &Client::pkt_Leave },
 	{ ClientState::WorldJoin, &Client::pkt_SetPosition },
 	{ ClientState::WorldPlay, &Client::pkt_Move },
-	{ ClientState::WorldPlay, &Client::pkt_Chat },
-	{ ClientState::WorldPlay, &Client::pkt_PlaceBlock }, // 10
+	{ ClientState::WorldPlay, &Client::pkt_Chat }, // 10
+	{ ClientState::WorldPlay, &Client::pkt_PlaceBlock },
 	{ ClientState::WorldPlay, &Client::pkt_Key },
 	{ ClientState::WorldJoin, &Client::pkt_GodMode },
 	{ ClientState::WorldJoin, &Client::pkt_Smiley },
-	{ ClientState::WorldPlay, &Client::pkt_PlayerFlags },
+	{ ClientState::WorldPlay, &Client::pkt_PlayerFlags }, // 15
 	{ ClientState::Invalid, 0 }
 };
 
@@ -33,24 +35,61 @@ void Client::pkt_Hello(Packet &pkt)
 	m_my_peer_id = pkt.read<peer_t>();
 
 	auto player = new LocalPlayer(m_my_peer_id);
-	m_nickname = player->name = pkt.readStr16();
+	m_start_data.nickname = player->name = pkt.readStr16();
 	m_players.emplace(m_my_peer_id, player);
 
 	// Load the server's block properties
 	m_bmgr->read(pkt, m_protocol_version);
 
-	m_state = ClientState::LobbyIdle;
 	printf("Client: got HELLO. my peer_id=%u\n", m_my_peer_id);
 }
 
-void Client::pkt_Error(Packet &pkt)
+void Client::pkt_Message(Packet &pkt)
 {
 	std::string str(pkt.readStr16());
-	printf("Client received error: %s\n", str.c_str());
+	printf("Client received message: %s\n", str.c_str());
 
 	GameEvent e(GameEvent::C2G_DIALOG);
 	e.text = new std::string(str);
 	sendNewEvent(e);
+}
+
+void Client::pkt_Auth(Packet &pkt)
+{
+	std::string action = pkt.readStr16();
+
+	if (action == "hash") {
+		// Confirm password
+
+		Auth auth;
+		auth.fromPass(m_start_data.password);
+		m_start_data.password.clear();
+
+		auth.combine(pkt.readStr16()); // random
+
+		// Go ahead to the next step
+		Packet out;
+		out.write(Packet2Server::Auth);
+		out.writeStr16("hash");
+		out.writeStr16(auth.getCombinedHash());
+		m_con->send(0, 0, out);
+
+		return;
+	}
+
+	if (action == "register") {
+		// Requesting a signup
+
+		m_state = ClientState::Register;
+		return;
+	}
+
+	if (action == "signed_in") {
+		m_state = ClientState::LobbyIdle;
+		return;
+	}
+
+	printf("Client: Unknown auth action: %s\n", action.c_str());
 }
 
 void Client::pkt_Lobby(Packet &pkt)

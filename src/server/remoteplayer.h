@@ -1,10 +1,11 @@
 #pragma once
 
+#include "core/auth.h"
 #include "core/player.h"
 
 enum class RemotePlayerState {
 	Invalid,
-	Uninitialized,
+	Login,
 	Idle,
 	WorldJoin,
 	WorldPlay
@@ -16,5 +17,6 @@ public:
 
 	const uint16_t protocol_version;
 
+	Auth auth;
 	RemotePlayerState state = RemotePlayerState::Invalid;
 };
