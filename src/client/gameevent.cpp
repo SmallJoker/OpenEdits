@@ -53,6 +53,7 @@ bool GameEventHandler::sendNewEvent(GameEvent &e)
 	switch (e.type_g2c) {
 		case G::G2C_JOIN:
 		case G::G2C_CHAT:
+		case G::G2C_REGISTER:
 			delete e.text;
 			break;
 		// List of no-ops

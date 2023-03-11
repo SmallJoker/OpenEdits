@@ -25,8 +25,13 @@ struct AuthBanEntry {
 };
 
 struct AuthLogEntry {
-	time_t timestamp = 0;
-	std::string action;
+	AuthLogEntry()
+	{
+		timestamp = time(nullptr);
+	}
+
+	time_t timestamp;
+	std::string subject;
 	std::string text;
 };
 

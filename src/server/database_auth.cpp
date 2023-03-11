@@ -35,7 +35,7 @@ bool DatabaseAuth::tryOpen(const char *filepath)
 	good &= ok("create_log", sqlite3_exec(m_database,
 		"CREATE TABLE IF NOT EXISTS `log` ("
 		"`timestamp` INTEGER,"
-		"`action`    TEXT,"
+		"`subject`   TEXT,"
 		"`text`      TEXT"
 		")",
 		nullptr, nullptr, nullptr));
@@ -68,7 +68,7 @@ bool DatabaseAuth::tryOpen(const char *filepath)
 
 	PREPARE(log,
 		"REPLACE INTO `log` "
-		"(`timestamp`, `action`, `text`) "
+		"(`timestamp`, `subject`, `text`) "
 		"VALUES (?, ?, ?)"
 	);
 
@@ -284,7 +284,7 @@ bool DatabaseAuth::logNow(AuthLogEntry entry)
 	auto s = m_stmt_log;
 	int i = 1;
 	sqlite3_bind_int64(s, i++, entry.timestamp);
-	custom_bind_string(s, i++, entry.action);
+	custom_bind_string(s, i++, entry.subject);
 	custom_bind_string(s, i++, entry.text);
 
 	bool good = ok("log_s", sqlite3_step(s));

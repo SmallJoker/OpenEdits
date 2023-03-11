@@ -7,6 +7,8 @@ class SceneConnect : public SceneHandler {
 public:
 	SceneConnect();
 
+	void OnClose() override;
+
 	void draw() override;
 	void step(float dtime) override;
 	bool OnEvent(const SEvent &e) override;
@@ -16,6 +18,8 @@ public:
 	core::stringw password;
 	core::stringw address = L"127.0.0.1";
 	bool start_localhost = false;
+
+	bool record_login = false;
 
 private:
 	void onSubmit(int elementid);

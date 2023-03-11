@@ -15,6 +15,7 @@ enum ElementId : int {
 	ID_ListMine,
 	ID_BoxWorldID,
 	ID_BtnJoin,
+	ID_BtnDisconnect
 };
 
 
@@ -70,7 +71,7 @@ void SceneLobby::draw()
 
 	{
 		// Custom world ID box
-		auto rect = m_gui->getRect({10, 83}, {20, -30});
+		auto rect = m_gui->getRect({50, 83}, {20, -30});
 		gui->addEditBox(L"", rect, true, nullptr, ID_BoxWorldID);
 
 		core::recti rect_lab(
@@ -80,8 +81,13 @@ void SceneLobby::draw()
 		auto e = gui->addStaticText(L"Custom world ID", rect_lab);
 		e->setOverrideColor(Gui::COLOR_ON_BG);
 
-		auto rect_btn =  m_gui->getRect({32, 83}, {-100, -30});
+		auto rect_btn =  m_gui->getRect({50 + 22, 83}, {-100, -30});
 		gui->addButton(rect_btn, nullptr, ID_BtnJoin, L"Join");
+	}
+
+	{
+		auto rect_btn =  m_gui->getRect({10, 88}, {-150, -30});
+		gui->addButton(rect_btn, nullptr, ID_BtnDisconnect, L"<< Disconnect");
 	}
 
 	m_dirty_worldlist = true;
@@ -112,6 +118,10 @@ bool SceneLobby::OnEvent(const SEvent &e)
 					e.GUIEvent.Caller->setEnabled(false);
 					GameEvent e(GameEvent::G2C_LOBBY_REQUEST);
 					m_gui->sendNewEvent(e);
+					return true;
+				}
+				if (e.GUIEvent.Caller->getID() == ID_BtnDisconnect) {
+					m_gui->disconnect();
 					return true;
 				}
 				break;

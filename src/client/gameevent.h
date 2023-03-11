@@ -16,6 +16,7 @@ struct GameEvent {
 	// GUI --> Client. generally requests to send packets
 	enum G2C_Enum {
 		G2C_INVALID,
+		G2C_REGISTER,
 		G2C_LOBBY_REQUEST,
 		G2C_JOIN,
 		G2C_LEAVE,

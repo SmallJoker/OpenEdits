@@ -25,6 +25,47 @@ SceneConnect::SceneConnect()
 
 // -------------- Public members -------------
 
+void SceneConnect::OnClose()
+{
+	if (record_login) {
+		record_login = false;
+
+		bool contains = false;
+
+		std::string address_a, nickname_a;
+		wide_to_utf8(address_a, address.c_str());
+		wide_to_utf8(nickname_a, nickname.c_str());
+
+		for (char &c : address_a)
+			c = tolower(c);
+		for (char &c : nickname_a)
+			c = toupper(c);
+
+		if (nickname_a.rfind("GUEST", 0) == 0)
+			goto end;
+
+		std::ifstream is("client_servers.txt");
+		std::string line;
+		while (std::getline(is, line)) {
+			LoginInfo info;
+			std::string address_f = get_next_part(line);
+			std::string nickname_f =  get_next_part(line);
+			if (address_f == address_a && nickname_f == nickname_a)
+				goto end;
+		}
+		is.close();
+
+		if (!contains) {
+			std::ofstream os("client_servers.txt", std::ios_base::app);
+			os << address_a << " " << nickname_a << std::endl;
+			os.close();
+		}
+	}
+
+end:
+	return;
+}
+
 void SceneConnect::draw()
 {
 	auto gui = m_gui->guienv;
@@ -106,7 +147,7 @@ void SceneConnect::draw()
 
 		auto rect = rect_2();
 		auto rect_3_tmp = rect_3();
-		rect.addInternalPoint(rect_3_tmp.LowerRightCorner + core::vector2di(0, 50));
+		rect.addInternalPoint(rect_3_tmp.LowerRightCorner + core::vector2di(0, 80));
 
 		auto listbox = gui->addListBox(rect, nullptr, ID_ListServers, true);
 
@@ -133,7 +174,7 @@ void SceneConnect::draw()
 
 			auto i = listbox->addItem(label.c_str());
 			listbox->setItemOverrideColor(i, Gui::COLOR_ON_BG);
-			if (info.address == address.c_str())
+			if (info.address == address.c_str() && info.nickname == nickname.c_str())
 				listbox->setSelected(i);
 		}
 	}

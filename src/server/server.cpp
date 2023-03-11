@@ -241,11 +241,11 @@ void Server::processPacket(peer_t peer_id, Packet &pkt)
 	if (handler.min_player_state != RemotePlayerState::Invalid) {
 		RemotePlayer *player = getPlayerNoLock(peer_id);
 		if (!player) {
-			printf("Server: Player peer_id=%d not found.\n", peer_id);
+			printf("Server: Player peer_id=%u not found.\n", peer_id);
 			return;
 		}
 		if ((int)handler.min_player_state > (int)player->state) {
-			printf("Server: peer_id=%d is not ready for action=%d.\n", peer_id, action);
+			printf("Server: peer_id=%u is not ready for action=%d.\n", peer_id, action);
 			return;
 		}
 	}

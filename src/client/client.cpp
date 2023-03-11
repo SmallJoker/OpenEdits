@@ -171,6 +171,15 @@ bool Client::OnEvent(GameEvent &e)
 				m_con->send(0, 0, pkt);
 			}
 			return true;
+		case E::G2C_REGISTER:
+			{
+				Packet pkt;
+				pkt.write(Packet2Server::Auth);
+				pkt.writeStr16("register");
+				pkt.writeStr16(*e.text);
+				m_con->send(0, 0, pkt);
+			}
+			return true;
 		case E::G2C_JOIN:
 			if (getWorld().ptr()) {
 				// Already joined one. ignore.

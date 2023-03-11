@@ -11,6 +11,6 @@ public:
 	bool OnEvent(const SEvent &e) override;
 	bool OnEvent(GameEvent &e) override;
 
-	core::stringw email;
-	core::stringw email_confirm;
+private:
+	bool m_email_match = true;
 };

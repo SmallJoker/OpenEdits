@@ -254,8 +254,10 @@ void Gui::connect(SceneConnect *sc)
 	}
 
 	if (state == ClientState::Register) {
+		sc->record_login = true;
 		setNextScene(SceneHandlerType::Register);
 	} else if (state == ClientState::LobbyIdle) {
+		sc->record_login = true;
 		setNextScene(SceneHandlerType::Lobby);
 
 		GameEvent e(GameEvent::G2C_LOBBY_REQUEST);

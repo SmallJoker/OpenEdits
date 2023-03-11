@@ -187,12 +187,17 @@ void Server::pkt_Auth(peer_t peer_id, Packet &pkt)
 			return;
 		}
 
+		player->auth.status = Auth::Status::SignedIn;
+		player->state = RemotePlayerState::Idle;
+
 		Packet out;
 		out.write(Packet2Client::Auth);
 		out.writeStr16("signed_in");
 		m_con->send(peer_id, 0, out);
 
-		player->auth.status = Auth::Status::SignedIn;
+		// Update last login timestamp
+		info.last_login = time(nullptr);
+		m_auth_db->save(info);
 		return;
 	}
 
@@ -202,7 +207,7 @@ void Server::pkt_Auth(peer_t peer_id, Packet &pkt)
 		AuthInformation info;
 		bool ok = m_auth_db->load(player->name, &info);
 		if (ok) {
-			sendMsg(peer_id, "This user is already registered");
+			sendMsg(peer_id, "This user is already registered.");
 			return;
 		}
 
@@ -225,8 +230,24 @@ void Server::pkt_Auth(peer_t peer_id, Packet &pkt)
 			return;
 		}
 
+		{
+			// Check email use
+			AuthInformation info_tmp;
+			ok = m_auth_db->load(info.email, &info_tmp);
+			if (ok) {
+				sendMsg(peer_id, "This email is already in use.");
+				return;
+			}
+		}
+
 		m_auth_db->save(info);
 		m_auth_db->resetPassword(info.email);
+		sendMsg(peer_id, "Account registered. Check your email for the first time password.");
+
+		AuthLogEntry log;
+		log.subject = player->name;
+		log.text = "registered";
+		m_auth_db->logNow(log);
 		return;
 	}
 
