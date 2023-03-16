@@ -401,7 +401,15 @@ CHATCMD_FUNC(Server::chat_SetPass)
 		return;
 	}
 
-	if (who != player->name) {
+	if (who == player->name) {
+		for (auto p : m_players) {
+			if (p.second->name != player->name || p.second == player)
+				continue;
+
+			systemChatSend(player, "For safety reasons please leave all other worlds first.");
+			return;
+		}
+	} else {
 		// Auth check
 		AuthInformation info_who;
 		if (!m_auth_db->load(who, &info_who)

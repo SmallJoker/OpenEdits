@@ -52,19 +52,11 @@ void Server::pkt_Hello(peer_t peer_id, Packet &pkt)
 	name = strtrim(name);
 
 	bool ok = name.size() <= 16 && name.size() >= 3 && isalnum_nolocale(name);
-	for (char &c : name) {
+	for (char &c : name)
 		c = toupper(c);
-	}
-
-	for (auto it : m_players) {
-		if (it.second->name == name) {
-			ok = false;
-			break;
-		}
-	}
 
 	if (!ok) {
-		sendMsg(peer_id, "Invalid nickname (must be [A-z0-9]{3,16}) or player is already online");
+		sendMsg(peer_id, "Invalid nickname (must be [A-z0-9]{3,16})");
 		m_con->disconnect(peer_id);
 		return;
 	}
