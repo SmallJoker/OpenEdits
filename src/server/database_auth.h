@@ -1,6 +1,7 @@
 #pragma once
 
 #include "database.h"
+#include <ctime>
 #include <map>
 
 struct AuthInformation {

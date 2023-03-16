@@ -214,8 +214,8 @@ bool DatabaseAuth::ban(const AuthBanEntry &entry)
 	sqlite3_reset(m_stmt_end);
 
 	if (good) {
-		printf("Server: Banned %s (%s) until %lu\n",
-			entry.affected.c_str(), entry.context.c_str(), entry.expiry
+		printf("Server: Banned %s (%s) until %llu\n",
+			entry.affected.c_str(), entry.context.c_str(), (unsigned long long)entry.expiry
 		);
 	}
 
