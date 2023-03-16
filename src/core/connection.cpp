@@ -166,6 +166,20 @@ void Connection::disconnect(peer_t peer_id)
 	// Actual handling done in async event handler
 }
 
+std::string Connection::getPeerAddress(peer_t peer_id)
+{
+	auto peer = findPeer(peer_id);
+	if (!peer)
+		return "";
+
+	char buf[30];
+	int len = enet_address_get_host(&peer->address, buf, sizeof(buf));
+	if (len < 0)
+		return "";
+
+	return buf;
+}
+
 void Connection::send(peer_t peer_id, uint16_t flags, Packet &pkt)
 {
 	if (pkt.size() - pkt.getRemainingBytes() > 0) {
@@ -260,7 +274,8 @@ void Connection::recvAsyncInternal()
 			case ENET_EVENT_TYPE_CONNECT:
 				{
 					peer_t peer_id = event.peer->connectID;
-					DEBUGLOG("--- ENet %s: New peer ID %u\n", m_name, peer_id);
+					std::string address = getPeerAddress(peer_id);
+					DEBUGLOG("--- ENet %s: New peer ID %u from %s\n", m_name, peer_id, address.c_str());
 					peer_id_list[event.peer - m_host->peers] = peer_id;
 					m_processor->onPeerConnected(peer_id);
 				}

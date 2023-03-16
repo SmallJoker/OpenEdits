@@ -7,8 +7,8 @@
 #include <vector2d.h>
 
 enum ElementId : int {
-	ID_BoxEmail = 101,
-	ID_BoxEmailConfirm,
+	ID_BoxPass = 101,
+	ID_BoxPassConfirm,
 	ID_BtnRegister,
 	ID_BtnBack
 };
@@ -37,8 +37,8 @@ void SceneRegister::draw()
 		);
 
 		auto e = gui->addStaticText(
-			L"Your account is yet not registered. Please provide an email address"
-			L" to receive a temporary password for the first login and subsequent password resets.",
+			L"Your account is yet not registered. Please provide password"
+			L" for your new account.",
 		rect);
 		e->setOverrideColor(Gui::COLOR_ON_BG);
 
@@ -46,19 +46,21 @@ void SceneRegister::draw()
 	}
 
 	{
-		auto text_a = gui->addStaticText(L"Email address", rect_1, false, false);
+		auto text_a = gui->addStaticText(L"New password", rect_1, false, false);
 		text_a->setOverrideColor(Gui::COLOR_ON_BG);
 
-		gui->addEditBox(L"", rect_2(), true, nullptr, ID_BoxEmail);
+		auto e = gui->addEditBox(L"", rect_2(), true, nullptr, ID_BoxPass);
+		e->setPasswordBox(true);
 
 		rect_1 += VSPACING;
 	}
 
 	{
-		auto text_a = gui->addStaticText(L"Confirm email", rect_1, false, false);
+		auto text_a = gui->addStaticText(L"Confirm password", rect_1, false, false);
 		text_a->setOverrideColor(Gui::COLOR_ON_BG);
 
-		gui->addEditBox(L"", rect_2(), true, nullptr, ID_BoxEmailConfirm);
+		auto e = gui->addEditBox(L"", rect_2(), true, nullptr, ID_BoxPassConfirm);
+		e->setPasswordBox(true);
 
 		rect_1 += VSPACING;
 	}
@@ -83,16 +85,20 @@ bool SceneRegister::OnEvent(const SEvent &e)
 		switch (e.GUIEvent.EventType) {
 			case gui::EGET_BUTTON_CLICKED:
 				if (e.GUIEvent.Caller->getID() == ID_BtnRegister) {
-					if (!m_email_match) {
-						m_gui->showPopupText("Email text does not match!");
+					if (!m_pass_match) {
+						m_gui->showPopupText("Passwords do not match!");
 						break;
 					}
 					auto root = m_gui->guienv->getRootGUIElement();
-					auto email = root->getElementFromId(ID_BoxEmail);
+					auto pass = root->getElementFromId(ID_BoxPass);
+					if (wcslen(pass->getText()) < 6) {
+						m_gui->showPopupText("Password is too short! Use >= 6 characters for your safety.");
+						break;
+					}
 
 					GameEvent ev(GameEvent::G2C_REGISTER);
 					ev.text = new std::string();
-					wide_to_utf8(*ev.text, email->getText());
+					wide_to_utf8(*ev.text, pass->getText());
 
 					m_gui->sendNewEvent(ev);
 
@@ -104,13 +110,13 @@ bool SceneRegister::OnEvent(const SEvent &e)
 				}
 				break;
 			case gui::EGET_EDITBOX_CHANGED:
-				if (e.GUIEvent.Caller->getID() == ID_BoxEmail || e.GUIEvent.Caller->getID() == ID_BoxEmailConfirm) {
+				if (e.GUIEvent.Caller->getID() == ID_BoxPass || e.GUIEvent.Caller->getID() == ID_BoxPassConfirm) {
 					auto root = m_gui->guienv->getRootGUIElement();
-					auto email = root->getElementFromId(ID_BoxEmail);
-					auto confirm = (gui::IGUIEditBox *)root->getElementFromId(ID_BoxEmailConfirm);
+					auto pass = root->getElementFromId(ID_BoxPass);
+					auto confirm = (gui::IGUIEditBox *)root->getElementFromId(ID_BoxPassConfirm);
 
-					m_email_match = wcscmp(email->getText(), confirm->getText()) == 0;
-					if (m_email_match) {
+					m_pass_match = wcscmp(pass->getText(), confirm->getText()) == 0;
+					if (m_pass_match) {
 						// Match
 						confirm->enableOverrideColor(false);
 					} else {

@@ -1,27 +1,30 @@
 #pragma once
 
 #include "database.h"
+#include <map>
 
 struct AuthInformation {
 	std::string name;
-	std::string email;
 	std::string password;
-	std::string password_reset;
 
 	time_t last_login = 0;
 
 	enum AccountLevel : int {
 		AL_INVALID = 0,
 		AL_REGISTERED = 5,
-		AL_ADMIN = 10
+		AL_MODERATOR = 10,
+		AL_SERVER_ADMIN = 42
 	};
 	int level = 0;
+
+	std::map<std::string, std::string> metadata;
 };
 
 struct AuthBanEntry {
 	time_t expiry = 0;
-	std::string what;
-	std::string reason;
+	std::string affected;
+	std::string context;
+	std::string comment;
 };
 
 struct AuthLogEntry {
@@ -43,14 +46,14 @@ public:
 	bool tryOpen(const char *filepath) override;
 	void close() override;
 
-	bool load(const std::string &what, AuthInformation *auth);
+	bool load(const std::string &name, AuthInformation *auth);
 	bool save(const AuthInformation &auth);
 
-	bool resetPassword(const std::string &email);
+	bool setPassword(const std::string &name, const std::string &hash);
 
 	bool ban(const AuthBanEntry &entry);
 	// returns whether an active ban was found
-	bool getBanRecord(const std::string &what, AuthBanEntry *entry);
+	bool getBanRecord(const std::string &affected, const std::string &context, AuthBanEntry *entry);
 	bool cleanupBans();
 
 	bool logNow(AuthLogEntry entry);
@@ -58,7 +61,7 @@ public:
 private:
 	sqlite3_stmt *m_stmt_read = nullptr;
 	sqlite3_stmt *m_stmt_write = nullptr;
-	sqlite3_stmt *m_stmt_reset_pw = nullptr;
+	sqlite3_stmt *m_stmt_set_pw = nullptr;
 
 	sqlite3_stmt *m_stmt_f2b_add = nullptr;
 	sqlite3_stmt *m_stmt_f2b_read = nullptr;

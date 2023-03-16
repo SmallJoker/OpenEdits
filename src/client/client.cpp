@@ -1,5 +1,6 @@
 #include "client.h"
 #include "localplayer.h"
+#include "core/auth.h"
 #include "core/connection.h"
 #include "core/packet.h"
 
@@ -173,10 +174,13 @@ bool Client::OnEvent(GameEvent &e)
 			return true;
 		case E::G2C_REGISTER:
 			{
+				Auth auth;
+				auth.fromPass(*e.text);
+
 				Packet pkt;
 				pkt.write(Packet2Server::Auth);
 				pkt.writeStr16("register");
-				pkt.writeStr16(*e.text);
+				pkt.writeStr16(auth.getPwHash());
 				m_con->send(0, 0, pkt);
 			}
 			return true;

@@ -49,6 +49,7 @@ Server::Server() :
 
 	{
 		m_chatcmd.add("/help", (ChatCommandAction)&Server::chat_Help);
+		m_chatcmd.add("/setpass", (ChatCommandAction)&Server::chat_SetPass);
 		m_chatcmd.add("/flags", (ChatCommandAction)&Server::chat_Flags);
 		m_chatcmd.add("/ffilter", (ChatCommandAction)&Server::chat_FFilter);
 		m_chatcmd.add("/fset", (ChatCommandAction)&Server::chat_FSet);
@@ -330,6 +331,7 @@ CHATCMD_FUNC(Server::chat_Help)
 		const std::string cmd;
 		const std::string text;
 	} help_LUT[] = {
+		{ "setpass", "Syntax: /flags [PLAYERNAME] PASSWORD PASSWORD" },
 		{ "flags", "Syntax: /flags [PLAYERNAME]\nLists the provided (or own) player's flags." },
 		{ "ffilter", "Syntax: //filter FLAG1 [...]\nLists all players matching the flag filter." },
 		{ "fset", "Syntax: /fset PLAYERNAME FLAG1 [...]\nSets one or more flags for a player." },
@@ -364,6 +366,60 @@ CHATCMD_FUNC(Server::chat_Help)
 	}
 
 	systemChatSend(player, "No help available for command " + cmd);
+}
+
+CHATCMD_FUNC(Server::chat_SetPass)
+{
+	// [who] pass pass
+	std::string newpass(get_next_part(msg));
+	std::string confirm(get_next_part(msg));
+	std::string who(get_next_part(msg));
+
+	if (!who.empty()) {
+		std::swap(newpass, confirm); // pass who pass
+		std::swap(confirm, who); // who pass pass
+	} else {
+		who = player->name;
+	}
+
+	for (char &c : who)
+		c = toupper(c);
+
+	if (!m_auth_db) {
+		systemChatSend(player, "Auth database is dead.");
+		return;
+	}
+
+	AuthInformation info;
+	if (!m_auth_db->load(player->name, &info)) {
+		systemChatSend(player, "Your account is not registered.");
+		return;
+	}
+
+	if (confirm != newpass) {
+		systemChatSend(player, "Passwords do not match.");
+		return;
+	}
+
+	if (who != player->name) {
+		// Auth check
+		AuthInformation info_who;
+		if (!m_auth_db->load(who, &info_who)
+				|| info.level < AuthInformation::AL_MODERATOR
+				|| info.level < info_who.level) {
+			systemChatSend(player, "Insufficient privileges or the specified account is not registered.");
+			return;
+		}
+	}
+
+	Auth auth;
+	auth.fromPass(newpass);
+	bool ok = m_auth_db->setPassword(who, auth.getPwHash());
+
+	if (ok)
+		systemChatSend(player, "Changed password of " + who + " to: " + newpass);
+	else
+		systemChatSend(player, "Internal error");
 }
 
 CHATCMD_FUNC(Server::chat_Flags)

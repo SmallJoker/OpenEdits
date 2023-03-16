@@ -12,7 +12,6 @@ static void auth_database_test()
 	{
 		// Register a new account
 		AuthInformation auth;
-		auth.email = "foo@bar.baz";
 		auth.name = "FooBarBaz";
 
 		Auth newauth;
@@ -21,16 +20,10 @@ static void auth_database_test()
 
 		CHECK(db.save(auth));
 
-		// By email
-		AuthInformation out;
-		CHECK(db.load(auth.email, &out));
-		CHECK(out.name == auth.name);
-		CHECK(out.password == auth.password);
-
 		// By name
-		out = AuthInformation();
+		 AuthInformation out;
 		CHECK(db.load(auth.name, &out));
-		CHECK(out.email == auth.email);
+		CHECK(out.name == auth.name);
 	}
 
 	db.close();

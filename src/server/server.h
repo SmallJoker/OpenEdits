@@ -60,6 +60,7 @@ private:
 	void systemChatSend(Player *player, const std::string &msg);
 
 	CHATCMD_FUNC(chat_Help);
+	CHATCMD_FUNC(chat_SetPass);
 	CHATCMD_FUNC(chat_Flags);
 	CHATCMD_FUNC(chat_FFilter);
 	bool changePlayerFlags(Player *player, std::string msg, bool do_add);

@@ -115,26 +115,30 @@ void Server::pkt_Hello(peer_t peer_id, Packet &pkt)
 			return;
 		}
 
+		if (!m_auth_db) {
+			sendMsg(peer_id, "Server error: Auth database error. Please use GuestXXXX accounts.");
+			m_con->disconnect(peer_id);
+			return;
+		}
+
 		// Prompt for authentication if needed
-		if (m_auth_db) {
-			AuthInformation info;
-			bool ok = m_auth_db->load(player->name, &info);
-			if (ok) {
-				player->auth.random = Auth::generateRandom();
+		AuthInformation info;
+		bool ok = m_auth_db->load(player->name, &info);
+		if (ok) {
+			player->auth.random = Auth::generateRandom();
 
-				Packet out;
-				out.write(Packet2Client::Auth);
-				out.writeStr16("hash");
-				out.writeStr16(player->auth.random);
-				m_con->send(peer_id, 0, out);
-			} else {
-				player->auth.status = Auth::Status::Unregistered;
+			Packet out;
+			out.write(Packet2Client::Auth);
+			out.writeStr16("hash");
+			out.writeStr16(player->auth.random);
+			m_con->send(peer_id, 0, out);
+		} else {
+			player->auth.status = Auth::Status::Unregistered;
 
-				Packet out;
-				out.write(Packet2Client::Auth);
-				out.writeStr16("register");
-				m_con->send(peer_id, 0, out);
-			}
+			Packet out;
+			out.write(Packet2Client::Auth);
+			out.writeStr16("register");
+			m_con->send(peer_id, 0, out);
 		}
 	}
 }
@@ -166,20 +170,10 @@ void Server::pkt_Auth(peer_t peer_id, Packet &pkt)
 
 		std::string hash = pkt.readStr16();
 
-		bool signed_in = false;
-		if (!info.password.empty()) {
-			// Try normal password
-			player->auth.fromHash(info.password);
-			player->auth.combine(player->auth.random);
-			signed_in = player->auth.verify(hash);
-		}
-
-		if (!signed_in && !info.password_reset.empty()) {
-			// Try temporary reset password
-			player->auth.fromHash(info.password_reset);
-			player->auth.combine(player->auth.random);
-			signed_in = player->auth.verify(hash);
-		}
+		// Compare doubly-hashed passwords
+		player->auth.fromHash(info.password);
+		player->auth.combine(player->auth.random);
+		bool signed_in = player->auth.verify(hash);
 
 		if (!signed_in) {
 			sendMsg(peer_id, "Incorrect password");
@@ -202,7 +196,7 @@ void Server::pkt_Auth(peer_t peer_id, Packet &pkt)
 	}
 
 	if (action == "register") {
-		// Register based on email
+		// Register new account, password provided.
 
 		AuthInformation info;
 		bool ok = m_auth_db->load(player->name, &info);
@@ -211,43 +205,42 @@ void Server::pkt_Auth(peer_t peer_id, Packet &pkt)
 			return;
 		}
 
-		info.name = player->name;
-		info.email = strtrim(pkt.readStr16());
-
-		bool email_ok = true;
-		bool email_at = false;
-		for (char c : info.email) {
-			if (!std::isgraph(c)) {
-				email_ok = false;
-				break;
-			}
-			if (c == '@')
-				email_at = true;
-		}
-		email_ok &= email_at;
-		if (!email_ok) {
-			sendMsg(peer_id, "Invalid email. Please use one where you can receive your temporary password.");
-			return;
-		}
-
+		std::string address = m_con->getPeerAddress(peer_id);
 		{
-			// Check email use
-			AuthInformation info_tmp;
-			ok = m_auth_db->load(info.email, &info_tmp);
-			if (ok) {
-				sendMsg(peer_id, "This email is already in use.");
+			// Prevent register spam
+			AuthBanEntry entry;
+			if (m_auth_db->getBanRecord(address, "register", &entry)) {
+				sendMsg(peer_id, "Too many account creation requests.");
 				return;
 			}
 		}
 
-		m_auth_db->save(info);
-		m_auth_db->resetPassword(info.email);
-		sendMsg(peer_id, "Account registered. Check your email for the first time password.");
+		info.name = player->name;
+		info.password = pkt.readStr16();
+		info.level = AuthInformation::AL_REGISTERED;
 
-		AuthLogEntry log;
-		log.subject = player->name;
-		log.text = "registered";
-		m_auth_db->logNow(log);
+		if (info.password.empty()) {
+			sendMsg(peer_id, "Empty password. Something went wrong.");
+			return;
+		}
+
+		m_auth_db->save(info);
+		sendMsg(peer_id, "Account registered. You may now login.");
+
+		{
+			AuthLogEntry log;
+			log.subject = player->name;
+			log.text = "registered";
+			m_auth_db->logNow(log);
+		}
+
+		{
+			AuthBanEntry entry;
+			entry.affected = address;
+			entry.context = "register";
+			entry.expiry = time(nullptr) + 60;
+			m_auth_db->ban(entry);
+		}
 		return;
 	}
 
@@ -261,30 +254,12 @@ void Server::pkt_Auth(peer_t peer_id, Packet &pkt)
 		}
 
 		info.password = pkt.readStr16(); // new hash
-		info.password_reset.clear();
 
 		ok = m_auth_db->save(info);
 		if (ok)
 			sendMsg(peer_id, "Password updated.");
 		else
 			sendMsg(peer_id, "Failed to update password.");
-		return;
-	}
-
-	if (action == "resetpass") {
-		// Send new password by email
-		AuthInformation info;
-		bool ok = m_auth_db->load(player->name, &info);
-		if (!ok) {
-			sendMsg(peer_id, "Cannot reset password: Auth not found.");
-			return;
-		}
-
-		ok = m_auth_db->resetPassword(info.email);
-		if (ok)
-			sendMsg(peer_id, "New password sent! Check your inbox.");
-		else
-			sendMsg(peer_id, "Cannot reset your password. Ask a system admin.");
 		return;
 	}
 
@@ -371,6 +346,19 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 
 		world->createDummy({100, 75});
 		world->getMeta().owner = player->name;
+	}
+
+	{
+		// Allow only one of each account per world
+		for (auto p : m_players) {
+			if (p.second->name != player->name)
+				continue;
+
+			if (p.second->getWorld() == world.ptr()) {
+				sendMsg(peer_id, "You already joined this world.");
+				return;
+			}
+		}
 	}
 
 	{
@@ -625,7 +613,7 @@ void Server::pkt_Deprecated(peer_t peer_id, Packet &pkt)
 	if (player)
 		name = player->name;
 
-	printf("Ignoring deprecated packet from player %s, peer_id=%u\n",
+	printf("Server: Ignoring deprecated packet from player %s, peer_id=%u\n",
 		name.c_str(), peer_id);
 }
 

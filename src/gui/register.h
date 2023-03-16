@@ -12,5 +12,5 @@ public:
 	bool OnEvent(GameEvent &e) override;
 
 private:
-	bool m_email_match = true;
+	bool m_pass_match = true;
 };

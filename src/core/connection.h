@@ -35,6 +35,7 @@ public:
 
 	bool listenAsync(PacketProcessor &proc);
 	void disconnect(peer_t peer_id);
+	std::string getPeerAddress(peer_t peer_id);
 
 	// use only on single connections
 	static const peer_t PEER_ID_FIRST = 0;
