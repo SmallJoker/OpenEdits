@@ -1,9 +1,11 @@
 # OpenEdits
 
-![preview image v1.0.1-dev](screenshot.jpeg)
+![preview image v1.0.8-dev](screenshot.jpeg)
 
 A 2D game block building inspired by Everybody Edits.
 Code structure inspired by Minetest practices.
+
+The project direction can be found in [doc/DIRECTION.md](doc/DIRECTION.md).
 
 ## Gameplay
 
@@ -11,24 +13,54 @@ Code structure inspired by Minetest practices.
 
  * W/A/S/D or arrow keys: move player
  * Space: Jump
- * Left click: Place the selected block
- * Right click or Shift+Left click: Block eraser
+ * LMB: Place the selected block
+ * RMB or Shift+LMB: Block eraser
+ * Mouse scroll: Zoom in/out
+     * Warning: Rendering performs pretty badly. Do not scroll out too far.
  * 1-9: Hotbar block selector
- * `/` or T: Focus chat
- * Enter: Send chat message
+     * Use RMB to drag & drop a block from the selector into the hotbar
+ * `/` or T or Enter: Open chat box
+     * Enter: Submit
+     * ESC: Cancel and close
+     * Tab: Nickname autocompletion
+     * Up/Down: Previous chat message / empty chat message
  * E: Toggle block selector
  * G: Toggle god mode
  * M: Toggle minimap
+
+
+**Chat commands**
+
+ * See `/help`
+
+Permission/player flag examples:
+
+ * `/fset FOOBAR tmp-edit-draw` temporary edit access (until rejoin)
+ * `/fset FOOBAR godmode` persistent god mode access (after the world is saved)
+ * `/fdel FOOBAR owner` removes all persistent access except for "banned"
+ * `/ffilter` lists all players with any specified flags
+
+
+**Command line arguments**
+
+ * `--version` outputs the current game version
+ * `--unittest` runs the included tests to sanity check
+ * `--server` starts a server-only instance without GUI
 
 
 ## Available archives
 
 ### Linux
 
-1. Verify the archive checksum
-2. Extract the archive to any location
-3. Run `AppRun.sh`
-4. In case of issues: run with `gdb`. Debug symbols are included.
+1. Extract the archive to any location
+2. Run `AppRun.sh`
+3. In case of issues: run with `gdb`. Debug symbols are included.
+
+### Windows
+
+1. Extract the archive to any location
+2. Run the executable
+3. In case of issues: use a debugger such as x64dbg
 
 
 ## Compiling

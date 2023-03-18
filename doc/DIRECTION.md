@@ -7,14 +7,14 @@
 
 To-do:
 
- * Account registration/authentication
- * Per-world permission system
- * Blocks: one-way gates, teleportation, text
+ * World creation restrictions
+ * Open world feature
+ * Blocks: teleportation, text
  * Animated coins (rotating mesh?)
 
 Maybe:
 
- * Friends features, inclusing a listing in the lobby to join their world
+ * Friends features, including a listing in the lobby to join their world
  * Group/crew system for easier per-world permission management
 
 
