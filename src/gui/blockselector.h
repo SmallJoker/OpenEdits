@@ -14,10 +14,11 @@ namespace irr {
 }
 
 struct BlockUpdate;
+class SceneGameplay;
 
 class SceneBlockSelector : public IEventReceiver {
 public:
-	SceneBlockSelector(gui::IGUIEnvironment *gui);
+	SceneBlockSelector(SceneGameplay *parent, gui::IGUIEnvironment *gui);
 	~SceneBlockSelector();
 
 	void setHotbarPos(const core::position2di &pos) { m_hotbar_pos = pos; }
@@ -34,6 +35,7 @@ private:
 	void drawBlockSelector();
 	bool selectBlockId(int what, bool is_element_id);
 
+	SceneGameplay *m_gameplay = nullptr;
 	gui::IGUIEnvironment *m_gui = nullptr;
 
 	bool m_enabled = false;

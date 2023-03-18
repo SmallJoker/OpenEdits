@@ -1,4 +1,5 @@
 #include "blockselector.h"
+#include "gameplay.h"
 
 #include "core/blockmanager.h"
 #include "core/world.h" // BlockUpdate
@@ -23,8 +24,9 @@ enum ElementId : int {
 
 static const core::dimension2di BTN_SIZE(30, 30);
 
-SceneBlockSelector::SceneBlockSelector(gui::IGUIEnvironment *gui)
+SceneBlockSelector::SceneBlockSelector(SceneGameplay *parent, gui::IGUIEnvironment *gui)
 {
+	m_gameplay = parent;
 	m_gui = gui;
 	m_hotbar_ids = { 0, 9, 10, 2, 4, 48, 46, 67 };
 }
@@ -318,10 +320,11 @@ void SceneBlockSelector::drawBlockSelector()
 		{ L"Background" },
 	};
 
-	const int offset_x = m_showmore->getAbsolutePosition().UpperLeftCorner.X;
 	const core::dimension2di content_size(550, 150);
+	const int offset_x = m_showmore->getAbsolutePosition().UpperLeftCorner.X;
+	const int content_pos_x = (m_gameplay->getDrawArea().LowerRightCorner.X - content_size.Width) / 2;
 	core::recti rect_tab(
-		core::vector2di(10 - offset_x, -150 - 5),
+		core::vector2di(std::max(content_pos_x, 10) - offset_x, -150 - 5),
 		content_size
 	);
 

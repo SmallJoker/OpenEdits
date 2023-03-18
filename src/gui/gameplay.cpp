@@ -230,7 +230,7 @@ void SceneGameplay::draw()
 	{
 		// Block selector GUI
 		if (!m_blockselector)
-			m_blockselector = new SceneBlockSelector(gui);
+			m_blockselector = new SceneBlockSelector(this, gui);
 
 		m_blockselector->setHotbarPos(
 			core::vector2di(BLOCKSELECTOR_POS, y_pos)
