@@ -53,6 +53,7 @@ void SceneMinimap::step(float dtime)
 	for (size_t x = 0; x < width; ++x) {
 		Block b;
 		if (!world->getBlock(blockpos_t(x - 2, y - 2), &b)) {
+			// 2px border
 			img->setPixel(x, y, 0xFF444444);
 			continue;
 		}
@@ -66,7 +67,7 @@ void SceneMinimap::step(float dtime)
 			video::SColor color(0xFFFF0000); // default red
 			if (props) {
 				auto tile = props->getTile(b);
-				if (tile.have_alpha || tile.type != BlockDrawType::Solid)
+				if (tile.type != BlockDrawType::Solid)
 					break;
 				color = props->color;
 			}

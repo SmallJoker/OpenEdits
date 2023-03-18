@@ -22,6 +22,7 @@ static float ZINDEX_LOOKUP[(int)BlockDrawType::Invalid] = {
 
 enum ElementId : int {
 	ID_BoxChat = 101,
+	ID_BtnChat,
 	ID_BtnBack = 110,
 	ID_BtnGodMode,
 	ID_BtnMinimap,
@@ -123,7 +124,7 @@ void SceneGameplay::draw()
 	gui->addButton(
 		rect_1, nullptr, ID_BtnBack, L"<< Lobby");
 
-	x_pos += 120 + 280; // lobby + block selector
+	x_pos += 130;
 
 	{
 		// God mode toggle button
@@ -138,34 +139,56 @@ void SceneGameplay::draw()
 		x_pos += 40;
 	}
 
-	{
-		// Chatbox
-		core::recti rect_2(
-			core::vector2di(x_pos, y_pos),
-			core::dimension2du(250, 30)
-		);
-
-		auto e = gui->addEditBox(
-			L"", rect_2, true, nullptr, ID_BoxChat);
-		e->setEnabled(!pflags.check(PlayerFlags::PF_TMP_MUTED));
-
-		x_pos += 260;
-	}
+	const int SMILEY_POS = x_pos;
+	x_pos += 30 + 10; // Smiley selector
 
 	{
-		// Minimap toggle button
+		// Chat box toggle button
 		core::recti rect_3(
 			core::vector2di(x_pos, y_pos),
 			core::dimension2du(30, 30)
 		);
 
-		gui->addButton(rect_3, nullptr, ID_BtnMinimap, L"M");
+		auto eb = gui->addButton(rect_3, nullptr, ID_BtnChat);
+		eb->setImage(m_gui->driver->getTexture("assets/textures/icon_chat.png"));
+		eb->setScaleImage(true);
+		eb->setUseAlphaChannel(true);
+
+		x_pos += 40;
+
+		// Chatbox
+		const int width = SIZEW * 0.5f;
+		core::recti rect_2(
+			core::vector2di((SIZEW - width) / 2, y_pos - 35),
+			core::dimension2du(width, 30)
+		);
+
+		auto e = gui->addEditBox(
+			L"", rect_2, true, nullptr, ID_BoxChat);
+		e->setEnabled(!pflags.check(PlayerFlags::PF_TMP_MUTED));
+		e->setVisible(false);
+	}
+;
+	const int BLOCKSELECTOR_WIDTH = (8 + 1) * 30 + 5;
+	const int BLOCKSELECTOR_POS = std::max(x_pos, (SIZEW - BLOCKSELECTOR_WIDTH) / 2);
+
+	{
+		// Minimap toggle button
+		core::recti rect_3(
+			core::vector2di(SIZEW - 40, y_pos),
+			core::dimension2du(30, 30)
+		);
+
+		auto eb = gui->addButton(rect_3, nullptr, ID_BtnMinimap);
+		eb->setImage(m_gui->driver->getTexture("assets/textures/icon_minimap.png"));
+		eb->setScaleImage(true);
+		eb->setUseAlphaChannel(true);
 	}
 
 	{
 		core::recti rect_ch(
 			core::vector2di(SIZEW, 160),
-			core::dimension2di(wsize.Width - SIZEW, wsize.Height - 50 - 160)
+			core::dimension2di(wsize.Width - SIZEW, wsize.Height - 5 - 160)
 		);
 		if (m_chathistory_text.empty())
 			m_chathistory_text = L"--- Start of chat history ---\n";
@@ -199,7 +222,7 @@ void SceneGameplay::draw()
 			m_smileyselector = new SceneSmileySelector(m_gui);
 
 		m_smileyselector->setSelectorPos(
-			rect_1.UpperLeftCorner + core::position2di(110, 0)
+			core::vector2di(SMILEY_POS, y_pos)
 		);
 		m_smileyselector->draw();
 	}
@@ -210,7 +233,7 @@ void SceneGameplay::draw()
 			m_blockselector = new SceneBlockSelector(gui);
 
 		m_blockselector->setHotbarPos(
-			rect_1.UpperLeftCorner + core::position2di(150, 0)
+			core::vector2di(BLOCKSELECTOR_POS, y_pos)
 		);
 
 		m_blockselector->setEnabled(pflags.flags & PlayerFlags::PF_MASK_EDIT);
@@ -272,19 +295,21 @@ static bool editbox_move_to_end(gui::IGUIEnvironment *guienv, wchar_t charval = 
 {
 	auto root = guienv->getRootGUIElement();
 	auto element = root->getElementFromId(ID_BoxChat);
-	if (element) {
-		SEvent ev;
-		memset(&ev, 0, sizeof(ev));
-		ev.EventType = EET_KEY_INPUT_EVENT;
-		ev.KeyInput.PressedDown = true;
-		ev.KeyInput.Char = charval;
-		ev.KeyInput.Key = KEY_END;
-		element->OnEvent(ev);
+	if (!element)
+		return false;
 
-		guienv->setFocus(element);
-		return true;
-	}
-	return false;
+	element->setVisible(true);
+
+	SEvent ev;
+	memset(&ev, 0, sizeof(ev));
+	ev.EventType = EET_KEY_INPUT_EVENT;
+	ev.KeyInput.PressedDown = true;
+	ev.KeyInput.Char = charval;
+	ev.KeyInput.Key = KEY_END;
+	element->OnEvent(ev);
+
+	guienv->setFocus(element);
+	return true;
 }
 
 bool SceneGameplay::OnEvent(const SEvent &e)
@@ -312,6 +337,18 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 					m_gui->guienv->setFocus(nullptr);
 					return true;
 				}
+				if (e.GUIEvent.Caller->getID() == ID_BtnChat) {
+					auto root = m_gui->guienv->getRootGUIElement();
+					auto element = static_cast<gui::IGUIEditBox *>(root->getElementFromId(ID_BoxChat));
+
+					if (!element)
+						return false;
+
+					bool visible = !element->isVisible();
+					element->setVisible(visible);
+					m_gui->guienv->setFocus(visible ? element : nullptr);
+					return true;
+				}
 				if (e.GUIEvent.Caller->getID() == ID_BtnMinimap) {
 					if (m_minimap)
 						m_minimap->toggleVisibility();
@@ -334,6 +371,7 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 						m_previous_chat_message = textw;
 
 					e.GUIEvent.Caller->setText(L"");
+					e.GUIEvent.Caller->setVisible(false);
 					m_gui->guienv->setFocus(nullptr);
 					return true;
 				}
@@ -566,6 +604,7 @@ bool SceneGameplay::handleChatInput(const SEvent &e)
 
 	if (key == KEY_ESCAPE && focused) {
 		element->setText(L"");
+		element->setVisible(false);
 		m_gui->guienv->setFocus(nullptr);
 		return true;
 	}
@@ -628,6 +667,11 @@ bool SceneGameplay::handleChatInput(const SEvent &e)
 		if (e.KeyInput.Char == L'/' || (key == KEY_KEY_T && !down)) {
 			// Focus chat window
 			if (editbox_move_to_end(m_gui->guienv, e.KeyInput.Char))
+				return true;
+		}
+		if (key == KEY_RETURN && down) {
+			// Focus chat window
+			if (editbox_move_to_end(m_gui->guienv, L'\0'))
 				return true;
 		}
 	}

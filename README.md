@@ -66,3 +66,15 @@ Code: LGPL 2.1+
 DejaVu Sans bitmaps (Bitstream Vera license, extended MIT)
 
  * Converted with https://github.com/kahrl/irrtum
+
+### Images
+
+Images that are not listed below were created by SmallJoker (CC BY 4.0).
+
+DailyYouth (CC BY 3.0)
+
+ * [`icon_chat.png`](https://www.iconfinder.com/icons/3643728/balloon_chat_conversation_speak_word_icon)
+
+IconMarket (CC BY 3.0)
+
+ * [`icon_minimap.png`](https://www.iconfinder.com/icons/6442794/compass_direction_discover_location_navigation_icon) (desaturated)

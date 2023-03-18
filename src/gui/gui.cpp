@@ -49,7 +49,7 @@ Gui::Gui()
 
 		skin->setColor(gui::EGDC_HIGH_LIGHT, 0xFF3344EE); // text highlight
 		skin->setColor(gui::EGDC_EDITABLE, 0xFFDDDDDD); // edit box bg
-		skin->setColor(gui::EGDC_FOCUSED_EDITABLE, 0xFFFFFFFF); // edit box bg
+		skin->setColor(gui::EGDC_FOCUSED_EDITABLE, 0xFFBBDDFF); // edit box bg
 		skin->setColor(gui::EGDC_BUTTON_TEXT, 0xFF000000);
 		skin->setColor(gui::EGDC_3D_DARK_SHADOW, 0xDD999999); // button bottom/right
 		skin->setColor(gui::EGDC_3D_HIGH_LIGHT, 0x66DDDDDD); // button top/left & list background
@@ -349,7 +349,7 @@ void Gui::drawFPS()
 	core::stringw str;
 	core::multibyteToWString(str, std::to_string(fps).c_str());
 	core::recti rect(
-		core::vector2di(window_size.Width - 40, window_size.Height - 20),
+		core::vector2di(window_size.Width - 40, 5),
 		core::dimension2di(50, 50)
 	);
 	font->draw(str, rect, 0xFFFFFF00);

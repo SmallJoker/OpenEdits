@@ -15,7 +15,8 @@ enum ElementId : int {
 	ID_BoxAddress,
 	ID_BtnConnect,
 	ID_BtnHost,
-	ID_ListServers
+	ID_ListServers,
+	ID_BtnDelServer
 };
 
 SceneConnect::SceneConnect()
@@ -149,34 +150,19 @@ void SceneConnect::draw()
 		auto rect_3_tmp = rect_3();
 		rect.addInternalPoint(rect_3_tmp.LowerRightCorner + core::vector2di(0, 80));
 
-		auto listbox = gui->addListBox(rect, nullptr, ID_ListServers, true);
+		gui->addListBox(rect, nullptr, ID_ListServers, true);
 
-		{
-			m_index_to_address.clear();
+		updateServers();
 
-			// Read in the saved servers
-			std::ifstream is("client_servers.txt");
-			std::string line;
-			while (std::getline(is, line)) {
-				LoginInfo info;
-				utf8_to_wide(info.address, get_next_part(line).c_str());
-				utf8_to_wide(info.nickname, get_next_part(line).c_str());
-				if (info.nickname.empty())
-					continue;
+		// Button to remove an entry
+		rect_1 += core::vector2di(0, 75);
+		rect = core::recti(
+			rect_1.UpperLeftCorner,
+			core::dimension2di(100, rect_1.getHeight())
+		);
 
-				m_index_to_address.push_back(info);
-			}
-		}
-
-		// Add to the gui
-		for (auto &info : m_index_to_address) {
-			std::wstring label = info.nickname + L"  -  " + info.address;
-
-			auto i = listbox->addItem(label.c_str());
-			listbox->setItemOverrideColor(i, Gui::COLOR_ON_BG);
-			if (info.address == address.c_str() && info.nickname == nickname.c_str())
-				listbox->setSelected(i);
-		}
+		gui->addButton(
+			rect, nullptr, ID_BtnDelServer, L"Remove");
 	}
 }
 
@@ -189,14 +175,40 @@ bool SceneConnect::OnEvent(const SEvent &e)
 	if (e.EventType == EET_GUI_EVENT) {
 		switch (e.GUIEvent.EventType) {
 			case gui::EGET_BUTTON_CLICKED:
-				onSubmit(e.GUIEvent.Caller->getID());
-				return true;
+				{
+					int id = e.GUIEvent.Caller->getID();
+					if (id == ID_BtnConnect || id == ID_BtnHost) {
+						onSubmit(id);
+						return true;
+					}
+					if (id == ID_BtnDelServer) {
+						auto root = m_gui->guienv->getRootGUIElement();
+						auto listbox = (gui::IGUIListBox *)root->getElementFromId(ID_ListServers);
+
+						if (!listbox)
+							return false;
+
+						int index;
+						try {
+							index = listbox->getSelected();
+							m_index_to_address.at(index); // valid?
+						} catch (std::exception &) {
+							break;
+						}
+
+						// Remove index from the file
+						removeServer(index);
+						updateServers();
+						return true;
+					}
+				}
+				break;
 			case gui::EGET_LISTBOX_CHANGED:
 				if (e.GUIEvent.Caller->getID() == ID_ListServers) {
-					gui::IGUIListBox *list = (gui::IGUIListBox *)e.GUIEvent.Caller;
+					gui::IGUIListBox *listbox = (gui::IGUIListBox *)e.GUIEvent.Caller;
 
 					try {
-						auto info = m_index_to_address.at(list->getSelected());
+						auto info = m_index_to_address.at(listbox->getSelected());
 						address = info.address.c_str();
 						nickname = info.nickname.c_str();
 
@@ -229,5 +241,74 @@ void SceneConnect::onSubmit(int elementid)
 	start_localhost = (elementid == ID_BtnHost);
 
 	m_gui->connect(this);
+}
+
+static const std::string SERVERS_FILE = "client_servers.txt";
+
+void SceneConnect::removeServer(int index)
+{
+	const LoginInfo &ref = m_index_to_address.at(index);
+
+	// Read in the saved servers
+	std::ifstream is(SERVERS_FILE);
+	std::ofstream os(SERVERS_FILE + ".tmp", std::ios_base::trunc);
+	std::string line;
+	while (std::getline(is, line)) {
+		std::string original_line = line;
+
+		LoginInfo info;
+		utf8_to_wide(info.address, get_next_part(line).c_str());
+		utf8_to_wide(info.nickname, get_next_part(line).c_str());
+
+		if (info.address == ref.address && info.nickname == ref.nickname) {
+			// Skip
+			continue;
+		}
+		os << original_line << std::endl;
+	}
+
+	is.close();
+	os.close();
+
+	std::remove(SERVERS_FILE.c_str());
+	std::rename((SERVERS_FILE + ".tmp").c_str(), SERVERS_FILE.c_str());
+}
+
+
+void SceneConnect::updateServers()
+{
+	auto root = m_gui->guienv->getRootGUIElement();
+	auto listbox = (gui::IGUIListBox *)root->getElementFromId(ID_ListServers);
+
+	if (!listbox)
+		return;
+
+	{
+		m_index_to_address.clear();
+
+		// Read in the saved servers
+		std::ifstream is("client_servers.txt");
+		std::string line;
+		while (std::getline(is, line)) {
+			LoginInfo info;
+			utf8_to_wide(info.address, get_next_part(line).c_str());
+			utf8_to_wide(info.nickname, get_next_part(line).c_str());
+			if (info.nickname.empty())
+				continue;
+
+			m_index_to_address.push_back(info);
+		}
+	}
+
+	// Add to the gui
+	listbox->clear();
+	for (auto &info : m_index_to_address) {
+		std::wstring label = info.nickname + L"  -  " + info.address;
+
+		auto i = listbox->addItem(label.c_str());
+		listbox->setItemOverrideColor(i, Gui::COLOR_ON_BG);
+		if (info.address == address.c_str() && info.nickname == nickname.c_str())
+			listbox->setSelected(i);
+	}
 }
 

@@ -24,9 +24,13 @@ public:
 private:
 	void onSubmit(int elementid);
 
+	void removeServer(int index);
+	void updateServers();
+
 	struct LoginInfo {
 		std::wstring nickname;
 		std::wstring address;
 	};
+
 	std::vector<LoginInfo> m_index_to_address;
 };

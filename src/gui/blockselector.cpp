@@ -26,7 +26,7 @@ static const core::dimension2di BTN_SIZE(30, 30);
 SceneBlockSelector::SceneBlockSelector(gui::IGUIEnvironment *gui)
 {
 	m_gui = gui;
-	m_hotbar_ids = { 1, 2, 3, 4, 9, 10, 48 };
+	m_hotbar_ids = { 0, 9, 10, 2, 4, 48, 46, 67 };
 }
 
 SceneBlockSelector::~SceneBlockSelector()

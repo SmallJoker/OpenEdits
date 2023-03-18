@@ -73,6 +73,7 @@ run:
 
 #ifdef __unix__
 	struct sigaction act;
+	memset(&act, 1, sizeof(act));
 	act.sa_handler = sigint_handler;
 	sigaction(SIGINT, &act, NULL);
 	sigaction(SIGTERM, &act, NULL);
