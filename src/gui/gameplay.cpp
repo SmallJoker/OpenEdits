@@ -1,4 +1,5 @@
 #include "gameplay.h"
+#include "CBulkSceneNode.h"
 #include "client/client.h"
 #include "client/localplayer.h"
 #include "core/blockmanager.h"
@@ -819,6 +820,11 @@ void SceneGameplay::drawBlocksInView()
 	const auto upperleft = m_drawn_blocks.UpperLeftCorner; // move to stack
 	const auto lowerright = m_drawn_blocks.LowerRightCorner;
 
+	struct BulkData {
+		CBulkSceneNode *node;
+		bool is_solid;
+	};
+	std::map<bid_t, BulkData> bulk_map;
 
 	// This is very slow. Isn't there a faster way to draw stuff?
 	// also camera->setFar(-camera_pos.Z + 0.1) does not filter them out (bug?)
@@ -873,19 +879,26 @@ void SceneGameplay::drawBlocksInView()
 				break;
 
 			const BlockProperties *props = g_blockmanager->getProps(b.bg);
-			auto z = ZINDEX_LOOKUP[(int)BlockDrawType::Background];
 
-			// Note: Position is relative to its parent
-			auto bb = smgr->addBillboardSceneNode(m_stage,
-				core::dimension2d<f32>(10, 10),
-				core::vector3df(x * 10, -y * 10, z)
-			);
+			auto it = bulk_map.find(b.bg);
+			if (it == bulk_map.end()) {
+				auto z = ZINDEX_LOOKUP[(int)BlockDrawType::Background];
+				BulkData d;
+				d.is_solid = false;
+				d.node = new CBulkSceneNode(m_stage, smgr, -1,
+					core::vector3df(0, 0, z),
+					core::dimension2d<f32>(10, 10)
+				);
+				auto [it2, tmp] = bulk_map.insert({b.bg, d});
+				it = it2;
 
-			BlockTile tile;
-			if (props)
-				tile = props->tiles[0]; // backgrounds do not change
-			assignBlockTexture(tile, bb);
+				BlockTile tile;
+				if (props)
+					tile = props->tiles[0]; // backgrounds do not change
+				assignBlockTexture(tile, d.node);
+			}
 
+			it->second.node->addTile({x, -y});
 		} while (false);
 	}
 }
