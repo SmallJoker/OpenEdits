@@ -88,7 +88,7 @@ bool SceneBlockSelector::OnEvent(const SEvent &e)
 				bid_t dragged_bid = m_dragged_bid;
 				m_dragged_bid = Block::ID_INVALID;
 
-				// Copy to hotbar
+				// Copy dragged block to hotbar
 				core::vector2di pos(e.MouseInput.X, e.MouseInput.Y);
 				auto root = m_gui->getRootGUIElement();
 				auto element = root->getElementFromPoint(pos);
@@ -100,6 +100,9 @@ bool SceneBlockSelector::OnEvent(const SEvent &e)
 					auto rect = element->getAbsoluteClippingRect();
 					root->removeChild(element);
 					drawBlockButton(dragged_bid, rect, nullptr, id);
+
+					// Make it so that the selector texture is always above
+					root->bringToFront(m_highlight);
 					return true;
 				}
 			}
@@ -128,6 +131,7 @@ bool SceneBlockSelector::OnEvent(const SEvent &e)
 			auto wtext = box->getText();
 			int val = -1;
 			int n = swscanf(wtext, L"%d", &val);
+			// Indicate bad numeric input
 			if (n == 1 && val >= 0 && val <= 127) {
 				m_selected_param1 = val;
 				box->setOverrideColor(0xFF000000);

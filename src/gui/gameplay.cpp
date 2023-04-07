@@ -117,21 +117,26 @@ void SceneGameplay::draw()
 	// Bottom row
 	int x_pos = 5;
 	int y_pos = wsize.Height - 35;
-	core::recti rect_1(
-		core::vector2di(x_pos, y_pos),
-		core::dimension2du(100, 30)
-	);
 
-	gui->addButton(
-		rect_1, nullptr, ID_BtnBack, L"<< Lobby");
+	{
+		core::recti rect_1(
+			core::vector2di(x_pos, y_pos),
+			core::dimension2du(40, 30)
+		);
+		auto eb = gui->addButton(rect_1, nullptr, ID_BtnBack);
 
-	x_pos += 130;
+		eb->setImage(m_gui->driver->getTexture("assets/textures/icon_leave.png"));
+		eb->setScaleImage(true);
+		eb->setUseAlphaChannel(true);
+	}
+
+	x_pos += 60;
 
 	{
 		// God mode toggle button
 		core::recti rect_3(
 			core::vector2di(x_pos, y_pos),
-			core::dimension2du(30, 30)
+			core::dimension2du(35, 30)
 		);
 
 		gui->addButton(rect_3, nullptr, ID_BtnGodMode, L"G");
@@ -147,7 +152,7 @@ void SceneGameplay::draw()
 		// Chat box toggle button
 		core::recti rect_3(
 			core::vector2di(x_pos, y_pos),
-			core::dimension2du(30, 30)
+			core::dimension2du(35, 30)
 		);
 
 		auto eb = gui->addButton(rect_3, nullptr, ID_BtnChat);
@@ -155,7 +160,7 @@ void SceneGameplay::draw()
 		eb->setScaleImage(true);
 		eb->setUseAlphaChannel(true);
 
-		x_pos += 40;
+		x_pos += 55;
 
 		// Chatbox
 		const int width = SIZEW * 0.5f;
@@ -646,8 +651,10 @@ bool SceneGameplay::handleChatInput(const SEvent &e)
 		std::string playername;
 		for (auto p : *players.ptr()) {
 			if (p.second->name.rfind(last_word, 0) == 0) {
+				if (!playername.empty())
+					return false; // Ambigious
+
 				playername = p.second->name;
-				break;
 			}
 		}
 		if (playername.empty())
@@ -987,8 +994,10 @@ void SceneGameplay::updatePlayerlist()
 
 	// Add world ID and online count
 	{
-		rect.UpperLeftCorner.Y = 5;
-		rect.LowerRightCorner.X += 200;
+		core::recti rect_text(
+			core::vector2di(SIZEW, 5),
+			core::dimension2du(wsize.Width - SIZEW, 45)
+		);
 		const auto &meta = world->getMeta();
 		std::string src_text;
 		src_text.append("ID: " + meta.id);
@@ -997,7 +1006,7 @@ void SceneGameplay::updatePlayerlist()
 		core::stringw dst_text;
 		core::multibyteToWString(dst_text, src_text.c_str());
 
-		auto e = gui->addStaticText(dst_text.c_str(), rect);
+		auto e = gui->addStaticText(dst_text.c_str(), rect_text);
 		e->setOverrideColor(Gui::COLOR_ON_BG);
 	}
 }

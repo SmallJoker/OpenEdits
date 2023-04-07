@@ -16,7 +16,7 @@ enum ElementId : int {
 	ID_SMILEY_MAX = ID_SMILEY_0 + 100
 };
 
-static const core::dimension2di BTN_SIZE(30, 30);
+static const core::dimension2di BTN_SIZE(35, 30);
 static const core::dimension2di PADDING(5, 5);
 
 SceneSmileySelector::SceneSmileySelector(Gui *gui)
