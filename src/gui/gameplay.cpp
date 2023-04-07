@@ -840,21 +840,40 @@ void SceneGameplay::drawBlocksInView()
 			if (b.id == 0)
 				break;
 
-			const BlockProperties *props = g_blockmanager->getProps(b.id);
-			BlockTile tile;
-			if (props)
-				tile = props->getTile(b);
-			else
-				tile.type = BlockDrawType::Solid;
+			// MSVC is a bitch Part 2
+			// Unique ID for each appearance type
+			bid_t block_tile = (b.tile << 13) | b.id;
 
-			auto z = ZINDEX_LOOKUP[(int)tile.type];
+			auto it = bulk_map.find(block_tile);
+			if (it == bulk_map.end()) {
+				// Yet not cached: Add.
 
-			// Note: Position is relative to its parent
-			auto bb = smgr->addBillboardSceneNode(m_stage,
-				core::dimension2d<f32>(10, 10),
-				core::vector3df(x * 10, -y * 10, z)
-			);
-			have_solid_above = assignBlockTexture(tile, bb);
+				const BlockProperties *props = g_blockmanager->getProps(b.id);
+				BlockTile tile;
+				if (props)
+					tile = props->getTile(b);
+				else
+					tile.type = BlockDrawType::Solid;
+				auto z = ZINDEX_LOOKUP[(int)tile.type];
+
+				// New scene node
+				BulkData d;
+				d.is_solid = true;
+				d.node = new CBulkSceneNode(m_stage, smgr, -1,
+					core::vector3df(0, 0, z),
+					core::dimension2d<f32>(10, 10)
+				);
+				auto [it2, tmp] = bulk_map.insert({block_tile, d});
+				d.node->drop();
+
+				it = it2;
+
+				// Set up scene node
+				it->second.is_solid = assignBlockTexture(tile, it->second.node);
+			}
+
+			it->second.node->addTile({x, -y});
+			have_solid_above = it->second.is_solid;
 
 			BlockParams params;
 			if (b.tile == 0 && world->getParams(bp, &params) && params == BlockParams::Type::Gate) {
@@ -864,9 +883,9 @@ void SceneGameplay::drawBlocksInView()
 				auto texture = generateTexture(std::to_string(required), 0xFF000000, 0xFFFFFFFF);
 				auto dim = texture->getOriginalSize();
 
-				auto nb = smgr->addBillboardSceneNode(bb,
+				auto nb = smgr->addBillboardSceneNode(m_stage,
 					core::dimension2d<f32>((float)dim.Width / dim.Height * 5, 5),
-					core::vector3df(0, -2, -0.05)
+					core::vector3df((x * 10) + 0, (y * -10) - 2, -0.05)
 				);
 				nb->setMaterialFlag(video::EMF_LIGHTING, false);
 				nb->setMaterialTexture(0, texture);
@@ -878,11 +897,17 @@ void SceneGameplay::drawBlocksInView()
 			if (have_solid_above)
 				break;
 
-			const BlockProperties *props = g_blockmanager->getProps(b.bg);
-
 			auto it = bulk_map.find(b.bg);
 			if (it == bulk_map.end()) {
+				// Yet not cached: Add.
+
+				const BlockProperties *props = g_blockmanager->getProps(b.bg);
+				BlockTile tile;
+				if (props)
+					tile = props->tiles[0]; // backgrounds do not change
 				auto z = ZINDEX_LOOKUP[(int)BlockDrawType::Background];
+
+				// New scene node
 				BulkData d;
 				d.is_solid = false;
 				d.node = new CBulkSceneNode(m_stage, smgr, -1,
@@ -890,12 +915,12 @@ void SceneGameplay::drawBlocksInView()
 					core::dimension2d<f32>(10, 10)
 				);
 				auto [it2, tmp] = bulk_map.insert({b.bg, d});
+				d.node->drop();
+
 				it = it2;
 
-				BlockTile tile;
-				if (props)
-					tile = props->tiles[0]; // backgrounds do not change
-				assignBlockTexture(tile, d.node);
+				// Set up scene node
+				assignBlockTexture(tile, it->second.node);
 			}
 
 			it->second.node->addTile({x, -y});
@@ -925,16 +950,6 @@ bool SceneGameplay::assignBlockTexture(const BlockTile tile, scene::ISceneNode *
 		is_opaque = true;
 
 	node->setMaterialTexture(0, tile.texture);
-
-	if (0) {
-		auto &matrix = mat.getTextureMatrix(0);
-		// https://gamedev.stackexchange.com/questions/46963/how-to-avoid-texture-bleeding-in-a-texture-atlas
-		// Avoids bleeding with enabled filter but hides parts of the texture
-		auto dim = tile.texture->getOriginalSize();
-		matrix.setTextureTranslate(tile.texture_offset * dim.Height + 0.5f / dim.Width, 0);
-		matrix.setTextureScale((dim.Height - 1.0f) / dim.Width, 1);
-	}
-
 	return is_opaque;
 }
 
