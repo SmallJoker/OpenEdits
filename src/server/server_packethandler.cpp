@@ -634,3 +634,56 @@ void Server::broadcastInWorld(Player *player, int flags, Packet &pkt)
 		m_con->send(it.first, flags, pkt);
 	}
 }
+
+void Server::broadcastInWorld(Player *player, RemotePlayerState min_state,
+	int flags, std::function<void(Packet &, u16)> cb)
+{
+	if (!player)
+		return;
+
+	auto world = player->getWorld();
+	if (!world)
+		return;
+
+	std::map<u16, Packet> compat;
+
+	// Send to all players within this world
+	for (auto it : m_players) {
+		if (it.second->getWorld() != world)
+			continue;
+
+		// Player is yet not ready
+		auto p = (RemotePlayer *)it.second;
+		if ((int)p->state < (int)min_state)
+			continue;
+
+		u16 proto_ver = p->protocol_version;
+
+		// Creates a new instance if needed
+		auto it_pkt = compat.find(proto_ver);
+		Packet *pkt = nullptr;
+		if (it_pkt == compat.end()) {
+			pkt = &compat[proto_ver];
+			cb(*pkt, proto_ver);
+		} else {
+			pkt = &it_pkt->second;
+		}
+
+		// Packet not available
+		if (pkt->size() == 0)
+			continue;
+
+		m_con->send(it.first, flags, *pkt);
+	}
+
+#if 0
+	// EXAMPLE
+
+	broadcastInWorld(player, RemotePlayerState::WorldJoin, 1, SERVER_PKT_CB {
+		if (proto_ver < 4)
+			return;
+
+		out.write<u16>(4324);
+	});
+#endif
+}

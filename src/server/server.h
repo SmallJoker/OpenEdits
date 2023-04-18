@@ -48,6 +48,10 @@ private:
 
 	void broadcastInWorld(Player *player, int flags, Packet &pkt);
 
+	#define SERVER_PKT_CB [&](Packet &out, u16 proto_ver) -> void
+	void broadcastInWorld(Player *player, RemotePlayerState min_state,
+		int flags, std::function<void(Packet &, u16)> cb);
+
 	static const ServerPacketHandler packet_actions[];
 
 	void writeWorldData(Packet &out, World &world, bool is_clear);
