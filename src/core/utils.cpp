@@ -203,3 +203,36 @@ bool string2int64(const char *str, int64_t *val)
 	*val = sval * sign;
 	return true;
 }
+
+static const char *RAND_WORLD_1[] = { "My", "My", "Our", "The Only", "" };
+static const char *RAND_WORLD_2[] = { "Amazing", "Awesome", "Cool", "Crazy", "Empty",
+	"Fancy", "Free", "Full", "Great", "Large", "Little", "Magnificent", "" };
+static const char *RAND_WORLD_3[] = { "World", "World", "Creation", "Art", "Stage" };
+std::string generate_world_title()
+{
+#define PICK_RAND(arr) arr[rand() % (sizeof(arr) / sizeof(arr[0]))]
+
+	std::string result;
+	auto pick = PICK_RAND(RAND_WORLD_1);
+	if (pick[0])
+		result.append(pick);
+
+	pick = PICK_RAND(RAND_WORLD_2);
+	if (pick[0]) {
+		if (!result.empty())
+			result.append(" ");
+		result.append(pick);
+	}
+
+	pick = PICK_RAND(RAND_WORLD_3);
+	if (pick[0]) {
+		if (!result.empty())
+			result.append(" ");
+		result.append(pick);
+	}
+
+	return result;
+
+#undef PICK_RAND
+}
+

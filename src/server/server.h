@@ -74,6 +74,7 @@ private:
 	CHATCMD_FUNC(chat_Clear);
 	CHATCMD_FUNC(chat_Import);
 	CHATCMD_FUNC(chat_Save);
+	CHATCMD_FUNC(chat_Title);
 
 	ChatCommand m_chatcmd;
 };

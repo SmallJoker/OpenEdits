@@ -72,6 +72,8 @@ void BlockUpdate::write(Packet &pkt) const
 void IWorldMeta::readCommon(Packet &pkt)
 {
 	title = pkt.readStr16();
+
+	printf("ReAD >>%s<<%zu\n", title.c_str(), title.size());
 	owner = pkt.readStr16();
 	online = pkt.read<u16>();
 	plays = pkt.read<u32>();

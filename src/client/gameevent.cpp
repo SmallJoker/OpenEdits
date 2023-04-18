@@ -43,6 +43,7 @@ bool GameEventHandler::sendNewEvent(GameEvent &e)
 		case C::C2G_JOIN:
 		case C::C2G_LEAVE:
 		case C::C2G_MAP_UPDATE:
+		case C::C2G_META_UPDATE:
 		case C::C2G_PLAYER_JOIN:
 		case C::C2G_PLAYER_LEAVE:
 		case C::C2G_PLAYERFLAGS:

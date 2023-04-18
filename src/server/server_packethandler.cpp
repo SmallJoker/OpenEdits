@@ -338,6 +338,7 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 
 		world->createDummy({100, 75});
 		world->getMeta().owner = player->name;
+		world->getMeta().title = generate_world_title();
 	}
 
 	{

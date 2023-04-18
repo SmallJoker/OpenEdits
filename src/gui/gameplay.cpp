@@ -27,14 +27,14 @@ enum ElementId : int {
 	ID_BtnBack = 110,
 	ID_BtnGodMode,
 	ID_BtnMinimap,
-	ID_ListPlayers = 120,
-	ID_PlayerOffset = 300,
+	ID_LabelTitle,
+	ID_ListPlayers = 120
 };
 
 SceneGameplay::SceneGameplay() :
 	m_drag_draw_block(g_blockmanager)
 {
-	LocalPlayer::gui_smiley_counter = ID_PlayerOffset;
+	LocalPlayer::gui_smiley_counter = 300; // Unique ID for the player SceneNode
 }
 
 SceneGameplay::~SceneGameplay()
@@ -213,7 +213,6 @@ void SceneGameplay::draw()
 	setupCamera();
 
 	m_dirty_playerlist = true;
-	updatePlayerlist();
 
 	{
 		// Minimap (below block selector)
@@ -558,6 +557,9 @@ bool SceneGameplay::OnEvent(GameEvent &e)
 	using E = GameEvent::C2G_Enum;
 
 	switch (e.type_c2g) {
+		case E::C2G_META_UPDATE:
+			m_dirty_playerlist = true;
+			break;
 		case E::C2G_MAP_UPDATE:
 			m_dirty_worldmesh = true;
 
@@ -972,8 +974,10 @@ void SceneGameplay::updatePlayerlist()
 	auto root = gui->getRootGUIElement();
 	auto playerlist = root->getElementFromId(ID_ListPlayers);
 
-	if (playerlist)
+	if (playerlist) {
 		root->removeChild(playerlist);
+		root->removeChild(root->getElementFromId(ID_LabelTitle));
+	}
 
 	const auto wsize = m_gui->window_size;
 
@@ -1000,13 +1004,18 @@ void SceneGameplay::updatePlayerlist()
 		);
 		const auto &meta = world->getMeta();
 		std::string src_text;
-		src_text.append("ID: " + meta.id);
-		src_text.append("\r\nOwner: " + meta.owner);
+		if (!meta.title.empty())
+			src_text.append(meta.title);
+		else
+			src_text.append("(Untitled)");
+		src_text.append("\r\nID: " + meta.id);
+		src_text.append(" | Owner: " + meta.owner);
 
 		core::stringw dst_text;
 		core::multibyteToWString(dst_text, src_text.c_str());
 
 		auto e = gui->addStaticText(dst_text.c_str(), rect_text);
+		e->setID(ID_LabelTitle);
 		e->setOverrideColor(Gui::COLOR_ON_BG);
 	}
 }

@@ -187,9 +187,14 @@ void SceneLobby::updateWorldList()
 		auto size = it.second.size;
 
 		std::ostringstream os;
-		os << "[" << it.second.online << " online]";
-		os << " id=" << it.first;
-		os << " ( " << size.X << "x" << size.Y << " )";
+		os << "[" << it.second.online << " online] ";
+		if (!it.second.title.empty())
+			os << it.second.title;
+		else
+			os << "(Untitled)";
+
+		os << " (id=" << it.first;
+		os << ", " << size.X << "x" << size.Y << " )";
 		if (is_mine)
 			os << (it.second.is_public ? " - public" : " - private");
 		else

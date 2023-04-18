@@ -67,6 +67,7 @@ enum class Packet2Client : uint16_t {
 	GodMode,
 	Smiley,
 	PlayerFlags,
+	WorldMeta,
 	MAX_END
 };
 

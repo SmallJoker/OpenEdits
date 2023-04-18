@@ -21,6 +21,7 @@ const ClientPacketHandler Client::packet_actions[] = {
 	{ ClientState::WorldJoin, &Client::pkt_GodMode },
 	{ ClientState::WorldJoin, &Client::pkt_Smiley },
 	{ ClientState::WorldPlay, &Client::pkt_PlayerFlags }, // 15
+	{ ClientState::WorldJoin, &Client::pkt_WorldMeta },
 	{ ClientState::Invalid, 0 }
 };
 
@@ -458,6 +459,20 @@ void Client::pkt_PlayerFlags(Packet &pkt)
 	GameEvent e(GameEvent::C2G_PLAYERFLAGS);
 	sendNewEvent(e);
 }
+
+void Client::pkt_WorldMeta(Packet &pkt)
+{
+	auto player = getMyPlayer();
+	if (!player)
+		return;
+
+	auto &meta = player->getWorld()->getMeta();
+	meta.readCommon(pkt);
+
+	GameEvent e(GameEvent::C2G_META_UPDATE);
+	sendNewEvent(e);
+}
+
 
 void Client::pkt_Deprecated(Packet &pkt)
 {

@@ -8,6 +8,8 @@
 To-do:
 
  * World creation restrictions
+ * Local world exporting (.eelvl)
+ * Private worlds
  * Open world feature
  * Blocks: teleportation, text
  * Animated coins (rotating mesh?)

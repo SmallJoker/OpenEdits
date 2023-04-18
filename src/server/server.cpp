@@ -49,16 +49,20 @@ Server::Server() :
 
 	{
 		m_chatcmd.add("/help", (ChatCommandAction)&Server::chat_Help);
+		m_chatcmd.add("/respawn", (ChatCommandAction)&Server::chat_Respawn);
+
+		// Permissions
 		m_chatcmd.add("/setpass", (ChatCommandAction)&Server::chat_SetPass);
 		m_chatcmd.add("/flags", (ChatCommandAction)&Server::chat_Flags);
 		m_chatcmd.add("/ffilter", (ChatCommandAction)&Server::chat_FFilter);
 		m_chatcmd.add("/fset", (ChatCommandAction)&Server::chat_FSet);
 		m_chatcmd.add("/fdel", (ChatCommandAction)&Server::chat_FDel);
-		// Owner
-		m_chatcmd.add("/respawn", (ChatCommandAction)&Server::chat_Respawn);
+
+		// World control
 		m_chatcmd.add("/clear", (ChatCommandAction)&Server::chat_Clear);
 		m_chatcmd.add("/import", (ChatCommandAction)&Server::chat_Import);
 		m_chatcmd.add("/save", (ChatCommandAction)&Server::chat_Save);
+		m_chatcmd.add("/title", (ChatCommandAction)&Server::chat_Title);
 	}
 
 	{
@@ -331,15 +335,19 @@ CHATCMD_FUNC(Server::chat_Help)
 		const std::string cmd;
 		const std::string text;
 	} help_LUT[] = {
+		{ "respawn", "Respawns you" },
+		// Permissions
 		{ "setpass", "Syntax: /flags [PLAYERNAME] PASSWORD PASSWORD" },
 		{ "flags", "Syntax: /flags [PLAYERNAME]\nLists the provided (or own) player's flags." },
 		{ "ffilter", "Syntax: //filter FLAG1 [...]\nLists all players matching the flag filter." },
 		{ "fset", "Syntax: /fset PLAYERNAME FLAG1 [...]\nSets one or more flags for a player." },
 		{ "fdel", "The complement of /fset" },
-		// respawn
+		// World control
 		{ "clear", "Syntax: /clear [W] [H]\nW,H: integer (optional) to specify the new world dimensions." },
 		{ "import", "Syntax: /import FILENAME\nFILENAME: .eelvl format without the file extension" },
-		// save
+		{ "save", "Saves the world blocks, meta and player flags." },
+		{ "title", "Syntax: /title TITLE\nChanges the world's title (not saved)" },
+		// Other
 		{ "version", std::string("Server version: ") + VERSION_STRING },
 	};
 
@@ -712,4 +720,36 @@ CHATCMD_FUNC(Server::chat_Save)
 	m_world_db->save(world);
 
 	systemChatSend(player, "Saved!");
+}
+
+CHATCMD_FUNC(Server::chat_Title)
+{
+	if (!m_world_db)
+		return;
+
+	auto world = player->getWorld();
+
+	if (!player->getFlags().check(PlayerFlags::PF_OWNER)) {
+		systemChatSend(player, "Missing permissions");
+		return;
+	}
+
+	// TODO: This does not take unicode well into account
+	std::string title(strtrim(msg));
+	if (title.size() > 40) {
+		systemChatSend(player, "Title too long. Limiting to 40 characters.");
+		title.resize(40);
+	}
+
+	for (char &c : title) {
+		if (!std::isprint(c))
+			c = '?';
+	}
+
+	world->getMeta().title = title;
+
+	Packet out;
+	out.write(Packet2Client::WorldMeta);
+	world->getMeta().writeCommon(out);
+	broadcastInWorld(player, 1, out);
 }

@@ -171,7 +171,8 @@ std::vector<LobbyWorld> DatabaseWorld::getByPlayer(const std::string &name) cons
 		LobbyWorld meta(world_id);
 		meta.size.X = sqlite3_column_int(s, 1);
 		meta.size.Y = sqlite3_column_int(s, 2);
-		meta.title = sqlite3_column_int(s, 3);
+		meta.title = (const char *)sqlite3_column_text(s, 3);
+
 		meta.owner = name;
 		meta.plays = sqlite3_column_int(s, 4);
 		meta.is_public = sqlite3_column_int(s, 5) == 1;

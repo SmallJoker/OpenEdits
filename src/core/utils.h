@@ -14,6 +14,8 @@ bool isalnum_nolocale(const std::string &str);
 /// Expects a trimmed string, indicates success
 bool string2int64(const char *str, int64_t *val);
 
+std::string generate_world_title();
+
 // ------------------ Numeric ------------------
 
 inline float get_sign(float f)
