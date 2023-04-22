@@ -3,6 +3,7 @@
 #include "core/blockparams.h"
 #include "core/macros.h"
 #include "core/playerflags.h"
+#include "core/timer.h"
 #include "core/types.h"
 #include <string>
 #include <map>
@@ -101,17 +102,7 @@ struct WorldMeta : public IWorldMeta, public irr::IReferenceCounted {
 	void writePlayerFlags(Packet &pkt) const;
 
 	// Activated keys
-	struct Key {
-		// refill <  0: restart counting only when expired
-		// refill >= 0: restart counting
-		bool trigger(float refill);
-		bool step(float dtime);
-
-		// Client: cooldown until next sending
-		// Server: time until disable
-		float cooldown = 0;
-		bool active = false;
-	} keys[3] = {};
+	Timer keys[3] = {};
 
 	int spawn_index = -1;
 

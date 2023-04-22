@@ -535,7 +535,7 @@ void Server::pkt_TriggerBlocks(peer_t peer_id, Packet &pkt)
 	auto world = player->getWorld();
 	auto &meta = world->getMeta();
 
-	// TODO: CHeck if the player is nearby
+	// TODO: Check whether the responsible player is (or was) nearby
 	while (true) {
 		blockpos_t pos;
 		pkt.read(pos.X);
@@ -552,11 +552,11 @@ void Server::pkt_TriggerBlocks(peer_t peer_id, Packet &pkt)
 				{
 					int key_id = b.id - Block::ID_KEY_R;
 					auto &kdata = meta.keys[key_id];
-					if (kdata.trigger(5.0f)) {
+					if (kdata.set(5.0f)) {
 						Packet out;
 						out.write(Packet2Client::Key);
 						out.write(b.id);
-						out.write<u8>(kdata.active);
+						out.write<u8>(kdata.isActive());
 						broadcastInWorld(player, 1, out);
 					}
 				}

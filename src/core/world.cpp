@@ -72,8 +72,6 @@ void BlockUpdate::write(Packet &pkt) const
 void IWorldMeta::readCommon(Packet &pkt)
 {
 	title = pkt.readStr16();
-
-	printf("ReAD >>%s<<%zu\n", title.c_str(), title.size());
 	owner = pkt.readStr16();
 	online = pkt.read<u16>();
 	plays = pkt.read<u32>();
@@ -145,37 +143,7 @@ void WorldMeta::writePlayerFlags(Packet &pkt) const
 	pkt.writeStr16(""); // end
 }
 
-bool WorldMeta::Key::trigger(float refill)
-{
-	bool changed = !active;
-
-	if (refill < 0) {
-		// No re-filling if active
-		if (!active)
-			cooldown = -refill;
-	} else {
-		// Refill regardless
-		cooldown = refill;
-	}
-	active = true;
-	return changed;
-}
-
-
-bool WorldMeta::Key::step(float dtime)
-{
-	if (cooldown > 0)
-		cooldown -= dtime;
-	if (cooldown <= 0 && active) {
-		active = false;
-		return true;
-	}
-	return false;
-}
-
-
 // -------------- World class -------------
-
 
 World::World(World *copy_from) :
 	m_bmgr(copy_from->m_bmgr),

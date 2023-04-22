@@ -23,6 +23,7 @@ Server::Server() :
 	m_chatcmd(this)
 {
 	puts("Server: startup");
+	m_stdout_flush_timer.set(1);
 
 	m_bmgr->doPackRegistration();
 
@@ -155,7 +156,7 @@ void Server::step(float dtime)
 			if (kdata.step(dtime)) {
 				// Disable keys
 
-				kdata.active = false;
+				kdata.stop();
 				bid_t block_id = (&kdata - meta.keys) + Block::ID_KEY_R;
 				Packet out;
 				out.write(Packet2Client::Key);
@@ -171,7 +172,19 @@ void Server::step(float dtime)
 			}
 		}
 	}
-	// No player physics (yet?)
+
+	// TODO: Run player physics to check whether they are cheating or not
+
+	if (m_stdout_flush_timer.step(dtime)) {
+		/*
+			When stdout and stderr are redirected to files, manual flushing
+			becomes necessary to view the logs, e.g. for server overview.
+		*/
+		m_stdout_flush_timer.set(7);
+
+		fflush(stdout);
+		fflush(stderr);
+	}
 }
 
 // -------------- Utility functions --------------

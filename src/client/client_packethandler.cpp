@@ -182,6 +182,10 @@ void Client::pkt_Join(Packet &pkt)
 	player->godmode = pkt.read<u8>();
 	player->smiley_id = pkt.read<u8>();
 	player->readPhysics(pkt);
+	if (peer_id == m_my_peer_id) {
+		SimpleLock lock(getWorld()->mutex);
+		player->updateCoinCount(true);
+	}
 
 	{
 		GameEvent e(GameEvent::C2G_PLAYER_JOIN);
@@ -338,7 +342,6 @@ void Client::pkt_PlaceBlock(Packet &pkt)
 			continue;
 
 		switch (bu.getId()) {
-			case Block::ID_DOOR_R:
 			case Block::ID_SECRET:
 				b->tile = player->godmode;
 				break;

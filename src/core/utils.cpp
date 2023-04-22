@@ -235,4 +235,3 @@ std::string generate_world_title()
 
 #undef PICK_RAND
 }
-

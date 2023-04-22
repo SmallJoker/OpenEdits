@@ -13,7 +13,7 @@ s32 LocalPlayer::getGUISmileyId()
 	return m_gui_smiley_id;
 }
 
-bool LocalPlayer::updateCoinCount()
+bool LocalPlayer::updateCoinCount(bool force)
 {
 	int old_coins = coins;
 
@@ -23,7 +23,7 @@ bool LocalPlayer::updateCoinCount()
 
 	coins = std::min<size_t>(127, collected.size());
 
-	if (coins == old_coins)
+	if (coins == old_coins && !force)
 		return false;
 
 	int my_coins = coins; // move to stack

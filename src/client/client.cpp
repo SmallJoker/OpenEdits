@@ -124,7 +124,7 @@ void Client::step(float dtime)
 				{
 					int key_id = b.id - Block::ID_KEY_R;
 					auto &kdata = meta.keys[key_id];
-					if (kdata.trigger(-1.0f)) {
+					if (kdata.set(-1.0f)) {
 						pkt.write(bp.X);
 						pkt.write(bp.Y);
 					}

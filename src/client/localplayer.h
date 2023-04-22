@@ -13,7 +13,7 @@ public:
 	int smiley_id = 0;
 
 	// Executa only on the own player!
-	bool updateCoinCount();
+	bool updateCoinCount(bool force = false);
 
 private:
 	s32 m_gui_smiley_id = -1; // tag is + 1

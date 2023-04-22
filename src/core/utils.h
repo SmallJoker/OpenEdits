@@ -26,4 +26,3 @@ inline float get_sign(float f)
 		return -1;
 	return 0;
 }
-

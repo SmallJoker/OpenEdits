@@ -2,6 +2,7 @@
 
 #include "core/chatcommand.h"
 #include "core/environment.h"
+#include "core/timer.h"
 #include "core/types.h" // RefCnt
 
 enum class RemotePlayerState;
@@ -59,6 +60,8 @@ private:
 
 	DatabaseAuth *m_auth_db = nullptr;
 	DatabaseWorld *m_world_db = nullptr;
+
+	Timer m_stdout_flush_timer;
 
 	// ----------- Chat commands -----------
 	void systemChatSend(Player *player, const std::string &msg);
