@@ -91,7 +91,13 @@ struct WorldMeta : public IWorldMeta, public irr::IReferenceCounted {
 
 	DISABLE_COPY(WorldMeta);
 
-	bool is_persistent = true; // for testing
+	// Used in Server::pkt_Join / Client::pkt_WorldData
+	enum class Type {
+		TmpSimple,  // tmp-edit-simple, possibly locked behind code
+		TmpDraw,    // tmp-edit-draw,   possibly locked behind code
+		Persistent, // owned (all permissions)
+		MAX_INVALID
+	} type = Type::MAX_INVALID;
 	std::string edit_code;
 
 	PlayerFlags getPlayerFlags(const std::string &name) const;

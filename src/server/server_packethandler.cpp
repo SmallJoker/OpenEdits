@@ -93,6 +93,12 @@ void Server::pkt_Hello(peer_t peer_id, Packet &pkt)
 					break;
 				}
 			}
+
+			if (!is_guest) {
+				sendMsg(peer_id, "Temporary accounts (guest) must follow the naming scheme GUEST[0-9]*");
+				m_con->disconnect(peer_id);
+				return;
+			}
 		}
 
 		if (is_guest) {
@@ -310,11 +316,59 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 	std::string world_id(pkt.readStr16());
 	world_id = strtrim(world_id);
 
+	WorldMeta::Type world_type = WorldMeta::Type::Persistent;
+	blockpos_t size { 100, 75 };
+	std::string title, code;
+
+	if (pkt.getRemainingBytes() > 0) {
+		world_type = (WorldMeta::Type)pkt.read<u8>();
+		pkt.read(size.X);
+		pkt.read(size.Y);
+		title = pkt.readStr16();
+		code  = strtrim(pkt.readStr16());
+	}
+
+	switch (world_type) {
+		case WorldMeta::Type::TmpSimple:
+		case WorldMeta::Type::TmpDraw:
+			if (world_id.empty())
+				world_id = "T" + generate_world_id(6);
+			if (world_id[0] != 'T') {
+				sendMsg(peer_id, "Temporary worlds must start with 'T'.");
+				return;
+			}
+			break;
+		case WorldMeta::Type::Persistent:
+			// T for temporary
+			if (world_id[0] == 'T') {
+				sendMsg(peer_id, "Persistent worlds must not start with 'T'.");
+				return;
+			}
+			break;
+		default:
+			sendMsg(peer_id, "Unsupported world creation type.");
+			return;
+	}
+
+	std::string err_msg;
+	if (!checkSize(err_msg, size)) {
+		sendMsg(peer_id, err_msg);
+		return;
+	}
+
+	err_msg.clear();
+	if (!checkTitle(err_msg, title)) {
+		sendMsg(peer_id, err_msg);
+		return;
+	}
+	if (!err_msg.empty())
+		sendMsg(peer_id, err_msg);
+
 	{
-		bool is_ok = !world_id.empty() && isalnum_nolocale(world_id);
+		bool is_ok = world_id.size() >= 4 && world_id.size() <= 15 && isalnum_nolocale(world_id);
 
 		if (!is_ok) {
-			sendMsg(peer_id, "Invalid world ID. [A-z0-9]+ are allowed");
+			sendMsg(peer_id, "Invalid world ID. [A-z0-9]{4,15} are allowed");
 			return;
 		}
 	}
@@ -331,14 +385,26 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 			world = nullptr;
 		}
 	}
+
+	if (!world && world_type == WorldMeta::Type::Persistent) {
+		// Guests cannot create worlds
+		if (player->auth.status == Auth::Status::Guest) {
+			sendMsg(peer_id, "Guests cannot create persistent worlds.");
+			return;
+		}
+	}
+
 	if (!world) {
 		// create a new one
 		world = new World(m_bmgr, world_id);
 		world->drop(); // kept alive by RefCnt
 
-		world->createDummy({100, 75});
-		world->getMeta().owner = player->name;
-		world->getMeta().title = generate_world_title();
+		world->createDummy(size);
+		world->getMeta().title = title;
+		if (world_type == WorldMeta::Type::Persistent)
+			world->getMeta().owner = player->name;
+		else
+			world->getMeta().edit_code = code;
 	}
 
 	{

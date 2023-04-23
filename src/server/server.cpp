@@ -54,6 +54,7 @@ Server::Server() :
 
 		// Permissions
 		m_chatcmd.add("/setpass", (ChatCommandAction)&Server::chat_SetPass);
+		m_chatcmd.add("/code",  (ChatCommandAction)&Server::chat_Code);
 		m_chatcmd.add("/flags", (ChatCommandAction)&Server::chat_Flags);
 		m_chatcmd.add("/ffilter", (ChatCommandAction)&Server::chat_FFilter);
 		m_chatcmd.add("/fset", (ChatCommandAction)&Server::chat_FSet);
@@ -324,6 +325,45 @@ void Server::respawnPlayer(Player *player, bool send_packet)
 }
 
 
+// ----------- Server checks -----------
+
+bool Server::checkSize(std::string &out, blockpos_t size)
+{
+	if ((size.X < 3 || size.X > 300)
+			|| (size.Y < 3 || size.Y > 300)) {
+		out = "Width and height must be in the range [3,300]";
+		return false;
+	}
+	return true;
+}
+
+bool Server::checkTitle(std::string &out, std::string &title)
+{
+	title = strtrim(title);
+	if (title.empty()) {
+		title = generate_world_title();
+		return true;
+	}
+
+	// TODO: This does not take unicode well into account
+	if (title.size() > 40) {
+		out = "Title too long. Limiting to 40 characters.";
+		title.resize(40);
+	}
+
+	bool have_unprintable = false;
+	for (char &c : title) {
+		if (!std::isprint(c)) {
+			c = '?';
+			have_unprintable = true;
+		}
+	}
+	if (have_unprintable)
+		out = "Substituted non-ASCII characters in the title.";
+
+	return true;
+}
+
 // -------------- Chat commands -------------
 
 void Server::systemChatSend(Player *player, const std::string &msg)
@@ -449,6 +489,50 @@ CHATCMD_FUNC(Server::chat_SetPass)
 		systemChatSend(player, "Changed password of " + who + " to: " + newpass);
 	else
 		systemChatSend(player, "Internal error");
+}
+
+CHATCMD_FUNC(Server::chat_Code)
+{
+	auto &meta = player->getWorld()->getMeta();
+	if (meta.edit_code.empty()) {
+		systemChatSend(player, "There is no code specified.");
+		return;
+	}
+
+	std::string code(strtrim(msg));
+	if (code != meta.edit_code) {
+		systemChatSend(player, "Incorrect code.");
+		return;
+	}
+
+	auto old_pf = player->getFlags();
+	PlayerFlags pf;
+	switch (meta.type) {
+		case WorldMeta::Type::TmpSimple:
+			pf.flags = PlayerFlags::PF_TMP_EDIT;
+			break;
+		case WorldMeta::Type::TmpDraw:
+			pf.flags = PlayerFlags::PF_TMP_EDIT_DRAW;
+			break;
+		case WorldMeta::Type::Persistent:
+			pf.flags = PlayerFlags::PF_TMP_EDIT_DRAW
+				| PlayerFlags::PF_TMP_GODMODE;
+			break;
+		default:
+			systemChatSend(player, "Internal errr: invalid world type");
+			return;
+	}
+
+	old_pf.flags |= pf.flags;
+	meta.setPlayerFlags(player->name, old_pf);
+
+	{
+		Packet out;
+		out.write(Packet2Client::PlayerFlags);
+		out.write<playerflags_t>(pf.flags); // new flags
+		out.write<playerflags_t>(pf.flags); // mask
+		m_con->send(player->peer_id, 1, out);
+	}
 }
 
 CHATCMD_FUNC(Server::chat_Flags)
@@ -645,9 +729,14 @@ CHATCMD_FUNC(Server::chat_Clear)
 			string2int64(height_s.c_str(), &height_i);
 	}
 
-	if ((width_i < 3 || width_i > 300)
-			|| (height_i < 3 || height_i > 300)) {
-		systemChatSend(player, "Width and height must be in the range [3,300]");
+	blockpos_t size(
+		std::min<u16>(width_i,  UINT16_MAX),
+		std::min<u16>(height_i, UINT16_MAX)
+	);
+	std::string err_msg;
+
+	if (!checkSize(err_msg, size)) {
+		systemChatSend(player, err_msg);
 		return;
 	}
 
@@ -655,7 +744,7 @@ CHATCMD_FUNC(Server::chat_Clear)
 	world->drop(); // kept alive by RefCnt
 
 	try {
-		world->createEmpty(blockpos_t(width_i, height_i));
+		world->createEmpty(size);
 	} catch (std::runtime_error &e) {
 		systemChatSend(player, std::string("ERROR: ") + e.what());
 		return;
@@ -747,17 +836,14 @@ CHATCMD_FUNC(Server::chat_Title)
 		return;
 	}
 
-	// TODO: This does not take unicode well into account
-	std::string title(strtrim(msg));
-	if (title.size() > 40) {
-		systemChatSend(player, "Title too long. Limiting to 40 characters.");
-		title.resize(40);
+	std::string title(msg);
+	std::string err_msg;
+	if (!checkTitle(err_msg, title)) {
+		systemChatSend(player, err_msg);
+		return;
 	}
-
-	for (char &c : title) {
-		if (!std::isprint(c))
-			c = '?';
-	}
+	if (!err_msg.empty())
+		systemChatSend(player, err_msg);
 
 	world->getMeta().title = title;
 

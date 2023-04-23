@@ -91,7 +91,17 @@ PlayerFlags WorldMeta::getPlayerFlags(const std::string &name) const
 		return PlayerFlags(PlayerFlags::PF_OWNER);
 
 	auto it = player_flags.find(name);
-	return it != player_flags.end() ? it->second : PlayerFlags();
+	if (it != player_flags.end())
+		return it->second;
+
+	if (edit_code.empty()) {
+		// Default permissions
+		if (type == Type::TmpSimple)
+			return PlayerFlags(PlayerFlags::PF_TMP_EDIT);
+		if (type == Type::TmpDraw)
+			return PlayerFlags(PlayerFlags::PF_TMP_EDIT_DRAW);
+	}
+	return PlayerFlags();
 }
 
 void WorldMeta::setPlayerFlags(const std::string &name, const PlayerFlags pf)

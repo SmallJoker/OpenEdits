@@ -58,8 +58,15 @@ private:
 	void writeWorldData(Packet &out, World &world, bool is_clear);
 	void respawnPlayer(Player *player, bool send_packet);
 
+	// ----------- Server checks -----------
+
+	static bool checkSize(std::string &out, blockpos_t size);
+	static bool checkTitle(std::string &out, std::string &title);
+
+	// ----------- Other members -----------
 	DatabaseAuth *m_auth_db = nullptr;
 	DatabaseWorld *m_world_db = nullptr;
+
 
 	Timer m_stdout_flush_timer;
 
@@ -68,6 +75,7 @@ private:
 
 	CHATCMD_FUNC(chat_Help);
 	CHATCMD_FUNC(chat_SetPass);
+	CHATCMD_FUNC(chat_Code);
 	CHATCMD_FUNC(chat_Flags);
 	CHATCMD_FUNC(chat_FFilter);
 	bool changePlayerFlags(Player *player, std::string msg, bool do_add);

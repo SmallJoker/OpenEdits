@@ -235,3 +235,14 @@ std::string generate_world_title()
 
 #undef PICK_RAND
 }
+
+std::string generate_world_id(unsigned length)
+{
+	static const char ID_CHARACTERS[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrtstuvwxyz0123456789";
+	std::string result(length, '\0');
+
+	for (unsigned i = 0; i < length; ++i)
+		result[i] = ID_CHARACTERS[rand() % sizeof(ID_CHARACTERS)];
+
+	return result;
+}
