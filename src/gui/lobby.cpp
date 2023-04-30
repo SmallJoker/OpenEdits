@@ -3,24 +3,38 @@
 #include "client/client.h"
 #include "client/localplayer.h"
 #include <IGUIButton.h>
+#include <IGUIComboBox.h>
+#include <IGUIEditBox.h>
 #include <IGUIEnvironment.h>
 #include <IGUIListBox.h>
 #include <IGUIStaticText.h>
+#include <IGUITabControl.h>
+#include <IVideoDriver.h>
 #include <sstream>
 
 enum ElementId : int {
-	ID_LabelLobby = 100,
 	ID_BtnRefresh,
 	ID_ListPublic,
 	ID_ListMine,
 	ID_BoxWorldID,
 	ID_BtnJoin,
-	ID_BtnDisconnect
+	ID_BtnDisconnect,
+	// World creation:
+	ID_BoxTitle,
+	ID_BoxCode,
+	ID_SelMode,
+	ID_BtnCreate
 };
 
 
 SceneLobby::SceneLobby()
 {
+}
+
+void SceneLobby::OnOpen()
+{
+	title = generate_world_title();
+	code.clear();
 }
 
 void SceneLobby::draw()
@@ -39,55 +53,104 @@ void SceneLobby::draw()
 	auto text = gui->addStaticText(L"Lobby", rect_title);
 	text->setOverrideColor(Gui::COLOR_ON_BG);
 
+	auto rect_tc =  m_gui->getRect({10, 10}, {80, 50});
+	auto tc = gui->addTabControl(rect_tc);
+	video::SColor tc_bgcolor(m_gui->guienv->getSkin()->getColor(gui::EGDC_3D_FACE));
+
 	{
-		auto rect = m_gui->getRect({10, 15}, {80, 30});
-		m_publiclist = gui->addListBox(rect, nullptr, ID_ListPublic, true);
+		auto tab = tc->addTab(L"Public worlds");
+		tab->setBackgroundColor(tc_bgcolor);
+		tab->setDrawBackground(true);
+		auto rect = m_gui->getRect({2, 2}, {76, 40});
+		m_publiclist = gui->addListBox(rect, tab, ID_ListPublic, true);
+	}
 
-		core::recti rect_lab(
-			rect.UpperLeftCorner + core::vector2di(0, -25),
-			core::dimension2di(100, 25)
-		);
-		auto e = gui->addStaticText(L"Public worlds", rect_lab);
-		e->setOverrideColor(Gui::COLOR_ON_BG);
-
+	{
 		core::recti rect_btn(
-			core::vector2di(rect.LowerRightCorner.X - 100, rect.UpperLeftCorner.Y - 40),
+			core::vector2di(rect_tc.LowerRightCorner.X - 100, rect_tc.UpperLeftCorner.Y - 10),
 			core::dimension2di(100, 30)
 		);
 		m_refreshbtn = gui->addButton(rect_btn, nullptr, ID_BtnRefresh, L"Refresh");
 	}
 
 	{
-		auto rect = m_gui->getRect({10, 51}, {80, 25});
-		m_mylist = gui->addListBox(rect, nullptr, ID_ListMine, true);
-
-		core::recti rect_lab(
-			rect.UpperLeftCorner + core::vector2di(0, -25),
-			core::dimension2di(100, 25)
-		);
-		auto e = gui->addStaticText(L"My worlds", rect_lab);
-		e->setOverrideColor(Gui::COLOR_ON_BG);
+		auto tab = tc->addTab(L"My worlds");
+		tab->setBackgroundColor(tc_bgcolor);
+		tab->setDrawBackground(true);
+		auto rect = m_gui->getRect({2, 2}, {76, 40});
+		m_mylist = gui->addListBox(rect, tab, ID_ListMine, true);
 	}
 
 	{
 		// Custom world ID box
-		auto rect = m_gui->getRect({50, 83}, {20, -30});
-		gui->addEditBox(L"", rect, true, nullptr, ID_BoxWorldID);
+		auto rect_lab = m_gui->getRect({30, 70}, {10, -30});
+		auto rect_box = m_gui->getRect({0, 0}, {15, -30});
+		rect_box += rect_lab.LowerRightCorner + core::vector2di(0, -35);
 
-		core::recti rect_lab(
-			rect.UpperLeftCorner + core::vector2di(0, -25),
-			core::dimension2di(300, 25)
-		);
-		auto e = gui->addStaticText(L"Custom world ID", rect_lab);
-		e->setOverrideColor(Gui::COLOR_ON_BG);
+		{
+			auto e = gui->addStaticText(L"Title", rect_lab);
+			e->setOverrideColor(Gui::COLOR_ON_BG);
 
-		auto rect_btn =  m_gui->getRect({50 + 22, 83}, {-100, -30});
-		gui->addButton(rect_btn, nullptr, ID_BtnJoin, L"Join");
+			std::wstring tmp;
+			utf8_to_wide(tmp, title.c_str());
+			gui->addEditBox(tmp.c_str(), rect_box, true, nullptr, ID_BoxTitle);
+		}
+
+		rect_lab += core::vector2di(0, 35);
+		rect_box += core::vector2di(0, 35);
+		{
+			auto e = gui->addStaticText(L"Code", rect_lab);
+			e->setOverrideColor(Gui::COLOR_ON_BG);
+
+			std::wstring tmp;
+			utf8_to_wide(tmp, code.c_str());
+			gui->addEditBox(tmp.c_str(), rect_box, true, nullptr, ID_BoxCode);
+		}
+
+		rect_lab += core::vector2di(0, 35);
+		rect_box += core::vector2di(0, 35);
+		{
+			auto e = gui->addStaticText(L"Type", rect_lab);
+			e->setOverrideColor(Gui::COLOR_ON_BG);
+
+			auto c = gui->addComboBox(rect_box, nullptr, ID_SelMode);
+			c->addItem(L"Temporary",   (u32)WorldMeta::Type::TmpSimple);
+			c->addItem(L"Temp + Draw", (u32)WorldMeta::Type::TmpDraw);
+			c->addItem(L"Persistent",  (u32)WorldMeta::Type::Persistent);
+		}
+
+		rect_box += core::vector2di(0, 35);
+		gui->addButton(rect_box, nullptr, ID_BtnCreate, L"Create");
 	}
 
 	{
-		auto rect_btn =  m_gui->getRect({10, 88}, {-150, -30});
-		gui->addButton(rect_btn, nullptr, ID_BtnDisconnect, L"<< Disconnect");
+		// Custom world ID box
+		auto rect = m_gui->getRect({65, 80}, {15, -30});
+		gui->addEditBox(L"", rect, true, nullptr, ID_BoxWorldID);
+
+		core::recti rect_btn(
+			rect.LowerRightCorner + core::vector2di(10, -30),
+			core::dimension2di(60, 30)
+		);
+		gui->addButton(rect_btn, nullptr, ID_BtnJoin, L"Join");
+
+		core::recti rect_lab(
+			rect.UpperLeftCorner + core::vector2di(0, -25),
+			core::dimension2di(200, 25)
+		);
+		auto e = gui->addStaticText(L"Join world by ID", rect_lab);
+		e->setOverrideColor(Gui::COLOR_ON_BG);
+
+	}
+
+	// Exit server
+	{
+		auto rect_btn =  m_gui->getRect({10, 88}, {-40, -30});
+
+		auto eb = gui->addButton(rect_btn, nullptr, ID_BtnDisconnect);
+		eb->setImage(m_gui->driver->getTexture("assets/textures/icon_leave.png"));
+		eb->setScaleImage(true);
+		eb->setUseAlphaChannel(true);
 	}
 
 	m_dirty_worldlist = true;
@@ -112,6 +175,24 @@ bool SceneLobby::OnEvent(const SEvent &e)
 
 					wide_to_utf8(world_id, editbox->getText());
 					m_gui->joinWorld(this);
+					return true;
+				}
+				if (e.GUIEvent.Caller->getID() == ID_BtnCreate) {
+					auto root = m_gui->guienv->getRootGUIElement();
+					auto b_title = root->getElementFromId(ID_BoxTitle);
+					auto b_code = root->getElementFromId(ID_BoxCode);
+					auto s_mode = (gui::IGUIComboBox *)root->getElementFromId(ID_SelMode);
+
+					wide_to_utf8(title, b_title->getText());
+					wide_to_utf8(code, b_code->getText());
+
+					GameEvent e(GameEvent::G2C_CREATE_WORLD);
+					e.wc_data = new GameEvent::WorldCreationData {
+						.mode = s_mode->getSelected(),
+						.title = title,
+						.code = code
+					};
+					m_gui->sendNewEvent(e);
 					return true;
 				}
 				if (e.GUIEvent.Caller->getID() == ID_BtnRefresh) {
@@ -204,8 +285,7 @@ void SceneLobby::updateWorldList()
 		core::multibyteToWString(textw, os.str().c_str());
 		auto dst = is_mine ? m_mylist : m_publiclist;
 
-		auto i = dst->addItem(textw.c_str());
-		dst->setItemOverrideColor(i, 0xFFFFFFFF);
+		dst->addItem(textw.c_str());
 
 		if (is_mine)
 			m_my_index_to_worldid.push_back(it.first);

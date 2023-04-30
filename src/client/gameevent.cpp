@@ -57,6 +57,9 @@ bool GameEventHandler::sendNewEvent(GameEvent &e)
 		case G::G2C_REGISTER:
 			delete e.text;
 			break;
+		case G::G2C_CREATE_WORLD:
+			delete e.wc_data;
+			break;
 		// List of no-ops
 		case G::G2C_INVALID:
 		case G::G2C_LOBBY_REQUEST:

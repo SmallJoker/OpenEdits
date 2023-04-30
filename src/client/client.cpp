@@ -165,13 +165,6 @@ bool Client::OnEvent(GameEvent &e)
 	switch (e.type_g2c) {
 		case E::G2C_INVALID:
 			return false;
-		case E::G2C_LOBBY_REQUEST:
-			{
-				Packet pkt;
-				pkt.write(Packet2Server::GetLobby);
-				m_con->send(0, 0, pkt);
-			}
-			return true;
 		case E::G2C_REGISTER:
 			{
 				Auth auth;
@@ -181,6 +174,13 @@ bool Client::OnEvent(GameEvent &e)
 				pkt.write(Packet2Server::Auth);
 				pkt.writeStr16("register");
 				pkt.writeStr16(auth.getPwHash());
+				m_con->send(0, 0, pkt);
+			}
+			return true;
+		case E::G2C_LOBBY_REQUEST:
+			{
+				Packet pkt;
+				pkt.write(Packet2Server::GetLobby);
 				m_con->send(0, 0, pkt);
 			}
 			return true;
@@ -197,6 +197,28 @@ bool Client::OnEvent(GameEvent &e)
 				Packet pkt;
 				pkt.write(Packet2Server::Join);
 				pkt.writeStr16(m_world_id);
+				m_con->send(0, 0, pkt);
+			}
+			return true;
+		case E::G2C_CREATE_WORLD:
+			if (getWorld().ptr()) {
+				// Already joined one. ignore.
+				return false;
+			}
+
+			{
+				m_state = ClientState::WorldJoin;
+				m_world_id.clear();
+
+				Packet pkt;
+				pkt.write(Packet2Server::Join);
+				pkt.writeStr16("");
+				pkt.write<u8>(e.wc_data->mode);
+				blockpos_t size { 200, 200 };
+				pkt.write(size.X);
+				pkt.write(size.Y);
+				pkt.writeStr16(e.wc_data->title);
+				pkt.writeStr16(e.wc_data->code);
 				m_con->send(0, 0, pkt);
 			}
 			return true;

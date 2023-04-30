@@ -19,6 +19,7 @@ struct GameEvent {
 		G2C_REGISTER,
 		G2C_LOBBY_REQUEST,
 		G2C_JOIN,
+		G2C_CREATE_WORLD,
 		G2C_LEAVE,
 		G2C_CHAT,
 		G2C_GODMODE,
@@ -49,6 +50,11 @@ struct GameEvent {
 		std::string message;
 	};
 
+	struct WorldCreationData {
+		s32 mode;
+		std::string title, code;
+	};
+
 	struct BlockData {
 		blockpos_t pos;
 		Block b;
@@ -58,6 +64,7 @@ struct GameEvent {
 		std::string *text;
 		Player *player;
 		PlayerChat *player_chat;
+		WorldCreationData *wc_data;
 		BlockData *block;
 		int intval;
 	};

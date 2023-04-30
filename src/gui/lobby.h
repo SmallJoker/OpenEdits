@@ -15,12 +15,14 @@ class SceneLobby : public SceneHandler {
 public:
 	SceneLobby();
 
+	void OnOpen() override;
 	void draw() override;
 	void step(float dtime) override;
 	bool OnEvent(const SEvent &e) override;
 	bool OnEvent(GameEvent &e) override;
 
 	std::string world_id = "dummyworld";
+	std::string title, code;
 
 private:
 	void updateWorldList();

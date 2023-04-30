@@ -333,12 +333,16 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 		case WorldMeta::Type::TmpDraw:
 			if (world_id.empty())
 				world_id = "T" + generate_world_id(6);
+
 			if (world_id[0] != 'T') {
 				sendMsg(peer_id, "Temporary worlds must start with 'T'.");
 				return;
 			}
 			break;
 		case WorldMeta::Type::Persistent:
+			if (world_id.empty())
+				world_id = "P" + generate_world_id(6);
+
 			// T for temporary
 			if (world_id[0] == 'T') {
 				sendMsg(peer_id, "Persistent worlds must not start with 'T'.");
@@ -401,6 +405,7 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 
 		world->createDummy(size);
 		world->getMeta().title = title;
+		world->getMeta().type = world_type;
 		if (world_type == WorldMeta::Type::Persistent)
 			world->getMeta().owner = player->name;
 		else

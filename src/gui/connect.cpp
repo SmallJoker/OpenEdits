@@ -306,7 +306,6 @@ void SceneConnect::updateServers()
 		std::wstring label = info.nickname + L"  -  " + info.address;
 
 		auto i = listbox->addItem(label.c_str());
-		listbox->setItemOverrideColor(i, Gui::COLOR_ON_BG);
 		if (info.address == address.c_str() && info.nickname == nickname.c_str())
 			listbox->setSelected(i);
 	}

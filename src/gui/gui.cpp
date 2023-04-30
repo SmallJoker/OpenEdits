@@ -52,7 +52,7 @@ Gui::Gui()
 		skin->setColor(gui::EGDC_FOCUSED_EDITABLE, 0xFFBBDDFF); // edit box bg
 		skin->setColor(gui::EGDC_BUTTON_TEXT, 0xFF000000);
 		skin->setColor(gui::EGDC_3D_DARK_SHADOW, 0xDD999999); // button bottom/right
-		skin->setColor(gui::EGDC_3D_HIGH_LIGHT, 0x66DDDDDD); // button top/left & list background
+		skin->setColor(gui::EGDC_3D_HIGH_LIGHT, 0xDDEEEEEE); // button top/left & list background
 		skin->setColor(gui::EGDC_3D_SHADOW, 0xDD666666); // button 2nd level bottom/right
 		skin->setColor(gui::EGDC_3D_FACE, 0xDDCCCCCC); // button face (interpolated)
 	}
