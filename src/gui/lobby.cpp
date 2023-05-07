@@ -195,12 +195,13 @@ bool SceneLobby::OnEvent(const SEvent &e)
 					wide_to_utf8(title, b_title->getText());
 					wide_to_utf8(code, b_code->getText());
 
+					auto wc_data = new GameEvent::WorldCreationData();
+					wc_data->mode = s_mode->getSelected();
+					wc_data->title = title;
+					wc_data->code = code;
+
 					GameEvent e(GameEvent::G2C_CREATE_WORLD);
-					e.wc_data = new GameEvent::WorldCreationData {
-						.mode = s_mode->getSelected(),
-						.title = title,
-						.code = code
-					};
+					e.wc_data = wc_data;
 					m_gui->sendNewEvent(e);
 					return true;
 				}
