@@ -35,6 +35,12 @@ void SceneLobby::OnOpen()
 {
 	title = generate_world_title();
 	code.clear();
+
+	{
+		// Update world listing
+		GameEvent e(GameEvent::G2C_LOBBY_REQUEST);
+		m_gui->sendNewEvent(e);
+	}
 }
 
 void SceneLobby::draw()
@@ -173,6 +179,9 @@ bool SceneLobby::OnEvent(const SEvent &e)
 					auto root = m_gui->guienv->getRootGUIElement();
 					auto editbox = root->getElementFromId(ID_BoxWorldID);
 
+					if (!editbox->getText()[0])
+						return true; // Empty box
+
 					wide_to_utf8(world_id, editbox->getText());
 					m_gui->joinWorld(this);
 					return true;
@@ -278,19 +287,20 @@ void SceneLobby::updateWorldList()
 		os << ", " << size.X << "x" << size.Y << " )";
 		if (is_mine)
 			os << (it.second.is_public ? " - public" : " - private");
-		else
+		else if (!it.second.owner.empty())
 			os << " by " << it.second.owner;
 
 		core::stringw textw;
 		core::multibyteToWString(textw, os.str().c_str());
-		auto dst = is_mine ? m_mylist : m_publiclist;
-
-		dst->addItem(textw.c_str());
-
-		if (is_mine)
+		if (is_mine) {
+			m_mylist->addItem(textw.c_str());
 			m_my_index_to_worldid.push_back(it.first);
-		else
+		}
+
+		if (!is_mine || it.second.online > 0) {
+			m_publiclist->addItem(textw.c_str());
 			m_public_index_to_worldid.push_back(it.first);
+		}
 	}
 
 	m_refreshbtn->setEnabled(true);

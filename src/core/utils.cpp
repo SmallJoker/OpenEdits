@@ -242,7 +242,7 @@ std::string generate_world_id(unsigned length)
 	std::string result(length, '\0');
 
 	for (unsigned i = 0; i < length; ++i)
-		result[i] = ID_CHARACTERS[rand() % sizeof(ID_CHARACTERS)];
+		result[i] = ID_CHARACTERS[rand() % (sizeof(ID_CHARACTERS) - 1)];
 
 	return result;
 }

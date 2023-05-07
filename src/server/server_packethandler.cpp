@@ -315,6 +315,7 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 	RemotePlayer *player = getPlayerNoLock(peer_id);
 	std::string world_id(pkt.readStr16());
 	world_id = strtrim(world_id);
+	bool create_world = world_id.empty();
 
 	WorldMeta::Type world_type = WorldMeta::Type::Persistent;
 	blockpos_t size { 100, 75 };
@@ -328,49 +329,38 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 		code  = strtrim(pkt.readStr16());
 	}
 
-	switch (world_type) {
-		case WorldMeta::Type::TmpSimple:
-		case WorldMeta::Type::TmpDraw:
-			if (world_id.empty())
+	if (create_world) {
+		switch (world_type) {
+			case WorldMeta::Type::TmpSimple:
+			case WorldMeta::Type::TmpDraw:
 				world_id = "T" + generate_world_id(6);
-
-			if (world_id[0] != 'T') {
-				sendMsg(peer_id, "Temporary worlds must start with 'T'.");
-				return;
-			}
-			break;
-		case WorldMeta::Type::Persistent:
-			if (world_id.empty())
+				break;
+			case WorldMeta::Type::Persistent:
 				world_id = "P" + generate_world_id(6);
-
-			// T for temporary
-			if (world_id[0] == 'T') {
-				sendMsg(peer_id, "Persistent worlds must not start with 'T'.");
+				break;
+			default:
+				sendMsg(peer_id, "Unsupported world creation type.");
 				return;
-			}
-			break;
-		default:
-			sendMsg(peer_id, "Unsupported world creation type.");
+		}
+
+		// World size check
+		std::string err_msg;
+		if (!checkSize(err_msg, size)) {
+			sendMsg(peer_id, err_msg);
 			return;
-	}
+		}
 
-	std::string err_msg;
-	if (!checkSize(err_msg, size)) {
-		sendMsg(peer_id, err_msg);
-		return;
-	}
+		// Title check
+		err_msg.clear();
+		if (!checkTitle(err_msg, title)) {
+			sendMsg(peer_id, err_msg);
+			return;
+		}
+		if (!err_msg.empty())
+			sendMsg(peer_id, err_msg);
 
-	err_msg.clear();
-	if (!checkTitle(err_msg, title)) {
-		sendMsg(peer_id, err_msg);
-		return;
-	}
-	if (!err_msg.empty())
-		sendMsg(peer_id, err_msg);
-
-	{
+		// World ID check
 		bool is_ok = world_id.size() >= 4 && world_id.size() <= 15 && isalnum_nolocale(world_id);
-
 		if (!is_ok) {
 			sendMsg(peer_id, "Invalid world ID. [A-z0-9]{4,15} are allowed");
 			return;
@@ -390,7 +380,12 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 		}
 	}
 
-	if (!world && world_type == WorldMeta::Type::Persistent) {
+	if (!world && !create_world) {
+		sendMsg(peer_id, "The specified world ID does not exist.");
+		return;
+	}
+
+	if (!world && create_world && world_type == WorldMeta::Type::Persistent) {
 		// Guests cannot create worlds
 		if (player->auth.status == Auth::Status::Guest) {
 			sendMsg(peer_id, "Guests cannot create persistent worlds.");

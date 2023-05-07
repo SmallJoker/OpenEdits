@@ -151,10 +151,8 @@ void Gui::run()
 
 		auto handler = getHandler(m_scenetype);
 
-		if (is_new_screen) {
+		if (is_new_screen)
 			handler->draw();
-			// TODO: draw popups here to appear above everything else
-		}
 
 		handler->step(dtime);
 		scenemgr->drawAll();
@@ -259,9 +257,6 @@ void Gui::connect(SceneConnect *sc)
 	} else if (state == ClientState::LobbyIdle) {
 		sc->record_login = true;
 		setNextScene(SceneHandlerType::Lobby);
-
-		GameEvent e(GameEvent::G2C_LOBBY_REQUEST);
-		sendNewEvent(e);
 	} else {
 		if (m_popup_text.empty())
 			showPopupText("Connection timed out: Server is not reachable.");
@@ -363,13 +358,15 @@ void Gui::showPopupText(const std::string &str)
 	std::wstring wstr;
 	utf8_to_wide(wstr, str.c_str());
 
-	m_popup_timer += 7;
+	m_popup_timer = std::min<float>(10, m_popup_timer + 7);
 	if (m_popup_text.empty()) {
 		m_popup_text = wstr.c_str();
-	} else {
+	} else if (wstr != m_popup_text_last) {
 		m_popup_text += L"\n";
 		m_popup_text += wstr.c_str();
 	}
+	// To avoid duplicates
+	m_popup_text_last = wstr;
 }
 
 
@@ -377,15 +374,23 @@ void Gui::drawPopup(float dtime)
 {
 	if (m_popup_timer <= 0) {
 		m_popup_text.clear();
+		m_popup_text_last.clear();
 		return;
 	}
 
-	core::recti rect = getRect({25, 80}, {50, 10});
+	auto dim = font->getDimension(m_popup_text.c_str());
+	core::recti rect = getRect({50, 80}, {5, 5});
+	rect.UpperLeftCorner -= core::vector2di(dim.Width, dim.Height) / 2;
+	rect.LowerRightCorner += core::vector2di(dim.Width, dim.Height) / 2;
+
 	video::SColor color(0xFFFFFF00);
+	video::SColor color_frame(0xFF444444);
 	if (m_popup_timer < 1.0f) {
 		color.setAlpha(255 * m_popup_timer);
+		color_frame.setAlpha(255 * m_popup_timer);
 	}
 
+	guienv->getSkin()->draw2DRectangle(nullptr, color_frame, rect);
 	font->draw(m_popup_text, rect, color, true, true);
 
 	m_popup_timer -= dtime;

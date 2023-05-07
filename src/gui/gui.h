@@ -103,6 +103,7 @@ private:
 	void drawPopup(float dtime);
 	float m_popup_timer = 0;
 	core::stringw m_popup_text;
+	std::wstring m_popup_text_last;
 };
 
 class SceneHandler {
