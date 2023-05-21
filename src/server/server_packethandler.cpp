@@ -369,16 +369,8 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 
 	// query database for existing world
 	auto world = getWorldNoLock(world_id);
-	if (!world && m_world_db) {
-		// try to load from the database
-		world = new World(m_bmgr, world_id);
-		world->drop(); // kept alive by RefCnt
-
-		bool found = m_world_db->load(world.ptr());
-		if (!found) {
-			world = nullptr;
-		}
-	}
+	if (!world)
+		world = loadWorldNoLock(world_id);
 
 	if (!world && !create_world) {
 		sendMsg(peer_id, "The specified world ID does not exist.");
@@ -443,13 +435,17 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 	}
 
 	// Notify about new player
+	auto make_join_packet = [](Player *player, Packet &pkt) {
+		pkt.write(Packet2Client::Join);
+		pkt.write(player->peer_id);
+		pkt.writeStr16(player->name);
+		pkt.write<u8>(player->godmode);
+		pkt.write<u8>(player->smiley_id);
+		player->writePhysics(pkt);
+	};
+
 	Packet pkt_new;
-	pkt_new.write(Packet2Client::Join);
-	pkt_new.write(peer_id);
-	pkt_new.writeStr16(player->name);
-	pkt_new.write<u8>(player->godmode);
-	pkt_new.write<u8>(player->smiley_id);
-	player->writePhysics(pkt_new);
+	make_join_packet(player, pkt_new);
 
 	for (auto it : m_players) {
 		auto *p = it.second;
@@ -461,12 +457,7 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 
 		// Notify new player about existing ones
 		Packet out;
-		out.write(Packet2Client::Join);
-		out.write(p->peer_id);
-		out.writeStr16(p->name);
-		out.write<u8>(p->godmode);
-		out.write<u8>(p->smiley_id);
-		p->writePhysics(out);
+		make_join_packet(p, out);
 		m_con->send(peer_id, 0, out);
 	}
 

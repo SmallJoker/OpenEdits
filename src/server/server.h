@@ -55,6 +55,7 @@ private:
 
 	static const ServerPacketHandler packet_actions[];
 
+	RefCnt<World> loadWorldNoLock(const std::string &id);
 	void writeWorldData(Packet &out, World &world, bool is_clear);
 	void respawnPlayer(Player *player, bool send_packet);
 
@@ -71,6 +72,7 @@ private:
 	Timer m_stdout_flush_timer;
 
 	// ----------- Chat commands -----------
+	void registerChatCommands();
 	void systemChatSend(Player *player, const std::string &msg);
 
 	CHATCMD_FUNC(chat_Help);
@@ -84,6 +86,7 @@ private:
 	CHATCMD_FUNC(chat_Respawn);
 	CHATCMD_FUNC(chat_Clear);
 	CHATCMD_FUNC(chat_Import);
+	CHATCMD_FUNC(chat_Load);
 	CHATCMD_FUNC(chat_Save);
 	CHATCMD_FUNC(chat_Title);
 

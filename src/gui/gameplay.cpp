@@ -284,13 +284,13 @@ void SceneGameplay::step(float dtime)
 		if (player->coins > 0) {
 			// Coins text
 			core::recti rect(
-				core::vector2di(SIZEW - 100, 10),
+				core::vector2di(SIZEW - 120, 10),
 				core::dimension2di(90, 20)
 			);
 
 			wchar_t buf[100];
-			swprintf(buf, 100, L"Coins: %d", (int)player->coins);
-			m_gui->font->draw(buf, rect, 0xFFFFFF00);
+			swprintf(buf, 100, L"Coins: %d / %d", (int)player->coins, m_total_coins);
+			m_gui->font->draw(buf, rect, 0xFFFFFF00, true);
 		}
 	} while (false);
 
@@ -761,6 +761,12 @@ void SceneGameplay::drawBlocksInView()
 	auto world = m_gui->getClient()->getWorld();
 	if (!world)
 		return;
+
+	if (m_dirty_worldmesh) {
+		// Update coin count
+		auto blocks = world->getBlocks(Block::ID_COIN, nullptr);
+		m_total_coins = blocks.size();
+	}
 
 	const int x_center = std::round(m_camera_pos.X / 10),
 		y_center = std::round(-m_camera_pos.Y / 10);

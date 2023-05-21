@@ -55,6 +55,7 @@ private:
 	bool assignBlockTexture(const BlockTile tile, scene::ISceneNode *node);
 	bool m_dirty_worldmesh = false;
 	core::recti m_drawn_blocks;
+	int m_total_coins = 0;
 
 	void updatePlayerlist();
 	bool m_dirty_playerlist = false;
