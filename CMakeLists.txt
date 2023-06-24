@@ -154,3 +154,50 @@ if(MSVC)
 else()
 	target_link_libraries(${PROJECT_NAME} SQLite::SQLite3)
 endif()
+
+
+### Installation
+
+set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/build")
+set(INSTALL_DIR ${PROJECT_NAME})
+
+
+# General files
+
+install(TARGETS ${PROJECT_NAME}
+		RUNTIME DESTINATION ${INSTALL_DIR}
+		LIBRARY DESTINATION ${INSTALL_DIR}
+		ARCHIVE DESTINATION ${INSTALL_DIR}
+		BUNDLE DESTINATION .
+)
+install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/assets" DESTINATION ${INSTALL_DIR})
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/README.md" DESTINATION ${INSTALL_DIR})
+install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/misc/licenses" DESTINATION ${INSTALL_DIR})
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE.txt" DESTINATION "${INSTALL_DIR}/licenses" RENAME "openedits.txt")
+
+if(MSVC)
+	# Copy DLL directly
+	install(FILES ${ENet_LIBRARY} DESTINATION ${INSTALL_DIR} RENAME ${ENET_DLL_NAME})
+else()
+	# Resolve symlink and perform hack
+	get_filename_component(ENET_DLL ${ENet_LIBRARY} REALPATH) # resolve symlink
+	get_filename_component(ENET_DLL_NAME ${ENet_LIBRARY} NAME) # compile time filename
+	install(FILES ${ENET_DLL} DESTINATION ${INSTALL_DIR} RENAME "${ENET_DLL_NAME}.7") # hack
+endif()
+
+if(BUILD_CLIENT)
+	get_target_property(
+		IRRLICHT_DLL IrrlichtMt::IrrlichtMt IMPORTED_LOCATION_RELEASE)
+	install(FILES ${IRRLICHT_DLL} DESTINATION ${INSTALL_DIR})
+endif()
+
+
+# Platform-specific installs
+
+if(LINUX OR UNIX)
+	# Start script
+	install(FILES "${PROJECT_SOURCE_DIR}/misc/AppRun.sh"
+		DESTINATION ${INSTALL_DIR}
+		PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
+	)
+endif()

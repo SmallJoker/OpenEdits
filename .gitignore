@@ -11,7 +11,7 @@ src/version.cpp
 # Development files
 *.patch
 *.diff
-*.sh
+make.sh
 *.bat
 
 # IDEs

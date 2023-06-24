@@ -88,6 +88,12 @@ Project compiling:
 3. `cmake -B build -DBUILD_CLIENT=0 -DIRRLICHTMT_BUILD_DIR="/path/to/irrlicht/include/"`
 4. `cd build` -> build `make -j` -> start `./OpenEdits-server`
 
+**Distributing**
+
+	cd build
+	make install
+	bash ../REPO_NAME/misc/pack.sh
+
 
 ## Licenses
 
