@@ -27,6 +27,7 @@ public:
 	void draw();
 	bool OnEvent(const SEvent &e) override;
 	void toggleShowMore();
+	void setEraseMode(bool erase);
 
 	void getBlockUpdate(BlockUpdate &bu);
 
@@ -43,6 +44,7 @@ private:
 	std::vector<bid_t> m_hotbar_ids;
 	core::position2di m_hotbar_pos;
 	bid_t m_selected_bid = 0;
+	bid_t m_last_selected_bid = 0; // when holding shift
 	u8 m_selected_param1 = 0;
 
 	bool m_show_selector = false;

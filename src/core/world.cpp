@@ -111,6 +111,9 @@ void WorldMeta::setPlayerFlags(const std::string &name, const PlayerFlags pf)
 
 void WorldMeta::readPlayerFlags(Packet &pkt)
 {
+	if (pkt.getRemainingBytes() == 0)
+		return; // Manually created world
+
 	u8 version = pkt.read<u8>();
 	if (version < 4 || version > 5)
 		throw std::runtime_error("Incompatible player flags version");
@@ -209,6 +212,8 @@ void World::read(Packet &pkt, u16 protocol_version)
 {
 	if (m_size.X == 0 || m_size.Y == 0)
 		throw std::runtime_error("World size error (not initialized?)");
+	if (pkt.getRemainingBytes() == 0)
+		return; // Manually created world
 	if (pkt.read<u32>() != SIGNATURE)
 		throw std::runtime_error("World signature mismatch");
 

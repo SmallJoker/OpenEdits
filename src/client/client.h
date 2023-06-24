@@ -37,6 +37,7 @@ public:
 
 	// ----------- Functions for the GUI -----------
 	PtrLock<LocalPlayer> getMyPlayer();
+	peer_t getMyPeerId() { return m_my_peer_id; }
 	PtrLock<decltype(m_players)> getPlayerList();
 	RefCnt<World> getWorld();
 	bool updateBlock(const BlockUpdate bu);

@@ -69,6 +69,7 @@ private:
 	DatabaseWorld *m_world_db = nullptr;
 
 
+	Timer m_ban_cleanup_timer;
 	Timer m_stdout_flush_timer;
 
 	// ----------- Chat commands -----------

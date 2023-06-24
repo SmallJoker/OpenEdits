@@ -21,6 +21,7 @@ Server::Server() :
 {
 	puts("Server: startup");
 	m_stdout_flush_timer.set(1);
+	m_ban_cleanup_timer.set(2);
 
 	m_bmgr->doPackRegistration();
 
@@ -165,6 +166,13 @@ void Server::step(float dtime)
 
 		fflush(stdout);
 		fflush(stderr);
+	}
+
+	if (m_ban_cleanup_timer.step(dtime)) {
+		m_ban_cleanup_timer.set(65);
+
+		if (m_auth_db)
+			m_auth_db->cleanupBans();
 	}
 }
 

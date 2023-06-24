@@ -385,8 +385,10 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 		}
 	}
 	if (e.EventType == EET_KEY_INPUT_EVENT) {
-		if (e.KeyInput.Key == KEY_LSHIFT || e.KeyInput.Key == KEY_RSHIFT)
+		if (e.KeyInput.Key == KEY_LSHIFT || e.KeyInput.Key == KEY_RSHIFT) {
 			m_erase_mode = e.KeyInput.PressedDown;
+			m_blockselector->setEraseMode(m_erase_mode);
+		}
 	}
 	if (e.EventType == EET_MOUSE_INPUT_EVENT) {
 

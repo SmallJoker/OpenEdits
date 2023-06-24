@@ -197,6 +197,7 @@ bool SceneBlockSelector::OnEvent(const SEvent &e)
 
 		switch (e.KeyInput.Key) {
 			case KEY_KEY_E:
+			case KEY_TAB:
 				toggleShowMore();
 				return true;
 			case KEY_KEY_1:
@@ -224,6 +225,14 @@ void SceneBlockSelector::toggleShowMore()
 {
 	m_show_selector ^= true;
 	drawBlockSelector();
+}
+
+void SceneBlockSelector::setEraseMode(bool erase)
+{
+	if (erase)
+		selectBlockId(0, false);
+	else
+		selectBlockId(m_last_selected_bid, false);
 }
 
 void SceneBlockSelector::getBlockUpdate(BlockUpdate &bu)
@@ -406,6 +415,8 @@ bool SceneBlockSelector::selectBlockId(int what, bool is_element_id)
 		m_highlight->setVisible(false);
 	}
 
+	if (selected != 0)
+		m_last_selected_bid = selected;
 	m_selected_bid = selected;
 	return true;
 }
