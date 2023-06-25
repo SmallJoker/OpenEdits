@@ -25,7 +25,7 @@ namespace irr {
 using namespace irr;
 
 class Client;
-class ClientStartData;
+struct ClientStartData;
 class Server;
 
 class SceneHandler;

@@ -2,6 +2,7 @@
 #include "core/auth.h"
 #include <memory> // unique_ptr
 #include <sqlite3.h>
+#include <stdexcept> // runtime_error
 
 DatabaseAuth::~DatabaseAuth()
 {
@@ -165,6 +166,28 @@ bool DatabaseAuth::save(const AuthInformation &auth)
 	sqlite3_reset(m_stmt_end);
 	return good;
 }
+
+const std::string &DatabaseAuth::getUniqueSalt()
+{
+	if (!m_unique_salt.empty())
+		return m_unique_salt;
+
+	AuthInformation info;
+	info.name = "\x1B$AUTH_SETTINGS";
+	if (!load(info.name, &info) || info.password.empty()) {
+		// Create new salt
+		printf("DatabaseAuth: Initializing new server-wide password salt");
+
+		info.password = Auth::generateRandom();
+		info.last_login = INT64_MAX; // prevent accidental removal by cleanups
+		if (!save(info)) {
+			throw std::runtime_error("Failed to save unique salt!");
+		}
+	}
+	m_unique_salt = info.password;
+	return m_unique_salt;
+}
+
 
 bool DatabaseAuth::setPassword(const std::string &name, const std::string &hash)
 {

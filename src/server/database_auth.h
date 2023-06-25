@@ -50,6 +50,7 @@ public:
 	bool load(const std::string &name, AuthInformation *auth);
 	bool save(const AuthInformation &auth);
 
+	const std::string &getUniqueSalt();
 	bool setPassword(const std::string &name, const std::string &hash);
 
 	bool ban(const AuthBanEntry &entry);
@@ -58,6 +59,7 @@ public:
 	bool cleanupBans();
 
 	bool logNow(AuthLogEntry entry);
+
 
 private:
 	sqlite3_stmt *m_stmt_read = nullptr;
@@ -69,4 +71,6 @@ private:
 	sqlite3_stmt *m_stmt_f2b_cleanup = nullptr;
 
 	sqlite3_stmt *m_stmt_log = nullptr;
+
+	std::string m_unique_salt;
 };

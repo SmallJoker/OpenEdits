@@ -188,8 +188,8 @@ CHATCMD_FUNC(Server::chat_SetPass)
 	}
 
 	Auth auth;
-	auth.fromPass(newpass);
-	bool ok = m_auth_db->setPassword(who, auth.getPwHash());
+	auth.hash(m_auth_db->getUniqueSalt(), newpass);
+	bool ok = m_auth_db->setPassword(who, auth.output);
 
 	if (ok)
 		systemChatSend(player, "Changed password of " + who + " to: " + newpass);

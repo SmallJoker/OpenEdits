@@ -15,8 +15,8 @@ static void auth_database_test()
 		auth.name = "FooBarBaz";
 
 		Auth newauth;
-		newauth.fromPass(Auth::generatePass());
-		auth.password = newauth.getPwHash();
+		newauth.hash(db.getUniqueSalt(), Auth::generatePass());
+		auth.password = newauth.output;
 
 		CHECK(db.save(auth));
 
@@ -33,51 +33,48 @@ static void auth_database_test()
 
 void unittest_auth()
 {
+	const std::string unique_hash = Auth::generateRandom();
 	{
 		// One that passes
 		Auth auth_cli, auth_srv;
-		auth_cli.fromPass("password");
-		CHECK(auth_cli.getPwHash().size() > 20);
-
-		auth_srv.fromHash(auth_cli.getPwHash());
+		auth_cli.hash(unique_hash, "password");
+		CHECK(auth_cli.output.size() > 20);
 
 		auto random = Auth::generateRandom();
-		auth_srv.combine(random);
-		CHECK(auth_srv.getCombinedHash().size() > 20);
+		auth_srv.hash(auth_cli.output, random);
+		CHECK(auth_srv.output.size() > 20);
 
-		auth_cli.combine(random);
+		auth_cli.rehash(random);
 
-		CHECK(auth_cli.getCombinedHash() == auth_srv.getCombinedHash());
+		CHECK(auth_cli.output == auth_srv.output);
 	}
 
 	{
 		// Mismatch due to wrong random string
 		Auth auth_cli, auth_srv;
-		auth_cli.fromPass("password");
-
-		auth_srv.fromHash(auth_cli.getPwHash());
+		auth_cli.hash(unique_hash, "password");
 
 		auto random = Auth::generateRandom();
-		auth_srv.combine(random);
+		auth_srv.hash(auth_cli.output, random);
 
-		auth_cli.combine("password"); // not the random bytes
+		auth_cli.rehash("password"); // not the random bytes
 
-		CHECK(auth_cli.getCombinedHash() != auth_srv.getCombinedHash());
+		CHECK(auth_cli.output != auth_srv.output);
 	}
 
 	{
 		// Password mismatch
 		Auth auth_cli, auth_srv;
-		auth_cli.fromPass("password");
-		auth_srv.fromPass("password2");
+		auth_cli.hash(unique_hash, "password");
+		auth_srv.hash(unique_hash, "password2");
 
-		CHECK(auth_cli.getPwHash() != auth_srv.getPwHash());
+		CHECK(auth_cli.output != auth_srv.output);
 
 		auto random = Auth::generateRandom();
-		auth_srv.combine(random);
-		auth_cli.combine(random);
+		auth_srv.rehash(random);
+		auth_cli.rehash(random);
 
-		CHECK(auth_cli.getCombinedHash() != auth_srv.getCombinedHash());
+		CHECK(auth_cli.output != auth_srv.output);
 	}
 
 	auth_database_test();

@@ -123,12 +123,13 @@ void Server::pkt_Hello(peer_t peer_id, Packet &pkt)
 		AuthInformation info;
 		bool ok = m_auth_db->load(player->name, &info);
 		if (ok) {
-			player->auth.random = Auth::generateRandom();
+			player->auth.local_random = Auth::generateRandom();
 
 			Packet out;
 			out.write(Packet2Client::Auth);
 			out.writeStr16("hash");
-			out.writeStr16(player->auth.random);
+			out.writeStr16(m_auth_db->getUniqueSalt());
+			out.writeStr16(player->auth.local_random);
 			m_con->send(peer_id, 0, out);
 		} else {
 			player->auth.status = Auth::Status::Unregistered;
@@ -136,6 +137,7 @@ void Server::pkt_Hello(peer_t peer_id, Packet &pkt)
 			Packet out;
 			out.write(Packet2Client::Auth);
 			out.writeStr16("register");
+			out.writeStr16(m_auth_db->getUniqueSalt());
 			m_con->send(peer_id, 0, out);
 		}
 	}
@@ -169,9 +171,13 @@ void Server::pkt_Auth(peer_t peer_id, Packet &pkt)
 		std::string hash = pkt.readStr16();
 
 		// Compare doubly-hashed passwords
-		player->auth.fromHash(info.password);
-		player->auth.combine(player->auth.random);
-		bool signed_in = player->auth.verify(hash);
+		player->auth.hash(info.password, player->auth.local_random);
+
+		bool signed_in = player->auth.output == hash;
+		if (info.password.empty()) {
+			sendMsg(peer_id, "No password saved. Change your password with /setpass !");
+			signed_in = true;
+		}
 
 		if (!signed_in) {
 			sendMsg(peer_id, "Incorrect password");

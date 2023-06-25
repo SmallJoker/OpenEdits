@@ -42,6 +42,8 @@ void Client::pkt_Hello(Packet &pkt)
 	// Load the server's block properties
 	m_bmgr->read(pkt, m_protocol_version);
 
+	m_auth = Auth();
+
 	printf("Client: got HELLO. my peer_id=%u\n", m_my_peer_id);
 }
 
@@ -62,17 +64,18 @@ void Client::pkt_Auth(Packet &pkt)
 	if (action == "hash") {
 		// Confirm password
 
-		Auth auth;
-		auth.fromPass(m_start_data.password);
+		m_auth.local_unique_salt = pkt.readStr16();
+		m_auth.hash(m_auth.local_unique_salt, m_start_data.password);
 		m_start_data.password.clear();
 
-		auth.combine(pkt.readStr16()); // random
+		auto random = pkt.readStr16();
+		m_auth.rehash(random);
 
 		// Go ahead to the next step
 		Packet out;
 		out.write(Packet2Server::Auth);
 		out.writeStr16("hash");
-		out.writeStr16(auth.getCombinedHash());
+		out.writeStr16(m_auth.output);
 		m_con->send(0, 0, out);
 
 		return;
@@ -80,6 +83,7 @@ void Client::pkt_Auth(Packet &pkt)
 
 	if (action == "register") {
 		// Requesting a signup
+		m_auth.local_unique_salt = pkt.readStr16();
 
 		m_state = ClientState::Register;
 		return;

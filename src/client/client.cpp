@@ -167,13 +167,12 @@ bool Client::OnEvent(GameEvent &e)
 			return false;
 		case E::G2C_REGISTER:
 			{
-				Auth auth;
-				auth.fromPass(*e.text);
+				m_auth.hash(m_auth.local_unique_salt, *e.text);
 
 				Packet pkt;
 				pkt.write(Packet2Server::Auth);
 				pkt.writeStr16("register");
-				pkt.writeStr16(auth.getPwHash());
+				pkt.writeStr16(m_auth.output);
 				m_con->send(0, 0, pkt);
 			}
 			return true;

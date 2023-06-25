@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/auth.h"
 #include "core/environment.h"
 #include "gameevent.h"
 #include <string>
@@ -85,6 +86,8 @@ private:
 	std::string m_world_id = "foobar";
 	ClientStartData m_start_data;
 	peer_t m_my_peer_id = 0;
+
+	Auth m_auth;
 };
 
 struct ClientPacketHandler {
