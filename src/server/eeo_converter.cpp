@@ -16,22 +16,139 @@
 #endif
 #define ERRORLOG(...) fprintf(stderr, __VA_ARGS__)
 
-struct CompressedFile {
-	CompressedFile(const std::string &filename)
+struct InflateWriter {
+	InflateWriter(const std::string &outputfile) :
+		m_file(outputfile, std::ios::binary)
 	{
-		fp = fopen(filename.c_str(), "r");
+		memset(&m_zs, 0, sizeof(m_zs));
+
+		if (!m_file.good())
+			throw std::runtime_error("Cannot open file: " + outputfile);
+
+		// best compression gives header 78 DA when not trimmed
+		status = deflateInit(&m_zs, Z_BEST_COMPRESSION);
+		if (status != Z_OK)
+			throw std::runtime_error("deflateInit failed");
 	}
 
-	~CompressedFile()
+	~InflateWriter()
 	{
-		if (fp)
-			fclose(fp);
+		deflateEnd(&m_zs);
 	}
 
-	size_t readBytes(uint8_t *data, size_t len)
+	// Low-level raw file writing without file header and checksum
+	void writeFile(const uint8_t *data, size_t len)
 	{
-		if (is_first) {
-			is_first = false;
+		if (m_is_first) {
+			m_is_first = false;
+
+			// Trim header
+			if (len < 2)
+				throw std::runtime_error("Failed to strip header");
+			data += 2;
+			len -= 2;
+		}
+
+		if (status == Z_STREAM_END) {
+			// Trim checksum
+			if (len < 4)
+				throw std::runtime_error("Failed to strip checksum");
+			len -= 4;
+		}
+
+		ERRORLOG("zlib: write %zu bytes\n", len);
+		m_file.write((const char *)data, len);
+	}
+
+	size_t write(const uint8_t *src, size_t n_bytes)
+	{
+		if (src && n_bytes == 0)
+			return 0;
+
+		// Stream dead. refuse.
+		if (status != Z_OK)
+			throw std::runtime_error("Stream ended. Cannot write more.");
+
+		// https://www.zlib.net/zlib_how.html
+		unsigned char tmpbuf[10];
+
+		m_zs.next_in = src ? (unsigned char *)src : tmpbuf; // zlib might not be compiled with ZLIB_CONST
+		m_zs.avail_in = src ? n_bytes : 0;
+		size_t n_wrote = 0; // Total processed bytes
+
+		do {
+			m_zs.avail_out = CHUNK;
+			m_zs.next_out = m_buf_out;
+
+			// Decompress provided data
+			status = deflate(&m_zs, src ? Z_NO_FLUSH : Z_FINISH);
+			switch (status) {
+				case Z_NEED_DICT:
+					status = Z_DATA_ERROR;
+					// fall-though
+				case Z_DATA_ERROR:
+				case Z_MEM_ERROR:
+				case Z_STREAM_ERROR:
+					ERRORLOG("Got Adler %08lX\n", m_zs.adler);
+					ERRORLOG("zlib: error code %d, message: %s, near index 0x%04zX\n",
+						status, m_zs.msg ? m_zs.msg : "NULL", getIndex());
+					throw std::runtime_error("zlib: inflate error");
+			}
+
+			// The amount of newly received bytes
+			size_t have = CHUNK - m_zs.avail_out;
+			n_wrote += have;
+
+			writeFile(m_buf_out, have);
+
+			if (n_bytes > 100)
+				DEBUGLOG("zlib: compressed %zu bytes (%zu / %zu)\n", have, n_wrote, n_bytes);
+			if (m_zs.avail_in == 0)
+				break;
+
+		} while (status != Z_STREAM_END);
+
+		return n_wrote;
+	}
+
+	int status;
+	inline size_t getIndex() { return m_zs.total_in; }
+
+private:
+	std::ofstream m_file;
+
+	z_stream m_zs;
+	bool m_is_first = true;
+
+	static constexpr size_t CHUNK = 4*1024;
+	uint8_t m_buf_out[CHUNK]; // compressed data
+};
+
+struct DeflateReader {
+	DeflateReader(const std::string &inputfile) :
+		m_file(inputfile, std::ios::binary)
+	{
+		memset(&m_zs, 0, sizeof(m_zs));
+
+		if (!m_file.good())
+			throw std::runtime_error("Cannot open file: " + inputfile);
+
+		status = inflateInit(&m_zs);
+		if (status != Z_OK)
+			throw std::runtime_error("inflateInit failed");
+	}
+
+	~DeflateReader()
+	{
+		inflateEnd(&m_zs);
+	}
+
+	// Low-level raw file reading for zlib
+	// Adds header and checksum to the deflate data
+	size_t readFile(uint8_t *data, size_t len)
+	{
+		if (m_is_first) {
+			m_is_first = false;
 
 			// https://yal.cc/cs-deflatestream-zlib/
 			data[0] = 0x78;
@@ -43,58 +160,22 @@ struct CompressedFile {
 			return 2;
 		}
 
-		if (feof(fp)) {
-			if (!zs)
-				return 0;
+		if (m_file.eof()) {
+			// Append missing checksum
 
-			/* No matter what I tried with "adler32_z", the checksum
-			never matched. but apparently reading in works just fine,
-			so ignore it and fake it real hard. */
-
-			uint32_t to_write = zs->adler;
+			uint32_t to_write = m_zs.adler;
 			for (int i = 0; i < 4; ++i)
 				data[i] = ((const u8 *)&to_write)[3 - i];
 
-			zs = nullptr;
 			return 4;
 		}
 
-		size_t new_len = fread(data, 1, len, fp);
-
-		return new_len;
+		// Sets failbit and eofbit on stream end
+		m_file.read((char *)data, len);
+		return m_file.gcount();
 	}
 
-	template<typename T>
-	void read(T &val);
-
-	FILE *fp;
-	z_stream *zs = nullptr;
-
-private:
-	bool is_first = true;
-};
-
-struct zlibStream {
-	zlibStream(const std::string &filename) :
-		m_input(filename)
-	{
-		if (!m_input.fp)
-			throw std::runtime_error("Cannot open file: " + filename);
-
-		memset(&m_zs, 0, sizeof(m_zs));
-		status = inflateInit(&m_zs);
-
-		if (status != Z_OK)
-			throw std::runtime_error("inflateInit failed");
-
-		m_input.zs = &m_zs;
-	}
-
-	~zlibStream()
-	{
-		inflateEnd(&m_zs);
-	}
-
+	// Decompression
 	size_t read(uint8_t *dst, size_t n_bytes)
 	{
 		if (n_bytes == 0)
@@ -105,18 +186,19 @@ struct zlibStream {
 			throw std::runtime_error("Stream ended. Cannot read further.");
 
 		// https://www.zlib.net/zlib_how.html
-		size_t n_read = 0;
+		size_t n_read = 0; // Total decompressed bytes
 		do {
 			if (m_zs.avail_in == 0) {
 				// All bytes eaten. Read next block
-				m_zs.avail_in = m_input.readBytes(m_buf_in, CHUNK);
-				if (ferror(m_input.fp))
-					throw std::runtime_error("File error");
+				m_zs.avail_in = readFile(m_buf_in, CHUNK);
+				DEBUGLOG("zlib: reading in %d bytes, space: %zu\n", m_zs.avail_in, n_bytes - n_read);
+
+				if (m_file.bad())
+					throw std::runtime_error("File error: " );
 
 				if (m_zs.avail_in == 0)
 					throw std::runtime_error("File ended unexpectedly");
 
-				DEBUGLOG("zlib: reading in %d bytes, space: %zu\n", m_zs.avail_in, n_bytes - n_read);
 				m_zs.next_in = m_buf_in;
 			}
 
@@ -132,7 +214,7 @@ struct zlibStream {
 				case Z_DATA_ERROR:
 				case Z_MEM_ERROR:
 				case Z_STREAM_ERROR:
-					ERRORLOG("Expected Adler %08lX\n", m_zs.adler);
+					ERRORLOG("Got Adler %08lX\n", m_zs.adler);
 					ERRORLOG("zlib: error code %d, message: %s, near index 0x%04zX\n",
 						status, m_zs.msg ? m_zs.msg : "NULL", getIndex());
 					throw std::runtime_error("zlib: inflate error");
@@ -197,13 +279,15 @@ struct zlibStream {
 	inline size_t getIndex() { return m_zs.total_out; }
 
 private:
+	std::ifstream m_file;
 
-	CompressedFile m_input;
 	z_stream m_zs;
+	bool m_is_first = true;
 
 	static constexpr size_t CHUNK = 4*1024;
-	uint8_t m_buf_in[CHUNK]; // compressed
+	uint8_t m_buf_in[CHUNK]; // compressed data
 };
+
 
 enum class BlockDataType : u8 {
 	None,
@@ -275,7 +359,15 @@ void EEOconverter::fromFile(const std::string &filename)
 {
 	fill_block_types();
 
-	zlibStream zs(filename);
+	if (0) {
+		InflateWriter zs(filename + "_test.zz");
+		char test[200];
+		strcpy(test, "Hello world");
+		zs.write((uint8_t *)test, strlen(test));
+		zs.write(nullptr, 0);
+	}
+
+	DeflateReader zs(filename);
 
 	// https://github.com/capasha/EEOEditor/tree/main/EELVL
 
@@ -404,7 +496,7 @@ void EEOconverter::inflate(const std::string &filename)
 {
 	fill_block_types();
 
-	zlibStream zs(filename);
+	DeflateReader zs(filename);
 
 	const std::string outname(filename + ".inflated");
 	std::ofstream of(outname, std::ios_base::binary);

@@ -1,5 +1,5 @@
 # Set up project
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.13)
 project(OpenEdits)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/" ${CMAKE_MODULE_PATH})
@@ -23,7 +23,7 @@ find_package(ZLIB)
 
 set(IRRLICHTMT_BUILD_DIR "" CACHE PATH "Client: Path to IrrlichtMt build directory. Server: Include path")
 if (BUILD_CLIENT)
-	message(NOTICE "--- Type: Client (GUI) & Server")
+	message("--- Type: Client (GUI) & Server")
 
 	# Irrlicht detection code imported from minetest/CMakeLists.cpp, commit 38ba813c by JosiahWI
 	find_package(IrrlichtMt QUIET
@@ -38,7 +38,7 @@ if (BUILD_CLIENT)
 		message(FATAL_ERROR "Could not find IrrlichtMtConfig.cmake in ${IRRLICHTMT_BUILD_DIR}/cmake.")
 	endif()
 else()
-	message(NOTICE "--- Type: Server only")
+	message("--- Type: Server only")
 	project(OpenEdits-server)
 
 	# The server only needs headers, so give it headers.
