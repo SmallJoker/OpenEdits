@@ -6,6 +6,7 @@
 #include "core/blockmanager.h"
 #include "core/world.h"
 #include <fstream>
+#include <map>
 #include <string.h> // memcpy
 #include <zlib.h>
 
@@ -33,6 +34,7 @@ struct InflateWriter {
 
 	~InflateWriter()
 	{
+		terminate();
 		deflateEnd(&m_zs);
 	}
 
@@ -56,7 +58,7 @@ struct InflateWriter {
 			len -= 4;
 		}
 
-		ERRORLOG("zlib: write %zu bytes\n", len);
+		//DEBUGLOG("zlib: write %zu bytes\n", len);
 		m_file.write((const char *)data, len);
 	}
 
@@ -69,11 +71,16 @@ struct InflateWriter {
 		if (status != Z_OK)
 			throw std::runtime_error("Stream ended. Cannot write more.");
 
-		// https://www.zlib.net/zlib_how.html
-		unsigned char tmpbuf[10];
+		// To terminate the file
+		uint8_t tmpbuf[10];
+		if (!src) {
+			src = tmpbuf;
+			n_bytes = 0;
+		}
 
-		m_zs.next_in = src ? (unsigned char *)src : tmpbuf; // zlib might not be compiled with ZLIB_CONST
-		m_zs.avail_in = src ? n_bytes : 0;
+		// https://www.zlib.net/zlib_how.html
+		m_zs.next_in = (unsigned char *)src; // zlib might not be compiled with ZLIB_CONST
+		m_zs.avail_in = n_bytes;
 		size_t n_wrote = 0; // Total processed bytes
 
 		do {
@@ -81,7 +88,7 @@ struct InflateWriter {
 			m_zs.next_out = m_buf_out;
 
 			// Decompress provided data
-			status = deflate(&m_zs, src ? Z_NO_FLUSH : Z_FINISH);
+			status = deflate(&m_zs, src == tmpbuf ? Z_FINISH : Z_NO_FLUSH);
 			switch (status) {
 				case Z_NEED_DICT:
 					status = Z_DATA_ERROR;
@@ -89,7 +96,6 @@ struct InflateWriter {
 				case Z_DATA_ERROR:
 				case Z_MEM_ERROR:
 				case Z_STREAM_ERROR:
-					ERRORLOG("Got Adler %08lX\n", m_zs.adler);
 					ERRORLOG("zlib: error code %d, message: %s, near index 0x%04zX\n",
 						status, m_zs.msg ? m_zs.msg : "NULL", getIndex());
 					throw std::runtime_error("zlib: inflate error");
@@ -97,18 +103,53 @@ struct InflateWriter {
 
 			// The amount of newly received bytes
 			size_t have = CHUNK - m_zs.avail_out;
-			n_wrote += have;
+			n_wrote = n_bytes - m_zs.avail_in;
 
 			writeFile(m_buf_out, have);
 
-			if (n_bytes > 100)
-				DEBUGLOG("zlib: compressed %zu bytes (%zu / %zu)\n", have, n_wrote, n_bytes);
+			if (have > 0)
+				DEBUGLOG("zlib: write %zu bytes\n", have);
 			if (m_zs.avail_in == 0)
-				break;
+				break; // all bytes eaten
 
 		} while (status != Z_STREAM_END);
 
 		return n_wrote;
+	}
+
+	void terminate()
+	{
+		while (status == Z_OK)
+			write(nullptr, 0);
+	}
+
+	// Same as be2le
+	inline void le2be(u8 *be_dst, const u8 *le_src, size_t n_bytes)
+	{
+		for (size_t i = 0; i < n_bytes; ++i)
+			be_dst[i] = le_src[(n_bytes - 1) - i];
+	}
+
+	// ---------------- Big endian writer functions ----------------
+	template<typename T>
+	void write(const T &val)
+	{
+		u8 ledata[sizeof(T)];
+		u8 bedata[sizeof(T)];
+		memcpy(ledata, &val, sizeof(T));
+		le2be(bedata, ledata, sizeof(T));
+
+		if (write(bedata, sizeof(T)) != sizeof(T))
+			throw std::runtime_error("Failed to write");
+	}
+
+	void writeStr16(const std::string &str)
+	{
+		if (str.size() > UINT16_MAX)
+			throw std::runtime_error("String too long to serialize");
+
+		write<u16>(str.size());
+		write((uint8_t *)str.c_str(), str.size());
 	}
 
 	int status;
@@ -194,7 +235,7 @@ struct DeflateReader {
 				DEBUGLOG("zlib: reading in %d bytes, space: %zu\n", m_zs.avail_in, n_bytes - n_read);
 
 				if (m_file.bad())
-					throw std::runtime_error("File error: " );
+					throw std::runtime_error("File read error");
 
 				if (m_zs.avail_in == 0)
 					throw std::runtime_error("File ended unexpectedly");
@@ -214,7 +255,7 @@ struct DeflateReader {
 				case Z_DATA_ERROR:
 				case Z_MEM_ERROR:
 				case Z_STREAM_ERROR:
-					ERRORLOG("Got Adler %08lX\n", m_zs.adler);
+					//ERRORLOG("Got Adler %08lX\n", m_zs.adler);
 					ERRORLOG("zlib: error code %d, message: %s, near index 0x%04zX\n",
 						status, m_zs.msg ? m_zs.msg : "NULL", getIndex());
 					throw std::runtime_error("zlib: inflate error");
@@ -247,7 +288,7 @@ struct DeflateReader {
 		u8 bedata[sizeof(T)];
 
 		if (read(bedata, sizeof(T)) != sizeof(T))
-			throw std::runtime_error("Failed to read");
+			throw std::runtime_error("Failed to read @ index=" + std::to_string(getIndex()));
 
 		T ret = 0;
 		be2le((uint8_t *)&ret, bedata, sizeof(T));
@@ -259,12 +300,13 @@ struct DeflateReader {
 		u16 len = read<u16>();
 		std::string str(len, '\0');
 		if (read((uint8_t *)&str[0], len) != len)
-			throw std::runtime_error("Failed to read");
+			throw std::runtime_error("Failed to read str16");
 		return str;
 	}
 
 	std::vector<u16> readArrU16x32()
 	{
+		// Size is written in total bytes!
 		u32 len = read<u32>() / sizeof(u16); // bytes -> count
 
 		//DEBUGLOG("Array size: %u at index 0x%04zX\n", len, getIndex());
@@ -307,20 +349,20 @@ static void fill_block_types()
 
 	BLOCK_TYPE_LUT.resize(2000);
 
-	auto set_range = [&](BlockDataType type, size_t first, size_t last) {
+	auto set_range = [](BlockDataType type, size_t first, size_t last) {
 		while (first <= last) {
 			BLOCK_TYPE_LUT.at(first) = type;
 			first++;
 		}
 	};
-	auto set_array = [&](BlockDataType type, const u16 which[]) {
+	auto set_array = [](BlockDataType type, const u16 which[]) {
 		while (*which) {
 			BLOCK_TYPE_LUT.at(*which) = type;
 			which++;
 		}
 	};
 
-	// Based on https://github.com/capasha/EEOEditor/blob/e8204a2acb/EELVL/Block.cs#L38-L85
+	// Based on https://github.com/capashaa/EEOEditor/blob/e8204a2acb/EELVL/Block.cs#L38-L85
 	static const u16 types_I[] = {
 		327, 328, 273, 440, 276, 277, 279, 280, 447, 449,
 		450, 451, 452, 456, 457, 458, 464, 465, 471, 477,
@@ -339,7 +381,7 @@ static void fill_block_types()
 		467, 1620, 1079, 1080, 1582, 421, 422, 461, 1584,
 		423, 1027, 1028, 418, 417, 420, 419, 453, 1517,
 		83, 77, 1520,
-		0
+		0 // Terminator
 	};
 	set_array(BlockDataType::I, types_I);
 
@@ -359,17 +401,9 @@ void EEOconverter::fromFile(const std::string &filename)
 {
 	fill_block_types();
 
-	if (0) {
-		InflateWriter zs(filename + "_test.zz");
-		char test[200];
-		strcpy(test, "Hello world");
-		zs.write((uint8_t *)test, strlen(test));
-		zs.write(nullptr, 0);
-	}
-
 	DeflateReader zs(filename);
 
-	// https://github.com/capasha/EEOEditor/tree/main/EELVL
+	// https://github.com/capashaa/EEOEditor/tree/main/EELVL
 
 	WorldMeta &meta = m_world.getMeta();
 	meta.owner = zs.readStr16();
@@ -377,7 +411,7 @@ void EEOconverter::fromFile(const std::string &filename)
 	blockpos_t size;
 	size.X = zs.read<s32>();
 	size.Y = zs.read<s32>();
-	zs.read<float>(); // gravity
+	zs.read<f32>(); // gravity
 	zs.read<u32>(); // bg color
 	std::string description = zs.readStr16(); // description
 	zs.read<u8>(); // campaign??
@@ -483,12 +517,110 @@ void EEOconverter::fromFile(const std::string &filename)
 	if (zs.status != Z_STREAM_END)
 		throw std::runtime_error("zlib: Incomplete reading! msg=" + err);
 
-	return; // Good
+	printf("EEOconverter: Imported world %s from file %s\n", meta.id.c_str(), filename.c_str());
 }
 
 void EEOconverter::toFile(const std::string &filename) const
 {
-	throw std::runtime_error("not implemented");
+	fill_block_types();
+
+	InflateWriter zs(filename);
+
+	const WorldMeta &meta = m_world.getMeta();
+	zs.writeStr16(meta.owner);
+	zs.writeStr16(meta.title);
+	const blockpos_t size = m_world.getSize();
+	zs.write<s32>(size.X);
+	zs.write<s32>(size.Y);
+	zs.write<f32>(1); // gravity (default factor)
+	zs.write<u32>(0); // bgcolor (default color)
+	zs.writeStr16(""); // description
+	zs.write<u8>(0); // campaign
+	zs.writeStr16(""); // crew ID
+	zs.writeStr16(""); // crew name
+	zs.write<s32>(0); // crew status
+	zs.write<u8>(1); // minimap
+	zs.writeStr16("exported from OpenEdits"); // owner ID
+
+	using posvec_t = std::vector<blockpos_t>;
+
+	// List block positions per ID
+	// TODO: What about coin doors, signs, portals?
+	std::map<bid_t, posvec_t> fg_blocks, bg_blocks;
+	blockpos_t pos;
+	for (pos.Y = 0; pos.Y < size.Y; ++pos.Y)
+	for (pos.X = 0; pos.X < size.X; ++pos.X) {
+		Block b;
+		m_world.getBlock(pos, &b);
+		if (b.id) {
+			auto &fg_posvec = fg_blocks[b.id];
+			if (fg_posvec.empty())
+				fg_posvec.reserve(200);
+			fg_posvec.push_back(pos);
+		}
+
+		if (b.bg) {
+			auto &bg_posvec = bg_blocks[b.bg];
+			if (bg_posvec.empty())
+				bg_posvec.reserve(200);
+			bg_posvec.push_back(pos);
+		}
+	}
+
+	// Write block vectors to the file
+	auto write_array = [&](const posvec_t &posvec) {
+		zs.write<u32>(posvec.size() * sizeof(u16));
+		for (blockpos_t pos : posvec)
+			zs.write<u16>(pos.X);
+
+		zs.write<u32>(posvec.size() * sizeof(u16));
+		for (blockpos_t pos : posvec)
+			zs.write<u16>(pos.Y);
+	};
+
+	for (const auto &entry : fg_blocks) {
+		zs.write<s32>(entry.first); // block ID
+		zs.write<s32>(0); // layer
+		write_array(entry.second);
+
+		switch (BLOCK_TYPE_LUT[entry.first]) {
+			case BlockDataType::None:
+				break;
+			case BlockDataType::I:
+				zs.write<s32>(0);
+				break;
+			case BlockDataType::III:
+				zs.write<s32>(0);
+				zs.write<s32>(0);
+				zs.write<s32>(0);
+				break;
+			case BlockDataType::SI:
+				zs.writeStr16("");
+				zs.write<s32>(0);
+				break;
+			case BlockDataType::SSI:
+				zs.writeStr16("");
+				zs.writeStr16("");
+				zs.write<s32>(0);
+				break;
+			case BlockDataType::SSSS:
+				zs.writeStr16("");
+				zs.writeStr16("");
+				zs.writeStr16("");
+				zs.writeStr16("");
+				break;
+		}
+	}
+
+	for (const auto &entry : bg_blocks) {
+		zs.write<s32>(entry.first); // block ID
+		zs.write<s32>(1); // layer
+		write_array(entry.second);
+	}
+
+	zs.terminate();
+
+	printf("EEOconverter: Exported world %s to file %s\n", meta.id.c_str(), filename.c_str());
 }
 
 
@@ -504,7 +636,7 @@ void EEOconverter::inflate(const std::string &filename)
 	if (!of.good())
 		throw std::runtime_error("Failed to open destination file");
 
-	while (zs.status != Z_OK || zs.status != Z_STREAM_END) {
+	while (zs.status == Z_OK) {
 		u8 buffer[4*1024];
 		size_t read = zs.read(buffer, sizeof(buffer));
 		of.write((const char *)buffer, read);
@@ -512,7 +644,7 @@ void EEOconverter::inflate(const std::string &filename)
 
 	of.close();
 
-	DEBUGLOG("Exported file %s\n", outname.c_str());
+	printf("EEOconverter: Decompressed file %s\n", outname.c_str());
 }
 
 #else // HAVE_ZLIB

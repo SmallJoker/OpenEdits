@@ -10,11 +10,16 @@ void unittest_physics();
 void unittest_utilities();
 void unittest_world();
 
+//#define UNITTEST_CATCH_EX
+
 void unittest()
 {
 	puts("==> Start unittest");
 
-	try {
+#ifdef UNITTEST_CATCH_EX
+	try
+#endif
+	{
 		unittest_auth();
 		unittest_chatcommand();
 		unittest_utilities();
@@ -26,8 +31,11 @@ void unittest()
 		unittest_connection(); // depends on packet
 
 		puts("<== Unittest completed");
-	} catch (std::exception &e) {
+	}
+#ifdef UNITTEST_CATCH_EX
+	catch (std::exception &e) {
 		printf("=!= %s\n", e.what());
 	}
+#endif
 }
 
