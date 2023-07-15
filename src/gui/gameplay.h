@@ -1,5 +1,6 @@
 #pragma once
 
+#include "game_commands.h"
 #include "gui.h"
 #include <string>
 #include <vector3d.h>
@@ -82,6 +83,8 @@ private:
 
 	scene::ISceneNode *m_stage = nullptr;
 	scene::ICameraSceneNode *m_camera = nullptr;
+
+	GameCommands m_gamecmd;
 
 	gui::IGUIEditBox *m_chathistory = nullptr;
 	core::stringw m_chathistory_text;

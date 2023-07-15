@@ -2,7 +2,7 @@
 #include "macros.h"
 #include "utils.h"
 
-ChatCommand::ChatCommand(Environment *env)
+ChatCommand::ChatCommand(ChatCommandHandler *env)
 {
 	m_env = env;
 	if (!m_env)
@@ -10,17 +10,15 @@ ChatCommand::ChatCommand(Environment *env)
 }
 
 
-void ChatCommand::add(const std::string &subcmd, ChatCommandAction action, Environment *env)
+void ChatCommand::add(const std::string &subcmd, ChatCommandAction action)
 {
-	ChatCommand &cmd = add(subcmd, env);
+	ChatCommand &cmd = add(subcmd);
 	cmd.setMain(action);
 }
 
-ChatCommand &ChatCommand::add(const std::string &subcmd, Environment *env)
+ChatCommand &ChatCommand::add(const std::string &subcmd)
 {
-	ASSERT_FORCED(env || m_env, "ChatCommand instance must be owned by a module");
-
-	auto [it, is_new] = m_subcommands.insert({subcmd, ChatCommand(env ? env : m_env)});
+	auto [it, is_new] = m_subcommands.insert({subcmd, ChatCommand(m_env)});
 	it->second.m_root = m_root;
 
 	if (!is_new) {

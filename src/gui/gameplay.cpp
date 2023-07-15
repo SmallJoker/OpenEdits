@@ -74,6 +74,8 @@ void SceneGameplay::OnOpen()
 		m_camera_pos.Y += player->pos.Y * -10;
 	}
 
+	m_gamecmd.initialize(m_gui->getClient());
+
 	m_drag_draw_block.set(Block::ID_INVALID);
 }
 
@@ -364,11 +366,12 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 			case gui::EGET_EDITBOX_ENTER:
 				if (e.GUIEvent.Caller->getID() == ID_BoxChat) {
 					auto textw = e.GUIEvent.Caller->getText();
+					std::string textn;
+					wide_to_utf8(textn, textw);
 
-					{
+					if (!m_gamecmd.process(textn)) {
 						GameEvent e(GameEvent::G2C_CHAT);
-						e.text = new std::string();
-						wide_to_utf8(*e.text, textw);
+						e.text = new std::string(textn);
 						m_gui->sendNewEvent(e);
 					}
 
@@ -575,8 +578,11 @@ bool SceneGameplay::OnEvent(GameEvent &e)
 			m_dirty_playerlist = true;
 			break;
 		case E::C2G_PLAYER_CHAT:
+		case E::C2G_LOCAL_CHAT:
 			{
-				const char *who = "* SYSTEM";
+				const char *who = "* SERVER";
+				if (e.type_c2g == E::C2G_LOCAL_CHAT)
+					who = "* LOCAL";
 				if (e.player_chat->player)
 					who = e.player_chat->player->name.c_str();
 

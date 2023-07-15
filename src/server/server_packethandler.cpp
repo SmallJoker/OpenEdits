@@ -212,8 +212,7 @@ void Server::pkt_Auth(peer_t peer_id, Packet &pkt)
 		std::string address = m_con->getPeerAddress(peer_id);
 		{
 			// Prevent register spam
-			AuthBanEntry entry;
-			if (m_auth_db->getBanRecord(address, "register", &entry)) {
+			if (m_auth_db->getBanRecord(address, "register", nullptr)) {
 				sendMsg(peer_id, "Too many account creation requests.");
 				return;
 			}

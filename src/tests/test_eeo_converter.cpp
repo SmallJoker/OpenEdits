@@ -57,6 +57,8 @@ static void eeoc_read_check()
 
 	CHECK(world.getBlock({25, 7}, &b));
 	CHECK(b.id == 0 && b.bg == 502);
+
+	std::remove("unittest_1.eelvl");
 }
 
 void unittest_eeo_converter()

@@ -4,18 +4,15 @@
 
 static int call_counter = 0;
 
-class TestEnvironment : public Environment {
+class TestHandler : public ChatCommandHandler {
 public:
-	TestEnvironment() : Environment(nullptr) {}
-
-	void step(float dtime) override {}
-	void processPacket(peer_t peer_id, Packet &pkt) override {}
+	TestHandler() : ChatCommandHandler() {}
 
 	void setupCommands(ChatCommand &cmd, bool assign_main)
 	{
 		if (assign_main)
-			cmd.setMain((ChatCommandAction)&TestEnvironment::mainCommand);
-		cmd.add("!help", (ChatCommandAction)&TestEnvironment::normalCommand);
+			cmd.setMain((ChatCommandAction)&TestHandler::mainCommand);
+		cmd.add("!help", (ChatCommandAction)&TestHandler::normalCommand);
 	}
 
 	CHATCMD_FUNC(normalCommand)
@@ -32,7 +29,7 @@ public:
 // NyisBotCPP test copypasta
 void unittest_chatcommand()
 {
-	TestEnvironment env;
+	TestHandler env;
 	call_counter = 0;
 
 	{

@@ -217,8 +217,11 @@ bool DatabaseAuth::ban(const AuthBanEntry &entry)
 	if (!m_database)
 		return false;
 
-	if (entry.expiry <= time(nullptr))
+	if (entry.expiry <= time(nullptr)) {
+		fprintf(stderr, "DatabaseAuth: Invalid expiry date for ban. affected='%s', context='%s'\n",
+			entry.affected.c_str(), entry.context.c_str());
 		return false;
+	}
 
 	sqlite3_step(m_stmt_begin);
 	sqlite3_reset(m_stmt_begin);
@@ -237,7 +240,7 @@ bool DatabaseAuth::ban(const AuthBanEntry &entry)
 	sqlite3_reset(m_stmt_end);
 
 	if (good) {
-		printf("Server: Banned %s (%s) until %llu\n",
+		printf("Server: Banned %s (context='%s') until %llu\n",
 			entry.affected.c_str(), entry.context.c_str(), (unsigned long long)entry.expiry
 		);
 	}
@@ -247,7 +250,7 @@ bool DatabaseAuth::ban(const AuthBanEntry &entry)
 
 bool DatabaseAuth::getBanRecord(const std::string &affected, const std::string &context, AuthBanEntry *entry)
 {
-	if (!m_database || !entry)
+	if (!m_database)
 		return false;
 
 	auto s = m_stmt_f2b_read;
@@ -261,16 +264,19 @@ bool DatabaseAuth::getBanRecord(const std::string &affected, const std::string &
 	}
 
 	int i = 0;
+	int64_t expiry = sqlite3_column_int64(s, i++);
 
-	entry->expiry   = sqlite3_column_int64(s, i++);
-	entry->affected = (const char *)sqlite3_column_text(s, i++);
-	entry->context  = (const char *)sqlite3_column_text(s, i++);
-	entry->comment  = (const char *)sqlite3_column_text(s, i++);
+	if (entry) {
+		entry->expiry   = expiry;
+		entry->affected = (const char *)sqlite3_column_text(s, i++);
+		entry->context  = (const char *)sqlite3_column_text(s, i++);
+		entry->comment  = (const char *)sqlite3_column_text(s, i++);
+	}
 
 	bool good = ok("read f2b", sqlite3_step(s));
 	sqlite3_reset(s);
 
-	return good && entry->expiry > time(nullptr);
+	return good && expiry > time(nullptr);
 }
 
 bool DatabaseAuth::cleanupBans()

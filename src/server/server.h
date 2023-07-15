@@ -7,14 +7,13 @@
 
 enum class RemotePlayerState;
 
-class ChatCommand;
 class DatabaseAuth;
 class DatabaseWorld;
 class RemotePlayer;
 struct ServerPacketHandler;
 
 
-class Server : public Environment {
+class Server : public Environment, public ChatCommandHandler {
 public:
 	Server();
 	~Server();

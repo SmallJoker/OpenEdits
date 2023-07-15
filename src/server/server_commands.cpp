@@ -472,7 +472,7 @@ CHATCMD_FUNC(Server::chat_Clear)
 CHATCMD_FUNC(Server::chat_Import)
 {
 	if (!player->getFlags().check(PlayerFlags::PF_OWNER)) {
-		systemChatSend(player, "Missing permissions");
+		systemChatSend(player, "Insufficient permissions");
 		return;
 	}
 
@@ -558,8 +558,22 @@ CHATCMD_FUNC(Server::chat_Save)
 	auto world = player->getWorld();
 
 	if (!player->getFlags().check(PlayerFlags::PF_OWNER)) {
-		systemChatSend(player, "Missing permissions");
+		systemChatSend(player, "Insufficient permissions");
 		return;
+	}
+
+	// Slight delay for anti-spam
+	if (m_auth_db) {
+		if (m_auth_db->getBanRecord(world->getMeta().id, "world.save", nullptr)) {
+			systemChatSend(player, "Please wait a moment before saving again.");
+			return;
+		}
+
+		AuthBanEntry entry;
+		entry.affected = world->getMeta().id;
+		entry.context = "world.save";
+		entry.expiry = time(nullptr) + 10;
+		m_auth_db->ban(entry);
 	}
 
 	m_world_db->save(world);
@@ -575,7 +589,7 @@ CHATCMD_FUNC(Server::chat_Title)
 	auto world = player->getWorld();
 
 	if (!player->getFlags().check(PlayerFlags::PF_OWNER)) {
-		systemChatSend(player, "Missing permissions");
+		systemChatSend(player, "Insufficient permissions");
 		return;
 	}
 

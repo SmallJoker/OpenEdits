@@ -39,7 +39,8 @@ struct GameEvent {
 		C2G_PLAYER_JOIN,
 		C2G_PLAYER_LEAVE,
 		C2G_PLAYER_CHAT,
-		C2G_PLAYERFLAGS
+		C2G_PLAYERFLAGS,
+		C2G_LOCAL_CHAT
 	} type_c2g = C2G_INVALID;
 
 	GameEvent(G2C_Enum v) : type_g2c(v) {}
@@ -78,6 +79,7 @@ public:
 	void setEventHandler(GameEventHandler *eh);
 	bool sendNewEvent(GameEvent &e); // for memory cleanup
 
+protected:
 	// Callback function to overload. Do NOT call manually!
 	virtual bool OnEvent(GameEvent &e) = 0;
 

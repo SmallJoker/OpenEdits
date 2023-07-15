@@ -34,6 +34,7 @@ bool GameEventHandler::sendNewEvent(GameEvent &e)
 			delete e.text;
 			break;
 		case C::C2G_PLAYER_CHAT:
+		case C::C2G_LOCAL_CHAT:
 			delete e.player_chat;
 			break;
 		// List of no-ops
