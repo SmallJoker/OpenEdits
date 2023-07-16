@@ -2,6 +2,7 @@
 
 #include "core/chatcommand.h"
 #include "core/environment.h"
+#include "core/playerflags.h"
 #include "core/timer.h"
 #include "core/types.h" // RefCnt
 
@@ -77,10 +78,12 @@ private:
 
 	CHATCMD_FUNC(chat_Help);
 	CHATCMD_FUNC(chat_SetPass);
+	CHATCMD_FUNC(chat_SetCode);
 	CHATCMD_FUNC(chat_Code);
 	CHATCMD_FUNC(chat_Flags);
 	CHATCMD_FUNC(chat_FFilter);
 	bool changePlayerFlags(Player *player, std::string msg, bool do_add);
+	void handlePlayerFlagsChange(Player *player, playerflags_t flags_mask);
 	CHATCMD_FUNC(chat_FSet);
 	CHATCMD_FUNC(chat_FDel);
 	CHATCMD_FUNC(chat_Respawn);

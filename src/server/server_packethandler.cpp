@@ -638,6 +638,8 @@ void Server::pkt_GodMode(peer_t peer_id, Packet &pkt)
 			return;
 	}
 
+	player->godmode = status;
+
 	Packet out;
 	out.write(Packet2Client::GodMode);
 	out.write(peer_id);

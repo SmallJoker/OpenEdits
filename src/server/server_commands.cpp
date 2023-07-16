@@ -17,7 +17,8 @@ void Server::registerChatCommands()
 
 	// Permissions
 	m_chatcmd.add("/setpass", (ChatCommandAction)&Server::chat_SetPass);
-	m_chatcmd.add("/code",  (ChatCommandAction)&Server::chat_Code);
+	m_chatcmd.add("/setcode", (ChatCommandAction)&Server::chat_SetCode);
+	m_chatcmd.add("/code", (ChatCommandAction)&Server::chat_Code);
 	m_chatcmd.add("/flags", (ChatCommandAction)&Server::chat_Flags);
 	m_chatcmd.add("/ffilter", (ChatCommandAction)&Server::chat_FFilter);
 	m_chatcmd.add("/fset", (ChatCommandAction)&Server::chat_FSet);
@@ -97,6 +98,9 @@ CHATCMD_FUNC(Server::chat_Help)
 		{ "respawn", "Respawns you" },
 		// Permissions
 		{ "setpass", "Syntax: /flags [PLAYERNAME] PASSWORD PASSWORD" },
+		{ "setcode", "Syntax: /setcode [-f] [WORLDCODE]\nChanges the world code or disables it. "
+			"-f (optional) removes all player's temporary edit and god mode flags." },
+		{ "code", "Syntax: /code WORLDCODE\nGrants edit access." },
 		{ "flags", "Syntax: /flags [PLAYERNAME]\nLists the provided (or own) player's flags." },
 		{ "ffilter", "Syntax: //filter FLAG1 [...]\nLists all players matching the flag filter." },
 		{ "fset", "Syntax: /fset PLAYERNAME FLAG1 [...]\nSets one or more flags for a player." },
@@ -197,6 +201,49 @@ CHATCMD_FUNC(Server::chat_SetPass)
 		systemChatSend(player, "Internal error");
 }
 
+CHATCMD_FUNC(Server::chat_SetCode)
+{
+	if (!player->getFlags().check(PlayerFlags::PF_OWNER)) {
+		systemChatSend(player, "Insufficient permissions");
+		return;
+	}
+
+	std::string flag(get_next_part(msg));
+	std::string code(get_next_part(msg));
+
+	if (flag[0] != '-') {
+		code = flag;
+		flag.clear();
+	}
+
+	bool do_change_flags = (flag == "-f");
+
+	auto world = player->getWorld();
+	world->getMeta().edit_code = code;
+
+	if (code.empty()) {
+		systemChatSend(player, "Disabled access via code.");
+	} else {
+		systemChatSend(player, "Changed code.");
+	}
+
+	if (!do_change_flags)
+		return;
+
+	const playerflags_t flags_revoked = PlayerFlags::PF_TMP_EDIT_DRAW | PlayerFlags::PF_TMP_GODMODE;
+	for (auto it : m_players) {
+		if (it.second->getWorld() != world)
+			continue;
+
+		auto pf = it.second->getFlags();
+		if (pf.flags & flags_revoked) {
+			pf.set(0, flags_revoked);
+			world->getMeta().setPlayerFlags(it.second->name, pf);
+			handlePlayerFlagsChange(it.second, flags_revoked);
+		}
+	}
+}
+
 CHATCMD_FUNC(Server::chat_Code)
 {
 	auto &meta = player->getWorld()->getMeta();
@@ -225,7 +272,7 @@ CHATCMD_FUNC(Server::chat_Code)
 				| PlayerFlags::PF_TMP_GODMODE;
 			break;
 		default:
-			systemChatSend(player, "Internal errr: invalid world type");
+			systemChatSend(player, "Internal error: invalid world type");
 			return;
 	}
 
@@ -308,8 +355,9 @@ bool Server::changePlayerFlags(Player *player, std::string msg, bool do_add)
 		c = toupper(c);
 
 	// Search for existing records
-	peer_t target_peer_id = 0;
+	Player *target_player = nullptr;
 	PlayerFlags targetflags = meta.getPlayerFlags(playername);
+	const playerflags_t old_flags = targetflags.flags;
 
 	// Search for online players
 	for (auto p : m_players) {
@@ -318,11 +366,11 @@ bool Server::changePlayerFlags(Player *player, std::string msg, bool do_add)
 		if (p.second->name != playername)
 			continue;
 
-		target_peer_id = p.first;
+		target_player = p.second;
 		break;
 	}
 
-	if (target_peer_id == 0 && targetflags.flags == 0) {
+	if (!target_player && targetflags.flags == 0) {
 		systemChatSend(player, "Cannot find player " + playername);
 		return false;
 	}
@@ -367,33 +415,55 @@ bool Server::changePlayerFlags(Player *player, std::string msg, bool do_add)
 	// Get up-to-date information
 	targetflags = meta.getPlayerFlags(playername);
 
+	if (targetflags.flags != old_flags)
+		handlePlayerFlagsChange(target_player, flags_specified);
+
 	chat_Flags(player, playername);
+	return true;
+}
+
+void Server::handlePlayerFlagsChange(Player *player, playerflags_t flags_mask)
+{
+	if (!player)
+		return;
+
+	PlayerFlags flags = player->getFlags();
 
 	// Notify the player about this change
-	if (target_peer_id != 0 && do_add
-			&& (targetflags.flags & (PlayerFlags::PF_BANNED | PlayerFlags::PF_TMP_HEAVYKICK))) {
+	if (player && (flags.flags & (PlayerFlags::PF_BANNED | PlayerFlags::PF_TMP_HEAVYKICK))) {
+		sendMsg(player->peer_id, player->name + " kicked or banned you from this world.");
 
-		sendMsg(target_peer_id, player->name + " kicked/banned you from this world.");
 		{
 			Packet out;
 			out.write<Packet2Client>(Packet2Client::Leave);
-			out.write(target_peer_id);
-			m_con->send(target_peer_id, 0, out);
+			out.write(player->peer_id);
+			m_con->send(player->peer_id, 0, out);
 		}
-
-		target_peer_id = 0;
+		return; // Kicked
 	}
 
-	if (target_peer_id != 0) {
+	// Notify about new flags
+	{
 		Packet out;
 		out.write(Packet2Client::PlayerFlags);
-		out.write<playerflags_t>(targetflags.flags & flags_specified); // new flags
-		out.write<playerflags_t>(flags_specified); // mask
-		m_con->send(target_peer_id, 1, out);
+		out.write<playerflags_t>(flags.flags & flags_mask); // new flags
+		out.write<playerflags_t>(flags_mask); // mask
+		m_con->send(player->peer_id, 1, out);
 	}
 
-	return true;
+	// Remove god mode if active
+	if (player->godmode && !(flags.flags & PlayerFlags::PF_MASK_GODMODE)) {
+		player->godmode = false;
+
+		Packet out;
+		out.write(Packet2Client::GodMode);
+		out.write(player->peer_id);
+		out.write<u8>(player->godmode);
+
+		broadcastInWorld(player, 1, out);
+	}
 }
+
 
 CHATCMD_FUNC(Server::chat_FSet)
 {
@@ -477,7 +547,9 @@ CHATCMD_FUNC(Server::chat_Import)
 	}
 
 	std::string filename(strtrim(msg));
-	filename += ".eelvl";
+	const std::string suffix = ".eelvl";
+	if (!std::equal(suffix.rbegin(), suffix.rend(), filename.rbegin()))
+		filename.append(suffix);
 
 	if (filename.find('/') != std::string::npos
 			|| filename.find('\\') != std::string::npos) {
@@ -493,7 +565,9 @@ CHATCMD_FUNC(Server::chat_Import)
 	EEOconverter conv(*world.ptr());
 
 	try {
+		auto old_owner = old_world->getMeta().owner;
 		conv.fromFile(filename);
+		world->getMeta().owner = old_owner;
 	} catch (std::runtime_error &e) {
 		systemChatSend(player, std::string("ERROR: ") + e.what());
 		return;

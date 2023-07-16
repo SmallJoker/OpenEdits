@@ -37,6 +37,7 @@ SceneBlockSelector::~SceneBlockSelector()
 
 void SceneBlockSelector::draw()
 {
+	m_enabled = m_do_enable;
 	if (!m_enabled)
 		return;
 
@@ -385,6 +386,9 @@ void SceneBlockSelector::drawBlockSelector()
 
 bool SceneBlockSelector::selectBlockId(int what, bool is_element_id)
 {
+	if (!m_enabled)
+		return false;
+
 	bid_t selected;
 	s32 hotbar_index = -1;
 	if (is_element_id) {
@@ -410,7 +414,6 @@ bool SceneBlockSelector::selectBlockId(int what, bool is_element_id)
 		m_highlight->setRelativePosition(
 			m_hotbar_pos + core::vector2di(BTN_SIZE.Width * hotbar_index, 0)
 		);
-
 	} else {
 		m_highlight->setVisible(false);
 	}

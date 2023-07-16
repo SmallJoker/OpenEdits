@@ -54,6 +54,7 @@ static const struct {
 	{ "tmp-muted",       PlayerFlags::PF_TMP_MUTED },
 	{ "tmp-edit-simple", PlayerFlags::PF_TMP_EDIT },
 	{ "tmp-edit-draw",   PlayerFlags::PF_TMP_EDIT_DRAW },
+	{ "tmp-godmode",     PlayerFlags::PF_TMP_GODMODE },
 };
 
 std::string PlayerFlags::getFlagList()

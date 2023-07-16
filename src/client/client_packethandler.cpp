@@ -165,6 +165,8 @@ void Client::pkt_WorldData(Packet &pkt)
 	} else {
 		GameEvent e(GameEvent::C2G_MAP_UPDATE);
 		sendNewEvent(e);
+		GameEvent e2(GameEvent::C2G_META_UPDATE);
+		sendNewEvent(e2);
 	}
 }
 

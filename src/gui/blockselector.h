@@ -22,7 +22,7 @@ public:
 	~SceneBlockSelector();
 
 	void setHotbarPos(const core::position2di &pos) { m_hotbar_pos = pos; }
-	void setEnabled(bool enabled) { m_enabled = enabled; }
+	void setEnabled(bool enabled) { m_do_enable = enabled; }
 
 	void draw();
 	bool OnEvent(const SEvent &e) override;
@@ -39,6 +39,7 @@ private:
 	SceneGameplay *m_gameplay = nullptr;
 	gui::IGUIEnvironment *m_gui = nullptr;
 
+	bool m_do_enable = false; // Two-staged to update in draw()
 	bool m_enabled = false;
 
 	std::vector<bid_t> m_hotbar_ids;

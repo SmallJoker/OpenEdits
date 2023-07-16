@@ -88,6 +88,8 @@ bool DatabaseWorld::load(World *world)
 	size.Y = sqlite3_column_int(s, 2);
 	world->createDummy(size);
 
+	meta.type = WorldMeta::Type::Persistent;
+
 	meta.owner = (const char *)sqlite3_column_text(s, 3);
 	meta.title = (const char *)sqlite3_column_text(s, 4);
 	meta.plays = sqlite3_column_int(s, 5);

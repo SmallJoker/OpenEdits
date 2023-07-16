@@ -141,8 +141,8 @@ void SceneGameplay::draw()
 			core::dimension2du(35, 30)
 		);
 
-		gui->addButton(rect_3, nullptr, ID_BtnGodMode, L"G");
-		// Always enabled so that they can turn godmode off again
+		auto e = gui->addButton(rect_3, nullptr, ID_BtnGodMode, L"G");
+		e->setEnabled(pflags.flags & PlayerFlags::PF_MASK_GODMODE);
 
 		x_pos += 40;
 	}
