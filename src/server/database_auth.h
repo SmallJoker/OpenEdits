@@ -2,9 +2,8 @@
 
 #include "database.h"
 #include <ctime>
-#include <map>
 
-struct AuthInformation {
+struct AuthAccount {
 	std::string name;
 	std::string password;
 
@@ -18,8 +17,10 @@ struct AuthInformation {
 	};
 	int level = 0;
 
-	std::map<std::string, std::string> metadata;
+	//std::map<std::string, std::string> metadata;
 };
+
+using AuthConfig = std::pair<std::string, std::string>;
 
 struct AuthBanEntry {
 	time_t expiry = 0;
@@ -47,8 +48,12 @@ public:
 	bool tryOpen(const char *filepath) override;
 	void close() override;
 
-	bool load(const std::string &name, AuthInformation *auth);
-	bool save(const AuthInformation &auth);
+	// Maybe change this to a Settings object?
+	bool getConfig(AuthConfig *entry);
+	bool setConfig(const AuthConfig &entry);
+
+	bool load(const std::string &name, AuthAccount *auth);
+	bool save(const AuthAccount &auth);
 
 	const std::string &getUniqueSalt();
 	bool setPassword(const std::string &name, const std::string &hash);
@@ -62,9 +67,13 @@ public:
 
 
 private:
-	sqlite3_stmt *m_stmt_read = nullptr;
-	sqlite3_stmt *m_stmt_write = nullptr;
-	sqlite3_stmt *m_stmt_set_pw = nullptr;
+	sqlite3_stmt *m_stmt_cfg_read = nullptr;
+	sqlite3_stmt *m_stmt_cfg_write = nullptr;
+	sqlite3_stmt *m_stmt_cfg_delete = nullptr;
+
+	sqlite3_stmt *m_stmt_auth_read = nullptr;
+	sqlite3_stmt *m_stmt_auth_write = nullptr;
+	sqlite3_stmt *m_stmt_auth_set_pw = nullptr;
 
 	sqlite3_stmt *m_stmt_f2b_add = nullptr;
 	sqlite3_stmt *m_stmt_f2b_read = nullptr;

@@ -120,7 +120,7 @@ void Server::pkt_Hello(peer_t peer_id, Packet &pkt)
 		}
 
 		// Prompt for authentication if needed
-		AuthInformation info;
+		AuthAccount info;
 		bool ok = m_auth_db->load(player->name, &info);
 		if (ok) {
 			player->auth.local_random = Auth::generateRandom();
@@ -161,7 +161,7 @@ void Server::pkt_Auth(peer_t peer_id, Packet &pkt)
 	if (action == "hash") {
 		// Confirm the client-sent hash
 
-		AuthInformation info;
+		AuthAccount info;
 		bool ok = m_auth_db->load(player->name, &info);
 		if (!ok) {
 			sendMsg(peer_id, "Invalid action");
@@ -202,7 +202,7 @@ void Server::pkt_Auth(peer_t peer_id, Packet &pkt)
 	if (action == "register") {
 		// Register new account, password provided.
 
-		AuthInformation info;
+		AuthAccount info;
 		bool ok = m_auth_db->load(player->name, &info);
 		if (ok) {
 			sendMsg(peer_id, "This user is already registered.");
@@ -220,7 +220,7 @@ void Server::pkt_Auth(peer_t peer_id, Packet &pkt)
 
 		info.name = player->name;
 		info.password = pkt.readStr16();
-		info.level = AuthInformation::AL_REGISTERED;
+		info.level = AuthAccount::AL_REGISTERED;
 
 		if (info.password.empty()) {
 			sendMsg(peer_id, "Empty password. Something went wrong.");
@@ -249,7 +249,7 @@ void Server::pkt_Auth(peer_t peer_id, Packet &pkt)
 
 	if (action == "setpass" && player->auth.status == Auth::Status::SignedIn) {
 		// Update password with specified hash
-		AuthInformation info;
+		AuthAccount info;
 		bool ok = m_auth_db->load(player->name, &info);
 		if (!ok) {
 			sendMsg(peer_id, "Cannot change password: Auth not found.");

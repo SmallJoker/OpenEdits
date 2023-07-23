@@ -161,7 +161,7 @@ CHATCMD_FUNC(Server::chat_SetPass)
 		return;
 	}
 
-	AuthInformation info;
+	AuthAccount info;
 	if (!m_auth_db->load(player->name, &info)) {
 		systemChatSend(player, "Your account is not registered.");
 		return;
@@ -182,9 +182,9 @@ CHATCMD_FUNC(Server::chat_SetPass)
 		}
 	} else {
 		// Auth check
-		AuthInformation info_who;
+		AuthAccount info_who;
 		if (!m_auth_db->load(who, &info_who)
-				|| info.level < AuthInformation::AL_MODERATOR
+				|| info.level < AuthAccount::AL_MODERATOR
 				|| info.level < info_who.level) {
 			systemChatSend(player, "Insufficient privileges or the specified account is not registered.");
 			return;

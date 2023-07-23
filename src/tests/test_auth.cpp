@@ -4,14 +4,15 @@
 
 static void auth_database_test()
 {
-	const char *filepath = "unittest.sqlite3";
-	DatabaseAuth db;
+	const char *filepath = "unittest_auth.sqlite3";
+	std::remove(filepath); // from failed runs
 
+	DatabaseAuth db;
 	CHECK(db.tryOpen(filepath));
 
 	{
 		// Register a new account
-		AuthInformation auth;
+		AuthAccount auth;
 		auth.name = "FooBarBaz";
 
 		Auth newauth;
@@ -21,9 +22,27 @@ static void auth_database_test()
 		CHECK(db.save(auth));
 
 		// By name
-		 AuthInformation out;
+		AuthAccount out;
 		CHECK(db.load(auth.name, &out));
 		CHECK(out.name == auth.name);
+	}
+
+	{
+		// Configuration test
+		AuthConfig cfg;
+		cfg.first = "dummy";
+		CHECK(!db.getConfig(&cfg));
+
+		cfg.second = "MY VALUE";
+		CHECK(db.setConfig(cfg));
+		cfg.second.clear();
+		CHECK(db.getConfig(&cfg));
+		CHECK(cfg.second == "MY VALUE");
+
+		// Delete config
+		cfg.second.clear();
+		CHECK(db.setConfig(cfg));
+		CHECK(!db.getConfig(&cfg));
 	}
 
 	db.close();

@@ -4,9 +4,10 @@
 
 void unittest_database()
 {
-	const char *filepath = "unittest.sqlite3";
-	DatabaseWorld db;
+	const char *filepath = "unittest_world.sqlite3";
+	std::remove(filepath); // from failed runs
 
+	DatabaseWorld db;
 	CHECK(db.tryOpen(filepath));
 
 	{
