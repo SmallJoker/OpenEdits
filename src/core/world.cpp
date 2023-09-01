@@ -68,9 +68,16 @@ void BlockUpdate::write(Packet &pkt) const
 	params.write(pkt);
 }
 
-
+// Used for network only!
 void IWorldMeta::readCommon(Packet &pkt)
 {
+	uint8_t version = pkt.read<uint8_t>();
+	if (version < 1) {
+		fprintf(stderr, "Invalid IWorldMeta version: %i\n", (int)version);
+		return;
+	}
+
+	id = pkt.readStr16();
 	title = pkt.readStr16();
 	owner = pkt.readStr16();
 	online = pkt.read<u16>();
@@ -79,11 +86,14 @@ void IWorldMeta::readCommon(Packet &pkt)
 
 void IWorldMeta::writeCommon(Packet &pkt) const
 {
+	pkt.write<uint8_t>(1);
+	pkt.writeStr16(id);
 	pkt.writeStr16(title);
 	pkt.writeStr16(owner);
 	pkt.write<u16>(online);
 	pkt.write<u32>(plays);
 }
+
 
 PlayerFlags WorldMeta::getPlayerFlags(const std::string &name) const
 {

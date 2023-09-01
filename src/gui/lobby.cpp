@@ -274,33 +274,33 @@ void SceneLobby::updateWorldList()
 	auto worlds = m_gui->getClient()->world_list;
 
 	for (const auto &it : worlds) {
-		bool is_mine = player->name == it.second.owner;
-		auto size = it.second.size;
+		bool is_mine = player->name == it.owner;
+		auto size = it.size;
 
 		std::ostringstream os;
-		os << "[" << it.second.online << " online] ";
-		if (!it.second.title.empty())
-			os << it.second.title;
+		os << "[" << it.online << " online] ";
+		if (!it.title.empty())
+			os << it.title;
 		else
 			os << "(Untitled)";
 
-		os << " (id=" << it.first;
+		os << " (id=" << it.id;
 		os << ", " << size.X << "x" << size.Y << " )";
 		if (is_mine)
-			os << (it.second.is_public ? " - public" : " - private");
-		else if (!it.second.owner.empty())
-			os << " by " << it.second.owner;
+			os << (it.is_public ? " - public" : " - private");
+		else if (!it.owner.empty())
+			os << " by " << it.owner;
 
 		core::stringw textw;
 		core::multibyteToWString(textw, os.str().c_str());
 		if (is_mine) {
 			m_mylist->addItem(textw.c_str());
-			m_my_index_to_worldid.push_back(it.first);
+			m_my_index_to_worldid.push_back(it.id);
 		}
 
-		if (!is_mine || it.second.online > 0) {
+		if (!is_mine || it.online > 0) {
 			m_publiclist->addItem(textw.c_str());
-			m_public_index_to_worldid.push_back(it.first);
+			m_public_index_to_worldid.push_back(it.id);
 		}
 	}
 

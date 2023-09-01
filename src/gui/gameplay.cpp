@@ -910,8 +910,8 @@ void SceneGameplay::drawBlocksInView()
 					core::dimension2d<f32>((float)dim.Width / dim.Height * 5, 5),
 					core::vector3df((x * 10) + 0, (y * -10) - 2, -0.05)
 				);
-				nb->setMaterialFlag(video::EMF_LIGHTING, false);
-				nb->setMaterialTexture(0, texture);
+				nb->getMaterial(0).Lighting = false;
+				nb->getMaterial(0).setTexture(0, texture);
 			}
 		} while (false);
 
@@ -958,10 +958,11 @@ bool SceneGameplay::assignBlockTexture(const BlockTile tile, scene::ISceneNode *
 	auto &mat = node->getMaterial(0);
 	mat.Lighting = false;
 	mat.ZWriteEnable = video::EZW_AUTO;
-	node->setMaterialFlag(video::EMF_BILINEAR_FILTER, true);
-
+	node->getMaterial(0).forEachTexture([](video::SMaterialLayer &layer) {
+		layer.MinFilter = video::ETMINF_LINEAR_MIPMAP_NEAREST;
+	});
 	if (!tile.texture) {
-		node->setMaterialTexture(0, g_blockmanager->getMissingTexture());
+		node->getMaterial(0).setTexture(0, g_blockmanager->getMissingTexture());
 		return true;
 	}
 
@@ -972,7 +973,7 @@ bool SceneGameplay::assignBlockTexture(const BlockTile tile, scene::ISceneNode *
 	else
 		is_opaque = true;
 
-	node->setMaterialTexture(0, tile.texture);
+	node->getMaterial(0).setTexture(0, tile.texture);
 	return is_opaque;
 }
 
@@ -1088,11 +1089,16 @@ void SceneGameplay::updatePlayerPositions(float dtime)
 				nf_pos,
 				nf_id
 			);
-			nf->setMaterialFlag(video::EMF_LIGHTING, false);
-			nf->setMaterialFlag(video::EMF_ZWRITE_ENABLE, true);
-			nf->setMaterialFlag(video::EMF_BILINEAR_FILTER, false);
-			nf->setMaterialType(video::EMT_TRANSPARENT_ALPHA_CHANNEL_REF);
-			nf->setMaterialTexture(0, smiley_texture);
+			nf->forEachMaterial([](video::SMaterial &mat){
+				mat.Lighting = false;
+				mat.ZWriteEnable = video::EZW_AUTO;
+				mat.MaterialType = video::EMT_TRANSPARENT_ALPHA_CHANNEL_REF;
+			});
+			nf->getMaterial(0).forEachTexture([](video::SMaterialLayer &layer) {
+				layer.MinFilter = video::ETMINF_LINEAR_MIPMAP_LINEAR;
+				layer.MagFilter = video::ETMAGF_LINEAR;
+			});
+			nf->getMaterial(0).setTexture(0, smiley_texture);
 
 			// Add nametag
 			auto nt_texture = generateTexture(it.second->name);
@@ -1102,10 +1108,12 @@ void SceneGameplay::updatePlayerPositions(float dtime)
 				core::vector3df(0, -10, 0),
 				nf_id + 1
 			);
-			nt->setMaterialFlag(video::EMF_LIGHTING, false);
-			nt->setMaterialFlag(video::EMF_ZWRITE_ENABLE, true);
-			//nt->setMaterialType(video::EMT_TRANSPARENT_ALPHA_CHANNEL_REF);
-			nt->setMaterialTexture(0, nt_texture);
+			nt->forEachMaterial([](video::SMaterial &mat){
+				mat.Lighting = false;
+				mat.ZWriteEnable = video::EZW_AUTO;
+				//mat.MaterialType = video::EMT_TRANSPARENT_ALPHA_CHANNEL_REF;
+			});
+			nt->getMaterial(0).setTexture(0, nt_texture);
 		}
 
 		if (player->smiley_id < texture_tiles) {
@@ -1132,10 +1140,13 @@ void SceneGameplay::updatePlayerPositions(float dtime)
 					core::vector3df(0, 0, 0.1),
 					nf_id + 2
 				);
-				ga->setMaterialFlag(video::EMF_LIGHTING, false);
-				ga->setMaterialFlag(video::EMF_ZWRITE_ENABLE, true);
-				ga->setMaterialType(video::EMT_TRANSPARENT_ALPHA_CHANNEL);
-				ga->setMaterialTexture(0, godmode_texture);
+
+				ga->forEachMaterial([](video::SMaterial &mat){
+					mat.Lighting = false;
+					mat.ZWriteEnable = video::EZW_AUTO;
+					mat.MaterialType = video::EMT_TRANSPARENT_ALPHA_CHANNEL_REF;
+				});
+				ga->getMaterial(0).setTexture(0, godmode_texture);
 			} else {
 				nf->removeChild(ga);
 			}

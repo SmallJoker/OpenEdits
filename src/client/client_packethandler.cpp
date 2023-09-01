@@ -105,14 +105,12 @@ void Client::pkt_Lobby(Packet &pkt)
 		if (!is_ok)
 			break;
 
-		std::string world_id(pkt.readStr16());
-
-		LobbyWorld world(world_id);
+		LobbyWorld world;
 		world.readCommon(pkt);
 		world.size.X = pkt.read<u16>();
 		world.size.Y = pkt.read<u16>();
 
-		world_list.emplace(world_id, world);
+		world_list.emplace_back(world);
 	}
 
 	{

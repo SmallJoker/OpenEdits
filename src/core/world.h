@@ -61,7 +61,7 @@ struct BlockUpdateHash {
 };
 
 struct IWorldMeta {
-	// For networking
+	// For networking only!
 	void readCommon(Packet &pkt);
 	void writeCommon(Packet &pkt) const;
 
@@ -78,8 +78,8 @@ protected:
 };
 
 struct LobbyWorld : public IWorldMeta {
-	LobbyWorld(const std::string &id) :
-		IWorldMeta(id) {}
+	// ID will be overwritten by IWorldMeta::readCommon()
+	LobbyWorld() : IWorldMeta("_LOBBY") {}
 
 	blockpos_t size;
 };

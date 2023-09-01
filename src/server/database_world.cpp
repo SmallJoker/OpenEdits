@@ -168,9 +168,8 @@ std::vector<LobbyWorld> DatabaseWorld::getByPlayer(const std::string &name) cons
 	custom_bind_string(s, 1, name);
 
 	while (sqlite3_step(s) == SQLITE_ROW) {
-		std::string world_id = (const char *)sqlite3_column_text(s, 0);
-
-		LobbyWorld meta(world_id);
+		LobbyWorld meta;
+		meta.id = (const char *)sqlite3_column_text(s, 0);
 		meta.size.X = sqlite3_column_int(s, 1);
 		meta.size.Y = sqlite3_column_int(s, 2);
 		meta.title = (const char *)sqlite3_column_text(s, 3);

@@ -43,7 +43,7 @@ public:
 	RefCnt<World> getWorld();
 	bool updateBlock(const BlockUpdate bu);
 
-	std::map<std::string, LobbyWorld> world_list;
+	std::vector<LobbyWorld> world_list;
 
 	// ----------- Utility functions -----------
 

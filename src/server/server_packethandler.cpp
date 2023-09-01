@@ -288,7 +288,6 @@ void Server::pkt_GetLobby(peer_t peer_id, Packet &)
 
 		out.write<u8>(true); // continue!
 
-		out.writeStr16(meta.id); // world ID
 		meta.writeCommon(out);
 		// Additional Lobby fields
 		blockpos_t size = world->getSize();
@@ -302,7 +301,6 @@ void Server::pkt_GetLobby(peer_t peer_id, Packet &)
 		for (const auto &meta : found) {
 			out.write<u8>(true); // continue!
 
-			out.writeStr16(meta.id); // world ID
 			meta.writeCommon(out);
 			// Additional Lobby fields
 			out.write(meta.size.X);

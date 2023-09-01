@@ -4,8 +4,8 @@
 #include <cstdint>
 #include <vector>
 
-const uint16_t PROTOCOL_VERSION = 4;
-const uint16_t PROTOCOL_VERSION_MIN = 4;
+const uint16_t PROTOCOL_VERSION = 5;
+const uint16_t PROTOCOL_VERSION_MIN = 5;
 extern size_t CONNECTION_MTU;
 
 namespace std {
