@@ -44,32 +44,9 @@ BlockManager::~BlockManager()
 void BlockManager::read(Packet &pkt, u16 protocol_version)
 {
 	// TODO: How to read/write the physics functions?
-	struct Hardcoded {
-		bool trigger_on_touch;
-		BP_STEP_CALLBACK(*step);
-		BP_COLLIDE_CALLBACK(*onCollide);
-	};
-	std::map<bid_t, Hardcoded> hardcoded;
 
-	for (auto &p : m_props) {
-		if (!p)
-			continue;
-
-		if (p->trigger_on_touch || p->step || p->onCollide) {
-			bid_t block_id = &p - &m_props[0];
-
-			Hardcoded hc;
-			hc.trigger_on_touch = p->trigger_on_touch;
-			hc.step = p->step;
-			hc.onCollide = p->onCollide;
-
-			hardcoded.emplace(block_id, hc);
-		}
-
-		// Reset all entries
-		delete p;
-		p = nullptr;
-	}
+	std::vector<bool> handled_props;
+	handled_props.resize(m_props.size());
 
 	BlockTile dummy;
 	while (true) {
@@ -77,31 +54,35 @@ void BlockManager::read(Packet &pkt, u16 protocol_version)
 		if (block_id == Block::ID_INVALID)
 			break;
 
-		BlockProperties props(BlockDrawType::Invalid);
-		props.paramtypes = (BlockParams::Type)pkt.read<u8>();
-		props.viscosity = pkt.read<float>();
+		// Get more space (should not be neccessary)
+		if (m_props.size() <= block_id)
+			m_props.resize(block_id * 2);
+
+		auto &props = m_props[block_id];
+		if (!props)
+			props = new BlockProperties(BlockDrawType::Invalid);
+
+		props->paramtypes = (BlockParams::Type)pkt.read<u8>();
+		props->viscosity = pkt.read<float>();
 
 		u8 num_tiles = pkt.read<u8>();
 		for (size_t t = 0; t < num_tiles; ++t) {
-			auto &tile = t < BlockProperties::MAX_TILES ? props.tiles[t] : dummy;
+			auto &tile = t < BlockProperties::MAX_TILES ? props->tiles[t] : dummy;
 			tile.type = (BlockDrawType)pkt.read<u8>();
 			tile.texture = m_missing_texture;
 			tile.texture_offset = pkt.read<u8>();
 			tile.have_alpha = pkt.read<u8>();
 		}
 
-		auto it = hardcoded.find(block_id);
-		if (it != hardcoded.end()) {
-			props.trigger_on_touch = it->second.trigger_on_touch;
-			props.step = it->second.step;
-			props.onCollide = it->second.onCollide;
+		if (block_id < handled_props.size())
+			handled_props[block_id] = true;
+	}
+
+	for (size_t i = 0; i < handled_props.size(); ++i) {
+		if (!handled_props[i]) {
+			delete m_props[i];
+			m_props[i] = nullptr;
 		}
-
-		// Get more space (should not be neccessary)
-		if (m_props.size() <= block_id)
-			m_props.resize(block_id * 2);
-
-		m_props[block_id] = new BlockProperties(props);
 	}
 
 	// Read packs

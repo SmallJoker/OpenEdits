@@ -124,6 +124,7 @@ void BlockManager::doPackRegistration()
 		pack->block_ids = { 0, 1, 2, 3, 4 };
 		registerPack(pack);
 
+		m_props[0]->color = 0xFF000000; // black
 		m_props[1]->step = step_arrow_left;
 		m_props[2]->step = step_arrow_up;
 		m_props[3]->step = step_arrow_right;

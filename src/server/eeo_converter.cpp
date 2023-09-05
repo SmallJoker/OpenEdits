@@ -347,6 +347,8 @@ enum class BlockDataType : u8 {
 
 static std::vector<BlockDataType> BLOCK_TYPE_LUT; // Indexed by block ID
 
+static std::vector<bid_t> BLOCK_ID_LUT; // Translation table
+
 static void fill_block_types()
 {
 	if (!BLOCK_TYPE_LUT.empty())
@@ -402,6 +404,124 @@ static void fill_block_types()
 	set_range(BlockDataType::SSSS, 1569, 1579);
 }
 
+static void fill_block_translations()
+{
+	if (!BLOCK_ID_LUT.empty())
+		return;
+
+	BLOCK_ID_LUT.resize(1700); // default to "air"
+
+	auto set_range = [](bid_t id, size_t first, size_t last) {
+		while (first <= last) {
+			BLOCK_ID_LUT.at(first) = id;
+			first++;
+		}
+	};
+	const bid_t SOLID = 9;
+
+	set_range(SOLID, 37, 42); // beta
+	set_range(SOLID, 17, 21); // brick
+	set_range(SOLID, 34, 36); // metal
+	set_range(SOLID, 51, 58); // glass
+	set_range(SOLID, 70, 76); // minerals
+	set_range(SOLID, 78, 82); // xmas11
+	set_range(SOLID, 99, 104); // cowboy
+	set_range(13, 137, 142); // sand -> yellow basic
+	set_range(SOLID, 144, 153); // industrial
+	set_range(SOLID, 158, 163); // medieval
+	set_range(12, 166, 171); // orange pipes -> red basic
+	set_range(SOLID, 172, 176); // space
+	set_range(13, 177, 181); // desert -> yellow basic
+	set_range(SOLID, 186, 192); // checker
+	set_range(14, 193, 198); // jungle -> green basic
+	set_range(12, 202, 204); // lava -> red basic
+	set_range(SOLID, 208, 211); // marble
+
+	set_range(SOLID, 1008, 1010); // gates (active)
+	set_range(14, 1030, 1034); // nature -> green basic
+	set_range(SOLID, 1035, 1040); // domestic)
+	set_range(SOLID, 1047, 1049); // halloween15
+	set_range(13, 1065, 1069); // gold -> yellow basic
+	set_range(SOLID, 1059, 1063); // arctic
+	set_range(SOLID, 1070, 1074); // fairytale
+	set_range(SOLID, 1083, 1087); // summer16
+	set_range(SOLID, 1096, 1100); // construction 1/2
+	set_range(SOLID, 1128, 1131); // construction 2/2
+	set_range(SOLID, 1106, 1115); // tile
+
+	const bid_t solids[] = {
+		// basic
+		182,  // black
+		1018, // orange
+		1088, // white
+
+		// beta
+		1019, // blue
+		1020, // orange
+		1089, // white
+		1021, // black
+
+		// brick
+		1022, // grey
+		1023, // blue
+		1024, // black
+		1090, // white
+
+		// special
+		22, // construction
+		32, // smiley
+		33, // black rubber
+		1057, // faceless 32
+		1058, // inverted 22
+
+		// checker
+		1025,
+		1026,
+		1091,
+
+		// gates
+		157, // time
+		206, // zombie
+		214, // blue coin
+		1008,
+		1009,
+		1010,
+		1012, // death
+		1095, // crown
+		1153 // silver crown
+	};
+	for (bid_t id : solids)
+		BLOCK_ID_LUT.at(id) = SOLID;
+
+	BLOCK_ID_LUT[411] = 1; // invisible
+	BLOCK_ID_LUT[412] = 2;
+	BLOCK_ID_LUT[413] = 3;
+	BLOCK_ID_LUT[414] = 4;
+
+	const bid_t slow_climbable[] = {
+		459, 460, // slow dot
+
+		98, // vine V
+		99, // vine H
+		118, // chain
+		120, // ninja
+		424, // rope
+		472, // fairytale
+		1146, // vine
+		1534, // metal
+		1563, // stalk
+		1602, // dungeon
+	};
+	for (bid_t id : slow_climbable)
+		BLOCK_ID_LUT.at(id) = 4;
+}
+
+static void ensure_cache()
+{
+	fill_block_types();
+	fill_block_translations();
+}
+
 static void read_eelvl_header(DeflateReader &zs, LobbyWorld &meta)
 {
 	meta.owner = zs.readStr16();
@@ -434,7 +554,7 @@ void EEOconverter::fromFile(const std::string &filename_)
 	std::filesystem::create_directories(IMPORT_DIR);
 	const std::string filename = IMPORT_DIR + "/" + filename_;
 
-	fill_block_types();
+	ensure_cache();
 
 	DeflateReader zs(filename);
 
@@ -503,14 +623,12 @@ void EEOconverter::fromFile(const std::string &filename_)
 			if ((layer == 1) != props->isBackground())
 				continue; // FG/BG mismatch
 		} else {
-			// TODO: attempt to remap?
+			// Attempt to remap unknown blocks
 			if (layer == 0) {
-				if (block_id < 200)
-					block_id = 9;
-				else
-					block_id = 0; // maybe decoration
+				if ((size_t)block_id < BLOCK_ID_LUT.size())
+					block_id = BLOCK_ID_LUT[block_id];
 			} else {
-				block_id = 501;
+				block_id = 0;
 			}
 		}
 
@@ -539,7 +657,7 @@ void EEOconverter::toFile(const std::string &filename_) const
 	std::filesystem::create_directories(EXPORT_DIR);
 	const std::string filename = EXPORT_DIR + "/" + filename_;
 
-	fill_block_types();
+	ensure_cache();
 
 	InflateWriter zs(filename);
 
@@ -643,7 +761,7 @@ void EEOconverter::toFile(const std::string &filename_) const
 
 void EEOconverter::inflate(const std::string &filename)
 {
-	fill_block_types();
+	ensure_cache();
 
 	DeflateReader zs(filename);
 

@@ -1144,7 +1144,7 @@ void SceneGameplay::updatePlayerPositions(float dtime)
 				ga->forEachMaterial([](video::SMaterial &mat){
 					mat.Lighting = false;
 					mat.ZWriteEnable = video::EZW_AUTO;
-					mat.MaterialType = video::EMT_TRANSPARENT_ALPHA_CHANNEL_REF;
+					mat.MaterialType = video::EMT_TRANSPARENT_ALPHA_CHANNEL;
 				});
 				ga->getMaterial(0).setTexture(0, godmode_texture);
 			} else {
