@@ -94,6 +94,16 @@ void IWorldMeta::writeCommon(Packet &pkt) const
 	pkt.write<u32>(plays);
 }
 
+WorldMeta::Type WorldMeta::idToType(const std::string &id)
+{
+	switch (id[0]) {
+		case 'P': return WorldMeta::Type::Persistent;
+		case 'T': return WorldMeta::Type::TmpDraw; // or TmpSimple
+		case 'I': return WorldMeta::Type::Readonly;
+	}
+	return WorldMeta::Type::MAX_INVALID;
+}
+
 
 PlayerFlags WorldMeta::getPlayerFlags(const std::string &name) const
 {

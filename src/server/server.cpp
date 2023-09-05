@@ -174,6 +174,8 @@ void Server::step(float dtime)
 		if (m_auth_db)
 			m_auth_db->cleanupBans();
 	}
+
+	m_importable_worlds_timer.step(dtime);
 }
 
 // -------------- Utility functions --------------

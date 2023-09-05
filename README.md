@@ -48,6 +48,13 @@ Permission/player flag examples:
  * `--server` starts a server-only instance without GUI
 
 
+**World import/export**
+
+ * `*.eelvl` files in `worlds/imports/` are listed by the server as playable read-only worlds
+ * Clients may use `.export FILENAME` to export the current world to `worlds/exports/`
+ * See `worlds/README.txt` for further information
+
+
 ## Available archives
 
 ### Linux

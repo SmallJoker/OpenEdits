@@ -16,6 +16,7 @@ enum ElementId : int {
 	ID_BtnRefresh,
 	ID_ListPublic,
 	ID_ListMine,
+	ID_ListImport,
 	ID_BoxWorldID,
 	ID_BtnJoin,
 	ID_BtnDisconnect,
@@ -63,12 +64,12 @@ void SceneLobby::draw()
 	auto tc = gui->addTabControl(rect_tc);
 	video::SColor tc_bgcolor(m_gui->guienv->getSkin()->getColor(gui::EGDC_3D_FACE));
 
+	auto list_rect = m_gui->getRect({2, 2}, {76, 40});
 	{
 		auto tab = tc->addTab(L"Public worlds");
 		tab->setBackgroundColor(tc_bgcolor);
 		tab->setDrawBackground(true);
-		auto rect = m_gui->getRect({2, 2}, {76, 40});
-		m_publiclist = gui->addListBox(rect, tab, ID_ListPublic, true);
+		m_publiclist = gui->addListBox(list_rect, tab, ID_ListPublic, true);
 	}
 
 	{
@@ -83,8 +84,14 @@ void SceneLobby::draw()
 		auto tab = tc->addTab(L"My worlds");
 		tab->setBackgroundColor(tc_bgcolor);
 		tab->setDrawBackground(true);
-		auto rect = m_gui->getRect({2, 2}, {76, 40});
-		m_mylist = gui->addListBox(rect, tab, ID_ListMine, true);
+		m_mylist = gui->addListBox(list_rect, tab, ID_ListMine, true);
+	}
+
+	{
+		auto tab = tc->addTab(L"Importable worlds");
+		tab->setBackgroundColor(tc_bgcolor);
+		tab->setDrawBackground(true);
+		m_importlist = gui->addListBox(list_rect, tab, ID_ListImport, true);
 	}
 
 	{
@@ -217,27 +224,24 @@ bool SceneLobby::OnEvent(const SEvent &e)
 				}
 				break;
 			case gui::EGET_LISTBOX_SELECTED_AGAIN:
-				if (e.GUIEvent.Caller->getID() == ID_ListPublic) {
-					gui::IGUIListBox *list = (gui::IGUIListBox *)e.GUIEvent.Caller;
-
-					try {
-						world_id = m_public_index_to_worldid.at(list->getSelected());
-					} catch (std::exception &) {
-						break;
+				{
+					std::vector<std::string> *lookup = nullptr;
+					switch (e.GUIEvent.Caller->getID()) {
+						case ID_ListPublic: lookup = &m_public_index_to_worldid; break;
+						case ID_ListMine:   lookup = &m_my_index_to_worldid;     break;
+						case ID_ListImport: lookup = &m_import_index_to_worldid; break;
 					}
+					if (lookup) {
+						gui::IGUIListBox *list = (gui::IGUIListBox *)e.GUIEvent.Caller;
 
-					m_gui->joinWorld(this);
-				}
-				if (e.GUIEvent.Caller->getID() == ID_ListMine) {
-					gui::IGUIListBox *list = (gui::IGUIListBox *)e.GUIEvent.Caller;
+						try {
+							world_id = lookup->at(list->getSelected());
+						} catch (std::exception &) {
+							break;
+						}
 
-					try {
-						world_id = m_my_index_to_worldid.at(list->getSelected());
-					} catch (std::exception &) {
-						break;
+						m_gui->joinWorld(this);
 					}
-
-					m_gui->joinWorld(this);
 				}
 				break;
 			default: break;
@@ -267,8 +271,10 @@ void SceneLobby::updateWorldList()
 
 	m_publiclist->clear();
 	m_mylist->clear();
+	m_importlist->clear();
 	m_public_index_to_worldid.clear();
 	m_my_index_to_worldid.clear();
+	m_import_index_to_worldid.clear();
 
 	auto player = m_gui->getClient()->getMyPlayer();
 	auto worlds = m_gui->getClient()->world_list;
@@ -298,7 +304,14 @@ void SceneLobby::updateWorldList()
 			m_my_index_to_worldid.push_back(it.id);
 		}
 
-		if (!is_mine || it.online > 0) {
+		// Importable worlds
+		if (WorldMeta::idToType(it.id) == WorldMeta::Type::Readonly) {
+			m_importlist->addItem(textw.c_str());
+			m_import_index_to_worldid.push_back(it.id);
+		}
+
+		// Public worlds (or player-specific private worlds)
+		if (it.online > 0) {
 			m_publiclist->addItem(textw.c_str());
 			m_public_index_to_worldid.push_back(it.id);
 		}

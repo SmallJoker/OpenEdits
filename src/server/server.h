@@ -12,6 +12,7 @@ class DatabaseAuth;
 class DatabaseWorld;
 class RemotePlayer;
 struct ServerPacketHandler;
+struct LobbyWorld;
 
 
 class Server : public Environment, public ChatCommandHandler {
@@ -71,6 +72,11 @@ private:
 
 	Timer m_ban_cleanup_timer;
 	Timer m_stdout_flush_timer;
+
+	// ----------- World imports -----------
+
+	std::map<std::string, LobbyWorld> m_importable_worlds;
+	Timer m_importable_worlds_timer;
 
 	// ----------- Chat commands -----------
 	void registerChatCommands();

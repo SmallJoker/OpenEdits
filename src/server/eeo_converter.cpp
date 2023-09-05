@@ -5,6 +5,7 @@
 
 #include "core/blockmanager.h"
 #include "core/world.h"
+#include <filesystem>
 #include <fstream>
 #include <map>
 #include <string.h> // memcpy
@@ -16,6 +17,10 @@
 	#define DEBUGLOG(...) do {} while (false)
 #endif
 #define ERRORLOG(...) fprintf(stderr, __VA_ARGS__)
+
+
+const std::string EEOconverter::IMPORT_DIR = "worlds/imports";
+const std::string EEOconverter::EXPORT_DIR = "worlds/exports";
 
 struct InflateWriter {
 	InflateWriter(const std::string &outputfile) :
@@ -397,20 +402,12 @@ static void fill_block_types()
 	set_range(BlockDataType::SSSS, 1569, 1579);
 }
 
-void EEOconverter::fromFile(const std::string &filename)
+static void read_eelvl_header(DeflateReader &zs, LobbyWorld &meta)
 {
-	fill_block_types();
-
-	DeflateReader zs(filename);
-
-	// https://github.com/capashaa/EEOEditor/tree/main/EELVL
-
-	WorldMeta &meta = m_world.getMeta();
 	meta.owner = zs.readStr16();
 	meta.title = zs.readStr16();
-	blockpos_t size;
-	size.X = zs.read<s32>();
-	size.Y = zs.read<s32>();
+	meta.size.X = zs.read<s32>();
+	meta.size.Y = zs.read<s32>();
 	zs.read<f32>(); // gravity
 	zs.read<u32>(); // bg color
 	std::string description = zs.readStr16(); // description
@@ -426,13 +423,30 @@ void EEOconverter::fromFile(const std::string &filename)
 			c = '\\';
 	}
 
-	DEBUGLOG("Importing (%d x %d) world by %s\n", size.X, size.Y, meta.owner.c_str());
+	DEBUGLOG("Importing (%d x %d) world by %s\n", meta.size.X, meta.size.Y, meta.owner.c_str());
 	DEBUGLOG("\t Title: %s\n", meta.title.c_str());
 	DEBUGLOG("\t Description: %s\n", description.c_str());
 	DEBUGLOG("\t Crew: %s\n", crew_name.c_str());
+}
+
+void EEOconverter::fromFile(const std::string &filename_)
+{
+	std::filesystem::create_directories(IMPORT_DIR);
+	const std::string filename = IMPORT_DIR + "/" + filename_;
+
+	fill_block_types();
+
+	DeflateReader zs(filename);
+
+	// https://github.com/capashaa/EEOEditor/tree/main/EELVL
+
+	LobbyWorld meta;
+	dynamic_cast<IWorldMeta &>(meta) = dynamic_cast<IWorldMeta &>(m_world.getMeta());
+	read_eelvl_header(zs, meta);
+	dynamic_cast<IWorldMeta &>(m_world.getMeta()) = dynamic_cast<IWorldMeta &>(meta);
 
 	// Actual block data comes now
-	m_world.createEmpty(size);
+	m_world.createEmpty(meta.size);
 
 	auto blockmgr = m_world.getBlockMgr();
 
@@ -517,11 +531,14 @@ void EEOconverter::fromFile(const std::string &filename)
 	if (zs.status != Z_STREAM_END)
 		throw std::runtime_error("zlib: Incomplete reading! msg=" + err);
 
-	printf("EEOconverter: Imported world %s from file %s\n", meta.id.c_str(), filename.c_str());
+	printf("EEOconverter: Imported world %s from file '%s'\n", meta.id.c_str(), filename.c_str());
 }
 
-void EEOconverter::toFile(const std::string &filename) const
+void EEOconverter::toFile(const std::string &filename_) const
 {
+	std::filesystem::create_directories(EXPORT_DIR);
+	const std::string filename = EXPORT_DIR + "/" + filename_;
+
 	fill_block_types();
 
 	InflateWriter zs(filename);
@@ -620,7 +637,7 @@ void EEOconverter::toFile(const std::string &filename) const
 
 	zs.terminate();
 
-	printf("EEOconverter: Exported world %s to file %s\n", meta.id.c_str(), filename.c_str());
+	printf("EEOconverter: Exported world %s to file '%s'\n", meta.id.c_str(), filename.c_str());
 }
 
 
@@ -665,3 +682,86 @@ void EEOconverter::inflate(const std::string &filename)
 }
 
 #endif // HAVE_ZLIB
+
+static std::string path_to_worldid(const std::string &path)
+{
+	std::size_t hash = std::hash<std::string>()(path);
+	char buf[100];
+	snprintf(buf, sizeof(buf), "I%08x", (uint32_t)hash);
+	return buf;
+}
+
+static bool is_path_ok(const std::filesystem::directory_entry &entry)
+{
+	if (!entry.is_regular_file())
+		return false;
+
+	for (const auto &part : entry.path()) {
+		if (part.c_str()[0] == '.')
+			return false;
+	}
+
+	if (entry.path().extension() != ".eelvl")
+		return false;
+
+	return true;
+}
+
+void EEOconverter::listImportableWorlds(std::map<std::string, LobbyWorld> &worlds)
+{
+	worlds.clear();
+
+#ifdef HAVE_ZLIB
+	if (0)
+#endif
+	{
+		LobbyWorld dummy;
+		dummy.id = "";
+		dummy.title = "Feature unsupported by server";
+		worlds[""] = dummy;
+		return;
+	}
+
+	std::filesystem::create_directories(IMPORT_DIR);
+
+#ifdef HAVE_ZLIB
+	for (const auto &entry : std::filesystem::recursive_directory_iterator(IMPORT_DIR)) {
+		if (!is_path_ok(entry))
+			continue;
+
+		LobbyWorld meta;
+		try {
+			DeflateReader zs(entry.path());
+			read_eelvl_header(zs, meta);
+		} catch (std::runtime_error &e) {
+			DEBUGLOG("Cannot read '%s': %s\n", entry.path().c_str(), e.what());
+			continue;
+		}
+
+		meta.id = path_to_worldid(entry.path());
+		worlds[entry.path()] = meta;
+	}
+#endif
+}
+
+std::string EEOconverter::findWorldPath(const std::string &world_id)
+{
+#ifdef HAVE_ZLIB
+	if (0)
+#endif
+	{
+		return "";
+	}
+
+	std::filesystem::path root(IMPORT_DIR);
+	for (const auto &entry : std::filesystem::recursive_directory_iterator(root)) {
+		if (!is_path_ok(entry))
+			continue;
+
+		if (world_id == path_to_worldid(entry.path())) {
+			return std::filesystem::relative(entry.path(), root);
+		}
+	}
+
+	return "";
+}

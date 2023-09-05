@@ -3,6 +3,8 @@ build/
 bin/
 experimental/
 src/version.cpp
+worlds/imports/
+worlds/exports/
 
 # Binaries
 ./OpenEdits

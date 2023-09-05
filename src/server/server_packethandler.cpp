@@ -6,6 +6,7 @@
 #include "core/world.h"
 #include "server/database_auth.h"
 #include "server/database_world.h"
+#include "server/eeo_converter.h"
 #include <set>
 
 // in sync with core/packet.h
@@ -308,7 +309,22 @@ void Server::pkt_GetLobby(peer_t peer_id, Packet &)
 		}
 	}
 
-	out.write<u8>(false); // terminate
+	{
+		if (!m_importable_worlds_timer.isActive()) {
+			m_importable_worlds_timer.set(60);
+			EEOconverter::listImportableWorlds(m_importable_worlds);
+		}
+
+		for (const auto &[filename, meta] : m_importable_worlds) {
+			out.write<u8>(true); // continue!
+			meta.writeCommon(out);
+			// Additional Lobby fields
+			out.write(meta.size.X);
+			out.write(meta.size.Y);
+		}
+	}
+
+	out.write<u8>(false); // done
 
 	m_con->send(peer_id, 0, out);
 }
@@ -333,6 +349,7 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 	}
 
 	if (create_world) {
+		// See also: WorldMeta::idToType
 		switch (world_type) {
 			case WorldMeta::Type::TmpSimple:
 			case WorldMeta::Type::TmpDraw:
@@ -374,6 +391,22 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 	auto world = getWorldNoLock(world_id);
 	if (!world)
 		world = loadWorldNoLock(world_id);
+
+	if (!world && WorldMeta::idToType(world_id) == WorldMeta::Type::Readonly) {
+		std::string path = EEOconverter::findWorldPath(world_id);
+		if (!path.empty()) {
+			world = new World(m_bmgr, world_id);
+			world->drop(); // kept alive by RefCnt
+			try {
+				EEOconverter conv(*world.ptr());
+				conv.fromFile(path);
+			} catch (std::runtime_error &e) {
+				sendMsg(peer_id, std::string("Cannot load this world: ") + e.what());
+				return;
+			}
+			world->getMeta().owner += " "; // HACK: prevent modifications
+		}
+	}
 
 	if (!world && !create_world) {
 		sendMsg(peer_id, "The specified world ID does not exist.");
