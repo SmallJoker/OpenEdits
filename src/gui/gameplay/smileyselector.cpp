@@ -1,5 +1,5 @@
 #include "smileyselector.h"
-#include "gui.h"
+#include "gui/gui.h"
 
 #include <IGUIButton.h>
 #include <IGUIEditBox.h>

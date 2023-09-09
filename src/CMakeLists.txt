@@ -15,7 +15,7 @@ set(SRC_FILES
 
 if (BUILD_CLIENT)
 	add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/client")
-	file(GLOB GUI_FILES gui/*.cpp)
+	add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/gui")
 
 	list(APPEND SRC_FILES
 		${CLIENT_FILES}

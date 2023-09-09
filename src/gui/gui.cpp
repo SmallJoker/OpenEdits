@@ -9,7 +9,7 @@
 #include "connect.h"
 #include "register.h"
 #include "lobby.h"
-#include "gameplay.h"
+#include "gameplay/gameplay.h"
 #include "version.h"
 
 Gui::Gui()
