@@ -91,10 +91,9 @@ void BlockManager::doPackRegistration()
 		for (bid_t id : pack->block_ids) {
 			auto props = m_props[id];
 			if (id >= Block::ID_GATE_R) {
-				props->tiles[0].type = BlockDrawType::Action;
-				props->tiles[1].type = BlockDrawType::Solid;
+				props->setTiles({ BlockDrawType::Action, BlockDrawType::Solid });
 			} else {
-				props->tiles[1].type = BlockDrawType::Action;
+				props->setTiles({ BlockDrawType::Solid, BlockDrawType::Action });
 			}
 		}
 	}
@@ -124,7 +123,6 @@ void BlockManager::doPackRegistration()
 		pack->block_ids = { 0, 1, 2, 3, 4 };
 		registerPack(pack);
 
-		m_props[0]->color = 0xFF000000; // black
 		m_props[1]->step = step_arrow_left;
 		m_props[2]->step = step_arrow_up;
 		m_props[3]->step = step_arrow_right;
@@ -147,6 +145,25 @@ void BlockManager::doPackRegistration()
 
 	{
 		// Spawn block only (for now)
+		BlockPack *pack = new BlockPack("spike");
+		pack->default_type = BlockDrawType::Action;
+		pack->block_ids = { Block::ID_CHECKPOINT, Block::ID_SPIKES };
+		registerPack(pack);
+
+		auto props = m_props[Block::ID_CHECKPOINT];
+		props->trigger_on_touch = true;
+		props->setTiles({ BlockDrawType::Decoration, BlockDrawType::Action });
+
+		props = m_props[Block::ID_SPIKES];
+		props->trigger_on_touch = true;
+		props->setTiles({
+			BlockDrawType::Decoration, BlockDrawType::Decoration,
+			BlockDrawType::Decoration, BlockDrawType::Decoration
+		});
+	}
+
+	{
+		// Spawn block only (for now)
 		BlockPack *pack = new BlockPack("owner");
 		pack->default_type = BlockDrawType::Action;
 		pack->block_ids = { Block::ID_SPAWN, Block::ID_SECRET };
@@ -154,9 +171,8 @@ void BlockManager::doPackRegistration()
 
 		auto props = m_props[Block::ID_SECRET];
 		props->trigger_on_touch = true;
-		props->tiles[0].type = BlockDrawType::Solid;
+		props->setTiles({ BlockDrawType::Solid, BlockDrawType::Solid });
 		props->tiles[0].have_alpha = true;
-		props->tiles[1].type = BlockDrawType::Solid;
 	}
 
 	{
@@ -167,23 +183,20 @@ void BlockManager::doPackRegistration()
 
 		auto props = m_props[Block::ID_COIN];
 		props->trigger_on_touch = true;
-		props->tiles[0].type = BlockDrawType::Decoration; // draw above players
-		props->tiles[1].type = BlockDrawType::Action;
+		props->setTiles({ BlockDrawType::Decoration, BlockDrawType::Action });
 
 		props = m_props[Block::ID_COINDOOR];
 		props->paramtypes = BlockParams::Type::Gate;
+		props->setTiles({ BlockDrawType::Solid, BlockDrawType::Solid });
 		// Walk-through is player-specific, hence using the onCollide callback
-		props->tiles[0].type = BlockDrawType::Solid;
-		props->tiles[1].type = BlockDrawType::Solid;
 		props->tiles[1].have_alpha = true;
 		props->onCollide = onCollide_coindoor;
 
 		props = m_props[Block::ID_COINGATE];
 		props->paramtypes = BlockParams::Type::Gate;
+		props->setTiles({ BlockDrawType::Solid, BlockDrawType::Solid });
 		// Walk-through is player-specific, hence using the onCollide callback
-		props->tiles[0].type = BlockDrawType::Solid;
 		props->tiles[0].have_alpha = true;
-		props->tiles[1].type = BlockDrawType::Solid;
 		props->onCollide = onCollide_coingate;
 	}
 

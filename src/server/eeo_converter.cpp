@@ -11,7 +11,7 @@
 #include <string.h> // memcpy
 #include <zlib.h>
 
-#if 1
+#if 0
 	#define DEBUGLOG(...) printf(__VA_ARGS__)
 #else
 	#define DEBUGLOG(...) do {} while (false)

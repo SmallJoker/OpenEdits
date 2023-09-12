@@ -42,7 +42,7 @@ struct BlockPack {
 struct BlockTile {
 	BlockDrawType type = BlockDrawType::Invalid;
 	video::ITexture *texture = nullptr;
-	u8 texture_offset = 0; // e.g. when specifying a material
+	bool is_known_tile = false; // true when registered by registerPack()
 	bool have_alpha = false; // false: use BlockDrawType
 };
 
@@ -57,10 +57,10 @@ struct BlockProperties {
 
 	// -------------- Visuals -------------
 
-	static constexpr size_t MAX_TILES = 2;
-
 	u32 color = 0; // minimap
-	BlockTile tiles[MAX_TILES]; // [0] = normal, [1] = active
+	// maximal count of tiles: 8 (3 bits from Block struct)
+	std::vector<BlockTile> tiles; // usually: [0] = normal, [1] = active
+	void setTiles(std::vector<BlockDrawType> types);
 	BlockTile getTile(const Block b) const;
 	bool isBackground() const { return tiles[0].type == BlockDrawType::Background; }
 

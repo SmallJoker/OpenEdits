@@ -8,15 +8,23 @@ BlockManager *g_blockmanager = nullptr;
 
 BlockProperties::BlockProperties(BlockDrawType type)
 {
-	tiles[0] = BlockTile();
-	tiles[0].type = type;
-
-	tiles[1] = BlockTile();
+	setTiles({ type });
 }
+
+void BlockProperties::setTiles(std::vector<BlockDrawType> types)
+{
+	tiles.resize(types.size());
+
+	for (size_t i = 0; i < tiles.size(); ++i) {
+		tiles[i].type = types[i];
+		tiles[i].is_known_tile = true;
+	}
+}
+
 
 BlockTile BlockProperties::getTile(const Block b) const
 {
-	return tiles[b.tile < MAX_TILES ? b.tile : (MAX_TILES - 1)];
+	return b.tile < tiles.size() ? tiles[b.tile] : *tiles.end();
 }
 
 
@@ -48,7 +56,6 @@ void BlockManager::read(Packet &pkt, u16 protocol_version)
 	std::vector<bool> handled_props;
 	handled_props.resize(m_props.size());
 
-	BlockTile dummy;
 	while (true) {
 		bid_t block_id = pkt.read<bid_t>();
 		if (block_id == Block::ID_INVALID)
@@ -66,11 +73,11 @@ void BlockManager::read(Packet &pkt, u16 protocol_version)
 		props->viscosity = pkt.read<float>();
 
 		u8 num_tiles = pkt.read<u8>();
-		for (size_t t = 0; t < num_tiles; ++t) {
-			auto &tile = t < BlockProperties::MAX_TILES ? props->tiles[t] : dummy;
+		props->tiles.resize(num_tiles);
+		for (BlockTile &tile : props->tiles) {
 			tile.type = (BlockDrawType)pkt.read<u8>();
-			tile.texture = m_missing_texture;
-			tile.texture_offset = pkt.read<u8>();
+			tile.texture = nullptr;
+			pkt.read<u8>(); // texture offset
 			tile.have_alpha = pkt.read<u8>();
 		}
 
@@ -131,12 +138,10 @@ void BlockManager::write(Packet &pkt, u16 protocol_version) const
 		pkt.write((u8)props->paramtypes);
 		pkt.write<float>(props->viscosity);
 
-		u8 num_tiles = BlockProperties::MAX_TILES;
-		pkt.write<u8>(num_tiles); // amount of tiles
-		for (size_t t = 0; t < num_tiles; ++t) {
-			auto &tile = props->tiles[t];
+		pkt.write<u8>(props->tiles.size()); // amount of tiles
+		for (BlockTile &tile : props->tiles) {
 			pkt.write((u8)tile.type);
-			pkt.write<u8>(tile.texture_offset);
+			pkt.write<u8>(0); // TODO: remove
 			pkt.write<u8>(tile.have_alpha);
 		}
 	}
@@ -187,19 +192,18 @@ void BlockManager::setDriver(video::IVideoDriver *driver)
 	m_missing_texture = m_driver->getTexture("assets/textures/missing_texture.png");
 }
 
-static void split_texture(video::IVideoDriver *driver, BlockTile *tile)
+static void split_texture(video::IVideoDriver *driver, BlockTile *tile, u8 texture_offset)
 {
 	auto dim = tile->texture->getOriginalSize();
 	video::IImage *img = driver->createImage(tile->texture,
-		core::vector2di(tile->texture_offset * dim.Height, 0),
+		core::vector2di(texture_offset * dim.Height, 0),
 		core::dimension2du(dim.Height, dim.Height)
 	);
 
 	char buf[255];
-	snprintf(buf, sizeof(buf), "%p__%i", tile->texture, (int)tile->texture_offset);
+	snprintf(buf, sizeof(buf), "%p__%i", tile->texture, (int)texture_offset);
 
 	tile->texture = driver->addTexture(buf, img);
-	tile->texture_offset = 0;
 	img->drop();
 }
 
@@ -227,45 +231,34 @@ void BlockManager::populateTextures()
 			max_tiles = dim.Width / dim.Height;
 		}
 
-		int i = 0;
+		int texture_offset = 0;
 		for (bid_t id : pack->block_ids) {
 			auto prop = m_props[id];
-			if (i < max_tiles) {
-				prop->tiles[0].texture = texture;
-				u8 &offset = prop->tiles[0].texture_offset;
+			if (texture_offset < max_tiles) {
+				for (BlockTile &tile : prop->tiles) {
+					if (tile.type == BlockDrawType::Invalid)
+						break;
 
-				if (offset == 0)
-					offset = i; // take last position
-				else
-					i = offset; // Continue from this index
-
-				split_texture(m_driver, &prop->tiles[0]);
-
-				if (prop->tiles[1].type != BlockDrawType::Invalid) {
-					prop->tiles[1].texture = texture;
-					// Relative offset from parent
-					u8 &offset = prop->tiles[1].texture_offset;
-					if (offset == 0)
-						offset = ++i; // next texture. !! increment !!
-					else
-						offset += i; // specified offset
-
-					split_texture(m_driver, &prop->tiles[1]);
+					tile.texture = texture;
+					split_texture(m_driver, &tile, texture_offset);
+					if (tile.is_known_tile)
+						texture_offset++;
 				}
 
 				if (prop->color == 0)
 					prop->color = getBlockColor(prop->tiles[0]);
-
-				i++;
 			}
-			if (!prop->tiles[0].texture) {
-				prop->tiles[0].texture = m_missing_texture;
-				prop->tiles[1].texture = m_missing_texture;
 
+			for (BlockTile &tile : prop->tiles) {
+				if (tile.texture)
+					continue;
+
+				tile.texture = m_missing_texture;
 				if (prop->color == 0)
 					prop->color = 0xFFFF0000; // red
 				fprintf(stderr, "BlockManager: Out-of-range texture for block_id=%d\n", id);
 			}
+
 			count++;
 		}
 	}
@@ -318,12 +311,9 @@ u32 BlockManager::getBlockColor(const BlockTile tile) const
 		s_levels = 8,
 		v_levels = 4;
 
-	const size_t x_start = dim.Height * tile.texture_offset;
-	const size_t x_stop = x_start + dim.Height;
-
 	// Calculate median color
 	for (size_t y = 0; y < dim.Height; ++y)
-	for (size_t x = x_start; x < x_stop; ++x) {
+	for (size_t x = 0; x < dim.Height; ++x) {
 		video::SColor color = img->getPixel(x, y);
 		if (color.getAlpha() < 127)
 			continue;

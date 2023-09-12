@@ -40,6 +40,8 @@ struct Block {
 		ID_SECRET = 50,
 		ID_COIN = 100,
 		ID_SPAWN = 255,
+		ID_CHECKPOINT = 360,
+		ID_SPIKES = 361,
 		ID_INVALID = UINT16_MAX
 	};
 

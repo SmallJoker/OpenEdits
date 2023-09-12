@@ -295,7 +295,7 @@ bool SceneBlockSelector::drawBlockButton(bid_t bid, const core::recti &rect, gui
 
 		auto dim = tile.texture->getOriginalSize();
 		core::recti rect(
-			core::vector2di(dim.Height * tile.texture_offset, 0),
+			core::vector2di(0, 0),
 			core::dimension2di(dim.Height, dim.Height)
 		);
 		e->setImage(tile.texture, rect);
