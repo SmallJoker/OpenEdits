@@ -58,6 +58,7 @@ private:
 
 	RefCnt<World> loadWorldNoLock(const std::string &id);
 	void writeWorldData(Packet &out, World &world, bool is_clear);
+	void teleportPlayer(Player *player, core::vector2df dst, bool reset_progress = false);
 	void respawnPlayer(Player *player, bool send_packet);
 
 	// ----------- Server checks -----------
@@ -81,6 +82,7 @@ private:
 	// ----------- Chat commands -----------
 	void registerChatCommands();
 	void systemChatSend(Player *player, const std::string &msg);
+	Player *findPlayer(const World *world, std::string name);
 
 	CHATCMD_FUNC(chat_Help);
 	CHATCMD_FUNC(chat_SetPass);
@@ -93,6 +95,7 @@ private:
 	CHATCMD_FUNC(chat_FSet);
 	CHATCMD_FUNC(chat_FDel);
 	CHATCMD_FUNC(chat_Respawn);
+	CHATCMD_FUNC(chat_Teleport);
 	CHATCMD_FUNC(chat_Clear);
 	CHATCMD_FUNC(chat_Import);
 	CHATCMD_FUNC(chat_Load);

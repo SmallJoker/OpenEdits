@@ -24,7 +24,7 @@ void BlockProperties::setTiles(std::vector<BlockDrawType> types)
 
 BlockTile BlockProperties::getTile(const Block b) const
 {
-	return b.tile < tiles.size() ? tiles[b.tile] : *tiles.end();
+	return b.tile < tiles.size() ? tiles[b.tile] : tiles.back();
 }
 
 

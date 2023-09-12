@@ -47,6 +47,31 @@ std::string get_next_part(std::string &input)
 	return value;
 }
 
+std::vector<std::string> strsplit(const std::string &input, char delim)
+{
+	std::vector<std::string> parts;
+
+	const char *pos_a = input.c_str();
+	while (*pos_a) {
+		const char *pos_b = pos_a;
+		while (*pos_b && *pos_b != delim)
+			pos_b++;
+
+		// Hit delimiter or end
+		std::string val = strtrim(std::string(pos_a, pos_b));
+		if (!val.empty()) {
+			parts.emplace_back(std::move(val));
+		}
+
+		if (!*pos_b)
+			break;
+
+		pos_a = pos_b + 1; // skip delimiter
+	}
+	return parts;
+}
+
+
 #ifndef _WIN32
 
 // #include <codecvt> is no more in C++17, hence rely on some weird-ass conversion code instead

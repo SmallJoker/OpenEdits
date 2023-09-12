@@ -14,6 +14,7 @@ void Server::registerChatCommands()
 {
 	m_chatcmd.add("/help", (ChatCommandAction)&Server::chat_Help);
 	m_chatcmd.add("/respawn", (ChatCommandAction)&Server::chat_Respawn);
+	m_chatcmd.add("/teleport", (ChatCommandAction)&Server::chat_Teleport);
 
 	// Permissions
 	m_chatcmd.add("/setpass", (ChatCommandAction)&Server::chat_SetPass);
@@ -82,6 +83,22 @@ void Server::systemChatSend(Player *player, const std::string &msg)
 	m_con->send(player->peer_id, 0, pkt);
 }
 
+Player *Server::findPlayer(const World *world, std::string name)
+{
+	for (char &c : name)
+		c = toupper(c);
+
+	for (auto p : m_players) {
+		if (p.second->getWorld() != world)
+			continue;
+		if (p.second->name != name)
+			continue;
+
+		return p.second;
+	}
+	return nullptr;
+}
+
 
 CHATCMD_FUNC(Server::chat_Help)
 {
@@ -96,6 +113,7 @@ CHATCMD_FUNC(Server::chat_Help)
 		const std::string text;
 	} help_LUT[] = {
 		{ "respawn", "Respawns you" },
+		{ "teleport", "Syntax: /teleport [SRC] DST.\nTeleports players. DST can be of the format 'X,Y'." },
 		// Permissions
 		{ "setpass", "Syntax: /flags [PLAYERNAME] PASSWORD PASSWORD" },
 		{ "setcode", "Syntax: /setcode [-f] [WORLDCODE]\nChanges the world code or disables it. "
@@ -355,20 +373,10 @@ bool Server::changePlayerFlags(Player *player, std::string msg, bool do_add)
 		c = toupper(c);
 
 	// Search for existing records
-	Player *target_player = nullptr;
+	Player *target_player = findPlayer(world, playername);
 	PlayerFlags targetflags = meta.getPlayerFlags(playername);
 	const playerflags_t old_flags = targetflags.flags;
 
-	// Search for online players
-	for (auto p : m_players) {
-		if (p.second->getWorld() != world)
-			continue;
-		if (p.second->name != playername)
-			continue;
-
-		target_player = p.second;
-		break;
-	}
 
 	if (!target_player && targetflags.flags == 0) {
 		systemChatSend(player, "Cannot find player " + playername);
@@ -478,6 +486,62 @@ CHATCMD_FUNC(Server::chat_FDel)
 CHATCMD_FUNC(Server::chat_Respawn)
 {
 	respawnPlayer(player, true);
+}
+
+CHATCMD_FUNC(Server::chat_Teleport)
+{
+	if (!player->getFlags().check(PlayerFlags::PF_GODMODE)) {
+		systemChatSend(player, "Insufficient permissions");
+		return;
+	}
+
+	std::string src_str(get_next_part(msg));
+	std::string dst_str(get_next_part(msg));
+
+	Player *src = nullptr;
+	core::vector2df dst;
+
+	if (dst_str.empty()) {
+		// teleport DESTINATION
+		src = player;
+		dst_str = src_str;
+	} else {
+		// teleport SRC DST
+		src = findPlayer(player->getWorld(), src_str);
+	}
+
+	auto parts = strsplit(dst_str, ',');
+	if (parts.size() == 2) {
+		// X,Y
+		int64_t x = -1;
+		int64_t y = -1;
+		string2int64(parts[0].c_str(), &x);
+		string2int64(parts[1].c_str(), &y);
+
+		dst = core::vector2df(x, y);
+	} else {
+		// Player name
+		Player *player_dst = findPlayer(player->getWorld(), dst_str);
+		if (!player_dst) {
+			systemChatSend(player, "Destination player not found");
+			return;
+		}
+		dst = player_dst->pos;
+	}
+
+	if (src == player) {
+		if (!player->getFlags().check(PlayerFlags::PF_HELPER)) {
+			systemChatSend(player, "Insufficient permissions");
+			return;
+		}
+	}
+
+	if (!player->getWorld()->isValidPosition(dst.X, dst.Y)) {
+		systemChatSend(player, "Invalid destination position");
+		return;
+	}
+
+	teleportPlayer(src, dst, false);
 }
 
 /// cmd: /clear [width] [height]

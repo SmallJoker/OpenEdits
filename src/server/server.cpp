@@ -295,6 +295,22 @@ void Server::writeWorldData(Packet &out, World &world, bool is_clear)
 	}
 }
 
+void Server::teleportPlayer(Player *player, core::vector2df dst, bool reset_progress)
+{
+	Packet pkt;
+	pkt.write(Packet2Client::SetPosition);
+	pkt.write<u8>(reset_progress); // reset progress
+	pkt.write(player->peer_id);
+	pkt.write(dst.X);
+	pkt.write(dst.Y);
+	pkt.write<peer_t>(0); // end of bulk
+
+	// Same channel as world data
+	m_con->send(player->peer_id, 0, pkt);
+
+	player->pos = dst;
+}
+
 void Server::respawnPlayer(Player *player, bool send_packet)
 {
 	auto &meta = player->getWorld()->getMeta();
@@ -312,17 +328,6 @@ void Server::respawnPlayer(Player *player, bool send_packet)
 		meta.spawn_index = index;
 	}
 
-	if (!send_packet)
-		return;
-
-	Packet pkt;
-	pkt.write(Packet2Client::SetPosition);
-	pkt.write<u8>(true); // reset progress
-	pkt.write(player->peer_id);
-	pkt.write(player->pos.X);
-	pkt.write(player->pos.Y);
-	pkt.write<peer_t>(0); // end of bulk
-
-	// Same channel as world data
-	m_con->send(player->peer_id, 0, pkt);
+	if (send_packet)
+		teleportPlayer(player, player->pos, true);
 }
