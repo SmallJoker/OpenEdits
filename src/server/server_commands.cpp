@@ -461,7 +461,7 @@ void Server::handlePlayerFlagsChange(Player *player, playerflags_t flags_mask)
 
 	// Remove god mode if active
 	if (player->godmode && !(flags.flags & PlayerFlags::PF_MASK_GODMODE)) {
-		player->godmode = false;
+		player->setGodMode(false);
 
 		Packet out;
 		out.write(Packet2Client::GodMode);

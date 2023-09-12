@@ -280,7 +280,7 @@ const std::string &DatabaseAuth::getUniqueSalt()
 	cfg.first = "auth.salt";
 	if (!getConfig(&cfg) || cfg.second.empty()) {
 		// Create new salt
-		printf("DatabaseAuth: Initializing new server-wide password salt");
+		printf("DatabaseAuth: Initializing new server-wide password salt\n");
 
 		cfg.second = Auth::generateRandom();
 		if (!setConfig(cfg)) {

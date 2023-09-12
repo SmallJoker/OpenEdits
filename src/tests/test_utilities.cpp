@@ -1,6 +1,33 @@
 #include "unittest_internal.h"
 #include "core/utils.h"
 
+// Whether the object lifespan outlasts a function call when
+// constructed within an argument for the function.
+struct LifetimeTest
+{
+	LifetimeTest()
+	{
+		v = "dummy value";
+		puts("ctor");
+	}
+	~LifetimeTest()
+	{
+		puts("dtor");
+	}
+
+	const char *get() {
+		puts("get()");
+		return v.c_str();
+	}
+
+	std::string v;
+};
+
+static void do_lifetime_test(const char *v)
+{
+	puts(v);
+}
+
 void unittest_utilities()
 {
 	const std::string utf8_in1 = "Hello Wörld!";
@@ -19,4 +46,6 @@ void unittest_utilities()
 	CHECK(parts.size() == 4);
 	CHECK(parts[1] == "bar");
 	CHECK(parts[3] == "more");
+
+	do_lifetime_test(LifetimeTest().get());
 }

@@ -187,7 +187,7 @@ void Client::pkt_Join(Packet &pkt)
 	player->setWorld(getWorld().ptr());
 
 	player->name = pkt.readStr16();
-	player->godmode = pkt.read<u8>();
+	player->setGodMode(pkt.read<u8>());
 	player->smiley_id = pkt.read<u8>();
 	player->readPhysics(pkt);
 	if (peer_id == m_my_peer_id) {
@@ -428,7 +428,7 @@ void Client::pkt_GodMode(Packet &pkt)
 
 	LocalPlayer *player = getPlayerNoLock(peer_id);
 	if (player) {
-		player->godmode = state;
+		player->setGodMode(state);
 		player->acc = core::vector2df();
 	}
 	if (peer_id == m_my_peer_id) {

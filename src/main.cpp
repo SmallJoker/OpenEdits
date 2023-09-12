@@ -102,6 +102,7 @@ run:
 	Gui gui;
 	my_gui = &gui;
 	gui.run();
+	my_gui = nullptr;
 
 	delete g_blockmanager;
 #endif

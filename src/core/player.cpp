@@ -24,6 +24,7 @@ void Player::setWorld(World *world)
 		m_world->getMeta().online++;
 
 	setPosition({0, 0}, true);
+	setGodMode(false);
 }
 
 World *Player::getWorld()
@@ -93,6 +94,7 @@ void Player::setPosition(core::vector2df newpos, bool reset_progress)
 	acc = core::vector2df();
 
 	m_last_pos = blockpos_t(-1, -1);
+	controls_enabled = true;
 }
 
 PlayerFlags Player::getFlags() const
@@ -375,3 +377,13 @@ void Player::collideWith(float dtime, int x, int y)
 
 }
 
+void Player::setGodMode(bool value)
+{
+	godmode = value;
+	if (value) {
+		controls_enabled = true;
+	} else {
+		// Trigger the current block once (e.g. spikes)
+		m_last_pos = blockpos_t(-1, -1);
+	}
+}

@@ -50,6 +50,7 @@ public:
 	// For keys or killing blocks
 	std::set<blockpos_t> *triggered_blocks = nullptr;
 
+	void setGodMode(bool value);
 	bool godmode = false;
 	bool controls_enabled = true;
 

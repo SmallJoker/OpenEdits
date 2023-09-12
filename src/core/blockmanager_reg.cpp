@@ -27,7 +27,8 @@ static BP_STEP_CALLBACK(step_arrow_none)
 
 static BP_STEP_CALLBACK(step_freeze)
 {
-	player.vel *= 0.1f;
+	player.controls_enabled = false;
+	player.vel *= 0.2f;
 }
 
 static BP_COLLIDE_CALLBACK(onCollide_coindoor)
@@ -129,6 +130,7 @@ void BlockManager::doPackRegistration()
 		pack->block_ids = { 0, 1, 2, 3, 4 };
 		registerPack(pack);
 
+		m_props[0]->color = 0xFF000000;
 		m_props[1]->step = step_arrow_left;
 		m_props[2]->step = step_arrow_up;
 		m_props[3]->step = step_arrow_right;

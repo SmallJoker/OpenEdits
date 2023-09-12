@@ -514,6 +514,9 @@ static void fill_block_translations()
 	};
 	for (bid_t id : slow_climbable)
 		BLOCK_ID_LUT.at(id) = 4;
+
+	set_range(Block::ID_SPIKES, 1625, 1636); // spikes, every 2nd is not rotatable
+	BLOCK_ID_LUT.at(1580) = Block::ID_SPIKES; // not rotatable
 }
 
 static void ensure_cache()
