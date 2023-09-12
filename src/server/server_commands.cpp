@@ -89,7 +89,7 @@ Player *Server::findPlayer(const World *world, std::string name)
 		c = toupper(c);
 
 	for (auto p : m_players) {
-		if (p.second->getWorld() != world)
+		if (p.second->getWorld().get() != world)
 			continue;
 		if (p.second->name != name)
 			continue;
@@ -366,14 +366,14 @@ bool Server::changePlayerFlags(Player *player, std::string msg, bool do_add)
 	}
 
 	auto world = player->getWorld();
-	auto &meta = player->getWorld()->getMeta();
+	auto &meta = world->getMeta();
 
 	std::string playername(get_next_part(msg));
 	for (char &c : playername)
 		c = toupper(c);
 
 	// Search for existing records
-	Player *target_player = findPlayer(world, playername);
+	Player *target_player = findPlayer(world.get(), playername);
 	PlayerFlags targetflags = meta.getPlayerFlags(playername);
 	const playerflags_t old_flags = targetflags.flags;
 
@@ -507,7 +507,7 @@ CHATCMD_FUNC(Server::chat_Teleport)
 		dst_str = src_str;
 	} else {
 		// teleport SRC DST
-		src = findPlayer(player->getWorld(), src_str);
+		src = findPlayer(player->getWorld().get(), src_str);
 	}
 
 	auto parts = strsplit(dst_str, ',');
@@ -521,7 +521,7 @@ CHATCMD_FUNC(Server::chat_Teleport)
 		dst = core::vector2df(x, y);
 	} else {
 		// Player name
-		Player *player_dst = findPlayer(player->getWorld(), dst_str);
+		Player *player_dst = findPlayer(player->getWorld().get(), dst_str);
 		if (!player_dst) {
 			systemChatSend(player, "Destination player not found");
 			return;
@@ -580,8 +580,7 @@ CHATCMD_FUNC(Server::chat_Clear)
 		return;
 	}
 
-	RefCnt<World> world(new World(old_world));
-	world->drop(); // kept alive by RefCnt
+	auto world = std::make_shared<World>(old_world.get());
 
 	try {
 		world->createEmpty(size);
@@ -591,11 +590,11 @@ CHATCMD_FUNC(Server::chat_Clear)
 	}
 
 	Packet out;
-	writeWorldData(out, *world.ptr(), true);
+	writeWorldData(out, *world.get(), true);
 
 	for (auto it : m_players) {
 		if (it.second->getWorld() == old_world) {
-			it.second->setWorld(world.ptr());
+			it.second->setWorld(world);
 			m_con->send(it.first, 0, out);
 		}
 	}
@@ -623,10 +622,8 @@ CHATCMD_FUNC(Server::chat_Import)
 
 	auto old_world = player->getWorld();
 
-	RefCnt<World> world(new World(old_world));
-	world->drop(); // kept alive by RefCnt
-
-	EEOconverter conv(*world.ptr());
+	auto world = std::make_shared<World>(old_world.get());
+	EEOconverter conv(*world.get());
 
 	try {
 		auto old_owner = old_world->getMeta().owner;
@@ -640,11 +637,11 @@ CHATCMD_FUNC(Server::chat_Import)
 	systemChatSend(player, "Imported!");
 
 	Packet out;
-	writeWorldData(out, *world.ptr(), false);
+	writeWorldData(out, *world.get(), false);
 
 	for (auto it : m_players) {
 		if (it.second->getWorld() == old_world) {
-			it.second->setWorld(world.ptr());
+			it.second->setWorld(world);
 			m_con->send(it.first, 0, out);
 			respawnPlayer(it.second, true);
 		}
@@ -666,11 +663,11 @@ CHATCMD_FUNC(Server::chat_Load)
 	}
 
 	Packet pkt_world;
-	writeWorldData(pkt_world, *world.ptr(), false);
+	writeWorldData(pkt_world, *world.get(), false);
 
 	for (auto it : m_players) {
 		if (it.second->getWorld() == old_world) {
-			it.second->setWorld(world.ptr());
+			it.second->setWorld(world);
 			m_con->send(it.first, 0, pkt_world);
 		}
 	}
@@ -682,7 +679,7 @@ CHATCMD_FUNC(Server::chat_Load)
 
 	// TODO: this is inefficient
 	for (auto it : m_players) {
-		if (it.second->getWorld() == world.ptr()) {
+		if (it.second->getWorld() == world) {
 			respawnPlayer(it.second, true);
 		}
 	}
@@ -714,7 +711,7 @@ CHATCMD_FUNC(Server::chat_Save)
 		m_auth_db->ban(entry);
 	}
 
-	m_world_db->save(world);
+	m_world_db->save(world.get());
 
 	systemChatSend(player, "Saved!");
 }

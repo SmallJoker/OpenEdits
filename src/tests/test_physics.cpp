@@ -33,9 +33,10 @@ void unittest_physics()
 	RemotePlayer p1(1337, 42);
 	{
 		// Test gravity arrows
-		World w1(g_blockmanager, "physics_arrows");
+		auto w1_obj = std::make_shared<World>(g_blockmanager, "physics_arrows");
+		World &w1 = *w1_obj.get();
 		w1.createEmpty(blockpos_t(8, 11));
-		p1.setWorld(&w1);
+		p1.setWorld(w1_obj);
 
 		// Must reach the ground
 		run_steps(p1, 2);
@@ -74,9 +75,10 @@ void unittest_physics()
 	Block b_solid(9);
 	{
 		// Test player inputs
-		World w2(g_blockmanager, "physics_ctrl");
+		auto w2_obj = std::make_shared<World>(g_blockmanager, "physics_ctrl");
+		World &w2 = *w2_obj.get();
 		w2.createEmpty(blockpos_t(6, 6));
-		p1.setWorld(&w2);
+		p1.setWorld(w2_obj);
 
 		// 1x3 pillar
 		w2.setBlock({2, 3}, b_solid);

@@ -13,23 +13,23 @@ Player::~Player()
 }
 
 
-void Player::setWorld(World *world)
+void Player::setWorld(RefCnt<World> world)
 {
-	if (m_world.ptr())
+	if (m_world.get())
 		m_world->getMeta().online--;
 
 	m_world = world;
 
-	if (m_world.ptr())
+	if (m_world.get())
 		m_world->getMeta().online++;
 
 	setPosition({0, 0}, true);
 	setGodMode(false);
 }
 
-World *Player::getWorld()
+RefCnt<World> Player::getWorld()
 {
-	return m_world.ptr();
+	return m_world;
 }
 
 void Player::readPhysics(Packet &pkt)

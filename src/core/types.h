@@ -1,7 +1,7 @@
 #pragma once
 // Types related to Irrlicht
 
-#include <IReferenceCounted.h>
+#include <memory>
 #include <vector2d.h>
 
 using namespace irr;
@@ -59,40 +59,5 @@ static_assert(sizeof(Block) <= 6, "Block size us unexpectedly large");
 // Automatic grab & drop for irr::IReferenceCounted classes
 // Similar to std::shared_ptr but less thread-safe
 template<typename T>
-class RefCnt {
-public:
-	RefCnt(irr::IReferenceCounted *ptr)
-	{
-		if (ptr)
-			ptr->grab();
-		m_ptr = ptr;
-	}
-	~RefCnt()
-	{
-		if (m_ptr)
-			m_ptr->drop();
-	}
+using RefCnt = std::shared_ptr<T>;
 
-	// Copy constructor
-	RefCnt(const RefCnt &o) : RefCnt(o.m_ptr) {}
-
-	RefCnt &operator=(const RefCnt &o)
-	{
-		if (o.m_ptr)
-			o.m_ptr->grab();
-		if (m_ptr)
-			m_ptr->drop();
-		m_ptr = o.m_ptr;
-		return *this;
-	}
-
-	inline T *ptr() const { return (T *)m_ptr; }
-	// Synthetic sugar
-	inline T *operator->() const { return (T *)m_ptr; }
-	inline bool operator!=(const RefCnt &o) const { return m_ptr != o.m_ptr; }
-	// Validation check
-	inline bool operator!() const { return !m_ptr; }
-
-private:
-	irr::IReferenceCounted *m_ptr;
-};

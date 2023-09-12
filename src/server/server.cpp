@@ -87,7 +87,7 @@ void Server::step(float dtime)
 
 	// always player lock first, world lock after.
 	SimpleLock players_lock(m_players_lock);
-	std::set<World *> worlds;
+	std::set<RefCnt<World>> worlds;
 	for (auto p : m_players) {
 		auto world = p.second->getWorld();
 		if (!world)
@@ -131,7 +131,7 @@ void Server::step(float dtime)
 		}
 	}
 
-	for (World *world : worlds) {
+	for (auto &world : worlds) {
 		auto &meta = world->getMeta();
 
 		for (auto &kdata : meta.keys) {
@@ -304,10 +304,9 @@ RefCnt<World> Server::loadWorldNoLock(const std::string &id)
 		return nullptr;
 
 	// try to load from the database
-	RefCnt<World> world = new World(m_bmgr, id);
-	world->drop(); // kept alive by RefCnt
+	auto world = std::make_shared<World>(m_bmgr, id);
 
-	return m_world_db->load(world.ptr()) ? world : nullptr;
+	return m_world_db->load(world.get()) ? world : nullptr;
 }
 
 void Server::writeWorldData(Packet &out, World &world, bool is_clear)

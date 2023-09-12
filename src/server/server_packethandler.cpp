@@ -275,7 +275,7 @@ void Server::pkt_GetLobby(peer_t peer_id, Packet &)
 	Packet out;
 	out.write(Packet2Client::Lobby);
 
-	std::set<World *> worlds;
+	std::set<RefCnt<World>> worlds;
 	for (auto p : m_players) {
 		auto world = p.second->getWorld();
 		if (world)
@@ -395,10 +395,9 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 	if (!world && WorldMeta::idToType(world_id) == WorldMeta::Type::Readonly) {
 		std::string path = EEOconverter::findWorldPath(world_id);
 		if (!path.empty()) {
-			world = new World(m_bmgr, world_id);
-			world->drop(); // kept alive by RefCnt
+			world = std::make_shared<World>(m_bmgr, world_id);
 			try {
-				EEOconverter conv(*world.ptr());
+				EEOconverter conv(*world.get());
 				conv.fromFile(path);
 			} catch (std::runtime_error &e) {
 				sendMsg(peer_id, std::string("Cannot load this world: ") + e.what());
@@ -423,8 +422,7 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 
 	if (!world) {
 		// create a new one
-		world = new World(m_bmgr, world_id);
-		world->drop(); // kept alive by RefCnt
+		world = std::make_shared<World>(m_bmgr, world_id);
 
 		world->createDummy(size);
 		world->getMeta().title = title;
@@ -441,7 +439,7 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 			if (p.second->name != player->name)
 				continue;
 
-			if (p.second->getWorld() == world.ptr()) {
+			if (p.second->getWorld() == world) {
 				sendMsg(peer_id, "You already joined this world.");
 				return;
 			}
@@ -459,13 +457,13 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 
 	{
 		Packet out;
-		writeWorldData(out, *world.ptr(), false);
+		writeWorldData(out, *world.get(), false);
 		m_con->send(peer_id, 0, out);
 	}
 
 	{
 		// Update player information
-		player->setWorld(world.ptr());
+		player->setWorld(world);
 		respawnPlayer(player, false);
 		player->state = RemotePlayerState::WorldPlay;
 	}
@@ -485,7 +483,7 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 
 	for (auto it : m_players) {
 		auto *p = it.second;
-		if (p->getWorld() != world.ptr())
+		if (p->getWorld() != world)
 			continue;
 
 		// Notify existing players about the new one

@@ -86,7 +86,7 @@ struct LobbyWorld : public IWorldMeta {
 };
 
 // Per-world shared pointer to safely clear and set new world data (swap)
-struct WorldMeta : public IWorldMeta, public irr::IReferenceCounted {
+struct WorldMeta : public IWorldMeta {
 	WorldMeta(const std::string &id) :
 		IWorldMeta(id) {}
 
@@ -123,7 +123,7 @@ private:
 
 constexpr u16 PROTOCOL_VERSION_FAKE_DISK = UINT16_MAX;
 
-class World : public IReferenceCounted {
+class World {
 public:
 	World(World *copy_from);
 	World(const BlockManager *bmgr, const std::string &id);
@@ -165,8 +165,8 @@ public:
 	const Block *end() const { return &m_data[m_size.X * m_size.Y]; };
 
 	blockpos_t getSize() const { return m_size; }
-	const WorldMeta &getMeta() const { return *m_meta.ptr(); }
-	WorldMeta &getMeta() { return *m_meta.ptr(); }
+	const WorldMeta &getMeta() const { return *m_meta.get(); }
+	WorldMeta &getMeta() { return *m_meta.get(); }
 
 	mutable std::mutex mutex; // used by Server/Client
 	std::unordered_set<BlockUpdate, BlockUpdateHash> proc_queue; // for networking

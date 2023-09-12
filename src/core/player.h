@@ -26,8 +26,8 @@ class Player {
 public:
 	virtual ~Player();
 
-	void setWorld(World *world);
-	World *getWorld();
+	void setWorld(RefCnt<World> world);
+	RefCnt<World> getWorld();
 
 	void readPhysics(Packet &pkt);
 	void writePhysics(Packet &pkt);

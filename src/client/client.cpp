@@ -57,7 +57,7 @@ void Client::step(float dtime)
 	auto world = getWorld();
 
 	// Process block updates
-	while (world.ptr()) { // run once
+	while (world.get()) { // run once
 		SimpleLock lock(world->mutex);
 		auto &queue = world->proc_queue;
 		if (queue.empty())
@@ -89,7 +89,7 @@ void Client::step(float dtime)
 	}
 
 	// Run physics engine
-	if (world.ptr()) {
+	if (world.get()) {
 		std::set<blockpos_t> triggered_blocks;
 		SimpleLock lock(m_players_lock);
 
@@ -214,7 +214,7 @@ bool Client::OnEvent(GameEvent &e)
 			}
 			return true;
 		case E::G2C_JOIN:
-			if (getWorld().ptr()) {
+			if (getWorld().get()) {
 				// Already joined one. ignore.
 				return false;
 			}
@@ -230,7 +230,7 @@ bool Client::OnEvent(GameEvent &e)
 			}
 			return true;
 		case E::G2C_CREATE_WORLD:
-			if (getWorld().ptr()) {
+			if (getWorld().get()) {
 				// Already joined one. ignore.
 				return false;
 			}
@@ -252,7 +252,7 @@ bool Client::OnEvent(GameEvent &e)
 			}
 			return true;
 		case E::G2C_LEAVE:
-			if (!getWorld().ptr()) {
+			if (!getWorld().get()) {
 				// Cannot leave
 				return false;
 			}

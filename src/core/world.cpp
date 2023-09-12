@@ -107,7 +107,7 @@ WorldMeta::Type WorldMeta::idToType(const std::string &id)
 
 PlayerFlags WorldMeta::getPlayerFlags(const std::string &name) const
 {
-	if (name == owner)
+	if (name == owner || true)
 		return PlayerFlags(PlayerFlags::PF_OWNER);
 
 	auto it = player_flags.find(name);
@@ -187,10 +187,10 @@ World::World(World *copy_from) :
 }
 
 World::World(const BlockManager *bmgr, const std::string &id) :
-	m_bmgr(bmgr),
-	m_meta(new WorldMeta(id))
+	m_bmgr(bmgr)
 {
-	m_meta->drop(); // Kept alive by RefCnt
+	m_meta = std::make_shared<WorldMeta>(id);
+	printf("World: Create %s\n", m_meta->id.c_str());
 }
 
 World::~World()

@@ -131,8 +131,7 @@ void Client::pkt_WorldData(Packet &pkt)
 		return;
 	}
 
-	RefCnt<World> world(new World(m_bmgr, m_world_id));
-	world->drop(); // kept alive by RefCnt
+	auto world = std::make_shared<World>(m_bmgr, m_world_id);
 
 	world->getMeta().readCommon(pkt);
 	blockpos_t size;
@@ -154,7 +153,7 @@ void Client::pkt_WorldData(Packet &pkt)
 	// World kept alive by at least one player
 	bool is_new_join = player->getWorld() == nullptr;
 	for (auto it : m_players)
-		it.second->setWorld(world.ptr());
+		it.second->setWorld(world);
 
 	if (have_world_data)
 		updateWorld();
@@ -184,7 +183,7 @@ void Client::pkt_Join(Packet &pkt)
 		m_players.emplace(peer_id, new LocalPlayer(peer_id));
 	}
 	player = getPlayerNoLock(peer_id);
-	player->setWorld(getWorld().ptr());
+	player->setWorld(getWorld());
 
 	player->name = pkt.readStr16();
 	player->setGodMode(pkt.read<u8>());
@@ -217,6 +216,10 @@ void Client::pkt_Leave(Packet &pkt)
 		sendNewEvent(e);
 	}
 
+	// HACK: keep alive until the function finishes !
+	// gameplay.cpp might access the World object at the same time,
+	// which somehow results in a double-free ??
+	auto world = player->getWorld();
 
 	if (peer_id == m_my_peer_id) {
 		for (auto it : m_players) {
