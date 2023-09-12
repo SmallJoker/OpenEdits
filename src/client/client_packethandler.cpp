@@ -278,6 +278,8 @@ void Client::pkt_SetPosition(Packet &pkt)
 		need_update = true;
 	}
 
+	updateWorld();
+
 	if (need_update) {
 		GameEvent e(GameEvent::C2G_MAP_UPDATE);
 		sendNewEvent(e);

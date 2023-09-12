@@ -141,28 +141,32 @@ void Client::step(float dtime)
 				}
 				break;
 				case Block::ID_CHECKPOINT:
-				{
-					// Unmark previous checkpoint
-					Block b2;
-					world->getBlock(player->checkpoint, &b2);
-					if (b2.id == Block::ID_CHECKPOINT) {
-						b2.tile = 0;
-						world->setBlock(player->checkpoint, b2);
+					if (player->godmode)
+						break;
+					{
+						// Unmark previous checkpoint
+						Block b2;
+						world->getBlock(player->checkpoint, &b2);
+						if (b2.id == Block::ID_CHECKPOINT) {
+							b2.tile = 0;
+							world->setBlock(player->checkpoint, b2);
+						}
 					}
-				}
-				{
-					// Mark current checkpoint
-					player->checkpoint = bp;
-					b.tile = 1;
-					world->setBlock(player->checkpoint, b);
-					trigger_event = true;
-				}
+					{
+						// Mark current checkpoint
+						player->checkpoint = bp;
+						b.tile = 1;
+						world->setBlock(player->checkpoint, b);
+						trigger_event = true;
+					}
 					// fall-through
 				case Block::ID_SPIKES:
-				{
-					pkt.write(bp.X);
-					pkt.write(bp.Y);
-				}
+					if (player->godmode)
+						break;
+					{
+						pkt.write(bp.X);
+						pkt.write(bp.Y);
+					}
 				break;
 			}
 		} // for

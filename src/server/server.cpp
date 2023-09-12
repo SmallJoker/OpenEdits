@@ -179,7 +179,7 @@ void Server::step(float dtime)
 		}
 
 		Player *player = getPlayerNoLock(it->first);
-		if (player)
+		if (player && !player->godmode)
 			respawn_killed(player);
 
 		it = m_deaths.erase(it);
