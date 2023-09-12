@@ -402,7 +402,13 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 					if (l_pressed) {
 						m_blockselector->getBlockUpdate(m_drag_draw_block);
 						if (m_drag_draw_block.getId() == 0)
-							guess_layer = true;;
+							guess_layer = true;
+						else {
+							Block bt;
+							world->getBlock(bp, &bt);
+							if (bt.id == Block::ID_SPIKES)
+								m_drag_draw_block.params.param_u8 = (bt.tile + 1) % 4;
+						}
 					}
 
 					if (r_pressed || guess_layer) {

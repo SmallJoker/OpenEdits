@@ -34,7 +34,7 @@ bool LocalPlayer::updateCoinCount(bool force)
 			{
 				BlockParams params;
 				m_world->getParams(m_world->getBlockPos(b), &params);
-				if (my_coins >= params.gate.value)
+				if (my_coins >= params.param_u8)
 					b->tile = 1;
 				else
 					b->tile = 0;

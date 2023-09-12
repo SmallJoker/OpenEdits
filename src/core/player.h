@@ -52,7 +52,10 @@ public:
 
 	bool godmode = false;
 	bool controls_enabled = true;
+
+	// Resetable progress
 	u8 coins = 0;
+	blockpos_t checkpoint;
 
 	u8 smiley_id = 0;
 

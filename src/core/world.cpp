@@ -422,29 +422,42 @@ blockpos_t World::getBlockPos(const Block *b) const
 	return pos;
 }
 
-Block *World::updateBlock(const BlockUpdate bu)
+bool World::checkUpdateBlockNeeded(const BlockUpdate bu)
 {
 	if (bu.pos.X >= m_size.X || bu.pos.Y >= m_size.Y)
-		return nullptr;
+		return false;
 
 	bid_t new_id;
 	bool is_background;
 	if (!bu.check(&new_id, &is_background))
+		return false;
+
+	Block &ref = getBlockRefNoCheck(bu.pos);
+	if (is_background)
+		return new_id != ref.bg;
+
+	if (new_id != ref.id)
+		return true;
+
+	if (bu.params != BlockParams::Type::None) {
+		BlockParams params;
+		return getParams(bu.pos, &params) && !(params == bu.params);
+	}
+	return false;
+}
+
+Block *World::updateBlock(const BlockUpdate bu)
+{
+	if (!checkUpdateBlockNeeded(bu))
 		return nullptr;
 
 	Block &ref = getBlockRefNoCheck(bu.pos);
-	if (is_background) {
-		if (new_id == ref.bg)
-			return nullptr;
-
-		ref.bg = new_id;
+	if (bu.isBackground()) {
+		ref.bg = bu.getId();
 	} else {
-		if (new_id == ref.id && bu.params == BlockParams::Type::None)
-			return nullptr;
-
 		m_params.erase(bu.pos);
 		ref.tile = 0;
-		ref.id = new_id; // reset tile information
+		ref.id = bu.getId(); // reset tile information
 		if (bu.params != BlockParams::Type::None)
 			m_params.emplace(bu.pos, bu.params);
 	}

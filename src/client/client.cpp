@@ -4,7 +4,7 @@
 #include "core/connection.h"
 #include "core/packet.h"
 
-#if 0
+#if 1
 	#define DEBUGLOG(...) printf(__VA_ARGS__)
 #else
 	#define DEBUGLOG(...) /* SILENCE */
@@ -74,7 +74,7 @@ void Client::step(float dtime)
 			it->write(out);
 
 			DEBUGLOG("Client: sending block x=%d,y=%d,id=%d\n",
-				it->pos.X, it->pos.Y, it->id);
+				it->pos.X, it->pos.Y, it->getId());
 
 			it = queue.erase(it);
 
@@ -92,6 +92,7 @@ void Client::step(float dtime)
 	if (world.ptr()) {
 		std::set<blockpos_t> triggered_blocks;
 		SimpleLock lock(m_players_lock);
+
 		for (auto it : m_players) {
 			if (it.first == m_my_peer_id) {
 				it.second->triggered_blocks = &triggered_blocks;
@@ -112,6 +113,7 @@ void Client::step(float dtime)
 		Packet pkt;
 		pkt.write(Packet2Server::TriggerBlocks);
 
+		auto player = getPlayerNoLock(m_my_peer_id);
 		for (blockpos_t bp : triggered_blocks) {
 			Block b;
 			if (!world->getBlock(bp, &b))
@@ -136,6 +138,30 @@ void Client::step(float dtime)
 					b.tile = 1;
 					world->setBlock(bp, b);
 					trigger_event = true;
+				}
+				break;
+				case Block::ID_CHECKPOINT:
+				{
+					// Unmark previous checkpoint
+					Block b2;
+					world->getBlock(player->checkpoint, &b2);
+					if (b2.id == Block::ID_CHECKPOINT) {
+						b2.tile = 0;
+						world->setBlock(player->checkpoint, b2);
+					}
+				}
+				{
+					// Mark current checkpoint
+					player->checkpoint = bp;
+					b.tile = 1;
+					world->setBlock(player->checkpoint, b);
+					trigger_event = true;
+				}
+					// fall-through
+				case Block::ID_SPIKES:
+				{
+					pkt.write(bp.X);
+					pkt.write(bp.Y);
 				}
 				break;
 			}
@@ -303,8 +329,7 @@ bool Client::updateBlock(const BlockUpdate bu)
 
 	SimpleLock lock(world->mutex);
 
-	bool is_ok = world->isValidPosition(bu.pos.X, bu.pos.Y);
-	if (!is_ok)
+	if (!world->checkUpdateBlockNeeded(bu))
 		return false;
 
 	world->proc_queue.emplace(bu);
@@ -384,3 +409,22 @@ void Client::processPacket(peer_t peer_id, Packet &pkt)
 		printf("Client: Action %d general error: %s\n", action, e.what());
 	}
 }
+
+void Client::updateWorld()
+{
+	auto player = getPlayerNoLock(m_my_peer_id);
+	auto world = player->getWorld();
+
+	for (Block *b = world->begin(); b < world->end(); ++b) {
+		switch (b->id) {
+			case Block::ID_SPIKES:
+				{
+					BlockParams params;
+					world->getParams(world->getBlockPos(b), &params);
+					b->tile = params.param_u8;
+				}
+				break;
+		}
+	}
+}
+

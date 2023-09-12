@@ -10,7 +10,7 @@ struct BlockParams {
 	enum class Type : uint8_t {
 		None,
 		Text,
-		Gate,
+		U8,
 		Teleporter,
 		// New parameters need a new type
 		INVALID
@@ -22,6 +22,7 @@ struct BlockParams {
 	Type getType() const { return m_type; }
 	bool operator ==(Type type) const { return m_type == type; }
 	bool operator !=(Type type) const { return m_type != type; }
+	bool operator ==(const BlockParams &other) const;
 
 	// Copy
 	BlockParams(const BlockParams &other);
@@ -32,9 +33,7 @@ struct BlockParams {
 
 	union {
 		std::string *text;
-		struct {
-			uint8_t value;
-		} gate;
+		uint8_t param_u8;
 		struct {
 			uint8_t visual; // e.g. rotation
 			uint8_t id;
@@ -43,6 +42,7 @@ struct BlockParams {
 	};
 
 private:
+	void set(Type type);
 	void reset();
 
 	Type m_type;

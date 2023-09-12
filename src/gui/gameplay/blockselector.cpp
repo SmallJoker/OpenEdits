@@ -242,8 +242,8 @@ void SceneBlockSelector::getBlockUpdate(BlockUpdate &bu)
 
 	using T = BlockParams::Type;
 	switch (bu.params.getType()) {
-		case T::Gate:
-			bu.params.gate.value = m_selected_param1;
+		case T::U8:
+			bu.params.param_u8 = m_selected_param1;
 			break;
 		default:
 			break;

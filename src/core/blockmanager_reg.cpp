@@ -25,12 +25,17 @@ static BP_STEP_CALLBACK(step_arrow_none)
 {
 }
 
+static BP_STEP_CALLBACK(step_freeze)
+{
+	player.vel *= 0.1f;
+}
+
 static BP_COLLIDE_CALLBACK(onCollide_coindoor)
 {
 	BlockParams params;
 	player.getWorld()->getParams(pos, &params);
 
-	return player.coins >= params.gate.value
+	return player.coins >= params.param_u8
 		? BlockProperties::CollisionType::None
 		: BlockProperties::CollisionType::Position;
 }
@@ -40,7 +45,7 @@ static BP_COLLIDE_CALLBACK(onCollide_coingate)
 	BlockParams params;
 	player.getWorld()->getParams(pos, &params);
 
-	return player.coins < params.gate.value
+	return player.coins < params.param_u8
 		? BlockProperties::CollisionType::None
 		: BlockProperties::CollisionType::Position;
 }
@@ -69,6 +74,7 @@ static BP_COLLIDE_CALLBACK(onCollide_b10_bouncy)
 	}
 	return BlockProperties::CollisionType::None;
 }
+
 
 void BlockManager::doPackRegistration()
 {
@@ -155,11 +161,13 @@ void BlockManager::doPackRegistration()
 		props->setTiles({ BlockDrawType::Decoration, BlockDrawType::Action });
 
 		props = m_props[Block::ID_SPIKES];
+		props->paramtypes = BlockParams::Type::U8;
 		props->trigger_on_touch = true;
 		props->setTiles({
 			BlockDrawType::Decoration, BlockDrawType::Decoration,
 			BlockDrawType::Decoration, BlockDrawType::Decoration
 		});
+		m_props[Block::ID_SPIKES]->step = step_freeze;
 	}
 
 	{
@@ -186,14 +194,14 @@ void BlockManager::doPackRegistration()
 		props->setTiles({ BlockDrawType::Decoration, BlockDrawType::Action });
 
 		props = m_props[Block::ID_COINDOOR];
-		props->paramtypes = BlockParams::Type::Gate;
+		props->paramtypes = BlockParams::Type::U8;
 		props->setTiles({ BlockDrawType::Solid, BlockDrawType::Solid });
 		// Walk-through is player-specific, hence using the onCollide callback
 		props->tiles[1].have_alpha = true;
 		props->onCollide = onCollide_coindoor;
 
 		props = m_props[Block::ID_COINGATE];
-		props->paramtypes = BlockParams::Type::Gate;
+		props->paramtypes = BlockParams::Type::U8;
 		props->setTiles({ BlockDrawType::Solid, BlockDrawType::Solid });
 		// Walk-through is player-specific, hence using the onCollide callback
 		props->tiles[0].have_alpha = true;

@@ -13,4 +13,10 @@ void unittest_utilities()
 	std::string utf8_out;
 	CHECK(wide_to_utf8(utf8_out, utf32_in1.c_str()));
 	CHECK(utf8_out == utf8_in1);
+
+	const std::string split_in = "foo,,bar   ,baz, more";
+	auto parts = strsplit(split_in, ',');
+	CHECK(parts.size() == 4);
+	CHECK(parts[1] == "bar");
+	CHECK(parts[3] == "more");
 }

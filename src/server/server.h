@@ -59,7 +59,7 @@ private:
 	RefCnt<World> loadWorldNoLock(const std::string &id);
 	void writeWorldData(Packet &out, World &world, bool is_clear);
 	void teleportPlayer(Player *player, core::vector2df dst, bool reset_progress = false);
-	void respawnPlayer(Player *player, bool send_packet);
+	void respawnPlayer(Player *player, bool send_packet, bool reset_progress = true);
 
 	// ----------- Server checks -----------
 
@@ -70,6 +70,7 @@ private:
 	DatabaseAuth *m_auth_db = nullptr;
 	DatabaseWorld *m_world_db = nullptr;
 
+	std::map<peer_t, Timer> m_deaths;
 
 	Timer m_ban_cleanup_timer;
 	Timer m_stdout_flush_timer;

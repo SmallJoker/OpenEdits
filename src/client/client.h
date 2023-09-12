@@ -58,6 +58,9 @@ public:
 	void processPacket(peer_t peer_id, Packet &pkt) override;
 
 private:
+	// Prepare for rendering
+	void updateWorld();
+
 	void pkt_Quack(Packet &pkt);
 	void pkt_Hello(Packet &pkt);
 	void pkt_Message(Packet &pkt);

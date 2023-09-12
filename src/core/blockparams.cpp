@@ -4,6 +4,11 @@
 
 BlockParams::BlockParams(BlockParams::Type type)
 {
+	set(type);
+}
+
+void BlockParams::set(BlockParams::Type type)
+{
 	if ((int)type >= (int)Type::INVALID)
 		throw std::runtime_error("Unknown BlockParams Type: " + std::to_string((int)type));
 
@@ -18,7 +23,7 @@ BlockParams::BlockParams(BlockParams::Type type)
 		case Type::Text:
 			text = new std::string();
 			break;
-		case Type::Gate:
+		case Type::U8:
 		case Type::Teleporter:
 			break;
 	}
@@ -33,7 +38,7 @@ void BlockParams::reset()
 		case Type::Text:
 			delete text;
 			break;
-		case Type::Gate:
+		case Type::U8:
 		case Type::Teleporter:
 			break;
 	}
@@ -52,23 +57,35 @@ BlockParams::BlockParams(const BlockParams &other) :
 
 BlockParams &BlockParams::operator=(const BlockParams &other)
 {
-	reset();
+	if (m_type != other.m_type) {
+		reset();
+		set(other.m_type);
+	}
 
-	memcpy((void *)this, &other, sizeof(BlockParams));
+	// Not very efficient but needs less code maintenance
+	Packet pkt;
+	other.write(pkt);
+	read(pkt);
 
+	return *this;
+}
+
+bool BlockParams::operator==(const BlockParams &other) const
+{
 	switch (m_type) {
 		case Type::INVALID:
 		case Type::None:
-			break;
+			return true;
 		case Type::Text:
-			text = new std::string(*other.text);
-			break;
-		case Type::Gate:
+			return *text == *other.text;
+		case Type::U8:
+			return param_u8 == other.param_u8;
 		case Type::Teleporter:
-			break;
+			return teleporter.visual == other.teleporter.visual
+				&& teleporter.id == other.teleporter.id
+				&& teleporter.dst_id == other.teleporter.dst_id;
 	}
-
-	return *this;
+	return false; // ERROR
 }
 
 
@@ -82,8 +99,8 @@ void BlockParams::read(Packet &pkt)
 		case Type::Text:
 			*text = pkt.readStr16();
 			break;
-		case Type::Gate:
-			pkt.read(gate.value);
+		case Type::U8:
+			pkt.read(param_u8);
 			break;
 		case Type::Teleporter:
 			pkt.read(teleporter.visual);
@@ -102,8 +119,8 @@ void BlockParams::write(Packet &pkt) const
 		case Type::Text:
 			pkt.writeStr16(*text);
 			break;
-		case Type::Gate:
-			pkt.write(gate.value);
+		case Type::U8:
+			pkt.write(param_u8);
 			break;
 		case Type::Teleporter:
 			pkt.write(teleporter.visual);

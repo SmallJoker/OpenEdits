@@ -24,9 +24,9 @@ public:
 
 	static std::string findWorldPath(const std::string &world_id);
 
-private:
-	World &m_world;
-
 	static const std::string IMPORT_DIR;
 	static const std::string EXPORT_DIR;
+
+private:
+	World &m_world;
 };

@@ -139,7 +139,8 @@ void Client::pkt_WorldData(Packet &pkt)
 	pkt.read<u16>(size.X);
 	pkt.read<u16>(size.Y);
 	world->createEmpty(size);
-	if (mode == 1) {
+	bool have_world_data = (mode == 1);
+	if (have_world_data) {
 		world->read(pkt, m_protocol_version);
 	} // else: clear
 
@@ -154,6 +155,9 @@ void Client::pkt_WorldData(Packet &pkt)
 	bool is_new_join = player->getWorld() == nullptr;
 	for (auto it : m_players)
 		it.second->setWorld(world.ptr());
+
+	if (have_world_data)
+		updateWorld();
 
 	if (is_new_join) {
 		m_state = ClientState::WorldPlay;
@@ -266,6 +270,7 @@ void Client::pkt_SetPosition(Packet &pkt)
 	// semi-duplicate of Player::updateCoinCount
 	bool need_update = false;
 	for (Block *b = world->begin(); b < world->end(); ++b) {
+		// TODO: handle active keys/doors
 		if (b->tile == 0)
 			continue;
 
@@ -354,10 +359,18 @@ void Client::pkt_PlaceBlock(Packet &pkt)
 				{
 					BlockParams params;
 					world->getParams(bu.pos, &params);
-					if (player->coins >= params.gate.value)
+					if (player->coins >= params.param_u8)
 						b->tile = 1;
 				}
 				break;
+			case Block::ID_SPIKES:
+				{
+					BlockParams params;
+					world->getParams(bu.pos, &params);
+					b->tile = params.param_u8;
+				}
+				break;
+			// TODO: handle key doors/gates
 		}
 	}
 

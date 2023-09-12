@@ -32,7 +32,13 @@ static void eeoc_write()
 
 	EEOconverter conv(world);
 	conv.toFile("unittest_1.eelvl");
-	EEOconverter::inflate("unittest_1.eelvl");
+	std::string relpath = EEOconverter::EXPORT_DIR + "/unittest_1.eelvl";
+	EEOconverter::inflate(relpath);
+
+	std::rename(
+		relpath.c_str(),
+		(EEOconverter::IMPORT_DIR + "/unittest_1.eelvl").c_str()
+	);
 }
 
 static void eeoc_read_check()
@@ -58,7 +64,7 @@ static void eeoc_read_check()
 	CHECK(world.getBlock({25, 7}, &b));
 	CHECK(b.id == 0 && b.bg == 502);
 
-	std::remove("unittest_1.eelvl");
+	std::remove((EEOconverter::IMPORT_DIR + "/unittest_1.eelvl").c_str());
 }
 
 void unittest_eeo_converter()

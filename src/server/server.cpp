@@ -7,7 +7,7 @@
 #include "server/database_world.h"
 #include "version.h"
 
-#if 0
+#if 1
 	#define DEBUGLOG(...) printf(__VA_ARGS__)
 #else
 	#define DEBUGLOG(...) /* SILENCE */
@@ -112,7 +112,7 @@ void Server::step(float dtime)
 			it->write(out);
 
 			DEBUGLOG("Server: sending block x=%d,y=%d,id=%d\n",
-				it->pos.X, it->pos.Y, it->id);
+				it->pos.X, it->pos.Y, it->getId());
 
 			it = queue.erase(it);
 
@@ -153,6 +153,36 @@ void Server::step(float dtime)
 				}
 			}
 		}
+	}
+
+	auto respawn_killed = [this] (Player *player) {
+		Block b;
+		auto world = player->getWorld();
+		if (!world)
+			return;
+
+		world->getBlock(player->checkpoint, &b);
+		if (b.id == Block::ID_CHECKPOINT) {
+			teleportPlayer(player, core::vector2df(player->checkpoint.X, player->checkpoint.Y), false);
+		} else {
+			player->checkpoint = blockpos_t(-1, -1);
+			respawnPlayer(player, true, false);
+		}
+	};
+
+	// Respawn dead players
+	for (auto it = m_deaths.begin(); it != m_deaths.end(); ) {
+		if (!it->second.step(dtime)) {
+			// Waiting
+			it++;
+			continue;
+		}
+
+		Player *player = getPlayerNoLock(it->first);
+		if (player)
+			respawn_killed(player);
+
+		it = m_deaths.erase(it);
 	}
 
 	// TODO: Run player physics to check whether they are cheating or not
@@ -306,12 +336,12 @@ void Server::teleportPlayer(Player *player, core::vector2df dst, bool reset_prog
 	pkt.write<peer_t>(0); // end of bulk
 
 	// Same channel as world data
-	m_con->send(player->peer_id, 0, pkt);
+	broadcastInWorld(player, 0, pkt);
 
-	player->pos = dst;
+	player->setPosition(dst, reset_progress);
 }
 
-void Server::respawnPlayer(Player *player, bool send_packet)
+void Server::respawnPlayer(Player *player, bool send_packet, bool reset_progress)
 {
 	auto &meta = player->getWorld()->getMeta();
 	auto blocks = player->getWorld()->getBlocks(Block::ID_SPAWN, nullptr);
@@ -329,5 +359,7 @@ void Server::respawnPlayer(Player *player, bool send_packet)
 	}
 
 	if (send_packet)
-		teleportPlayer(player, player->pos, true);
+		teleportPlayer(player, player->pos, reset_progress);
+	else
+		player->setPosition(player->pos, reset_progress);
 }

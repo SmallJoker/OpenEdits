@@ -271,19 +271,29 @@ void SceneWorldRender::drawBlocksInView()
 			have_solid_above = it->second.is_solid;
 
 			BlockParams params;
-			if (b.tile == 0 && world->getParams(bp, &params) && params == BlockParams::Type::Gate) {
-				int required = params.gate.value;
-				required -= player->coins;
+			switch (b.id) {
+				case Block::ID_COINDOOR:
+				case Block::ID_COINGATE:
+					if (b.tile != 0)
+						break;
+					if (!world->getParams(bp, &params) || params != BlockParams::Type::U8)
+						break;
 
-				auto texture = m_gameplay->generateTexture(std::to_string(required), 0xFF000000, 0xFFFFFFFF);
-				auto dim = texture->getOriginalSize();
+					{
+						int required = params.param_u8;
+						required -= player->coins;
 
-				auto nb = smgr->addBillboardSceneNode(m_blocks_node,
-					core::dimension2d<f32>((float)dim.Width / dim.Height * 5, 5),
-					core::vector3df((x * 10) + 0, (y * -10) - 2, -0.05)
-				);
-				nb->getMaterial(0).Lighting = false;
-				nb->getMaterial(0).setTexture(0, texture);
+						auto texture = m_gameplay->generateTexture(std::to_string(required), 0xFF000000, 0xFFFFFFFF);
+						auto dim = texture->getOriginalSize();
+
+						auto nb = smgr->addBillboardSceneNode(m_blocks_node,
+							core::dimension2d<f32>((float)dim.Width / dim.Height * 5, 5),
+							core::vector3df((x * 10) + 0, (y * -10) - 2, -0.05)
+						);
+						nb->getMaterial(0).Lighting = false;
+						nb->getMaterial(0).setTexture(0, texture);
+					}
+			break;
 			}
 		} while (false);
 

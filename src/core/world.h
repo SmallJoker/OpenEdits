@@ -32,10 +32,11 @@ struct BlockUpdate {
 	void read(Packet &pkt);
 	void write(Packet &pkt) const;
 
+	// for std::unordered_set<> insertions
 	bool operator ==(const BlockUpdate &o) const
 	{
 		// ID check includes FG/BG
-		return pos == o.pos && id == o.id;
+		return pos == o.pos && id == o.id && params == o.params;
 	}
 
 	blockpos_t pos;
@@ -152,6 +153,7 @@ public:
 	bool getBlock(blockpos_t pos, Block *block) const;
 	bool setBlock(blockpos_t pos, const Block block);
 	blockpos_t getBlockPos(const Block *b) const;
+	bool checkUpdateBlockNeeded(const BlockUpdate bu);
 	Block *updateBlock(const BlockUpdate bu);
 	bool getParams(blockpos_t pos, BlockParams *params) const;
 

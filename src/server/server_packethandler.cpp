@@ -34,14 +34,14 @@ void Server::pkt_Quack(peer_t peer_id, Packet &pkt)
 
 void Server::pkt_Hello(peer_t peer_id, Packet &pkt)
 {
-	uint16_t protocol_ver = pkt.read<uint16_t>();
+	uint16_t protocol_max = pkt.read<uint16_t>();
 	uint16_t protocol_min = pkt.read<uint16_t>();
 
-	protocol_ver = std::min(PROTOCOL_VERSION, protocol_ver);
+	uint16_t protocol_ver = std::min(PROTOCOL_VERSION, protocol_max);
 	if (protocol_ver < protocol_min || protocol_ver < PROTOCOL_VERSION_MIN) {
 		char buf[255];
 		snprintf(buf, sizeof(buf), "server=[%d,%d], client=[%d,%d]",
-			protocol_min, protocol_ver, PROTOCOL_VERSION_MIN, PROTOCOL_VERSION);
+			protocol_min, protocol_max, PROTOCOL_VERSION_MIN, PROTOCOL_VERSION);
 
 		printf("Protocol mismatch. peer_id=%u tried to connect: %s\n", peer_id, buf);
 		sendMsg(peer_id, std::string("Incompatible protocol versions. ") + buf);
@@ -629,6 +629,7 @@ void Server::pkt_TriggerBlocks(peer_t peer_id, Packet &pkt)
 	auto &meta = world->getMeta();
 
 	// TODO: Check whether the responsible player is (or was) nearby
+	bool is_dead = false;
 	while (true) {
 		blockpos_t pos;
 		pkt.read(pos.X);
@@ -654,7 +655,18 @@ void Server::pkt_TriggerBlocks(peer_t peer_id, Packet &pkt)
 					}
 				}
 				break;
+			case Block::ID_CHECKPOINT:
+				player->checkpoint = pos;
+				break;
+			case Block::ID_SPIKES:
+				is_dead = true;
+				break;
 		}
+	}
+
+	if (is_dead) {
+		if (m_deaths.find(peer_id) == m_deaths.end())
+			m_deaths.insert({peer_id, Timer(1.0f) });
 	}
 }
 

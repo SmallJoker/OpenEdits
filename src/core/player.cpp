@@ -83,8 +83,10 @@ bool Player::setControls(const PlayerControls &ctrl)
 
 void Player::setPosition(core::vector2df newpos, bool reset_progress)
 {
-	if (reset_progress)
+	if (reset_progress) {
 		coins = 0;
+		checkpoint = blockpos_t(-1, -1);
+	}
 
 	pos = newpos;
 	vel = core::vector2df();
