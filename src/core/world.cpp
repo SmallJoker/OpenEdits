@@ -107,7 +107,7 @@ WorldMeta::Type WorldMeta::idToType(const std::string &id)
 
 PlayerFlags WorldMeta::getPlayerFlags(const std::string &name) const
 {
-	if (name == owner || true)
+	if (name == owner)
 		return PlayerFlags(PlayerFlags::PF_OWNER);
 
 	auto it = player_flags.find(name);

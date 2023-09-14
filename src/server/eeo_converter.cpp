@@ -335,17 +335,44 @@ private:
 	uint8_t m_buf_in[CHUNK]; // compressed data
 };
 
+struct EBlockParams {
+	enum class Type {
+		None,
+		I, // Rotation, Number, etc
+		III, // Portal
+		SI, // Sign, World portal
+		SSI, // Label
+		SSSS // NPC ??
+	};
 
-enum class BlockDataType : u8 {
-	None,
-	I, // Rotation, Number, etc
-	III, // Portal
-	SI, // Sign, World portal
-	SSI, // Label
-	SSSS // NPC ??
+	s32 val_I[3] = { 0 };
+	//std::string val_S[4] = { };
+
+	// --------- EBlockParams -> BlockParams conversion ---------
+
+	#define PARAM_CONV_IMPORT_REG(name) \
+		void (name)(bid_t id, BlockParams &params)
+	typedef PARAM_CONV_IMPORT_REG(EBlockParams::*ConvImporter);
+
+	static void registerImports();
+	static std::map<bid_t, ConvImporter> conv_import;
+
+	bool importParams(bid_t id, BlockParams &params);
+
+	PARAM_CONV_IMPORT_REG(importSpike)
+	{
+		params.param_u8 = (val_I[0] + 3) % 4;
+	}
+
+	PARAM_CONV_IMPORT_REG(importCoindoor)
+	{
+		params.param_u8 = val_I[0];
+	}
 };
 
-static std::vector<BlockDataType> BLOCK_TYPE_LUT; // Indexed by block ID
+std::map<bid_t, EBlockParams::ConvImporter> EBlockParams::conv_import;
+
+static std::vector<EBlockParams::Type> BLOCK_TYPE_LUT; // Indexed by block ID
 
 static std::vector<bid_t> BLOCK_ID_LUT; // Translation table
 
@@ -354,15 +381,16 @@ static void fill_block_types()
 	if (!BLOCK_TYPE_LUT.empty())
 		return;
 
+	using PType = EBlockParams::Type;
 	BLOCK_TYPE_LUT.resize(2000);
 
-	auto set_range = [](BlockDataType type, size_t first, size_t last) {
+	auto set_range = [](PType type, size_t first, size_t last) {
 		while (first <= last) {
 			BLOCK_TYPE_LUT.at(first) = type;
 			first++;
 		}
 	};
-	auto set_array = [](BlockDataType type, const u16 which[]) {
+	auto set_array = [](PType type, const u16 which[]) {
 		while (*which) {
 			BLOCK_TYPE_LUT.at(*which) = type;
 			which++;
@@ -390,18 +418,18 @@ static void fill_block_types()
 		83, 77, 1520,
 		0 // Terminator
 	};
-	set_array(BlockDataType::I, types_I);
+	set_array(PType::I, types_I);
 
 	static const u16 types_III[] = { 381, 242, 0 };
-	set_array(BlockDataType::III, types_III);
+	set_array(PType::III, types_III);
 
-	BLOCK_TYPE_LUT.at(374) = BlockDataType::SI;
-	BLOCK_TYPE_LUT.at(385) = BlockDataType::SI;
+	BLOCK_TYPE_LUT.at(374) = PType::SI;
+	BLOCK_TYPE_LUT.at(385) = PType::SI;
 
-	BLOCK_TYPE_LUT.at(1000) = BlockDataType::SSI;
+	BLOCK_TYPE_LUT.at(1000) = PType::SSI;
 
-	set_range(BlockDataType::SSSS, 1550, 1559);
-	set_range(BlockDataType::SSSS, 1569, 1579);
+	set_range(PType::SSSS, 1550, 1559);
+	set_range(PType::SSSS, 1569, 1579);
 }
 
 static void fill_block_translations()
@@ -419,7 +447,6 @@ static void fill_block_translations()
 	};
 	const bid_t SOLID = 9;
 
-	set_range(SOLID, 37, 42); // beta
 	set_range(SOLID, 17, 21); // brick
 	set_range(SOLID, 34, 36); // metal
 	set_range(SOLID, 51, 58); // glass
@@ -519,10 +546,29 @@ static void fill_block_translations()
 	BLOCK_ID_LUT.at(1580) = Block::ID_SPIKES; // not rotatable
 }
 
+void EBlockParams::registerImports()
+{
+	for (bid_t id : { 1625, 1627, 1629, 1631, 1633, 1635 })
+		conv_import[id] = &EBlockParams::importSpike;
+	for (bid_t id : { Block::ID_COINDOOR, Block::ID_COINGATE })
+		conv_import[id] = &EBlockParams::importCoindoor;
+}
+
+bool EBlockParams::importParams(bid_t id, BlockParams &params)
+{
+	auto it = conv_import.find(id);
+	if (it == conv_import.end())
+		return false;
+
+	(this->*it->second)(id, params);
+	return true;
+}
+
 static void ensure_cache()
 {
 	fill_block_types();
 	fill_block_translations();
+	EBlockParams::registerImports();
 }
 
 static void read_eelvl_header(DeflateReader &zs, LobbyWorld &meta)
@@ -574,6 +620,8 @@ void EEOconverter::fromFile(const std::string &filename_)
 	auto blockmgr = m_world.getBlockMgr();
 
 	std::string err;
+	EBlockParams params_in;
+	BlockUpdate bu(blockmgr);
 	while (zs.status == Z_OK) {
 		int block_id;
 		try {
@@ -590,62 +638,56 @@ void EEOconverter::fromFile(const std::string &filename_)
 
 		auto pos_x = zs.readArrU16x32();
 		auto pos_y = zs.readArrU16x32();
-		BlockDataType type = BLOCK_TYPE_LUT[block_id];
+
+		using PType = EBlockParams::Type;
+		PType type = BLOCK_TYPE_LUT[block_id];
 		DEBUGLOG("    Data: count=%zu, type=%d, offset=0x%04zX\n",
 			pos_x.size(), (int)type, zs.getIndex());
 
-		switch (type) {
-			case BlockDataType::None: break;
-			case BlockDataType::I:
-				zs.read<s32>();
-				break;
-			case BlockDataType::III:
-				zs.read<s32>();
-				zs.read<s32>();
-				zs.read<s32>();
-				break;
-			case BlockDataType::SI:
-				zs.readStr16();
-				zs.read<s32>();
-				break;
-			case BlockDataType::SSI:
-				zs.readStr16();
-				zs.readStr16();
-				zs.read<s32>();
-				break;
-			case BlockDataType::SSSS:
-				zs.readStr16();
-				zs.readStr16();
-				zs.readStr16();
-				zs.readStr16();
-				break;
-		}
-
-		auto props = blockmgr->getProps(block_id);
-		if (props) {
-			if ((layer == 1) != props->isBackground())
-				continue; // FG/BG mismatch
-		} else {
+		if (!bu.set(block_id)) {
 			// Attempt to remap unknown blocks
 			if (layer == 0) {
-				if ((size_t)block_id < BLOCK_ID_LUT.size())
-					block_id = BLOCK_ID_LUT[block_id];
-			} else {
-				block_id = 0;
+				if ((size_t)block_id < BLOCK_ID_LUT.size()) {
+					bu.set(BLOCK_ID_LUT[block_id]);
+				}
 			}
 		}
 
-		for (size_t i = 0; i < pos_x.size(); ++i) {
-			Block b;
-			blockpos_t pos(pos_x[i], pos_y[i]);
-			if (m_world.getBlock(pos, &b)) {
-				if (layer == 0)
-					b.id = block_id;
-				else
-					b.bg = block_id;
+		switch (type) {
+			case PType::None: break;
+			case PType::I:
+				params_in.val_I[0] = zs.read<s32>();
+				params_in.importParams(block_id, bu.params);
+				break;
+			case PType::III:
+				zs.read<s32>();
+				zs.read<s32>();
+				zs.read<s32>();
+				break;
+			case PType::SI:
+				zs.readStr16();
+				zs.read<s32>();
+				break;
+			case PType::SSI:
+				zs.readStr16();
+				zs.readStr16();
+				zs.read<s32>();
+				break;
+			case PType::SSSS:
+				zs.readStr16();
+				zs.readStr16();
+				zs.readStr16();
+				zs.readStr16();
+				break;
+		}
 
-				m_world.setBlock(pos, b);
-			}
+		if (bu.getId() == 0 || bu.getId() == Block::ID_INVALID)
+			continue; // do not add these blocks to the map
+
+		for (size_t i = 0; i < pos_x.size(); ++i) {
+			bu.pos.X = pos_x[i];
+			bu.pos.Y = pos_y[i];
+			m_world.updateBlock(bu);
 		}
 	}
 
@@ -716,32 +758,33 @@ void EEOconverter::toFile(const std::string &filename_) const
 			zs.write<u16>(pos.Y);
 	};
 
+	using PType = EBlockParams::Type;
 	for (const auto &entry : fg_blocks) {
 		zs.write<s32>(entry.first); // block ID
 		zs.write<s32>(0); // layer
 		write_array(entry.second);
 
 		switch (BLOCK_TYPE_LUT[entry.first]) {
-			case BlockDataType::None:
+			case PType::None:
 				break;
-			case BlockDataType::I:
-				zs.write<s32>(0);
-				break;
-			case BlockDataType::III:
-				zs.write<s32>(0);
-				zs.write<s32>(0);
+			case PType::I:
 				zs.write<s32>(0);
 				break;
-			case BlockDataType::SI:
+			case PType::III:
+				zs.write<s32>(0);
+				zs.write<s32>(0);
+				zs.write<s32>(0);
+				break;
+			case PType::SI:
 				zs.writeStr16("");
 				zs.write<s32>(0);
 				break;
-			case BlockDataType::SSI:
+			case PType::SSI:
 				zs.writeStr16("");
 				zs.writeStr16("");
 				zs.write<s32>(0);
 				break;
-			case BlockDataType::SSSS:
+			case PType::SSSS:
 				zs.writeStr16("");
 				zs.writeStr16("");
 				zs.writeStr16("");

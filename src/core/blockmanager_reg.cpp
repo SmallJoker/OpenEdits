@@ -87,6 +87,13 @@ void BlockManager::doPackRegistration()
 	}
 
 	{
+		BlockPack *pack = new BlockPack("beta");
+		pack->default_type = BlockDrawType::Solid;
+		pack->block_ids = { 37, 38, 39, 40, 41, 42 };
+		registerPack(pack);
+	}
+
+	{
 		BlockPack *pack = new BlockPack("doors");
 		pack->default_type = BlockDrawType::Solid;
 		pack->block_ids = {
