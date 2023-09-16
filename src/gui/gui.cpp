@@ -86,7 +86,7 @@ Gui::~Gui()
 		delete it.second;
 	m_handlers.clear();
 
-	delete m_device;
+	m_device->drop();
 }
 
 // -------------- Public members -------------

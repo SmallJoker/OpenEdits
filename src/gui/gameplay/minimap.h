@@ -4,6 +4,7 @@
 
 namespace irr {
 	namespace gui {
+		class IGUIElement;
 		class IGUIImage;
 	}
 	namespace video {
@@ -33,15 +34,20 @@ private:
 	void updateMap();
 	void updatePlayers(float dtime);
 
+	void requestSizeUpdate();
+
 	SceneGameplay *m_gameplay = nullptr;
 	Gui *m_gui = nullptr;
 
-	video::ITexture *m_texture = nullptr;
+	core::dimension2du m_imgsize; // texture/image size
+
+	video::ITexture *m_blocks_txt = nullptr;
+	gui::IGUIImage *m_blocks_elm = nullptr;
+
 	float m_overlay_timer = 0;
-	video::IImage *m_overlay_img = nullptr;
+	video::IImage *m_overlay_img = nullptr; // needed for fading effect
 	gui::IGUIImage *m_overlay_elm = nullptr;
 	video::ITexture *m_overlay_txt = nullptr; // players
-	core::dimension2du m_imgsize;
 
 	bool m_is_dirty = true;
 	bool m_is_visible = false;

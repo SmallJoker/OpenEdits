@@ -8,8 +8,8 @@
 #include <IImage.h>
 #include <IVideoDriver.h>
 
-constexpr int ID_ImgMinimap = 30,
-	Id_ImgOverlay = 31;
+constexpr int ID_ImgBlocks = 30,
+	ID_ImgOverlay = 31;
 constexpr int BORDER = 2; // px
 
 SceneMinimap::SceneMinimap(SceneGameplay *parent, Gui *gui)
@@ -20,7 +20,7 @@ SceneMinimap::SceneMinimap(SceneGameplay *parent, Gui *gui)
 
 SceneMinimap::~SceneMinimap()
 {
-	m_gui->driver->removeTexture(m_texture);
+	m_gui->driver->removeTexture(m_blocks_txt);
 	m_gui->driver->removeTexture(m_overlay_txt);
 
 	if (m_overlay_img)
@@ -34,17 +34,35 @@ void SceneMinimap::draw()
 
 	// Add the minimap texture
 	auto gui = m_gui->guienv;
+	auto root = gui->getRootGUIElement();
 
 	core::recti rect = m_gameplay->getDrawArea();
 	rect.UpperLeftCorner = rect.LowerRightCorner - core::dimension2di(m_imgsize);
 
-	auto e = gui->addImage(rect, nullptr, ID_ImgMinimap, nullptr, false);
-	e->setImage(m_texture);
 
-	e = gui->addImage(rect, nullptr, Id_ImgOverlay, nullptr, false);
+	// Actual minimap texture
+	auto e = (gui::IGUIImage *)root->getElementFromId(ID_ImgBlocks);
+	if (e) {
+		// Force update: size changed
+		e->setRelativePosition(rect);
+	} else {
+		e = gui->addImage(rect, nullptr, ID_ImgBlocks, nullptr, false);
+		m_blocks_elm = e;
+	}
+	e->setImage(m_blocks_txt);
+
+
+	// Players and other effects
+	e = (gui::IGUIImage *)root->getElementFromId(ID_ImgOverlay);
+	if (e) {
+		// Force update: size changed
+		e->setRelativePosition(rect);
+	} else {
+		e = gui->addImage(rect, nullptr, ID_ImgOverlay, nullptr, false);
+		e->setUseAlphaChannel(true);
+		m_overlay_elm = e;
+	}
 	e->setImage(m_overlay_txt);
-	e->setUseAlphaChannel(true);
-	m_overlay_elm = e;
 }
 
 void SceneMinimap::step(float dtime)
@@ -56,9 +74,6 @@ void SceneMinimap::step(float dtime)
 		m_need_force_reload = false;
 
 		// Force update element
-		toggleVisibility(); // remove
-		m_is_visible = true;
-
 		draw();
 	}
 }
@@ -119,13 +134,18 @@ void SceneMinimap::updateMap()
 		} while (0);
 	}
 
-	m_gui->driver->removeTexture(m_texture);
-	m_texture = m_gui->driver->addTexture("&&minimap", img);
+	m_gui->driver->removeTexture(m_blocks_txt);
+	m_blocks_txt = m_gui->driver->addTexture("&&minimap", img);
 
 	img->drop();
 
+	if (m_imgsize == size_new) {
+		m_blocks_elm->setImage(m_blocks_txt);
+	} else {
+		requestSizeUpdate();
+	}
+
 	m_imgsize = size_new;
-	m_need_force_reload = true;
 }
 
 void SceneMinimap::updatePlayers(float dtime)
@@ -191,21 +211,25 @@ void SceneMinimap::toggleVisibility()
 {
 	m_is_visible ^= true;
 
+	if (m_blocks_elm)
+		m_blocks_elm->setVisible(m_is_visible);
+
+	if (m_overlay_elm)
+		m_overlay_elm->setVisible(m_is_visible);
+
 	if (m_is_visible) {
 		draw();
 	} else {
-		auto root = m_gui->guienv->getRootGUIElement();
-		auto e = root->getElementFromId(ID_ImgMinimap);
-		if (e)
-			root->removeChild(e);
-		if (m_overlay_elm) {
-			root->removeChild(m_overlay_elm);
-			m_overlay_elm = nullptr;
-		}
-		if (m_overlay_img) {
-			// Recreate when opening the map again
-			m_overlay_img->drop();
-			m_overlay_img = nullptr;
-		}
+	}
+}
+
+
+void SceneMinimap::requestSizeUpdate()
+{
+	m_need_force_reload = true;
+
+	if (m_overlay_img) {
+		m_overlay_img->drop();
+		m_overlay_img = nullptr;
 	}
 }

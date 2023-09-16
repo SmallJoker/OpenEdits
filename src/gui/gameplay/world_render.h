@@ -54,5 +54,4 @@ private:
 
 	void updatePlayerPositions(float dtime);
 	float m_nametag_show_timer = 0;
-
 };

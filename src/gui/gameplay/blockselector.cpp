@@ -350,6 +350,7 @@ void SceneBlockSelector::drawBlockSelector()
 	tc->setID(ID_TabControl);
 	tc->setTabHeight(30);
 	tc->setNotClipped(true);
+	m_gui->getRootGUIElement()->bringToFront(m_showmore);
 
 	// Add category tabs
 	for (TabData &td : tabs_data) {

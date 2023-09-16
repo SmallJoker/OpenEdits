@@ -45,7 +45,6 @@ void SceneWorldRender::draw()
 	if (m_world_smgr != m_gui->scenemgr)
 		m_world_smgr->clear();
 
-
 	auto smgr = m_world_smgr;
 
 	// Main node to keep track of all children
@@ -319,6 +318,7 @@ void SceneWorldRender::drawBlocksInView()
 					core::vector3df(0, 0, z),
 					core::dimension2d<f32>(10, 10)
 				);
+
 				auto [it2, tmp] = bulk_map.insert({b.bg, d});
 				d.node->drop();
 

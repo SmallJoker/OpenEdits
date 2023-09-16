@@ -276,6 +276,7 @@ static bool editbox_move_to_end(gui::IGUIEnvironment *guienv, wchar_t charval = 
 		return false;
 
 	element->setVisible(true);
+	root->bringToFront(element);
 
 	SEvent ev;
 	memset(&ev, 0, sizeof(ev));
@@ -294,9 +295,9 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 	//if (e.EventType == EET_GUI_EVENT)
 	//	printf("event %d, %s\n", e.GUIEvent.EventType, e.GUIEvent.Caller->getTypeName());
 
-	if (m_blockselector->OnEvent(e))
+	if (m_blockselector && m_blockselector->OnEvent(e))
 		return true;
-	if (m_smileyselector->OnEvent(e))
+	if (m_smileyselector && m_smileyselector->OnEvent(e))
 		return true;
 
 	if (e.EventType == EET_GUI_EVENT) {
@@ -321,9 +322,14 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 					if (!element)
 						return false;
 
-					bool visible = !element->isVisible();
-					element->setVisible(visible);
-					m_gui->guienv->setFocus(visible ? element : nullptr);
+					if (!element->isVisible()) {
+						// Show
+						editbox_move_to_end(m_gui->guienv);
+					} else {
+						// Hide
+						element->setVisible(false);
+						m_gui->guienv->setFocus(nullptr);
+					}
 					return true;
 				}
 				if (e.GUIEvent.Caller->getID() == ID_BtnMinimap) {
