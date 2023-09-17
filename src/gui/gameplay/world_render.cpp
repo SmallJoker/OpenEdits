@@ -62,29 +62,21 @@ void SceneWorldRender::draw()
 	// Set up camera
 
 	m_camera = smgr->addCameraSceneNode(nullptr);
-
-	if (1) {
-		// Makes things worse
-		core::matrix4 ortho;
-		ortho.buildProjectionMatrixOrthoLH(400 * 0.9f, 300 * 0.9f, 0.1f, 300.0f);
-		m_camera->setProjectionMatrix(ortho, true);
-		//m_camera->setAspectRatio((float)draw_area.getWidth() / (float)draw_area.getHeight());
-	}
-
+	m_camera->setFOV(0.4f);
+	m_camera->setFarValue(4000);
 
 	auto player = m_gui->getClient()->getMyPlayer();
 	if (!!player) {
 		m_camera_pos.X = player->pos.X *  10;
 		m_camera_pos.Y = player->pos.Y * -10;
 	}
-	m_camera_pos.Z = -170.0f;
+	m_camera_pos.Z = -500.0f;
 	setCamera(m_camera_pos);
 
 	// TODO: Upon resize, the world sometimes blacks out, even though
 	// the world scene nodes are added... ?!
 	m_dirty_worldmesh = true;
 }
-
 
 void SceneWorldRender::step(float dtime)
 {
@@ -139,7 +131,6 @@ void SceneWorldRender::setCamera(core::vector3df pos)
 	m_camera->setTarget(pos);
 	m_camera->updateAbsolutePosition();
 }
-
 
 void SceneWorldRender::drawBlocksInView()
 {

@@ -8,6 +8,13 @@
 #include <IImage.h>
 #include <IVideoDriver.h>
 
+#if 0
+	#define DEBUGLOG(...) printf(__VA_ARGS__)
+#else
+	#define DEBUGLOG(...) /* SILENCE */
+#endif
+#define ERRORLOG(...) fprintf(stderr, __VA_ARGS__)
+
 constexpr int ID_ImgBlocks = 30,
 	ID_ImgOverlay = 31;
 constexpr int BORDER = 2; // px
@@ -29,8 +36,13 @@ SceneMinimap::~SceneMinimap()
 
 void SceneMinimap::draw()
 {
+	m_blocks_elm = nullptr;
+	m_overlay_elm = nullptr;
+
 	if (!m_is_visible)
 		return;
+
+	DEBUGLOG("Minimap: draw\n");
 
 	// Add the minimap texture
 	auto gui = m_gui->guienv;
@@ -47,9 +59,9 @@ void SceneMinimap::draw()
 		e->setRelativePosition(rect);
 	} else {
 		e = gui->addImage(rect, nullptr, ID_ImgBlocks, nullptr, false);
-		m_blocks_elm = e;
 	}
 	e->setImage(m_blocks_txt);
+	m_blocks_elm = e;
 
 
 	// Players and other effects
@@ -60,9 +72,9 @@ void SceneMinimap::draw()
 	} else {
 		e = gui->addImage(rect, nullptr, ID_ImgOverlay, nullptr, false);
 		e->setUseAlphaChannel(true);
-		m_overlay_elm = e;
 	}
 	e->setImage(m_overlay_txt);
+	m_overlay_elm = e;
 }
 
 void SceneMinimap::step(float dtime)
@@ -72,6 +84,7 @@ void SceneMinimap::step(float dtime)
 
 	if (m_need_force_reload) {
 		m_need_force_reload = false;
+		DEBUGLOG("Minimap: force reload\n");
 
 		// Force update element
 		draw();
@@ -210,6 +223,7 @@ void SceneMinimap::updatePlayers(float dtime)
 void SceneMinimap::toggleVisibility()
 {
 	m_is_visible ^= true;
+	DEBUGLOG("Minimap: set visibility to: %d\n", (int)m_is_visible);
 
 	if (m_blocks_elm)
 		m_blocks_elm->setVisible(m_is_visible);
@@ -217,10 +231,8 @@ void SceneMinimap::toggleVisibility()
 	if (m_overlay_elm)
 		m_overlay_elm->setVisible(m_is_visible);
 
-	if (m_is_visible) {
+	if (m_is_visible)
 		draw();
-	} else {
-	}
 }
 
 

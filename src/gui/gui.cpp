@@ -220,6 +220,12 @@ SceneHandler *Gui::getHandler(SceneHandlerType type)
 	return it->second;
 }
 
+io::IFileSystem *Gui::getFileSystem()
+{
+	return m_device->getFileSystem();
+}
+
+
 void Gui::connect(SceneConnect *sc)
 {
 	if (m_server || m_client) {

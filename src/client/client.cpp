@@ -4,7 +4,7 @@
 #include "core/connection.h"
 #include "core/packet.h"
 
-#if 1
+#if 0
 	#define DEBUGLOG(...) printf(__VA_ARGS__)
 #else
 	#define DEBUGLOG(...) /* SILENCE */

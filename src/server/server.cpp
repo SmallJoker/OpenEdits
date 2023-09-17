@@ -7,7 +7,7 @@
 #include "server/database_world.h"
 #include "version.h"
 
-#if 1
+#if 0
 	#define DEBUGLOG(...) printf(__VA_ARGS__)
 #else
 	#define DEBUGLOG(...) /* SILENCE */

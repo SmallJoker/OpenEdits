@@ -14,6 +14,9 @@ namespace irr {
 		class IGUIEnvironment;
 		class IGUIFont;
 	}
+	namespace io {
+		class IFileSystem;
+	}
 	namespace scene {
 		class ISceneManager;
 	}
@@ -60,6 +63,8 @@ public:
 	// Helpers for SceneHandler
 	Client *getClient() { return m_client; }
 	void showPopupText(const std::string &str);
+
+	io::IFileSystem *getFileSystem();
 
 	// Actions to perform
 	void connect(SceneConnect *sc);
