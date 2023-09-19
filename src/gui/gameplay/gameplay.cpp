@@ -453,7 +453,7 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 				{
 					float dir = e.MouseInput.Wheel > 0 ? 1 : -1;
 
-					m_world_render->getCameraPos()->Z *= (1 - dir * 0.1);
+					m_world_render->zoom_factor *= (1 + dir * 0.1);
 				}
 				break;
 			default: break;

@@ -32,6 +32,8 @@ public:
 	core::vector3df *getCameraPos() { return &m_camera_pos; }
 	core::line3df getShootLine(core::vector2di mousepos);
 
+	f32 zoom_factor = 1.0f;
+
 	void markDirty() { m_dirty_worldmesh = true; }
 
 private:

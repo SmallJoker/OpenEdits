@@ -18,7 +18,7 @@ static float ZINDEX_LOOKUP[(int)BlockDrawType::Invalid] = {
 	0.1, // Solid
 	0.1, // Action
 	-0.1, // Decoration
-	0.2, // Background
+	2.2, // Background
 };
 
 SceneWorldRender::SceneWorldRender(SceneGameplay* parent, Gui* gui)
@@ -38,6 +38,8 @@ SceneWorldRender::~SceneWorldRender()
 
 void SceneWorldRender::draw()
 {
+	zoom_factor = 2.4f;
+
 	if (!m_world_smgr) {
 		m_world_smgr = m_gui->scenemgr->createNewSceneManager(false);
 		//m_world_smgr = m_gui->scenemgr;
@@ -62,8 +64,6 @@ void SceneWorldRender::draw()
 	// Set up camera
 
 	m_camera = smgr->addCameraSceneNode(nullptr);
-	m_camera->setFOV(0.4f);
-	m_camera->setFarValue(4000);
 
 	auto player = m_gui->getClient()->getMyPlayer();
 	if (!!player) {
@@ -89,7 +89,13 @@ void SceneWorldRender::step(float dtime)
 		auto draw_area = m_gameplay->getDrawArea();
 		auto old_viewport = m_gui->driver->getViewPort();
 		m_gui->driver->setViewPort(draw_area);
-		m_camera->setAspectRatio((float)draw_area.getWidth() / draw_area.getHeight());
+
+		core::matrix4 proj;
+		proj.buildProjectionMatrixOrthoLH(
+			draw_area.getWidth() / zoom_factor,
+			draw_area.getHeight() / zoom_factor,
+			100, 1000);
+		m_camera->setProjectionMatrix(proj);
 
 		m_world_smgr->drawAll();
 
@@ -156,6 +162,7 @@ void SceneWorldRender::drawBlocksInView()
 		panes[scene::SViewFrustum::VF_BOTTOM_PLANE].getIntersectionWithLine(
 			center, core::vector3df(0, 1, 0), intersection_y
 		);
+		// Change to -2 offset for debugging
 		x_extent = std::ceil(intersection_x.X / 10) - x_center + 1;
 		y_extent = std::ceil(-intersection_y.Y / 10) - y_center + 1;
 
