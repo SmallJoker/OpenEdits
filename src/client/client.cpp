@@ -104,9 +104,6 @@ void Client::step(float dtime)
 		}
 
 		auto &meta = world->getMeta();
-		for (auto &kdata : meta.keys) {
-			kdata.step(dtime);
-		}
 
 		// Process triggers
 		bool trigger_event = false;
@@ -428,6 +425,36 @@ void Client::processPacket(peer_t peer_id, Packet &pkt)
 	} catch (std::exception &e) {
 		printf("Client: Action %d general error: %s\n", action, e.what());
 	}
+}
+
+uint8_t Client::getBlockTile(const Player *player, const Block *b) const
+{
+	auto world = player->getWorld();
+
+	auto get_params = [&] () {
+		BlockParams params;
+		world->getParams(world->getBlockPos(b), &params);
+		return params;
+	};
+
+	switch (b->id) {
+		case Block::ID_SPIKES:
+			return get_params().param_u8;
+		case Block::ID_SECRET:
+			return player->godmode;
+		case Block::ID_COINDOOR:
+		case Block::ID_COINGATE:
+			return get_params().param_u8 >= player->coins;
+		case Block::ID_DOOR_R:
+		case Block::ID_DOOR_G:
+		case Block::ID_DOOR_B:
+			return world->getMeta().keys[b->id - Block::ID_DOOR_R].isActive();
+		case Block::ID_GATE_R:
+		case Block::ID_GATE_G:
+		case Block::ID_GATE_B:
+			return world->getMeta().keys[b->id - Block::ID_GATE_R].isActive();
+	}
+	return 0;
 }
 
 void Client::updateWorld()

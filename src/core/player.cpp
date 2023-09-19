@@ -27,7 +27,7 @@ void Player::setWorld(RefCnt<World> world)
 	setGodMode(false);
 }
 
-RefCnt<World> Player::getWorld()
+RefCnt<World> Player::getWorld() const
 {
 	return m_world;
 }
@@ -52,7 +52,7 @@ void Player::readPhysics(Packet &pkt)
 	pkt.read(m_controls.dir.Y);
 }
 
-void Player::writePhysics(Packet &pkt)
+void Player::writePhysics(Packet &pkt) const
 {
 	pkt.write(pos.X);
 	pkt.write(pos.Y);

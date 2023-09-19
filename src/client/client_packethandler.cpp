@@ -279,12 +279,14 @@ void Client::pkt_SetPosition(Packet &pkt)
 	// semi-duplicate of Player::updateCoinCount
 	bool need_update = false;
 	for (Block *b = world->begin(); b < world->end(); ++b) {
-		// TODO: handle active keys/doors
 		if (b->tile == 0)
 			continue;
 
-		b->tile = 0;
-		need_update = true;
+		auto new_tile = getBlockTile(player, b);
+		if (b->tile != new_tile) {
+			b->tile = new_tile;
+			need_update = true;
+		}
 	}
 
 	updateWorld();
@@ -361,28 +363,8 @@ void Client::pkt_PlaceBlock(Packet &pkt)
 		if (!b)
 			continue;
 
-		switch (bu.getId()) {
-			case Block::ID_SECRET:
-				b->tile = player->godmode;
-				break;
-			case Block::ID_COINDOOR:
-			case Block::ID_COINGATE:
-				{
-					BlockParams params;
-					world->getParams(bu.pos, &params);
-					if (player->coins >= params.param_u8)
-						b->tile = 1;
-				}
-				break;
-			case Block::ID_SPIKES:
-				{
-					BlockParams params;
-					world->getParams(bu.pos, &params);
-					b->tile = params.param_u8;
-				}
-				break;
-			// TODO: handle key doors/gates
-		}
+		if (!bu.isBackground())
+			b->tile = getBlockTile(player.ptr(), b);
 	}
 
 	player->updateCoinCount();
@@ -396,10 +378,10 @@ void Client::pkt_Key(Packet &pkt)
 {
 	auto player = getMyPlayer();
 
-	bid_t key_id = pkt.read<bid_t>();
+	bid_t key_bid = pkt.read<bid_t>();
 	bool state = pkt.read<u8>();
 
-	switch (key_id) {
+	switch (key_bid) {
 		case Block::ID_KEY_R:
 		case Block::ID_KEY_G:
 		case Block::ID_KEY_B:
@@ -410,9 +392,14 @@ void Client::pkt_Key(Packet &pkt)
 			return;
 	};
 
-	bid_t bid_door = (key_id - Block::ID_KEY_R) + Block::ID_DOOR_R;
-	bid_t bid_gate = (key_id - Block::ID_KEY_R) + Block::ID_GATE_R;
+	uint8_t key_idx = key_bid - Block::ID_KEY_R;
+	bid_t bid_door = key_idx + Block::ID_DOOR_R;
+	bid_t bid_gate = key_idx + Block::ID_GATE_R;
 
+	auto &timer = player->getWorld()->getMeta().keys[key_idx];
+	timer.set(state); // 1.0f (active) or 0.0f (stopped)
+
+	// Quick iterate
 	size_t n = 0;
 	auto world = player->getWorld();
 	for (Block *b = world->begin(); b < world->end(); ++b) {

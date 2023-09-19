@@ -36,7 +36,7 @@ public:
 		return m_cooldown <= 0;
 	}
 
-	inline bool isActive() { return m_cooldown > 0; }
+	inline bool isActive() const { return m_cooldown > 0; }
 
 private:
 	float m_cooldown = 0;

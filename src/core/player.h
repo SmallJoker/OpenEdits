@@ -27,10 +27,10 @@ public:
 	virtual ~Player();
 
 	void setWorld(RefCnt<World> world);
-	RefCnt<World> getWorld();
+	RefCnt<World> getWorld() const;
 
 	void readPhysics(Packet &pkt);
-	void writePhysics(Packet &pkt);
+	void writePhysics(Packet &pkt) const;
 
 	PlayerControls getControls() { return m_controls; }
 	// True: outdated controls -> send update to server
