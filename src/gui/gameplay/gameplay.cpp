@@ -701,8 +701,9 @@ bool SceneGameplay::getBlockFromPixel(int x, int y, blockpos_t &bp)
 	auto xy_point = shootline.start + dir * n;
 
 	// convert to block positions
-	xy_point.X = (xy_point.X + 5.0f) / 10.0f;
-	xy_point.Y = (-xy_point.Y + 5.0f) / 10.0f;
+	// The shootline is a bit strange. Should be ((X + 5) / 10)
+	xy_point.X = (xy_point.X + 4.0f) / 10.0f;
+	xy_point.Y = (-xy_point.Y + 4.0f) / 10.0f;
 	//printf("pointed: %f, %f, %f\n", xy_point.X, xy_point.Y, xy_point.Z);
 
 	auto world = m_gui->getClient()->getWorld();

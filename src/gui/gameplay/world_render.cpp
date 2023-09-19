@@ -95,7 +95,7 @@ void SceneWorldRender::step(float dtime)
 			draw_area.getWidth() / zoom_factor,
 			draw_area.getHeight() / zoom_factor,
 			100, 1000);
-		m_camera->setProjectionMatrix(proj);
+		m_camera->setProjectionMatrix(proj, true);
 
 		m_world_smgr->drawAll();
 
@@ -124,6 +124,8 @@ core::line3df SceneWorldRender::getShootLine(core::vector2di mousepos)
 			->getSceneCollisionManager()
 			->getRayFromScreenCoordinates(mousepos, m_camera);
 
+	//printf("start %.1f,%.1f,%.1f\n", shootline.start.X, shootline.start.Y, shootline.start.Z);
+	//printf("  end %.1f,%.1f,%.1f\n\n", shootline.end.X, shootline.end.Y, shootline.end.Z);
 	m_gui->driver->setViewPort(old_viewport);
 
 	return shootline;
