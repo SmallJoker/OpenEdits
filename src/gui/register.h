@@ -13,4 +13,5 @@ public:
 
 private:
 	bool m_pass_match = true;
+	bool m_is_register = true; // false: password change
 };

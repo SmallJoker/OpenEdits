@@ -19,6 +19,7 @@ enum ElementId : int {
 	ID_ListImport,
 	ID_BoxWorldID,
 	ID_BtnJoin,
+	ID_BtnChangePass,
 	ID_BtnDisconnect,
 	// World creation:
 	ID_BoxTitle,
@@ -95,10 +96,14 @@ void SceneLobby::draw()
 	}
 
 	{
-		// Custom world ID box
-		auto rect_lab = m_gui->getRect({30, 70}, {10, -30});
-		auto rect_box = m_gui->getRect({0, 0}, {15, -30});
-		rect_box += rect_lab.LowerRightCorner + core::vector2di(0, -35);
+		// New world creation options
+		const core::vector2di VSPACING(0, 35);
+
+		auto rect_lab = m_gui->getRect({25, 65}, {10, -30});
+		auto rect_box = m_gui->getRect({0, 0}, {17, -30}) + core::vector2di(0, -35);
+		auto get_box_rect = [&] () {
+			return rect_box + rect_lab.LowerRightCorner;
+		};
 
 		{
 			auto e = gui->addStaticText(L"Title", rect_lab);
@@ -106,39 +111,37 @@ void SceneLobby::draw()
 
 			std::wstring tmp;
 			utf8_to_wide(tmp, title.c_str());
-			gui->addEditBox(tmp.c_str(), rect_box, true, nullptr, ID_BoxTitle);
+			gui->addEditBox(tmp.c_str(), get_box_rect(), true, nullptr, ID_BoxTitle);
+			rect_lab += VSPACING;
 		}
 
-		rect_lab += core::vector2di(0, 35);
-		rect_box += core::vector2di(0, 35);
 		{
-			auto e = gui->addStaticText(L"Code", rect_lab);
+			auto e = gui->addStaticText(L"Edit code", rect_lab);
 			e->setOverrideColor(Gui::COLOR_ON_BG);
 
 			std::wstring tmp;
 			utf8_to_wide(tmp, code.c_str());
-			gui->addEditBox(tmp.c_str(), rect_box, true, nullptr, ID_BoxCode);
+			gui->addEditBox(tmp.c_str(), get_box_rect(), true, nullptr, ID_BoxCode);
+			rect_lab += VSPACING;
 		}
 
-		rect_lab += core::vector2di(0, 35);
-		rect_box += core::vector2di(0, 35);
 		{
 			auto e = gui->addStaticText(L"Type", rect_lab);
 			e->setOverrideColor(Gui::COLOR_ON_BG);
 
-			auto c = gui->addComboBox(rect_box, nullptr, ID_SelMode);
+			auto c = gui->addComboBox(get_box_rect(), nullptr, ID_SelMode);
 			c->addItem(L"Temporary",   (u32)WorldMeta::Type::TmpSimple);
 			c->addItem(L"Temp + Draw", (u32)WorldMeta::Type::TmpDraw);
 			c->addItem(L"Persistent",  (u32)WorldMeta::Type::Persistent);
+			rect_lab += VSPACING;
 		}
 
-		rect_box += core::vector2di(0, 35);
-		gui->addButton(rect_box, nullptr, ID_BtnCreate, L"Create");
+		gui->addButton(get_box_rect(), nullptr, ID_BtnCreate, L"Create");
 	}
 
 	{
 		// Custom world ID box
-		auto rect = m_gui->getRect({65, 80}, {15, -30});
+		auto rect = m_gui->getRect({60, 70}, {15, -30});
 		gui->addEditBox(L"", rect, true, nullptr, ID_BoxWorldID);
 
 		core::recti rect_btn(
@@ -164,6 +167,12 @@ void SceneLobby::draw()
 		eb->setImage(m_gui->driver->getTexture("assets/textures/icon_leave.png"));
 		eb->setScaleImage(true);
 		eb->setUseAlphaChannel(true);
+	}
+
+	// Change password
+	{
+		auto rect_btn =  m_gui->getRect({-10, 88}, {-150, -30});
+		gui->addButton(rect_btn, nullptr, ID_BtnChangePass, L"Change password");
 	}
 
 	m_dirty_worldlist = true;
@@ -220,6 +229,11 @@ bool SceneLobby::OnEvent(const SEvent &e)
 				}
 				if (e.GUIEvent.Caller->getID() == ID_BtnDisconnect) {
 					m_gui->disconnect();
+					return true;
+				}
+				if (e.GUIEvent.Caller->getID() == ID_BtnChangePass) {
+					e.GUIEvent.Caller->setEnabled(false);
+					m_gui->setSceneLoggedIn(SceneHandlerType::Register);
 					return true;
 				}
 				break;

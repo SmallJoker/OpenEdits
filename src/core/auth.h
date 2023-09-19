@@ -18,8 +18,8 @@ public:
 	};
 	Status status = Status::Unauthenticated;
 
-	std::string local_unique_salt; // for client use
-	std::string local_random; // for server use
+	std::string salt_1_const; // database-specific
+	std::string salt_2_var; // per login/pw change attempt
 
 	std::string output;
 };

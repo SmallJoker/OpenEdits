@@ -71,6 +71,7 @@ public:
 	void disconnect();
 	void joinWorld(SceneLobby *sc);
 	void leaveWorld();
+	void setSceneLoggedIn(SceneHandlerType type);
 
 	// GUI utility functions
 	core::recti getRect(core::vector2df pos_perc, core::dimension2di size_perc);

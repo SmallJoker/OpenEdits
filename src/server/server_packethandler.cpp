@@ -124,13 +124,13 @@ void Server::pkt_Hello(peer_t peer_id, Packet &pkt)
 		AuthAccount info;
 		bool ok = m_auth_db->load(player->name, &info);
 		if (ok) {
-			player->auth.local_random = Auth::generateRandom();
+			player->auth.salt_2_var = Auth::generateRandom();
 
 			Packet out;
 			out.write(Packet2Client::Auth);
-			out.writeStr16("hash");
+			out.writeStr16("login1");
 			out.writeStr16(m_auth_db->getUniqueSalt());
-			out.writeStr16(player->auth.local_random);
+			out.writeStr16(player->auth.salt_2_var);
 			m_con->send(peer_id, 0, out);
 		} else {
 			player->auth.status = Auth::Status::Unregistered;
@@ -159,7 +159,7 @@ void Server::pkt_Auth(peer_t peer_id, Packet &pkt)
 		return;
 	}
 
-	if (action == "hash") {
+	if (action == "login2") {
 		// Confirm the client-sent hash
 
 		AuthAccount info;
@@ -172,7 +172,7 @@ void Server::pkt_Auth(peer_t peer_id, Packet &pkt)
 		std::string hash = pkt.readStr16();
 
 		// Compare doubly-hashed passwords
-		player->auth.hash(info.password, player->auth.local_random);
+		player->auth.hash(info.password, player->auth.salt_2_var);
 
 		bool signed_in = player->auth.output == hash;
 		if (info.password.empty()) {
@@ -186,6 +186,7 @@ void Server::pkt_Auth(peer_t peer_id, Packet &pkt)
 			return;
 		}
 
+		player->auth.salt_2_var.clear(); // would allow to change the password directly
 		player->auth.status = Auth::Status::SignedIn;
 		player->state = RemotePlayerState::Idle;
 
@@ -257,13 +258,27 @@ void Server::pkt_Auth(peer_t peer_id, Packet &pkt)
 			return;
 		}
 
-		info.password = pkt.readStr16(); // new hash
+		std::string old_pw = pkt.readStr16();
+		if (!info.password.empty() && info.password != old_pw) {
+			sendMsg(peer_id, "Incorrect password");
+			return;
+		}
+
+		// Update to newly specified password (insecure)
+		info.password = pkt.readStr16();
 
 		ok = m_auth_db->save(info);
-		if (ok)
-			sendMsg(peer_id, "Password updated.");
-		else
-			sendMsg(peer_id, "Failed to update password.");
+		if (!ok) {
+			sendMsg(peer_id, "Failed to change password.");
+			return;
+		}
+
+		sendMsg(peer_id, "Password changed successfully.");
+
+		Packet out;
+		out.write(Packet2Client::Auth);
+		out.writeStr16("pass_set");
+		m_con->send(peer_id, 0, out);
 		return;
 	}
 

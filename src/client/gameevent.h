@@ -18,6 +18,7 @@ struct GameEvent {
 		G2C_INVALID,
 		G2C_REGISTER,
 		G2C_LOBBY_REQUEST,
+		G2C_SET_PASSWORD,
 		G2C_JOIN,
 		G2C_CREATE_WORLD,
 		G2C_LEAVE,
@@ -32,6 +33,7 @@ struct GameEvent {
 		C2G_DIALOG,
 		C2G_DISCONNECT,
 		C2G_LOBBY_UPDATE,
+		C2G_CHANGE_PASS,
 		C2G_JOIN,
 		C2G_LEAVE,
 		C2G_MAP_UPDATE,
@@ -45,6 +47,7 @@ struct GameEvent {
 
 	GameEvent(G2C_Enum v) : type_g2c(v) {}
 	GameEvent(C2G_Enum v) : type_c2g(v) {}
+	~GameEvent();
 
 	struct PlayerChat {
 		Player *player;
@@ -61,12 +64,18 @@ struct GameEvent {
 		Block b;
 	};
 
+	struct PasswordChangeData {
+		std::string old_pw;
+		std::string new_pw;
+	};
+
 	union {
 		std::string *text;
 		Player *player;
 		PlayerChat *player_chat;
 		WorldCreationData *wc_data;
 		BlockData *block;
+		PasswordChangeData *password;
 		int intval;
 	};
 };

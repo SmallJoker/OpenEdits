@@ -197,7 +197,7 @@ bool Client::OnEvent(GameEvent &e)
 			return false;
 		case E::G2C_REGISTER:
 			{
-				m_auth.hash(m_auth.local_unique_salt, *e.text);
+				m_auth.hash(m_auth.salt_1_const, *e.text);
 
 				Packet pkt;
 				pkt.write(Packet2Server::Auth);
@@ -210,6 +210,22 @@ bool Client::OnEvent(GameEvent &e)
 			{
 				Packet pkt;
 				pkt.write(Packet2Server::GetLobby);
+				m_con->send(0, 0, pkt);
+			}
+			return true;
+		case E::G2C_SET_PASSWORD:
+			{
+				m_auth.hash(m_auth.salt_1_const, e.password->old_pw);
+				e.password->old_pw = m_auth.output;
+
+				m_auth.hash(m_auth.salt_1_const, e.password->new_pw);
+				e.password->new_pw = m_auth.output;
+
+				Packet pkt;
+				pkt.write(Packet2Server::Auth);
+				pkt.writeStr16("setpass");
+				pkt.writeStr16(e.password->old_pw);
+				pkt.writeStr16(e.password->new_pw);
 				m_con->send(0, 0, pkt);
 			}
 			return true;

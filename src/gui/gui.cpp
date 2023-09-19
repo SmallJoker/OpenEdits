@@ -189,6 +189,9 @@ bool Gui::OnEvent(GameEvent &e)
 			disconnect();
 			showPopupText("Disconnected from the server");
 			return true;
+		case E::C2G_CHANGE_PASS:
+			setNextScene(SceneHandlerType::Lobby);
+			return true;
 		case E::C2G_JOIN:
 			setNextScene(SceneHandlerType::Gameplay);
 			return true;
@@ -291,6 +294,21 @@ void Gui::leaveWorld()
 	sendNewEvent(e);
 }
 
+void Gui::setSceneLoggedIn(SceneHandlerType type)
+{
+	if (m_client->getState() != ClientState::LobbyIdle)
+		return;
+
+	using T = SceneHandlerType;
+	switch (type) {
+		case T::Register:
+		case T::Lobby:
+			break;
+		default: return; // not accepted
+	}
+	setNextScene(type);
+}
+
 
 // -------------- GUI utility functions -------------
 
@@ -315,19 +333,19 @@ core::recti Gui::getRect(core::vector2df pos_perc, core::dimension2di size_perc)
 	else
 		size.Height = window_size.Height * size_perc.Height * 0.01f;
 
-	// Pin to the bottom (maybe not needed)
-	if (pos.X + size.Width < 0)
-		pos.X = -size.Width;
-	else if (pos.X + size.Width >= (s32)window_size.Width)
-		pos.X = window_size.Width - size.Width - 1;
-
-	if (pos.Y + size.Height < 0)
-		pos.Y = -size.Height;
-	else if (pos.Y + size.Height >= (s32)window_size.Height)
-		pos.Y = window_size.Height - size.Height - 1;
+	// Pin to the bottom
+	if (pos.X < 0) {
+		pos.X += window_size.Width;
+		size.Width *= -1;
+	}
+	if (pos.Y < 0) {
+		pos.Y += window_size.Height;
+		size.Height *= -1;
+	}
 
 	ret.UpperLeftCorner = pos;
 	ret.LowerRightCorner = pos + size;
+	ret.repair();
 
 	return ret;
 }
