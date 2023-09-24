@@ -19,7 +19,7 @@ set(THREADS_PREFER_PTHREAD_FLAG TRUE)
 find_package(Threads REQUIRED) # pthread
 find_package(ENet REQUIRED)
 find_package(SQLite3 REQUIRED)
-find_package(ZLIB)
+find_package(ZLIB REQUIRED)
 
 set(IRRLICHTMT_BUILD_DIR "" CACHE PATH "Client: Path to IrrlichtMt build directory. Server: Include path")
 if (BUILD_CLIENT)
@@ -142,7 +142,7 @@ if(BUILD_CLIENT)
 endif()
 
 if(ZLIB_FOUND)
-	message("--- Found ZLIB for EEO world import")
+	message("--- Found ZLIB for world compression")
 	add_compile_definitions(HAVE_ZLIB)
 	include_directories(${ZLIB_INCLUDE_DIRS})
 	target_link_libraries(${PROJECT_NAME} ZLIB::ZLIB)

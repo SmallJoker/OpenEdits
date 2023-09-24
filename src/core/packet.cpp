@@ -32,12 +32,24 @@ Packet::Packet(_ENetPacket **pkt)
 	*pkt = nullptr;
 }
 
+Packet::Packet(Packet *pkt)
+{
+	m_data = pkt->m_data;
+	m_data->referenceCount++; // until ~Packet
+
+	m_read_offset = pkt->m_read_offset;
+	m_write_offset = pkt->m_write_offset;
+}
+
+
 Packet::~Packet()
 {
-	if (m_data->referenceCount < 1)
-		std::terminate(); //fprintf(stderr, "Counting is difficult %s\n", dump().c_str());
-	else
+	if (m_data->referenceCount < 1) {
+		fprintf(stderr, "Counting is difficult %s\n", dump().c_str());
+		std::terminate();
+	} else {
 		m_data->referenceCount--;
+	}
 
 	if (m_data->referenceCount == 0)
 		enet_packet_destroy(m_data);
@@ -45,6 +57,16 @@ Packet::~Packet()
 
 
 // -------------- Public members -------------
+
+
+void Packet::limitRemainingBytes(size_t n)
+{
+	if (n > getRemainingBytes())
+		throw std::out_of_range("Read limit is outside of available data");
+
+	m_write_offset = size() - n;
+}
+
 
 const void *Packet::data() const
 {
@@ -84,6 +106,13 @@ _ENetPacket *Packet::ptr()
 	return m_data;
 }
 
+inline void *swap_be_le(void *dst, const void *src, size_t n)
+{
+	for (size_t i = 0; i < n; ++i)
+		((uint8_t *)dst)[i] = ((uint8_t *)src)[(n - 1) - i];
+
+	return (uint8_t *)dst + n;
+}
 
 template <typename T>
 T Packet::read()
@@ -91,7 +120,7 @@ T Packet::read()
 	checkLength(sizeof(T));
 
 	T ret;
-	memcpy(&ret, &m_data->data[m_read_offset], sizeof(T));
+	(m_is_big_endian ? swap_be_le : memcpy)(&ret, &m_data->data[m_read_offset], sizeof(T));
 	m_read_offset += sizeof(T);
 	return ret;
 }
@@ -101,9 +130,27 @@ void Packet::write(T v)
 {
 	ensureCapacity(sizeof(T));
 
-	memcpy(&m_data->data[m_write_offset], &v, sizeof(T));
+	(m_is_big_endian ? swap_be_le : memcpy)(&m_data->data[m_write_offset], &v, sizeof(T));
 	m_write_offset += sizeof(T);
 }
+
+size_t Packet::readRawNoCopy(const uint8_t **data, size_t nbytes)
+{
+	nbytes = std::min(nbytes, getRemainingBytes());
+
+	*data = &m_data->data[m_read_offset];
+	m_read_offset += nbytes;
+	return nbytes;
+}
+
+void Packet::writeRaw(const uint8_t *data, size_t nbytes)
+{
+	ensureCapacity(nbytes);
+
+	memcpy(&m_data->data[m_write_offset], data, nbytes);
+	m_write_offset += nbytes;
+}
+
 
 #define DEFINE_PACKET_TYPES(TYPE) \
 	template TYPE Packet::read<TYPE>(); \

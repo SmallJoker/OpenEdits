@@ -1,5 +1,6 @@
 #include "unittest_internal.h"
 #include "core/blockparams.h"
+#include "core/compressor.h"
 #include "core/packet.h"
 
 static const std::string val_str = "Héllo wörld!"; // 14 length
@@ -34,6 +35,66 @@ static void test_repeated()
 	for (int i = 0; i < 200; ++i) {
 		CHECK(pkt.read<int32_t>() == val_s32);
 		CHECK(pkt.readStr16() == val_str);
+	}
+}
+
+static void test_view_read_write()
+{
+	Packet pkt;
+	pkt.writeStr16(val_str);
+
+	Packet pkt_w(&pkt);
+
+	pkt.write<int32_t>(0); // Placeholder
+	pkt.writeStr16(val_str);
+
+	// Replace placeholder
+	pkt_w.write<int32_t>(val_s32 + 42);
+
+
+	// Read back
+
+	CHECK(pkt.readStr16() == val_str);
+	{
+		Packet pkt_r(&pkt);
+		pkt_r.limitRemainingBytes(4);
+
+		CHECK(pkt_r.read<int32_t>() == val_s32 + 42);
+		try {
+			pkt_r.read<int32_t>(); // must error
+			CHECK(false);
+		} catch (std::runtime_error &e) { }
+	}
+	CHECK(pkt.read<int32_t>() == val_s32 + 42);
+	CHECK(pkt.readStr16() == val_str);
+}
+
+static void test_compressor()
+{
+	Packet pkt;
+	for (int i = 0; i < 200; ++i) {
+		pkt.write<int32_t>(val_s32 + i);
+		pkt.writeStr16(val_str);
+	}
+
+	unittest_tic();
+	Packet pkt_c;
+	Compressor c(&pkt_c, pkt);
+	c.compress();
+
+	Packet pkt_d;
+	Decompressor d(&pkt_d, pkt_c);
+	d.decompress();
+	unittest_toc("zlib");
+
+	CHECK(pkt.size() == pkt_d.size());
+
+	float ratio = (float)pkt.size() / pkt_c.size();
+	printf("zlib compression: normal=%zu, zlib=%zu, ratio=1:%.2f\n", pkt.size(), pkt_c.size(), ratio);
+
+	for (int i = 0; i < 200; ++i) {
+		CHECK(pkt_d.read<int32_t>() == val_s32 + i);
+		CHECK(pkt_d.readStr16() == val_str);
 	}
 }
 
@@ -78,5 +139,6 @@ void unittest_packet()
 
 	test_repeated();
 	test_blockparams();
+	test_view_read_write();
+	test_compressor();
 }
-

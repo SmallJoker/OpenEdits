@@ -342,7 +342,8 @@ bool SceneWorldRender::assignBlockTexture(const BlockTile tile, scene::ISceneNod
 	mat.Lighting = false;
 	mat.ZWriteEnable = video::EZW_AUTO;
 	node->getMaterial(0).forEachTexture([](video::SMaterialLayer &layer) {
-		layer.MinFilter = video::ETMINF_LINEAR_MIPMAP_NEAREST;
+		layer.MinFilter = video::ETMINF_LINEAR_MIPMAP_LINEAR;
+		layer.LODBias = -8; // slightly shaper edges
 	});
 	if (!tile.texture) {
 		node->getMaterial(0).setTexture(0, g_blockmanager->getMissingTexture());

@@ -11,13 +11,25 @@ struct _ENetPacket;
 
 class Packet {
 public:
+	/// Empty, preallocated container
 	Packet(size_t n_prealloc = 200);
+	/// Initialization by data copy
 	Packet(const void *bytes, size_t len);
-	Packet(_ENetPacket **pkt); // takes ownership
+	/// Take ownership of an existing packet (from ENet)
+	Packet(_ENetPacket **pkt);
+	/// No-copy Packet clone with separate read/write tracking
+	/// Can be used to read specific sections or overwrite placeholders
+	Packet(Packet *pkt);
+
 	~Packet();
 	DISABLE_COPY(Packet);
 
+	void setBigEndian(bool b = true) { m_is_big_endian = b; }
+	// Amount of bytes left over for reading
 	size_t getRemainingBytes() { return size() - m_read_offset; }
+	/// Artificial read limit e.g. for decompression
+	void limitRemainingBytes(size_t n);
+
 	inline size_t size() const { return m_write_offset; }
 	const void *data() const;
 
@@ -41,9 +53,14 @@ public:
 	// Preallocated additional bytes for large data writes
 	void ensureCapacity(size_t nbytes);
 
+	// For data (de)compression
+	size_t readRawNoCopy(const uint8_t **data, size_t nbytes);
+	void writeRaw(const uint8_t *data, size_t nbytes);
+
 private:
 	inline void checkLength(size_t nbytes);
 
+	bool m_is_big_endian = false;
 	size_t m_read_offset = 0;
 	size_t m_write_offset = 0;
 	_ENetPacket *m_data = nullptr;

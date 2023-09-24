@@ -1,4 +1,5 @@
 #include "unittest_internal.h"
+#include <chrono>
 
 void unittest_auth();
 void unittest_chatcommand();
@@ -9,6 +10,19 @@ void unittest_packet();
 void unittest_physics();
 void unittest_utilities();
 void unittest_world();
+
+static auto time_start = std::chrono::steady_clock::now();
+void unittest_tic()
+{
+	time_start = std::chrono::steady_clock::now();
+}
+void unittest_toc(const char *name)
+{
+	// Measure precise timings
+	auto time_now = std::chrono::steady_clock::now();
+	float dtime = std::chrono::duration<float>(time_now - time_start).count();
+	printf("[%s] Timer took %.3f ms\n", name, dtime * 1000.0f);
+}
 
 //#define UNITTEST_CATCH_EX
 

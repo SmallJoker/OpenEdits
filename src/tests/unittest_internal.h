@@ -11,3 +11,6 @@
 
 class BlockManager;
 extern BlockManager *g_blockmanager;
+
+void unittest_tic();
+void unittest_toc(const char *name);

@@ -23,8 +23,9 @@ void CBulkSceneNode::addTile(core::vector2di coord)
 {
 	m_tiles.push_back(coord);
 
-	const f32 x = m_tile_size.Width * coord.X;
-	const f32 y = m_tile_size.Height * coord.Y;
+	// The 0.5f center offset is neccessary to avoid too early culling
+	const f32 x = m_tile_size.Width * (coord.X + 0.5f);
+	const f32 y = m_tile_size.Height * (coord.Y - 0.5f);
 
 	m_bbox_large.addInternalPoint(x, y, RelativeTranslation.Z + 1);
 }

@@ -77,12 +77,13 @@ Permission/player flag examples:
  * CMake (cmake-gui recommended for desktops)
  * [Irrlicht-Mt](https://github.com/minetest/irrlicht) : GUI/rendering library
  * [enet](http://enet.bespin.org/) : networking library
- * Threads (phthread?)
  * SQLite3 : auth & world saving
+ * Threads (pthread?)
+ * zlib: world compression (including EELVL import/export)
 
 Debian/Ubuntu:
 
-	sudo apt install libenet-dev libsqlite3-dev
+	sudo apt install libenet-dev libsqlite3-dev zlib1g-dev
 
 Project compiling:
 
