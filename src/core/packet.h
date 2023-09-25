@@ -25,8 +25,9 @@ public:
 	DISABLE_COPY(Packet);
 
 	void setBigEndian(bool b = true) { m_is_big_endian = b; }
+	inline size_t getReadPos() const { return m_read_offset; };
 	// Amount of bytes left over for reading
-	size_t getRemainingBytes() { return size() - m_read_offset; }
+	inline size_t getRemainingBytes() { return size() - m_read_offset; }
 	/// Artificial read limit e.g. for decompression
 	void limitRemainingBytes(size_t n);
 
@@ -54,8 +55,12 @@ public:
 	void ensureCapacity(size_t nbytes);
 
 	// For data (de)compression
-	size_t readRawNoCopy(const uint8_t **data, size_t nbytes);
 	void writeRaw(const uint8_t *data, size_t nbytes);
+
+	// Optimization tricks
+	size_t readRawNoCopy(const uint8_t **data, size_t nbytes);
+	uint8_t *writePreallocStart(size_t n_reserve);
+	void     writePreallocEnd(size_t nbytes);
 
 private:
 	inline void checkLength(size_t nbytes);

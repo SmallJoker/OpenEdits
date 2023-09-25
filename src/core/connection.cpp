@@ -182,7 +182,7 @@ std::string Connection::getPeerAddress(peer_t peer_id)
 
 void Connection::send(peer_t peer_id, uint16_t flags, Packet &pkt)
 {
-	if (pkt.size() - pkt.getRemainingBytes() > 0) {
+	if (pkt.getReadPos() > 0) {
 		ERRORLOG("-!-Enet %s: Tried to send packet that is partially read back\n", m_name);
 		return;
 	}

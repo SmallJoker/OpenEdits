@@ -1,15 +1,14 @@
 #include "eeo_converter.h"
 #include <stdexcept>
 
-#ifdef HAVE_ZLIB
-
 #include "core/blockmanager.h"
+#include "core/compressor.h"
+#include "core/packet.h"
 #include "core/world.h"
 #include <filesystem>
 #include <fstream>
 #include <map>
 #include <string.h> // memcpy
-#include <zlib.h>
 
 #if 0
 	#define DEBUGLOG(...) printf(__VA_ARGS__)
@@ -21,319 +20,6 @@
 
 const std::string EEOconverter::IMPORT_DIR = "worlds/imports";
 const std::string EEOconverter::EXPORT_DIR = "worlds/exports";
-
-struct InflateWriter {
-	InflateWriter(const std::string &outputfile) :
-		m_file(outputfile, std::ios::binary)
-	{
-		memset(&m_zs, 0, sizeof(m_zs));
-
-		if (!m_file.good())
-			throw std::runtime_error("Cannot open file: " + outputfile);
-
-		// best compression gives header 78 DA when not trimmed
-		status = deflateInit(&m_zs, Z_BEST_COMPRESSION);
-		if (status != Z_OK)
-			throw std::runtime_error("deflateInit failed");
-	}
-
-	~InflateWriter()
-	{
-		terminate();
-		deflateEnd(&m_zs);
-	}
-
-	// Low-level raw file writing without file header and checksum
-	void writeFile(const uint8_t *data, size_t len)
-	{
-		if (m_is_first) {
-			m_is_first = false;
-
-			// Trim header
-			if (len < 2)
-				throw std::runtime_error("Failed to strip header");
-			data += 2;
-			len -= 2;
-		}
-
-		if (status == Z_STREAM_END) {
-			// Trim checksum
-			if (len < 4)
-				throw std::runtime_error("Failed to strip checksum");
-			len -= 4;
-		}
-
-		//DEBUGLOG("zlib: write %zu bytes\n", len);
-		m_file.write((const char *)data, len);
-	}
-
-	size_t write(const uint8_t *src, size_t n_bytes)
-	{
-		if (src && n_bytes == 0)
-			return 0;
-
-		// Stream dead. refuse.
-		if (status != Z_OK)
-			throw std::runtime_error("Stream ended. Cannot write more.");
-
-		// To terminate the file
-		uint8_t tmpbuf[10];
-		if (!src) {
-			src = tmpbuf;
-			n_bytes = 0;
-		}
-
-		// https://www.zlib.net/zlib_how.html
-		m_zs.next_in = (unsigned char *)src; // zlib might not be compiled with ZLIB_CONST
-		m_zs.avail_in = n_bytes;
-		size_t n_wrote = 0; // Total processed bytes
-
-		do {
-			m_zs.avail_out = CHUNK;
-			m_zs.next_out = m_buf_out;
-
-			// Decompress provided data
-			status = deflate(&m_zs, src == tmpbuf ? Z_FINISH : Z_NO_FLUSH);
-			switch (status) {
-				case Z_NEED_DICT:
-					status = Z_DATA_ERROR;
-					// fall-though
-				case Z_DATA_ERROR:
-				case Z_MEM_ERROR:
-				case Z_STREAM_ERROR:
-					ERRORLOG("zlib: error code %d, message: %s, near index 0x%04zX\n",
-						status, m_zs.msg ? m_zs.msg : "NULL", getIndex());
-					throw std::runtime_error("zlib: inflate error");
-			}
-
-			// The amount of newly received bytes
-			size_t have = CHUNK - m_zs.avail_out;
-			n_wrote = n_bytes - m_zs.avail_in;
-
-			writeFile(m_buf_out, have);
-
-			if (have > 0)
-				DEBUGLOG("zlib: write %zu bytes\n", have);
-			if (m_zs.avail_in == 0)
-				break; // all bytes eaten
-
-		} while (status != Z_STREAM_END);
-
-		return n_wrote;
-	}
-
-	void terminate()
-	{
-		while (status == Z_OK)
-			write(nullptr, 0);
-	}
-
-	// Same as be2le
-	inline void le2be(u8 *be_dst, const u8 *le_src, size_t n_bytes)
-	{
-		for (size_t i = 0; i < n_bytes; ++i)
-			be_dst[i] = le_src[(n_bytes - 1) - i];
-	}
-
-	// ---------------- Big endian writer functions ----------------
-	template<typename T>
-	void write(const T &val)
-	{
-		u8 ledata[sizeof(T)];
-		u8 bedata[sizeof(T)];
-		memcpy(ledata, &val, sizeof(T));
-		le2be(bedata, ledata, sizeof(T));
-
-		if (write(bedata, sizeof(T)) != sizeof(T))
-			throw std::runtime_error("Failed to write");
-	}
-
-	void writeStr16(const std::string &str)
-	{
-		if (str.size() > UINT16_MAX)
-			throw std::runtime_error("String too long to serialize");
-
-		write<u16>(str.size());
-		write((uint8_t *)str.c_str(), str.size());
-	}
-
-	int status;
-	inline size_t getIndex() { return m_zs.total_in; }
-
-private:
-	std::ofstream m_file;
-
-	z_stream m_zs;
-	bool m_is_first = true;
-
-	static constexpr size_t CHUNK = 4*1024;
-	uint8_t m_buf_out[CHUNK]; // compressed data
-};
-
-struct DeflateReader {
-	DeflateReader(const std::string &inputfile) :
-		m_file(inputfile, std::ios::binary)
-	{
-		memset(&m_zs, 0, sizeof(m_zs));
-
-		if (!m_file.good())
-			throw std::runtime_error("Cannot open file: " + inputfile);
-
-		status = inflateInit(&m_zs);
-		if (status != Z_OK)
-			throw std::runtime_error("inflateInit failed");
-	}
-
-	~DeflateReader()
-	{
-		inflateEnd(&m_zs);
-	}
-
-	// Low-level raw file reading for zlib
-	// Adds header and checksum to the deflate data
-	size_t readFile(uint8_t *data, size_t len)
-	{
-		if (m_is_first) {
-			m_is_first = false;
-
-			// https://yal.cc/cs-deflatestream-zlib/
-			data[0] = 0x78;
-			data[1] = 0xDA; // Optimal
-
-			// https://stackoverflow.com/questions/70347/zlib-compatible-compression-streams
-			//data[0] = 0x78;
-			//data[1] = 0x01;
-			return 2;
-		}
-
-		if (m_file.eof()) {
-			// Append missing checksum
-
-			uint32_t to_write = m_zs.adler;
-			for (int i = 0; i < 4; ++i)
-				data[i] = ((const u8 *)&to_write)[3 - i];
-
-			return 4;
-		}
-
-		// Sets failbit and eofbit on stream end
-		m_file.read((char *)data, len);
-		return m_file.gcount();
-	}
-
-	// Decompression
-	size_t read(uint8_t *dst, size_t n_bytes)
-	{
-		if (n_bytes == 0)
-			return 0;
-
-		// Stream dead. refuse.
-		if (status != Z_OK)
-			throw std::runtime_error("Stream ended. Cannot read further.");
-
-		// https://www.zlib.net/zlib_how.html
-		size_t n_read = 0; // Total decompressed bytes
-		do {
-			if (m_zs.avail_in == 0) {
-				// All bytes eaten. Read next block
-				m_zs.avail_in = readFile(m_buf_in, CHUNK);
-				DEBUGLOG("zlib: reading in %d bytes, space: %zu\n", m_zs.avail_in, n_bytes - n_read);
-
-				if (m_file.bad())
-					throw std::runtime_error("File read error");
-
-				if (m_zs.avail_in == 0)
-					throw std::runtime_error("File ended unexpectedly");
-
-				m_zs.next_in = m_buf_in;
-			}
-
-			m_zs.avail_out = n_bytes - n_read;
-			m_zs.next_out = &dst[n_read];
-
-			// Decompress provided data
-			status = inflate(&m_zs, Z_NO_FLUSH);
-			switch (status) {
-				case Z_NEED_DICT:
-					status = Z_DATA_ERROR;
-					// fall-though
-				case Z_DATA_ERROR:
-				case Z_MEM_ERROR:
-				case Z_STREAM_ERROR:
-					//ERRORLOG("Got Adler %08lX\n", m_zs.adler);
-					ERRORLOG("zlib: error code %d, message: %s, near index 0x%04zX\n",
-						status, m_zs.msg ? m_zs.msg : "NULL", getIndex());
-					throw std::runtime_error("zlib: inflate error");
-			}
-
-			// The amount of newly received bytes
-			size_t have = (n_bytes - n_read) - m_zs.avail_out;
-			n_read += have;
-
-			if (n_bytes > 100)
-				DEBUGLOG("zlib: decompressed %zu bytes (%zu / %zu)\n", have, n_read, n_bytes);
-			if (n_read >= n_bytes)
-				break;
-
-		} while (status != Z_STREAM_END);
-
-		return n_read;
-	}
-
-	inline void be2le(u8 *le_dst, const u8 *be_src, size_t n_bytes)
-	{
-		for (size_t i = 0; i < n_bytes; ++i)
-			le_dst[i] = be_src[(n_bytes - 1) - i];
-	}
-
-	// ---------------- Big endian reader functions ----------------
-	template<typename T>
-	T read()
-	{
-		u8 bedata[sizeof(T)];
-
-		if (read(bedata, sizeof(T)) != sizeof(T))
-			throw std::runtime_error("Failed to read @ index=" + std::to_string(getIndex()));
-
-		T ret = 0;
-		be2le((uint8_t *)&ret, bedata, sizeof(T));
-		return ret;
-	}
-
-	std::string readStr16()
-	{
-		u16 len = read<u16>();
-		std::string str(len, '\0');
-		if (read((uint8_t *)&str[0], len) != len)
-			throw std::runtime_error("Failed to read str16");
-		return str;
-	}
-
-	std::vector<u16> readArrU16x32()
-	{
-		// Size is written in total bytes!
-		u32 len = read<u32>() / sizeof(u16); // bytes -> count
-
-		//DEBUGLOG("Array size: %u at index 0x%04zX\n", len, getIndex());
-		std::vector<u16> ret;
-		ret.resize(len);
-		for (size_t i = 0; i < len; ++i)
-			ret[i] = read<u16>();
-		return ret;
-	}
-
-	int status;
-	inline size_t getIndex() { return m_zs.total_out; }
-
-private:
-	std::ifstream m_file;
-
-	z_stream m_zs;
-	bool m_is_first = true;
-
-	static constexpr size_t CHUNK = 4*1024;
-	uint8_t m_buf_in[CHUNK]; // compressed data
-};
 
 struct EBlockParams {
 	enum class Type {
@@ -571,7 +257,7 @@ static void ensure_cache()
 	EBlockParams::registerImports();
 }
 
-static void read_eelvl_header(DeflateReader &zs, LobbyWorld &meta)
+static void read_eelvl_header(Packet &zs, LobbyWorld &meta)
 {
 	meta.owner = zs.readStr16();
 	meta.title = zs.readStr16();
@@ -598,6 +284,44 @@ static void read_eelvl_header(DeflateReader &zs, LobbyWorld &meta)
 	DEBUGLOG("\t Crew: %s\n", crew_name.c_str());
 }
 
+static std::vector<u16> readArrU16x32(Packet &pkt)
+{
+	// Size is written in total bytes!
+	u32 len = pkt.read<u32>() / sizeof(u16); // bytes -> count
+
+	//DEBUGLOG("Array size: %u at index 0x%04zX\n", len, getIndex());
+	std::vector<u16> ret;
+	ret.resize(len);
+	for (size_t i = 0; i < len; ++i)
+		ret[i] = pkt.read<u16>();
+	return ret;
+}
+
+static void decompress_file(Packet &pkt, const std::string &filename)
+{
+	std::ifstream is(filename, std::ios_base::binary);
+	if (!is.good())
+		throw std::runtime_error("Cannot read open file " + filename);
+
+	is.seekg(0, is.end);
+	size_t length = is.tellg();
+	is.seekg(0, is.beg);
+	Packet pkt_zlib(length);
+
+	DEBUGLOG("Decompress file '%s', len=%zu\n", filename.c_str(), length);
+	do {
+		is.read((char *)pkt_zlib.writePreallocStart(1000), 1000);
+		pkt_zlib.writePreallocEnd(is.gcount()); // already written
+	} while (is.good());
+
+	pkt.ensureCapacity((length * 10) / 2); // approx. decompressed size / 2
+	Decompressor decomp(&pkt, pkt_zlib);
+	decomp.setBarebone();
+	decomp.decompress();
+
+	pkt.setBigEndian(); // for reading
+}
+
 void EEOconverter::fromFile(const std::string &filename_)
 {
 	std::filesystem::create_directories(IMPORT_DIR);
@@ -605,7 +329,8 @@ void EEOconverter::fromFile(const std::string &filename_)
 
 	ensure_cache();
 
-	DeflateReader zs(filename);
+	Packet zs;
+	decompress_file(zs, filename);
 
 	// https://github.com/capashaa/EEOEditor/tree/main/EELVL
 
@@ -622,7 +347,7 @@ void EEOconverter::fromFile(const std::string &filename_)
 	std::string err;
 	EBlockParams params_in;
 	BlockUpdate bu(blockmgr);
-	while (zs.status == Z_OK) {
+	while (zs.getRemainingBytes() > 0) {
 		int block_id;
 		try {
 			block_id = zs.read<s32>();
@@ -632,17 +357,17 @@ void EEOconverter::fromFile(const std::string &filename_)
 		}
 
 		int layer = zs.read<s32>();
-		DEBUGLOG("\n--> Next block ID: %4d, layer=%d, offset=0x%04zX\n", block_id, layer, zs.getIndex());
+		DEBUGLOG("\n--> Next block ID: %4d, layer=%d, offset=0x%04zX\n", block_id, layer, zs.getReadPos());
 		if (layer < 0 || layer > 1)
 			throw std::runtime_error("Previous block data mismatch");
 
-		auto pos_x = zs.readArrU16x32();
-		auto pos_y = zs.readArrU16x32();
+		auto pos_x = readArrU16x32(zs);
+		auto pos_y = readArrU16x32(zs);
 
 		using PType = EBlockParams::Type;
 		PType type = BLOCK_TYPE_LUT[block_id];
 		DEBUGLOG("    Data: count=%zu, type=%d, offset=0x%04zX\n",
-			pos_x.size(), (int)type, zs.getIndex());
+			pos_x.size(), (int)type, zs.getReadPos());
 
 		if (!bu.set(block_id)) {
 			// Attempt to remap unknown blocks
@@ -691,9 +416,6 @@ void EEOconverter::fromFile(const std::string &filename_)
 		}
 	}
 
-	if (zs.status != Z_STREAM_END)
-		throw std::runtime_error("zlib: Incomplete reading! msg=" + err);
-
 	printf("EEOconverter: Imported world %s from file '%s'\n", meta.id.c_str(), filename.c_str());
 }
 
@@ -704,7 +426,12 @@ void EEOconverter::toFile(const std::string &filename_) const
 
 	ensure_cache();
 
-	InflateWriter zs(filename);
+	std::ofstream os(filename, std::ios_base::binary);
+	if (!os.good())
+		throw std::runtime_error("Cannot write open file " + filename);
+
+	Packet zs;
+	zs.setBigEndian();
 
 	const WorldMeta &meta = m_world.getMeta();
 	zs.writeStr16(meta.owner);
@@ -799,7 +526,14 @@ void EEOconverter::toFile(const std::string &filename_) const
 		write_array(entry.second);
 	}
 
-	zs.terminate();
+	{
+		Packet pkt_zlib;
+		Compressor comp(&pkt_zlib, zs);
+		comp.setBarebone();
+		comp.compress();
+		os.write((const char *)pkt_zlib.data(), pkt_zlib.size());
+		os.close();
+	}
 
 	printf("EEOconverter: Exported world %s to file '%s'\n", meta.id.c_str(), filename.c_str());
 }
@@ -809,43 +543,20 @@ void EEOconverter::inflate(const std::string &filename)
 {
 	ensure_cache();
 
-	DeflateReader zs(filename);
-
 	const std::string outname(filename + ".inflated");
 	std::ofstream of(outname, std::ios_base::binary);
 
 	if (!of.good())
 		throw std::runtime_error("Failed to open destination file");
 
-	while (zs.status == Z_OK) {
-		u8 buffer[4*1024];
-		size_t read = zs.read(buffer, sizeof(buffer));
-		of.write((const char *)buffer, read);
-	}
+	Packet zs;
+	decompress_file(zs, filename);
 
+	of.write((const char *)zs.data(), zs.size());
 	of.close();
 
 	printf("EEOconverter: Decompressed file %s\n", outname.c_str());
 }
-
-#else // HAVE_ZLIB
-
-void EEOconverter::fromFile(const std::string &filename)
-{
-	throw std::runtime_error("EEOconverter is unavailable");
-}
-
-void EEOconverter::toFile(const std::string &filename) const
-{
-	throw std::runtime_error("EEOconverter is unavailable");
-}
-
-void EEOconverter::inflate(const std::string &filename)
-{
-	throw std::runtime_error("EEOconverter is unavailable");
-}
-
-#endif // HAVE_ZLIB
 
 static std::string path_to_worldid(const std::string &path)
 {
@@ -895,8 +606,9 @@ void EEOconverter::listImportableWorlds(std::map<std::string, LobbyWorld> &world
 
 		LobbyWorld meta;
 		try {
-			DeflateReader zs(entry.path());
-			read_eelvl_header(zs, meta);
+			Packet pkt;
+			decompress_file(pkt, entry.path());
+			read_eelvl_header(pkt, meta);
 		} catch (std::runtime_error &e) {
 			DEBUGLOG("Cannot read '%s': %s\n", entry.path().c_str(), e.what());
 			continue;

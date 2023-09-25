@@ -134,6 +134,14 @@ void Packet::write(T v)
 	m_write_offset += sizeof(T);
 }
 
+void Packet::writeRaw(const uint8_t *data, size_t nbytes)
+{
+	ensureCapacity(nbytes);
+
+	memcpy(&m_data->data[m_write_offset], data, nbytes);
+	m_write_offset += nbytes;
+}
+
 size_t Packet::readRawNoCopy(const uint8_t **data, size_t nbytes)
 {
 	nbytes = std::min(nbytes, getRemainingBytes());
@@ -143,11 +151,17 @@ size_t Packet::readRawNoCopy(const uint8_t **data, size_t nbytes)
 	return nbytes;
 }
 
-void Packet::writeRaw(const uint8_t *data, size_t nbytes)
+uint8_t *Packet::writePreallocStart(size_t n_reserve)
 {
-	ensureCapacity(nbytes);
+	ensureCapacity(n_reserve);
+	return &m_data->data[m_write_offset];
+}
 
-	memcpy(&m_data->data[m_write_offset], data, nbytes);
+void Packet::writePreallocEnd(size_t nbytes)
+{
+	if (m_write_offset + nbytes > m_data->dataLength)
+		throw std::out_of_range("Cannot skip. Missing prealloc Possible memory corruption!");
+
 	m_write_offset += nbytes;
 }
 
@@ -195,6 +209,7 @@ void Packet::ensureCapacity(size_t nbytes)
 {
 	if (m_write_offset + nbytes > m_data->dataLength)
 		enet_packet_resize(m_data, (m_write_offset + nbytes) * 2);
+
 }
 
 // -------------- Private members -------------

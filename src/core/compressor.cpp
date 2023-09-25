@@ -186,7 +186,7 @@ struct DeflateReader {
 
 	// Low-level raw file reading for zlib
 	// Adds header and checksum to the deflate data
-	void readChunk(const uint8_t **data, size_t *len)
+	size_t readChunk(const uint8_t **data, size_t len)
 	{
 		if (iodata.is_barebone) {
 			if (iodata.is_first_chunk) {
@@ -200,8 +200,7 @@ struct DeflateReader {
 				//data[0] = 0x78;
 				//data[1] = 0x01;
 				*data = tmp_buf;
-				*len = 2;
-				return;
+				return 2;
 			}
 
 			if (iodata.pkt->getRemainingBytes() == 0) {
@@ -213,13 +212,12 @@ struct DeflateReader {
 					tmp_buf[i] = ((const uint8_t *)&to_write)[3 - i];
 
 				*data = tmp_buf;
-				*len = 4;
-				return;
+				return 4;
 			}
 		}
 
 		// Sets failbit and eofbit on stream end
-		*len = iodata.pkt->readRawNoCopy(data, CHUNK_SMALL);
+		return iodata.pkt->readRawNoCopy(data, CHUNK_SMALL);
 	}
 
 	// Decompression
@@ -233,21 +231,19 @@ struct DeflateReader {
 
 		// Stream dead. refuse.
 		if (status != Z_OK)
-			throw std::runtime_error("Stream ended. Cannot read further.");
+			throw std::runtime_error("Stream is dead. Cannot read further.");
 
 		// https://www.zlib.net/zlib_how.html
 		size_t n_read = 0; // Total decompressed bytes
 		do {
 			if (m_zs.avail_in == 0) {
 				// All bytes eaten. Read next block
-				size_t len = CHUNK_BIG;
-				readChunk((const uint8_t **)&m_zs.next_in, &len);
-				m_zs.avail_in = len;
+				m_zs.avail_in = readChunk((const uint8_t **)&m_zs.next_in, CHUNK_BIG);
 
-				DEBUGLOG("zlib: in available=%d, out remaining=%zu\n", m_zs.avail_in, n_bytes - n_read);
+				DEBUGLOG("zlib decompress: in available=%d, out remaining=%zu\n", m_zs.avail_in, n_bytes - n_read);
 
 				if (m_zs.avail_in == 0)
-					throw std::runtime_error("File ended unexpectedly");
+					throw std::runtime_error("zlib data ended unexpectedly");
 			}
 
 			m_zs.avail_out = n_bytes - n_read;
@@ -310,11 +306,10 @@ void Decompressor::setBarebone(bool b)
 
 void Decompressor::decompress()
 {
-	uint8_t buf[CHUNK_SMALL];
 	size_t len;
 	do {
-		len = m_reader->read(buf, CHUNK_SMALL);
-		m_output.writeRaw(buf, len);
+		len = m_reader->read(m_output.writePreallocStart(CHUNK_SMALL), CHUNK_SMALL);
+		m_output.writePreallocEnd(len);
 		DEBUGLOG("Decompress n=%zu, total=%zu\n", len, m_output.size());
 	} while (len > 0);
 
