@@ -610,6 +610,7 @@ bool SceneGameplay::handleChatInput(const SEvent &e)
 	if (key == KEY_UP && focused) {
 		if (!m_previous_chat_message.empty()) {
 			element->setText(m_previous_chat_message.c_str());
+			editbox_move_to_end(m_gui->guienv);
 			return true;
 		}
 	}
