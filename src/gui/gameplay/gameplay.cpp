@@ -82,8 +82,7 @@ void SceneGameplay::draw()
 		auto player = m_gui->getClient()->getMyPlayer();
 		pflags = player->getFlags();
 
-		m_may_drag_draw = pflags.check(PlayerFlags::PF_EDIT_DRAW)
-			|| pflags.check(PlayerFlags::PF_TMP_EDIT_DRAW);
+		m_may_drag_draw = pflags.check(PlayerFlags::PF_EDIT_DRAW);
 	}
 
 	{
@@ -121,7 +120,7 @@ void SceneGameplay::draw()
 		);
 
 		auto e = gui->addButton(rect_3, nullptr, ID_BtnGodMode, L"G");
-		e->setEnabled(pflags.flags & PlayerFlags::PF_MASK_GODMODE);
+		e->setEnabled(pflags.flags & PlayerFlags::PF_GODMODE);
 
 		x_pos += 40;
 	}
@@ -152,10 +151,10 @@ void SceneGameplay::draw()
 
 		auto e = gui->addEditBox(
 			L"", rect_2, true, nullptr, ID_BoxChat);
-		e->setEnabled(!pflags.check(PlayerFlags::PF_TMP_MUTED));
+		e->setEnabled(!pflags.check(PlayerFlags::PF_MUTED));
 		e->setVisible(false);
 	}
-;
+
 	const int BLOCKSELECTOR_WIDTH = (8 + 1) * 30 + 5;
 	const int BLOCKSELECTOR_POS = std::max(x_pos, (SIZEW - BLOCKSELECTOR_WIDTH) / 2);
 
@@ -229,7 +228,7 @@ void SceneGameplay::draw()
 			core::vector2di(BLOCKSELECTOR_POS, y_pos)
 		);
 
-		m_blockselector->setEnabled(pflags.flags & PlayerFlags::PF_MASK_EDIT);
+		m_blockselector->setEnabled(pflags.flags & PlayerFlags::PF_EDIT);
 		m_blockselector->draw();
 	}
 }

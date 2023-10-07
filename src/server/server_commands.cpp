@@ -20,6 +20,7 @@ void Server::registerChatCommands()
 	m_chatcmd.add("/setpass", (ChatCommandAction)&Server::chat_SetPass);
 	m_chatcmd.add("/setcode", (ChatCommandAction)&Server::chat_SetCode);
 	m_chatcmd.add("/code", (ChatCommandAction)&Server::chat_Code);
+	m_chatcmd.add("/ban", (ChatCommandAction)&Server::chat_Ban);
 	m_chatcmd.add("/flags", (ChatCommandAction)&Server::chat_Flags);
 	m_chatcmd.add("/ffilter", (ChatCommandAction)&Server::chat_FFilter);
 	m_chatcmd.add("/fset", (ChatCommandAction)&Server::chat_FSet);
@@ -74,7 +75,7 @@ bool Server::checkTitle(std::string &out, std::string &title)
 
 // -------------- Chat commands -------------
 
-void Server::systemChatSend(Player *player, const std::string &msg)
+void Server::systemChatSend(Player *player, const std::string &msg, bool broadcast)
 {
 	Packet pkt;
 	pkt.write(Packet2Client::Chat);
@@ -119,6 +120,7 @@ CHATCMD_FUNC(Server::chat_Help)
 		{ "setcode", "Syntax: /setcode [-f] [WORLDCODE]\nChanges the world code or disables it. "
 			"-f (optional) removes all player's temporary edit and god mode flags." },
 		{ "code", "Syntax: /code WORLDCODE\nGrants edit access." },
+		{ "ban", "Syntax: /ban PLAYERNAME MINUTES [REASON TEXT]\nBans the specified player." },
 		{ "flags", "Syntax: /flags [PLAYERNAME]\nLists the provided (or own) player's flags." },
 		{ "ffilter", "Syntax: //filter FLAG1 [...]\nLists all players matching the flag filter." },
 		{ "fset", "Syntax: /fset PLAYERNAME FLAG1 [...]\nSets one or more flags for a player." },
@@ -248,16 +250,24 @@ CHATCMD_FUNC(Server::chat_SetCode)
 	if (!do_change_flags)
 		return;
 
-	const playerflags_t flags_revoked = PlayerFlags::PF_TMP_EDIT_DRAW | PlayerFlags::PF_TMP_GODMODE;
+	constexpr playerflags_t to_revoke = PlayerFlags::PF_EDIT_DRAW | PlayerFlags::PF_GODMODE;
+	auto try_revoke = [&] (PlayerFlags &pf) {
+		if (pf.flags & PlayerFlags::PF_MASK_WORLD)
+			return false;
+
+		bool changed = pf.flags & to_revoke;
+		pf.set(0, to_revoke);
+		return changed;
+	};
+
 	for (auto it : m_players) {
 		if (it.second->getWorld() != world)
 			continue;
 
 		auto pf = it.second->getFlags();
-		if (pf.flags & flags_revoked) {
-			pf.set(0, flags_revoked);
+		if (try_revoke(pf)) {
 			world->getMeta().setPlayerFlags(it.second->name, pf);
-			handlePlayerFlagsChange(it.second, flags_revoked);
+			handlePlayerFlagsChange(it.second, to_revoke);
 		}
 	}
 }
@@ -280,14 +290,14 @@ CHATCMD_FUNC(Server::chat_Code)
 	PlayerFlags pf;
 	switch (meta.type) {
 		case WorldMeta::Type::TmpSimple:
-			pf.flags = PlayerFlags::PF_TMP_EDIT;
+			pf.flags = PlayerFlags::PF_EDIT;
 			break;
 		case WorldMeta::Type::TmpDraw:
-			pf.flags = PlayerFlags::PF_TMP_EDIT_DRAW;
+			pf.flags = PlayerFlags::PF_EDIT_DRAW;
 			break;
 		case WorldMeta::Type::Persistent:
-			pf.flags = PlayerFlags::PF_TMP_EDIT_DRAW
-				| PlayerFlags::PF_TMP_GODMODE;
+			pf.flags = PlayerFlags::PF_EDIT_DRAW
+				| PlayerFlags::PF_GODMODE;
 			break;
 		default:
 			systemChatSend(player, "Internal error: invalid world type");
@@ -304,6 +314,67 @@ CHATCMD_FUNC(Server::chat_Code)
 		out.write<playerflags_t>(pf.flags); // mask
 		m_con->send(player->peer_id, 1, out);
 	}
+}
+
+CHATCMD_FUNC(Server::chat_Ban)
+{
+	const PlayerFlags myflags = player->getFlags();
+	if (!myflags.check(PlayerFlags::PF_COOWNER)) {
+		systemChatSend(player, "Insufficient permissions");
+		return;
+	}
+
+	if (!m_auth_db) {
+		systemChatSend(player, "Auth database is dead.");
+		return;
+	}
+
+
+	std::string who(get_next_part(msg));
+	Player *target = findPlayer(player->getWorld().get(), who);
+	if (!target) {
+		systemChatSend(player, "Cannot find player '" + who + "'.");
+		return;
+	}
+
+	AuthBanEntry entry;
+	entry.affected = target->name;
+	entry.context = player->getWorld()->getMeta().id;
+	if (m_auth_db->getBanRecord(entry.affected, entry.context, &entry)) {
+		// Why are they still here?
+		systemChatSend(target, "Ban circumvention??");
+		m_con->disconnect(target->peer_id);
+		systemChatSend(player, "Oops. They're gone now.");
+		return;
+	}
+
+	if (!mayManipulatePlayer(player, target)) {
+		systemChatSend(player, "Insufficient permissions");
+		return;
+	}
+
+	std::string minutes_s(get_next_part(msg));
+	int64_t minutes_i = 0;
+	string2int64(minutes_s.c_str(), &minutes_i);
+	if (minutes_i <= 0) {
+		systemChatSend(player, "Invalid duration specified.");
+		return;
+	}
+
+	minutes_i = std::min<int64_t>(minutes_i, 60 * 2);
+	entry.expiry = time(nullptr) + minutes_i * 60LL;
+	entry.comment = msg;
+	if (!m_auth_db->ban(entry)) {
+		systemChatSend(player, "Internal error: failed to ban.");
+		return;
+	}
+
+	std::string time = " (" + std::to_string(minutes_i) +  " minute(s)).";
+	sendMsg(target->peer_id, player->name + " banned you from this world" + time);
+	systemChatSend(player, player->name + " banned " + target->name + time);
+
+	Packet dummy;
+	pkt_Leave(target->peer_id, dummy);
 }
 
 CHATCMD_FUNC(Server::chat_Flags)
@@ -357,10 +428,37 @@ CHATCMD_FUNC(Server::chat_FFilter)
 	systemChatSend(player, output);
 }
 
+playerflags_t Server::mayManipulatePlayer(Player *actor, Player *target)
+{
+	if (!actor || !target)
+		return 0;
+
+	PlayerFlags flags_a = actor->getFlags();
+	PlayerFlags flags_t = target->getFlags();
+
+	constexpr playerflags_t scope = PlayerFlags::PF_MASK_WORLD;
+
+	// "actor" must have more world-specific bits set than "target"
+	if (flags_a.flags & ~flags_t.flags & scope) {
+		// Allow flag changes
+		if (flags_a.check(PlayerFlags::PF_OWNER))
+			return PlayerFlags::PF_CNG_MASK_OWNER;
+		else if (flags_a.check(PlayerFlags::PF_COOWNER))
+			return PlayerFlags::PF_CNG_MASK_COOWNER;
+		else if (flags_a.check(PlayerFlags::PF_COLLAB))
+			return 0;
+
+		fprintf(stderr, "Unhandled flags %08X for player %s\n", flags_a.flags, actor->name.c_str());
+		return 0;
+	}
+	return 0;
+}
+
+
 bool Server::changePlayerFlags(Player *player, std::string msg, bool do_add)
 {
 	const PlayerFlags myflags = player->getFlags();
-	if (!myflags.check(PlayerFlags::PF_HELPER)) {
+	if (!myflags.check(PlayerFlags::PF_COOWNER)) {
 		systemChatSend(player, "Insufficient permissions");
 		return false;
 	}
@@ -384,13 +482,7 @@ bool Server::changePlayerFlags(Player *player, std::string msg, bool do_add)
 	}
 
 	// Flags that current player is allowed to change
-	playerflags_t allowed_to_change = 0;
-	if (player->name == meta.owner)
-		allowed_to_change = PlayerFlags::PF_CNG_MASK_OWNER;
-	else if (myflags.check(PlayerFlags::PF_OWNER))
-		allowed_to_change = PlayerFlags::PF_CNG_MASK_COOWNER;
-	else if (myflags.check(PlayerFlags::PF_HELPER))
-		allowed_to_change = PlayerFlags::PF_CNG_MASK_HELPER;
+	playerflags_t allowed_to_change = mayManipulatePlayer(player, target_player);
 
 	// Read in all specified flags
 	playerflags_t flags_specified = 0;
@@ -407,7 +499,7 @@ bool Server::changePlayerFlags(Player *player, std::string msg, bool do_add)
 		flag_string = get_next_part(msg);
 	}
 
-	if ((flags_specified | allowed_to_change) != allowed_to_change) {
+	if ((flags_specified & ~allowed_to_change) != 0) {
 		systemChatSend(player, "Insufficient permissions");
 		return false;
 	}
@@ -437,19 +529,6 @@ void Server::handlePlayerFlagsChange(Player *player, playerflags_t flags_mask)
 
 	PlayerFlags flags = player->getFlags();
 
-	// Notify the player about this change
-	if (player && (flags.flags & (PlayerFlags::PF_BANNED | PlayerFlags::PF_TMP_HEAVYKICK))) {
-		sendMsg(player->peer_id, player->name + " kicked or banned you from this world.");
-
-		{
-			Packet out;
-			out.write<Packet2Client>(Packet2Client::Leave);
-			out.write(player->peer_id);
-			m_con->send(player->peer_id, 0, out);
-		}
-		return; // Kicked
-	}
-
 	// Notify about new flags
 	{
 		Packet out;
@@ -460,7 +539,7 @@ void Server::handlePlayerFlagsChange(Player *player, playerflags_t flags_mask)
 	}
 
 	// Remove god mode if active
-	if (player->godmode && !(flags.flags & PlayerFlags::PF_MASK_GODMODE)) {
+	if (player->godmode && !(flags.flags & PlayerFlags::PF_GODMODE)) {
 		player->setGodMode(false);
 
 		Packet out;
@@ -530,7 +609,7 @@ CHATCMD_FUNC(Server::chat_Teleport)
 	}
 
 	if (src == player) {
-		if (!player->getFlags().check(PlayerFlags::PF_HELPER)) {
+		if (!player->getFlags().check(PlayerFlags::PF_COOWNER)) {
 			systemChatSend(player, "Insufficient permissions");
 			return;
 		}

@@ -25,35 +25,30 @@ struct PlayerFlags {
 
 	// Only valid within the current world
 	enum PlayerFlagsEnum : playerflags_t {
-		// World access
-		PF_BANNED    = 0x00000001,
-		PF_EDIT      = 0x00000020,
-		PF_EDIT_DRAW = 0x00000040 | PF_EDIT,
-		PF_GODMODE   = 0x00000008,
-		PF_HELPER    = 0x00000100 | PF_EDIT_DRAW | PF_GODMODE,
-		PF_OWNER     = 0x00000800 | PF_HELPER, // not saved for the actual owner
+		// Temporary world-specific flags
+		PF_MASK_TMP  = 0x000000FF,
+		PF_MUTED     = 0x00000001,
+		PF_EDIT      = 0x00000002,
+		PF_EDIT_DRAW = 0x00000004 | PF_EDIT,
+		PF_GODMODE   = 0x00000010,
 
-		// Temporary
-		PF_TMP_HEAVYKICK = 0x00100000,
-		PF_TMP_MUTED     = 0x00200000,
-		PF_TMP_EDIT      = 0x02000000,
-		PF_TMP_EDIT_DRAW = 0x04000000 | PF_TMP_EDIT,
-		PF_TMP_GODMODE   = 0x08000000,
+		// Persistent world-wide
+		PF_MASK_WORLD = 0x0000FF00,
+		PF_COLLAB     = 0x00001000 | PF_EDIT_DRAW | PF_GODMODE, // persistent edit & god
+		PF_COOWNER    = 0x00004000 | PF_COLLAB, // co-owners
+		PF_OWNER      = 0x00008000 | PF_COOWNER, // actual world owner
 
-		// Masks for priv checks
-		PF_MASK_EDIT      = PF_EDIT | PF_TMP_EDIT,
-		PF_MASK_EDIT_DRAW = PF_EDIT_DRAW | PF_TMP_EDIT_DRAW,
-		PF_MASK_GODMODE   = PF_GODMODE | PF_TMP_GODMODE,
+		// Persistent server-wide
+		PF_MASK_SERVER = 0x00FF0000,
+		PF_MODERATOR   = 0x00200000 | PF_COOWNER,
+		PF_ADMIN       = 0x00800000 | PF_OWNER,
 
 		// Flags allowed to change
-		PF_CNG_MASK_HELPER  = PF_TMP_HEAVYKICK | PF_TMP_MUTED | PF_MASK_EDIT_DRAW | PF_MASK_GODMODE,
-		PF_CNG_MASK_COOWNER = PF_CNG_MASK_HELPER | PF_HELPER | PF_BANNED,
-		PF_CNG_MASK_OWNER   = PF_CNG_MASK_COOWNER | PF_OWNER,
+		PF_CNG_MASK_COOWNER = PF_MUTED | PF_EDIT_DRAW | PF_GODMODE,
+		PF_CNG_MASK_OWNER   = PF_CNG_MASK_COOWNER | PF_COOWNER,
 
-		// For saving to the database
-		PF_MASK_SAVE = PF_BANNED | PF_OWNER,
 		// For network transmission: per-player
-		PF_MASK_SEND_PLAYER = PF_MASK_SAVE | PF_TMP_MUTED | PF_TMP_EDIT_DRAW | PF_TMP_GODMODE,
+		PF_MASK_SEND_PLAYER = PF_MASK_TMP | PF_MASK_WORLD | PF_MASK_SERVER,
 	};
 };
 

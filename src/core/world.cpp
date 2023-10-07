@@ -117,9 +117,9 @@ PlayerFlags WorldMeta::getPlayerFlags(const std::string &name) const
 	if (edit_code.empty()) {
 		// Default permissions
 		if (type == Type::TmpSimple)
-			return PlayerFlags(PlayerFlags::PF_TMP_EDIT);
+			return PlayerFlags(PlayerFlags::PF_EDIT);
 		if (type == Type::TmpDraw)
-			return PlayerFlags(PlayerFlags::PF_TMP_EDIT_DRAW);
+			return PlayerFlags(PlayerFlags::PF_EDIT_DRAW);
 	}
 	return PlayerFlags();
 }
@@ -162,16 +162,16 @@ void WorldMeta::readPlayerFlags(Packet &pkt)
 void WorldMeta::writePlayerFlags(Packet &pkt) const
 {
 	pkt.write<u8>(5);
-	pkt.write<playerflags_t>(PlayerFlags::PF_MASK_SAVE);
+	pkt.write<playerflags_t>(PlayerFlags::PF_MASK_WORLD);
 
 	for (auto it : player_flags) {
-		if ((it.second.flags & PlayerFlags::PF_MASK_SAVE) == 0)
+		if ((it.second.flags & PlayerFlags::PF_MASK_WORLD) == 0)
 			continue;
 		if (it.first == owner)
 			continue;
 
 		pkt.writeStr16(it.first);
-		pkt.write<playerflags_t>(it.second.flags & PlayerFlags::PF_MASK_SAVE);
+		pkt.write<playerflags_t>(it.second.flags & PlayerFlags::PF_MASK_WORLD);
 	}
 	pkt.writeStr16(""); // end
 }

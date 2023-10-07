@@ -435,6 +435,16 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 		}
 	}
 
+	if (m_auth_db) {
+		AuthBanEntry entry;
+		if (m_auth_db->getBanRecord(player->name, world_id, &entry)) {
+			int64_t minutes_i = (entry.expiry - time(nullptr) + 59) / 60;
+			sendMsg(peer_id, "You are banned from this world for " +
+				std::to_string(minutes_i) + " minute(s). Reason: " + entry.comment);
+			return;
+		}
+	}
+
 	if (!world) {
 		// create a new one
 		world = std::make_shared<World>(m_bmgr, world_id);
@@ -458,15 +468,6 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 				sendMsg(peer_id, "You already joined this world.");
 				return;
 			}
-		}
-	}
-
-	{
-		// Ban check
-		PlayerFlags pflags = world->getMeta().getPlayerFlags(player->name);
-		if (pflags.flags & (PlayerFlags::PF_BANNED | PlayerFlags::PF_TMP_HEAVYKICK)) {
-			sendMsg(peer_id, "You may not enter this world. Reason: kicked or banned.");
-			return;
 		}
 	}
 
@@ -565,7 +566,7 @@ void Server::pkt_Move(peer_t peer_id, Packet &pkt)
 void Server::pkt_Chat(peer_t peer_id, Packet &pkt)
 {
 	RemotePlayer *player = getPlayerNoLock(peer_id);
-	if (player->getFlags().check(PlayerFlags::PF_TMP_MUTED))
+	if (player->getFlags().check(PlayerFlags::PF_MUTED))
 		return;
 
 	std::string message(pkt.readStr16());
@@ -608,7 +609,7 @@ void Server::pkt_PlaceBlock(peer_t peer_id, Packet &pkt)
 {
 	RemotePlayer *player = getPlayerNoLock(peer_id);
 	PlayerFlags pflags = player->getFlags();
-	if ((pflags.flags & PlayerFlags::PF_MASK_EDIT_DRAW) == 0)
+	if ((pflags.flags & PlayerFlags::PF_EDIT_DRAW) == 0)
 		return; // Missing permissions
 	// TODO: Add cooldown check for non-draw users
 
@@ -690,7 +691,7 @@ void Server::pkt_GodMode(peer_t peer_id, Packet &pkt)
 	bool status = pkt.read<u8>();
 
 	if (status) {
-		if ((player->getFlags().flags & PlayerFlags::PF_MASK_GODMODE) == 0)
+		if ((player->getFlags().flags & PlayerFlags::PF_GODMODE) == 0)
 			return;
 	}
 

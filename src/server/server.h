@@ -82,15 +82,18 @@ private:
 
 	// ----------- Chat commands -----------
 	void registerChatCommands();
-	void systemChatSend(Player *player, const std::string &msg);
+	void systemChatSend(Player *player, const std::string &msg, bool broadcast = false);
 	Player *findPlayer(const World *world, std::string name);
 
 	CHATCMD_FUNC(chat_Help);
 	CHATCMD_FUNC(chat_SetPass);
 	CHATCMD_FUNC(chat_SetCode);
 	CHATCMD_FUNC(chat_Code);
+	CHATCMD_FUNC(chat_Ban);
 	CHATCMD_FUNC(chat_Flags);
 	CHATCMD_FUNC(chat_FFilter);
+	/// Which flags that "actor" may change on "target"
+	playerflags_t mayManipulatePlayer(Player *actor, Player *target);
 	bool changePlayerFlags(Player *player, std::string msg, bool do_add);
 	void handlePlayerFlagsChange(Player *player, playerflags_t flags_mask);
 	CHATCMD_FUNC(chat_FSet);

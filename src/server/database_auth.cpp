@@ -361,26 +361,25 @@ bool DatabaseAuth::getBanRecord(const std::string &affected, const std::string &
 	custom_bind_string(s, 1, affected);
 	custom_bind_string(s, 2, context);
 
-	if (sqlite3_step(s) != SQLITE_ROW) {
-		// Not found
-		sqlite3_reset(s);
-		return false;
+	bool good = false;
+	while (sqlite3_step(s) == SQLITE_ROW) {
+		int i = 0;
+		int64_t expiry = sqlite3_column_int64(s, i++);
+		if (expiry <= time(nullptr))
+			continue; // expired
+
+		good = true;
+		if (entry) {
+			entry->expiry   = expiry;
+			entry->affected = (const char *)sqlite3_column_text(s, i++);
+			entry->context  = (const char *)sqlite3_column_text(s, i++);
+			entry->comment  = (const char *)sqlite3_column_text(s, i++);
+		}
 	}
 
-	int i = 0;
-	int64_t expiry = sqlite3_column_int64(s, i++);
-
-	if (entry) {
-		entry->expiry   = expiry;
-		entry->affected = (const char *)sqlite3_column_text(s, i++);
-		entry->context  = (const char *)sqlite3_column_text(s, i++);
-		entry->comment  = (const char *)sqlite3_column_text(s, i++);
-	}
-
-	bool good = ok("f2b_read", sqlite3_step(s));
+	ok("f2b_ban", sqlite3_errcode(m_database));
 	sqlite3_reset(s);
-
-	return good && expiry > time(nullptr);
+	return good;
 }
 
 bool DatabaseAuth::cleanupBans()
