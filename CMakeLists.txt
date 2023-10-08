@@ -135,6 +135,7 @@ target_link_libraries(
 	${PROJECT_NAME}
 	${ENet_LIBRARY}
 	Threads::Threads
+	stdc++fs
 )
 
 if(BUILD_CLIENT)
