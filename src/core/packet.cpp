@@ -151,6 +151,14 @@ size_t Packet::readRawNoCopy(const uint8_t **data, size_t nbytes)
 	return nbytes;
 }
 
+void Packet::readRawNoCopyEnd(size_t nbytes)
+{
+	if (m_read_offset < nbytes)
+		throw std::out_of_range("Cannot move cursor back: packet too short");
+
+	m_read_offset -= nbytes;
+}
+
 uint8_t *Packet::writePreallocStart(size_t n_reserve)
 {
 	ensureCapacity(n_reserve);
@@ -160,7 +168,7 @@ uint8_t *Packet::writePreallocStart(size_t n_reserve)
 void Packet::writePreallocEnd(size_t nbytes)
 {
 	if (m_write_offset + nbytes > m_data->dataLength)
-		throw std::out_of_range("Cannot skip. Missing prealloc Possible memory corruption!");
+		throw std::out_of_range("Cannot skip. Missing prealloc. Possible memory corruption!");
 
 	m_write_offset += nbytes;
 }

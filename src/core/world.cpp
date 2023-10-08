@@ -1,5 +1,6 @@
 #include "world.h"
 #include "blockmanager.h"
+#include "compressor.h"
 #include "macros.h"
 #include "packet.h"
 #include <cstring> // memset
@@ -280,11 +281,19 @@ void World::write(Packet &pkt, Method method, u16 protocol_version) const
 	pkt.write<u16>(VALIDATION); // validity check
 }
 
-void World::readPlain(Packet &pkt, u16 protocol_version)
+void World::readPlain(Packet &pkt_in, u16 protocol_version)
 {
-	u8 version = pkt.read<u8>();
-	if (version < 2 || version > 4)
+	u8 version = pkt_in.read<u8>();
+	if (version < 2 || version > 5)
 		throw std::runtime_error("Unsupported read version");
+
+	const bool is_compressed = version >= 5;
+	Packet pkt_tmp_decomp;
+	Packet &pkt = is_compressed ? pkt_tmp_decomp : pkt_in;
+	if (is_compressed) {
+		Decompressor d(&pkt, pkt_in);
+		d.decompress();
+	}
 
 	// Describes the block parameters (thus length) that are to be expected
 	std::map<bid_t, BlockParams::Type> mapper;
@@ -343,12 +352,16 @@ void World::readPlain(Packet &pkt, u16 protocol_version)
 	}
 }
 
-void World::writePlain(Packet &pkt, u16 protocol_version) const
+void World::writePlain(Packet &pkt_out, u16 protocol_version) const
 {
-	u8 version = 4;
+	u8 version = 5;
 	// if (protocol_version < ??)
 	//     version = 3;
-	pkt.write(version);
+	pkt_out.write(version);
+
+	const bool do_compress = version >= 5;
+	Packet pkt_tmp_comp;
+	Packet &pkt = do_compress ? pkt_tmp_comp : pkt_out;
 
 	if (protocol_version == PROTOCOL_VERSION_FAKE_DISK) {
 		// Mapping of the known types
@@ -387,6 +400,11 @@ void World::writePlain(Packet &pkt, u16 protocol_version) const
 			BlockParams params(props->paramtypes);
 			params.write(pkt);
 		}
+	}
+
+	if (do_compress) {
+		Compressor c(&pkt_out, pkt);
+		c.compress();
 	}
 }
 

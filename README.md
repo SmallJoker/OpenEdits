@@ -51,6 +51,7 @@ Permission/player flag examples:
 **World import/export**
 
  * `*.eelvl` files in `worlds/imports/` are listed by the server as playable read-only worlds
+     * Helpful level archive: <https://archive.offlinee.com/>
  * Clients may use `.export FILENAME` to export the current world to `worlds/exports/`
  * See `worlds/README.txt` for further information
 

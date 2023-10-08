@@ -38,7 +38,7 @@ struct InflateWriter {
 	{
 		// Termination mark
 		while (status == Z_OK)
-			write(nullptr, 0);
+			compress(nullptr, 0);
 
 		deflateEnd(&m_zs);
 	}
@@ -69,7 +69,7 @@ struct InflateWriter {
 		iodata.pkt->writeRaw(data, len);
 	}
 
-	size_t write(const uint8_t *src, size_t n_bytes)
+	size_t compress(const uint8_t *src, size_t n_bytes)
 	{
 		if (src && n_bytes == 0)
 			return 0;
@@ -159,7 +159,7 @@ void Compressor::compress()
 	size_t len;
 	do {
 		len = m_input.readRawNoCopy(&buf, CHUNK_SMALL);
-		m_writer->write(buf, len);
+		m_writer->compress(buf, len);
 		DEBUGLOG("Compress n=%zu, remaining=%zu\n", len, m_input.getRemainingBytes());
 	} while (len == CHUNK_SMALL);
 
@@ -220,8 +220,8 @@ struct DeflateReader {
 		return iodata.pkt->readRawNoCopy(data, CHUNK_SMALL);
 	}
 
-	// Decompression
-	size_t read(uint8_t *dst, size_t n_bytes)
+	/// Returns the N decompressed bytes
+	size_t decompress(uint8_t *dst, size_t n_bytes)
 	{
 		if (n_bytes == 0)
 			return 0;
@@ -275,6 +275,9 @@ struct DeflateReader {
 
 		} while (status != Z_STREAM_END);
 
+		// Put back too many read bytes
+		if (status == Z_STREAM_END)
+			iodata.pkt->readRawNoCopyEnd(m_zs.avail_in);
 		return n_read;
 	}
 
@@ -308,7 +311,7 @@ void Decompressor::decompress()
 {
 	size_t len;
 	do {
-		len = m_reader->read(m_output.writePreallocStart(CHUNK_SMALL), CHUNK_SMALL);
+		len = m_reader->decompress(m_output.writePreallocStart(CHUNK_SMALL), CHUNK_SMALL);
 		m_output.writePreallocEnd(len);
 		DEBUGLOG("Decompress n=%zu, total=%zu\n", len, m_output.size());
 	} while (len > 0);

@@ -57,9 +57,14 @@ public:
 	// For data (de)compression
 	void writeRaw(const uint8_t *data, size_t nbytes);
 
-	// Optimization tricks
+	// ========== Optimization tricks ==========
+	/// Read maximal N bytes without copying bytes
 	size_t readRawNoCopy(const uint8_t **data, size_t nbytes);
+	/// Move cursor back N bytes that were not read
+	void   readRawNoCopyEnd(size_t nbytes);
+	/// Reserve space for writing without moving the cursor
 	uint8_t *writePreallocStart(size_t n_reserve);
+	/// Move forth N bytes that were written to
 	void     writePreallocEnd(size_t nbytes);
 
 private:

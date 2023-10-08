@@ -79,12 +79,16 @@ static void test_compressor()
 
 	unittest_tic();
 	Packet pkt_c;
+	pkt_c.writeStr16(val_str); // leading payload
 	Compressor c(&pkt_c, pkt);
 	c.compress();
+	pkt_c.write<int32_t>(val_s32); // tailing payload
 
 	Packet pkt_d;
+	CHECK(pkt_c.readStr16() == val_str); // leading payload
 	Decompressor d(&pkt_d, pkt_c);
 	d.decompress();
+	CHECK(pkt_c.read<int32_t>() == val_s32); // tailing payload
 	unittest_toc("zlib");
 
 	CHECK(pkt.size() == pkt_d.size());
