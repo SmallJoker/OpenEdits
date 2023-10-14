@@ -1,18 +1,94 @@
 #include "playerflags.h"
 
+using P = PlayerFlags::PlayerFlagsEnum;
+static constexpr struct Role {
+	const char *name;
+	P main;
+	playerflags_t default_flags;
+	playerflags_t allowed_to_change;
+} ROLES[] = {
+	{
+		"Admin",
+		P::PF_ADMIN,
+		0,
+		P::PF_MASK_SERVER | P::PF_MASK_WORLD | P::PF_MASK_TMP,
+	},
+	{
+		"Moderator",
+		P::PF_MODERATOR,
+		0,
+		P::PF_MASK_WORLD | P::PF_MASK_TMP
+	},
+	{
+		"Owner",
+		P::PF_OWNER, // world owner (1 player)
+		P::PF_COOWNER | P::PF_COLLAB | P::PF_EDIT_DRAW | P::PF_GODMODE,
+		P::PF_COOWNER | P::PF_COLLAB | P::PF_MASK_TMP
+	},
+	{
+		"Co-owner",
+		P::PF_COOWNER,
+		P::PF_COLLAB | P::PF_EDIT_DRAW | P::PF_GODMODE,
+		P::PF_COLLAB | P::PF_MASK_TMP
+	},
+	{
+		"Collaborator",
+		P::PF_COLLAB,
+		P::PF_EDIT_DRAW | P::PF_GODMODE,
+		0, // no permission to change flags
+	},
+	// termination
+	{
+		"Normal",
+		P::PF_NONE, // normal player
+		0,
+		0
+	}
+};
+
+static Role get_role(const playerflags_t flags)
+{
+	const Role *r = ROLES;
+	for (; r->main; ++r) {
+		if (flags & r->main)
+			break;
+	}
+	return *r; // can be the last one too
+}
+
+playerflags_t PlayerFlags::mayManipulate(const PlayerFlags target, const playerflags_t mask)
+{
+	Role r_a = get_role(flags);
+	Role r_t = get_role(target.flags);
+
+	// "this" must have more specific bits set than "target"
+	if (r_a.allowed_to_change & ~r_t.allowed_to_change & mask)
+		return r_a.allowed_to_change & mask;
+	return 0; // missing permissions
+}
+
+void PlayerFlags::repair()
+{
+	Role r = get_role(flags);
+	flags |= r.default_flags;
+}
+
 std::string PlayerFlags::toHumanReadable() const
 {
+	Role r = get_role(flags);
 	std::string out;
 	// Check for all temporary flags
+
+	if (r.main) {
+		out.append("[Role: ");
+		out.append(r.name);
+		out.append("] ");
+	}
 
 	if (check(PF_MUTED))
 		out.append("MUTED ");
 
-	if (check(PF_OWNER))
-		out.append("owner ");
-	else if (check(PF_COOWNER))
-		out.append("co-owner ");
-	else {
+	if (!r.main) {
 		if (check(PF_EDIT_DRAW))
 			out.append("edit-draw ");
 		else if (check(PF_EDIT))
@@ -32,7 +108,7 @@ static const struct {
 	{ "edit-draw",       PlayerFlags::PF_EDIT_DRAW },
 	{ "godmode",         PlayerFlags::PF_GODMODE },
 	{ "collaborator",    PlayerFlags::PF_COLLAB },
-	{ "co-owner",          PlayerFlags::PF_COOWNER },
+	{ "co-owner",        PlayerFlags::PF_COOWNER },
 	{ "owner",           PlayerFlags::PF_OWNER },
 };
 

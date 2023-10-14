@@ -1,4 +1,5 @@
 #include "unittest_internal.h"
+#include "core/playerflags.h"
 #include "core/utils.h"
 
 // Whether the object lifespan outlasts a function call when
@@ -25,7 +26,27 @@ struct LifetimeTest
 
 static void do_lifetime_test(const char *v)
 {
+	// must output the value before dtor is called
 	puts(v);
+}
+
+static void test_playerflags()
+{
+	using P = PlayerFlags;
+	PlayerFlags pf;
+	CHECK(!pf.check(P::PF_GODMODE));
+	pf.set(P::PF_EDIT_DRAW, 0);
+	CHECK(pf.check(P::PF_EDIT));
+
+	pf.flags = P::PF_COOWNER;
+	pf.repair();
+	CHECK(pf.check(P::PF_EDIT_DRAW));
+
+	PlayerFlags p2;
+	p2.flags = P::PF_ADMIN;
+
+	CHECK(!pf.mayManipulate(p2, P::PF_MASK_WORLD));
+	CHECK(p2.mayManipulate(pf, P::PF_MASK_WORLD) & P::PF_COOWNER);
 }
 
 void unittest_utilities()
@@ -48,4 +69,5 @@ void unittest_utilities()
 	CHECK(parts[3] == "more");
 
 	do_lifetime_test(LifetimeTest().get());
+	test_playerflags();
 }

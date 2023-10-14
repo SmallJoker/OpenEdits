@@ -436,22 +436,7 @@ playerflags_t Server::mayManipulatePlayer(Player *actor, Player *target)
 	PlayerFlags flags_a = actor->getFlags();
 	PlayerFlags flags_t = target->getFlags();
 
-	constexpr playerflags_t scope = PlayerFlags::PF_MASK_WORLD;
-
-	// "actor" must have more world-specific bits set than "target"
-	if (flags_a.flags & ~flags_t.flags & scope) {
-		// Allow flag changes
-		if (flags_a.check(PlayerFlags::PF_OWNER))
-			return PlayerFlags::PF_CNG_MASK_OWNER;
-		else if (flags_a.check(PlayerFlags::PF_COOWNER))
-			return PlayerFlags::PF_CNG_MASK_COOWNER;
-		else if (flags_a.check(PlayerFlags::PF_COLLAB))
-			return 0;
-
-		fprintf(stderr, "Unhandled flags %08X for player %s\n", flags_a.flags, actor->name.c_str());
-		return 0;
-	}
-	return 0;
+	return flags_a.mayManipulate(flags_t, PlayerFlags::PF_MASK_WORLD | PlayerFlags::PF_MASK_TMP);
 }
 
 
@@ -485,7 +470,7 @@ bool Server::changePlayerFlags(Player *player, std::string msg, bool do_add)
 	playerflags_t allowed_to_change = mayManipulatePlayer(player, target_player);
 
 	// Read in all specified flags
-	playerflags_t flags_specified = 0;
+	PlayerFlags specified;
 	std::string flag_string(get_next_part(msg));
 	while (!flag_string.empty()) {
 		playerflags_t flags_new;
@@ -494,21 +479,22 @@ bool Server::changePlayerFlags(Player *player, std::string msg, bool do_add)
 				". Available flags: " + PlayerFlags::getFlagList());
 			return false;
 		}
-		flags_specified |= flags_new;
+		specified.flags |= flags_new;
 
 		flag_string = get_next_part(msg);
 	}
 
-	if ((flags_specified & ~allowed_to_change) != 0) {
+	specified.repair();
+	if ((specified.flags & ~allowed_to_change) != 0) {
 		systemChatSend(player, "Insufficient permissions");
 		return false;
 	}
 
 	// Perform the operation
 	if (do_add) {
-		targetflags.set(flags_specified, flags_specified);
+		targetflags.set(specified.flags, specified.flags);
 	} else {
-		targetflags.set(0, flags_specified);
+		targetflags.set(0, specified.flags);
 	}
 
 	meta.setPlayerFlags(playername, targetflags);
@@ -516,7 +502,7 @@ bool Server::changePlayerFlags(Player *player, std::string msg, bool do_add)
 	targetflags = meta.getPlayerFlags(playername);
 
 	if (targetflags.flags != old_flags)
-		handlePlayerFlagsChange(target_player, flags_specified);
+		handlePlayerFlagsChange(target_player, specified.flags);
 
 	chat_Flags(player, playername);
 	return true;
