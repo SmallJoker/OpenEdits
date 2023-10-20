@@ -512,12 +512,49 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 	}
 
 	{
-		// Set player flags
+		WorldMeta &meta = world->getMeta();
+		// Owner permssions
+		if (meta.owner == player->name) {
+			meta.changePlayerFlags(player->name, PlayerFlags::PF_OWNER, PlayerFlags::PF_MASK_WORLD);
+		}
+
+		// Grant admin permissions if applicable
+		if (m_auth_db) {
+			playerflags_t flags = 0;
+			AuthAccount auth;
+			m_auth_db->load(player->name, &auth);
+			switch (auth.level) {
+				case AuthAccount::AL_MODERATOR:
+					flags = PlayerFlags::PF_MODERATOR;
+					break;
+				case AuthAccount::AL_SERVER_ADMIN:
+					flags = PlayerFlags::PF_ADMIN;
+					break;
+				default: break;
+			}
+			meta.changePlayerFlags(player->name, flags, PlayerFlags::PF_MASK_SERVER);
+		}
+
+		// Send all player flags where needed
+		Packet pkt_new;
+		pkt_new.write(Packet2Client::PlayerFlags);
+		player->writeFlags(pkt_new, PlayerFlags::PF_MASK_SEND_OTHERS);
+
 		Packet out;
 		out.write(Packet2Client::PlayerFlags);
-		out.write<playerflags_t>(player->getFlags().flags); // new flags
-		out.write<playerflags_t>(PlayerFlags::PF_MASK_SEND_PLAYER); // mask
-		m_con->send(peer_id, 0, out);
+		// Send all flags to the player
+		for (auto it : m_players) {
+			if (it.second->getWorld() != world)
+				continue;
+
+			// Notify existing players
+			m_con->send(it.first, 0, pkt_new);
+
+			// Append for new player
+			it.second->writeFlags(out, PlayerFlags::PF_MASK_SEND_PLAYER);
+		}
+		if (out.size() > 2)
+			m_con->send(player->peer_id, 0, out);
 	}
 
 	printf("Server: Player %s joined\n", player->name.c_str());

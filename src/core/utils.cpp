@@ -5,6 +5,19 @@
 	#include <windows.h>
 #endif
 
+bool strcmpi(const std::string &a, const std::string &b)
+{
+	if (a.size() != b.size())
+		return false;
+
+	for (size_t i = 0; i < a.size(); ++i) {
+		if (tolower(a[i]) != tolower(b[i]))
+			return false;
+	}
+
+	return true;
+}
+
 std::string strtrim(const std::string &str)
 {
 	size_t front = 0;

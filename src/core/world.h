@@ -107,7 +107,8 @@ struct WorldMeta : public IWorldMeta {
 
 	PlayerFlags getPlayerFlags(const std::string &name) const;
 	void setPlayerFlags(const std::string &name, const PlayerFlags pf);
-	const std::map<std::string, PlayerFlags> &getAllPlayerFlags() const { return player_flags; }
+	void changePlayerFlags(const std::string &name, playerflags_t changed, playerflags_t mask);
+	const std::map<std::string, PlayerFlags> &getAllPlayerFlags() const { return m_player_flags; }
 	// For database
 	void readPlayerFlags(Packet &pkt);
 	void writePlayerFlags(Packet &pkt) const;
@@ -118,7 +119,7 @@ struct WorldMeta : public IWorldMeta {
 	int spawn_index = -1;
 
 private:
-	std::map<std::string, PlayerFlags> player_flags;
+	std::map<std::string, PlayerFlags> m_player_flags;
 };
 
 constexpr u16 PROTOCOL_VERSION_FAKE_DISK = UINT16_MAX;

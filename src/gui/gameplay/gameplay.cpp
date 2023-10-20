@@ -580,7 +580,10 @@ bool SceneGameplay::OnEvent(GameEvent &e)
 			}
 			return true;
 		case E::C2G_PLAYERFLAGS:
-			m_gui->requestRenew();
+			if (e.player->peer_id == m_gui->getClient()->getMyPeerId()) {
+				m_gui->requestRenew();
+			}
+			m_dirty_playerlist = true; // flag indicators
 			return true;
 		default: break;
 	}
@@ -771,7 +774,8 @@ void SceneGameplay::updatePlayerlist()
 		core::stringw wstr;
 		core::multibyteToWString(wstr, it.second->name.c_str());
 		u32 i = e->addItem(wstr.c_str());
-		e->setItemOverrideColor(i, Gui::COLOR_ON_BG);
+		PlayerFlags pf = it.second->getFlags();
+		e->setItemOverrideColor(i, pf.getColor());
 	}
 
 	// Add world ID and online count

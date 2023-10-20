@@ -108,11 +108,8 @@ WorldMeta::Type WorldMeta::idToType(const std::string &id)
 
 PlayerFlags WorldMeta::getPlayerFlags(const std::string &name) const
 {
-	if (name == owner)
-		return PlayerFlags(PlayerFlags::PF_OWNER);
-
-	auto it = player_flags.find(name);
-	if (it != player_flags.end())
+	auto it = m_player_flags.find(name);
+	if (it != m_player_flags.end())
 		return it->second;
 
 	if (edit_code.empty()) {
@@ -127,7 +124,14 @@ PlayerFlags WorldMeta::getPlayerFlags(const std::string &name) const
 
 void WorldMeta::setPlayerFlags(const std::string &name, const PlayerFlags pf)
 {
-	player_flags[name] = pf;
+	m_player_flags[name] = pf;
+}
+
+void WorldMeta::changePlayerFlags(const std::string &name, playerflags_t changed, playerflags_t mask)
+{
+	PlayerFlags pf = getPlayerFlags(name);
+	pf.set(changed, mask);
+	m_player_flags[name] = pf;
 }
 
 void WorldMeta::readPlayerFlags(Packet &pkt)
@@ -139,7 +143,7 @@ void WorldMeta::readPlayerFlags(Packet &pkt)
 	if (version < 4 || version > 5)
 		throw std::runtime_error("Incompatible player flags version");
 
-	player_flags.clear();
+	m_player_flags.clear();
 
 	if (version < 5)
 		return;
@@ -156,7 +160,7 @@ void WorldMeta::readPlayerFlags(Packet &pkt)
 		playerflags_t flags = pkt.read<playerflags_t>();
 		pf.flags |= flags & mask;
 
-		player_flags.emplace(name, pf);
+		m_player_flags.emplace(name, pf);
 	}
 }
 
@@ -165,7 +169,7 @@ void WorldMeta::writePlayerFlags(Packet &pkt) const
 	pkt.write<u8>(5);
 	pkt.write<playerflags_t>(PlayerFlags::PF_MASK_WORLD);
 
-	for (auto it : player_flags) {
+	for (auto it : m_player_flags) {
 		if ((it.second.flags & PlayerFlags::PF_MASK_WORLD) == 0)
 			continue;
 		if (it.first == owner)
@@ -176,6 +180,7 @@ void WorldMeta::writePlayerFlags(Packet &pkt) const
 	}
 	pkt.writeStr16(""); // end
 }
+
 
 // -------------- World class -------------
 

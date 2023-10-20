@@ -461,21 +461,21 @@ void Client::pkt_Smiley(Packet &pkt)
 
 void Client::pkt_PlayerFlags(Packet &pkt)
 {
-	playerflags_t flags = pkt.read<playerflags_t>();
-	playerflags_t mask = pkt.read<playerflags_t>();
+	while (pkt.getRemainingBytes() > 0) {
+		peer_t peer_id = pkt.read<peer_t>();
+		if (!peer_id)
+			break;
 
-	auto player = getMyPlayer();
-	if (!player)
-		return;
+		auto player = getPlayerNoLock(peer_id);
+		if (!player)
+			continue;
 
-	PlayerFlags myflags = player->getFlags();
-	myflags.set(flags, mask);
+		player->readFlags(pkt);
 
-	auto &meta = player->getWorld()->getMeta();
-	meta.setPlayerFlags(player->name, myflags);
-
-	GameEvent e(GameEvent::C2G_PLAYERFLAGS);
-	sendNewEvent(e);
+		GameEvent e(GameEvent::C2G_PLAYERFLAGS);
+		e.player = player;
+		sendNewEvent(e);
+	}
 }
 
 void Client::pkt_WorldMeta(Packet &pkt)

@@ -37,7 +37,11 @@ public:
 	bool setControls(const PlayerControls &ctrl);
 
 	void setPosition(core::vector2df newpos, bool reset_progress);
+
 	PlayerFlags getFlags() const;
+	// For networking only!
+	void writeFlags(Packet &pkt, playerflags_t mask) const;
+	void readFlags(Packet &pkt);
 
 	void step(float dtime);
 

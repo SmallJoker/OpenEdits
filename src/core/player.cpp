@@ -105,6 +105,24 @@ PlayerFlags Player::getFlags() const
 }
 
 
+void Player::readFlags(Packet &pkt)
+{
+	playerflags_t changed = pkt.read<playerflags_t>();
+	playerflags_t mask = pkt.read<playerflags_t>();
+	if (m_world)
+		m_world->getMeta().changePlayerFlags(name, changed, mask);
+}
+
+
+void Player::writeFlags(Packet &pkt, playerflags_t mask) const
+{
+	PlayerFlags pf = getFlags();
+	pkt.write<peer_t>(peer_id);
+	pkt.write<playerflags_t>(pf.flags & mask);
+	pkt.write<playerflags_t>(mask);
+}
+
+
 void Player::step(float dtime)
 {
 	if (!m_world)

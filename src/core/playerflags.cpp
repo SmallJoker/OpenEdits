@@ -6,43 +6,50 @@ static constexpr struct Role {
 	P main;
 	playerflags_t default_flags;
 	playerflags_t allowed_to_change;
+	uint32_t color; // AARRGGBB
 } ROLES[] = {
 	{
 		"Admin",
 		P::PF_ADMIN,
 		0,
 		P::PF_MASK_SERVER | P::PF_MASK_WORLD | P::PF_MASK_TMP,
+		0xFFFFFF00 // yellow
 	},
 	{
 		"Moderator",
 		P::PF_MODERATOR,
 		0,
-		P::PF_MASK_WORLD | P::PF_MASK_TMP
+		P::PF_MASK_WORLD | P::PF_MASK_TMP,
+		0xFFFF5500 // orange
 	},
 	{
 		"Owner",
 		P::PF_OWNER, // world owner (1 player)
 		P::PF_COOWNER | P::PF_COLLAB | P::PF_EDIT_DRAW | P::PF_GODMODE,
-		P::PF_COOWNER | P::PF_COLLAB | P::PF_MASK_TMP
+		P::PF_COOWNER | P::PF_COLLAB | P::PF_MASK_TMP,
+		0xFF77AAFF // baby blue
 	},
 	{
 		"Co-owner",
 		P::PF_COOWNER,
 		P::PF_COLLAB | P::PF_EDIT_DRAW | P::PF_GODMODE,
-		P::PF_COLLAB | P::PF_MASK_TMP
+		P::PF_COLLAB | P::PF_MASK_TMP,
+		0xFF0088EE // light blue
 	},
 	{
 		"Collaborator",
 		P::PF_COLLAB,
 		P::PF_EDIT_DRAW | P::PF_GODMODE,
 		0, // no permission to change flags
+		0xFF00EECC // teal
 	},
 	// termination
 	{
 		"Normal",
 		P::PF_NONE, // normal player
 		0,
-		0
+		0,
+		0xFFBBBBBB // grey
 	}
 };
 
@@ -98,6 +105,12 @@ std::string PlayerFlags::toHumanReadable() const
 	}
 	return out;
 }
+
+uint32_t PlayerFlags::getColor() const
+{
+	return get_role(flags).color;
+}
+
 
 static const struct {
 	std::string str;

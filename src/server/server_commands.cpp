@@ -286,17 +286,16 @@ CHATCMD_FUNC(Server::chat_Code)
 		return;
 	}
 
-	auto old_pf = player->getFlags();
-	PlayerFlags pf;
+	playerflags_t flags;
 	switch (meta.type) {
 		case WorldMeta::Type::TmpSimple:
-			pf.flags = PlayerFlags::PF_EDIT;
+			flags = PlayerFlags::PF_EDIT;
 			break;
 		case WorldMeta::Type::TmpDraw:
-			pf.flags = PlayerFlags::PF_EDIT_DRAW;
+			flags = PlayerFlags::PF_EDIT_DRAW;
 			break;
 		case WorldMeta::Type::Persistent:
-			pf.flags = PlayerFlags::PF_EDIT_DRAW
+			flags = PlayerFlags::PF_EDIT_DRAW
 				| PlayerFlags::PF_GODMODE;
 			break;
 		default:
@@ -304,14 +303,12 @@ CHATCMD_FUNC(Server::chat_Code)
 			return;
 	}
 
-	old_pf.flags |= pf.flags;
-	meta.setPlayerFlags(player->name, old_pf);
+	meta.changePlayerFlags(player->name, flags, 0);
 
 	{
 		Packet out;
 		out.write(Packet2Client::PlayerFlags);
-		out.write<playerflags_t>(pf.flags); // new flags
-		out.write<playerflags_t>(pf.flags); // mask
+		player->writeFlags(out, flags);
 		m_con->send(player->peer_id, 1, out);
 	}
 }
@@ -519,9 +516,16 @@ void Server::handlePlayerFlagsChange(Player *player, playerflags_t flags_mask)
 	{
 		Packet out;
 		out.write(Packet2Client::PlayerFlags);
-		out.write<playerflags_t>(flags.flags & flags_mask); // new flags
-		out.write<playerflags_t>(flags_mask); // mask
+		player->writeFlags(out, flags_mask);
 		m_con->send(player->peer_id, 1, out);
+	}
+
+	// Notify the other players
+	if (flags.flags & flags_mask & PlayerFlags::PF_MASK_SEND_OTHERS) {
+		Packet out;
+		out.write(Packet2Client::PlayerFlags);
+		player->writeFlags(out, PlayerFlags::PF_MASK_SEND_OTHERS);
+		broadcastInWorld(player, 1, out);
 	}
 
 	// Remove god mode if active

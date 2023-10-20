@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <string>
 
+class Packet;
 typedef uint32_t playerflags_t;
 
 struct PlayerFlags {
@@ -46,8 +47,10 @@ struct PlayerFlags {
 		PF_MODERATOR   = 0x00200000,
 		PF_ADMIN       = 0x00800000,
 
+		// Information relevant to others
+		PF_MASK_SEND_OTHERS = PF_MASK_WORLD | PF_MASK_SERVER,
 		// For network transmission: per-player
-		PF_MASK_SEND_PLAYER = PF_MASK_TMP | PF_MASK_WORLD | PF_MASK_SERVER,
+		PF_MASK_SEND_PLAYER = PF_MASK_SEND_OTHERS | PF_MASK_TMP
 	};
 
 	/// Returns the flags that this player is allowed to change on "target"
@@ -57,8 +60,10 @@ struct PlayerFlags {
 
 	// Text output & input for chat commands
 	std::string toHumanReadable() const;
+	uint32_t getColor() const;
 	/// Human readable string of all changeable player flags
 	static std::string getFlagList();
+	/// Input parsing to convert human readable strings into flags
 	static bool stringToPlayerFlags(const std::string &input, playerflags_t *out);
 };
 
