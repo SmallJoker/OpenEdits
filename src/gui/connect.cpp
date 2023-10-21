@@ -191,7 +191,7 @@ bool SceneConnect::OnEvent(const SEvent &e)
 						int index;
 						try {
 							index = listbox->getSelected();
-							m_index_to_address.at(index); // valid?
+							(void)m_index_to_address.at(index); // valid?
 						} catch (std::exception &) {
 							break;
 						}

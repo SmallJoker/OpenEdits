@@ -25,3 +25,5 @@ make.sh
 # Other files
 *.eelvl
 *.log
+*.zip
+*.7z

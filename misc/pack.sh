@@ -1,8 +1,15 @@
 #!/usr/bin/env sh
+# To be executed in a separate directory for packing
+
+# change me if needed
+GAMEDIR="$PWD/OpenEdits"
+
+# ----------------
 
 set -e
 
 ostype=""
+binary="OpenEdits"
 case "$OSTYPE" in
 	darwin*)  ostype="macOS"   ;;
 	linux*)   ostype="Linux"   ;;
@@ -12,20 +19,20 @@ case "$OSTYPE" in
 esac
 
 [ -z "$ostype" ] && echo "Unhandled platform." && exit 1
-
-
-DIR="$PWD/build/OpenEdits"
+[ "$ostype" = "Windows" ] && binary="OpenEdits.exe"
 
 echo "--- Removing testing files"
-rm -f "$DIR"/*.sqlite
-rm -f "$DIR/client_servers.txt"
+rm -vf "$GAMEDIR"/*.sqlite*
+rm -vf "$GAMEDIR/client_servers.txt"
+rm -vrf "$GAMEDIR/worlds"
 
 # zipping
-version=$(strings "$DIR/OpenEdits" | grep -Eo "v[0-9]+\.[0-9]+\.[0-9]+[^ ]*")
+version=$(grep -Eoa "v[0-9]+\.[0-9]+\.[0-9]+[^ ]*" "$GAMEDIR/$binary")
+#version=$(strings "$GAMEDIR/$binary" | grep -Eo "v[0-9]+\.[0-9]+\.[0-9]+[^ ]*")
 zipfile="OpenEdits-$version-$ostype-x86_64.7z"
 
 rm -f "$zipfile" # old archive
-7z a -t7z -scrcSHA1 "$zipfile" "$DIR"
+7z a -t7z -scrcSHA1 "$zipfile" "$GAMEDIR"
 
 echo ""
 echo "--- sha256 checksum"

@@ -103,7 +103,7 @@ struct InflateWriter {
 				case Z_DATA_ERROR:
 				case Z_MEM_ERROR:
 				case Z_STREAM_ERROR:
-					ERRORLOG("zlib: error code %d, message: %s, near index 0x%04zX\n",
+					ERRORLOG("zlib: error code %d, message: %s, near index 0x%04lX\n",
 						status, m_zs.msg ? m_zs.msg : "NULL", m_zs.total_in);
 					throw std::runtime_error("zlib: inflate error");
 			}
@@ -259,7 +259,7 @@ struct DeflateReader {
 				case Z_MEM_ERROR:
 				case Z_STREAM_ERROR:
 					//ERRORLOG("Got Adler %08lX\n", m_zs.adler);
-					ERRORLOG("zlib: error code %d, message: %s, near index 0x%04zX\n",
+					ERRORLOG("zlib: error code %d, message: %s, near index 0x%04lX\n",
 						status, m_zs.msg ? m_zs.msg : "NULL", m_zs.total_out);
 					throw std::runtime_error("zlib: inflate error");
 			}

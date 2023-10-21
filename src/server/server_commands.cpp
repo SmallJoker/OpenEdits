@@ -757,6 +757,11 @@ CHATCMD_FUNC(Server::chat_Save)
 
 	auto world = player->getWorld();
 
+	if (world->getMeta().type != WorldMeta::Type::Persistent) {
+		systemChatSend(player, "This world cannot be saved.");
+		return;
+	}
+
 	if (!player->getFlags().check(PlayerFlags::PF_OWNER)) {
 		systemChatSend(player, "Insufficient permissions");
 		return;
@@ -776,9 +781,10 @@ CHATCMD_FUNC(Server::chat_Save)
 		m_auth_db->ban(entry);
 	}
 
-	m_world_db->save(world.get());
-
-	systemChatSend(player, "Saved!");
+	if (m_world_db->save(world.get()))
+		systemChatSend(player, "Saved!");
+	else
+		systemChatSend(player, "Failed to save (server error)");
 }
 
 CHATCMD_FUNC(Server::chat_Title)

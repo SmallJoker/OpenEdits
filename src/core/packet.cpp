@@ -144,7 +144,7 @@ void Packet::writeRaw(const uint8_t *data, size_t nbytes)
 
 size_t Packet::readRawNoCopy(const uint8_t **data, size_t nbytes)
 {
-	nbytes = std::min(nbytes, getRemainingBytes());
+	nbytes = std::min<size_t>(nbytes, getRemainingBytes());
 
 	*data = &m_data->data[m_read_offset];
 	m_read_offset += nbytes;

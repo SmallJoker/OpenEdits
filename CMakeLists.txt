@@ -74,10 +74,9 @@ if (MSVC)
 	set(CMAKE_EXE_LINKER_FLAGS_RELEASE "/DEBUG /OPT:REF /OPT:ICF /INCREMENTAL:NO")
 
 	# Skip unnecessary headers
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Zi /D WIN32_LEAN_AND_MEAN /D NOCOMM")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Zi /MP /D WIN32_LEAN_AND_MEAN /D NOCOMM")
 	set(CMAKE_CXX_FLAGS_RELEASE "/Ox /MD /EHa /D NDEBUG")
 	set(CMAKE_CXX_FLAGS_DEBUG "/Od /MDd /RTC1")
-
 else()
 	# -fsanitize=address,undefined
 	# -O3 is default for release
@@ -135,7 +134,6 @@ target_link_libraries(
 	${PROJECT_NAME}
 	${ENet_LIBRARY}
 	Threads::Threads
-	stdc++fs
 )
 
 if(BUILD_CLIENT)
@@ -153,7 +151,7 @@ if(MSVC)
 	# For ENet
 	target_link_libraries(${PROJECT_NAME} ws2_32.lib winmm.lib)
 else()
-	target_link_libraries(${PROJECT_NAME} SQLite::SQLite3)
+	target_link_libraries(${PROJECT_NAME} stdc++fs SQLite::SQLite3)
 endif()
 
 

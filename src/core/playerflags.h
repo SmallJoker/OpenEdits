@@ -29,22 +29,25 @@ struct PlayerFlags {
 		PF_NONE = 0,
 
 		// Temporary world-specific flags
-		PF_MASK_TMP  = 0x000000FF,
+		// Max. mask:  0x000000FF
 		PF_MUTED     = 0x00000001,
 		PF_EDIT      = 0x00000002,
 		PF_EDIT_DRAW = 0x00000004 | PF_EDIT,
 		PF_GODMODE   = 0x00000010,
+		PF_MASK_TMP  = PF_MUTED | PF_EDIT_DRAW | PF_GODMODE,
 
 		// Persistent world-wide roles
-		PF_MASK_WORLD = 0x0000FF00,
+		// Max. mask:   0x000FF000
 		PF_COLLAB     = 0x00001000,
 		PF_COOWNER    = 0x00004000,
 		PF_OWNER      = 0x00008000, // there can only be one
+		PF_MASK_WORLD = PF_COLLAB | PF_COOWNER | PF_OWNER,
 
 		// Persistent server-wide roles
-		PF_MASK_SERVER = 0x00FF0000,
+		// Max. mask:    0x00FF0000
 		PF_MODERATOR   = 0x00200000,
 		PF_ADMIN       = 0x00800000,
+		PF_MASK_SERVER = PF_MODERATOR | PF_ADMIN,
 
 		// Information relevant to others
 		PF_MASK_SEND_OTHERS = PF_MASK_WORLD | PF_MASK_SERVER,

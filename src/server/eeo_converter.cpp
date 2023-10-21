@@ -604,18 +604,19 @@ void EEOconverter::listImportableWorlds(std::map<std::string, LobbyWorld> &world
 		if (!is_path_ok(entry))
 			continue;
 
+		std::string path = entry.path().u8string();
 		LobbyWorld meta;
 		try {
 			Packet pkt;
-			decompress_file(pkt, entry.path());
+			decompress_file(pkt, path);
 			read_eelvl_header(pkt, meta);
 		} catch (std::runtime_error &e) {
-			DEBUGLOG("Cannot read '%s': %s\n", entry.path().c_str(), e.what());
+			DEBUGLOG("Cannot read '%s': %s\n", path.c_str(), e.what());
 			continue;
 		}
 
-		meta.id = path_to_worldid(entry.path());
-		worlds[entry.path()] = meta;
+		meta.id = path_to_worldid(path);
+		worlds[path] = meta;
 	}
 #endif
 }
@@ -634,9 +635,8 @@ std::string EEOconverter::findWorldPath(const std::string &world_id)
 		if (!is_path_ok(entry))
 			continue;
 
-		if (world_id == path_to_worldid(entry.path())) {
-			return std::filesystem::relative(entry.path(), root);
-		}
+		if (world_id == path_to_worldid(entry.path().u8string()))
+			return std::filesystem::relative(entry.path(), root).u8string();
 	}
 
 	return "";
