@@ -433,18 +433,15 @@ playerflags_t Server::mayManipulatePlayer(Player *actor, Player *target)
 	PlayerFlags flags_a = actor->getFlags();
 	PlayerFlags flags_t = target->getFlags();
 
+	if (actor == target)
+		flags_t = PlayerFlags();
+
 	return flags_a.mayManipulate(flags_t, PlayerFlags::PF_MASK_WORLD | PlayerFlags::PF_MASK_TMP);
 }
 
 
 bool Server::changePlayerFlags(Player *player, std::string msg, bool do_add)
 {
-	const PlayerFlags myflags = player->getFlags();
-	if (!myflags.check(PlayerFlags::PF_COOWNER)) {
-		systemChatSend(player, "Insufficient permissions");
-		return false;
-	}
-
 	auto world = player->getWorld();
 	auto &meta = world->getMeta();
 
@@ -456,7 +453,6 @@ bool Server::changePlayerFlags(Player *player, std::string msg, bool do_add)
 	Player *target_player = findPlayer(world.get(), playername);
 	PlayerFlags targetflags = meta.getPlayerFlags(playername);
 	const playerflags_t old_flags = targetflags.flags;
-
 
 	if (!target_player && targetflags.flags == 0) {
 		systemChatSend(player, "Cannot find player " + playername);
@@ -521,10 +517,10 @@ void Server::handlePlayerFlagsChange(Player *player, playerflags_t flags_mask)
 	}
 
 	// Notify the other players
-	if (flags.flags & flags_mask & PlayerFlags::PF_MASK_SEND_OTHERS) {
+	if (flags_mask & PlayerFlags::PF_MASK_SEND_OTHERS) {
 		Packet out;
 		out.write(Packet2Client::PlayerFlags);
-		player->writeFlags(out, PlayerFlags::PF_MASK_SEND_OTHERS);
+		player->writeFlags(out, flags_mask & PlayerFlags::PF_MASK_SEND_OTHERS);
 		broadcastInWorld(player, 1, out);
 	}
 

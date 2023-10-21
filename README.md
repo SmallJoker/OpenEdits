@@ -46,7 +46,9 @@ Permission/player flag examples:
  * `--version` outputs the current game version
  * `--unittest` runs the included tests to sanity check
  * `--server` starts a server-only instance without GUI
-
+ * `--setrole USERNAME ROLE`
+     * `ROLE` can be one of: `normal`, `moderator`, `admin`.
+     * Can be executed while a server is already running.
 
 **World import/export**
 

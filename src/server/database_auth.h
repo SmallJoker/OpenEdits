@@ -40,7 +40,7 @@ struct AuthLogEntry {
 	std::string text;
 };
 
-class DatabaseAuth : Database {
+class DatabaseAuth : public Database {
 public:
 	DatabaseAuth() : Database() {}
 	~DatabaseAuth();

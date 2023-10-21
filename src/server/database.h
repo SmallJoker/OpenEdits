@@ -13,6 +13,7 @@ public:
 	virtual void close();
 
 	bool runCustomQuery(const char *query);
+	bool enableWAL();
 
 protected:
 	Database() {}

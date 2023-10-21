@@ -15,7 +15,7 @@
 
 static uint16_t PACKET_ACTIONS_MAX; // initialized in ctor
 
-Server::Server() :
+Server::Server(bool *shutdown_requested) :
 	Environment(new BlockManager()),
 	m_chatcmd(this)
 {
@@ -26,23 +26,35 @@ Server::Server() :
 	m_bmgr->doPackRegistration();
 
 	m_con = new Connection(Connection::TYPE_SERVER, "Server");
-	m_con->listenAsync(*this);
+	if (!m_con->listenAsync(*this)) {
+		if (shutdown_requested)
+			*shutdown_requested = true;
+		return;
+	}
 
 	{
 		// Initialize persistent world storage
 		m_world_db = new DatabaseWorld();
 		if (!m_world_db->tryOpen("server_worlddata.sqlite")) {
+			fprintf(stderr, "Failed to open world database!\n");
 			delete m_world_db;
 			m_world_db = nullptr;
+			if (shutdown_requested)
+				*shutdown_requested = true;
 		}
 	}
 
 	{
 		// Initialize auth
 		m_auth_db = new DatabaseAuth();
-		if (!m_auth_db->tryOpen("server_auth.sqlite")) {
+		if (m_auth_db->tryOpen("server_auth.sqlite")) {
+			m_auth_db->enableWAL();
+		} else {
+			fprintf(stderr, "Failed to open auth database!\n");
 			delete m_auth_db;
 			m_auth_db = nullptr;
+			if (shutdown_requested)
+				*shutdown_requested = true;
 		}
 	}
 
@@ -83,6 +95,11 @@ Server::~Server()
 
 void Server::step(float dtime)
 {
+	if (m_is_first_step) {
+		puts("Server: Up and runnning.");
+		m_is_first_step = false;
+	}
+
 	// maybe run player physics?
 
 	// always player lock first, world lock after.

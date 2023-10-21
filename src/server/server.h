@@ -17,7 +17,7 @@ struct LobbyWorld;
 
 class Server : public Environment, public ChatCommandHandler {
 public:
-	Server();
+	Server(bool *shutdown_requested = nullptr);
 	~Server();
 
 	void step(float dtime) override;
@@ -69,6 +69,7 @@ private:
 	// ----------- Other members -----------
 	DatabaseAuth *m_auth_db = nullptr;
 	DatabaseWorld *m_world_db = nullptr;
+	bool m_is_first_step = true;
 
 	std::map<peer_t, Timer> m_deaths;
 

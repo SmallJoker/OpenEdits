@@ -239,7 +239,7 @@ void Gui::connect(SceneConnect *sc)
 	ClientStartData init;
 
 	if (sc->start_localhost) {
-		m_server = new Server();
+		m_server = new Server(&m_pending_disconnect);
 		init.address = "127.0.0.1";
 	}
 

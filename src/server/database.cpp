@@ -53,9 +53,14 @@ bool Database::runCustomQuery(const char *query)
 	char *errmsg = nullptr;
 	bool good = ok(query, sqlite3_exec(m_database, query, nullptr, nullptr, &errmsg));
 	if (!good && errmsg)
-		printf("\t Message: %s\n", errmsg);
+		fprintf(stderr, "\t Message: %s\n", errmsg);
 
 	return good;
+}
+
+bool Database::enableWAL()
+{
+	return runCustomQuery("PRAGMA journal_mode=WAL;");
 }
 
 bool Database::ok(const char *where, int status)  const

@@ -3,7 +3,6 @@
 #include <cstdint>
 #include <string>
 
-class Packet;
 typedef uint32_t playerflags_t;
 
 struct PlayerFlags {
