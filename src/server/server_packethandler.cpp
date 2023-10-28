@@ -9,6 +9,12 @@
 #include "server/eeo_converter.h"
 #include <set>
 
+#if 0
+	#define DEBUGLOG(...) printf(__VA_ARGS__)
+#else
+	#define DEBUGLOG(...) /* SILENCE */
+#endif
+
 // in sync with core/packet.h
 const ServerPacketHandler Server::packet_actions[] = {
 	{ RemotePlayerState::Invalid,   &Server::pkt_Quack }, // 0
@@ -25,7 +31,6 @@ const ServerPacketHandler Server::packet_actions[] = {
 	{ RemotePlayerState::WorldPlay, &Server::pkt_Smiley },
 	{ RemotePlayerState::Invalid, 0 }
 };
-
 
 void Server::pkt_Quack(peer_t peer_id, Packet &pkt)
 {
@@ -404,8 +409,12 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 
 	// query database for existing world
 	auto world = getWorldNoLock(world_id);
-	if (!world)
-		world = loadWorldNoLock(world_id);
+	if (!world) {
+		world = std::make_shared<World>(m_bmgr, world_id);
+
+		if (!loadWorldNoLock(world.get()))
+			world.reset(); // Not found
+	}
 
 	if (!world && WorldMeta::idToType(world_id) == WorldMeta::Type::Readonly) {
 		std::string path = EEOconverter::findWorldPath(world_id);
@@ -512,28 +521,7 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 	}
 
 	{
-		WorldMeta &meta = world->getMeta();
-		// Owner permssions
-		if (meta.owner == player->name) {
-			meta.changePlayerFlags(player->name, PlayerFlags::PF_OWNER, PlayerFlags::PF_MASK_WORLD);
-		}
-
-		// Grant admin permissions if applicable
-		if (m_auth_db) {
-			playerflags_t flags = 0;
-			AuthAccount auth;
-			m_auth_db->load(player->name, &auth);
-			switch (auth.level) {
-				case AuthAccount::AL_MODERATOR:
-					flags = PlayerFlags::PF_MODERATOR;
-					break;
-				case AuthAccount::AL_SERVER_ADMIN:
-					flags = PlayerFlags::PF_ADMIN;
-					break;
-				default: break;
-			}
-			meta.changePlayerFlags(player->name, flags, PlayerFlags::PF_MASK_SERVER);
-		}
+		setDefaultPlayerFlags(player);
 
 		// Send all player flags where needed
 		Packet pkt_new;
@@ -553,6 +541,7 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 			// Append for new player
 			it.second->writeFlags(out, PlayerFlags::PF_MASK_SEND_PLAYER);
 		}
+
 		if (out.size() > 2)
 			m_con->send(player->peer_id, 0, out);
 	}
@@ -595,7 +584,6 @@ void Server::pkt_Move(peer_t peer_id, Packet &pkt)
 		out.write(peer_id);
 		player->writePhysics(out);
 	}
-	out.write<peer_t>(0); // end of bulk
 
 	broadcastInWorld(player, 1 | Connection::FLAG_UNRELIABLE, out);
 }
@@ -654,7 +642,7 @@ void Server::pkt_PlaceBlock(peer_t peer_id, Packet &pkt)
 	SimpleLock lock(world->mutex);
 
 	BlockUpdate bu(world->getBlockMgr());
-	while (true) {
+	while (pkt.getRemainingBytes()) {
 		bool is_ok = pkt.read<u8>();
 		if (!is_ok)
 			break;
@@ -681,7 +669,7 @@ void Server::pkt_TriggerBlocks(peer_t peer_id, Packet &pkt)
 
 	// TODO: Check whether the responsible player is (or was) nearby
 	bool is_dead = false;
-	while (true) {
+	while (pkt.getRemainingBytes()) {
 		blockpos_t pos;
 		pkt.read(pos.X);
 		if (pos.X == BLOCKPOS_INVALID)
@@ -728,8 +716,11 @@ void Server::pkt_GodMode(peer_t peer_id, Packet &pkt)
 	bool status = pkt.read<u8>();
 
 	if (status) {
-		if ((player->getFlags().flags & PlayerFlags::PF_GODMODE) == 0)
+		if ((player->getFlags().flags & PlayerFlags::PF_GODMODE) == 0) {
+			DEBUGLOG("pkt_GodMode: missing flags for %s (%08X)\n",
+				player->name.c_str(), player->getFlags().flags);
 			return;
+		}
 	}
 
 	player->setGodMode(status);
@@ -776,18 +767,24 @@ void Server::sendMsg(peer_t peer_id, const std::string &text)
 	m_con->send(peer_id, 0, pkt);
 }
 
+
 void Server::broadcastInWorld(Player *player, int flags, Packet &pkt)
 {
 	if (!player)
 		return;
 
 	auto world = player->getWorld();
+	broadcastInWorld(world.get(), flags, pkt);
+}
+
+void Server::broadcastInWorld(const World *world, int flags, Packet &pkt)
+{
 	if (!world)
 		return;
 
 	// Send to all players within this world
 	for (auto it : m_players) {
-		if (it.second->getWorld() != world)
+		if (it.second->getWorld().get() != world)
 			continue;
 
 		m_con->send(it.first, flags, pkt);

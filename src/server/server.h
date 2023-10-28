@@ -49,6 +49,7 @@ private:
 	void sendMsg(peer_t peer_id, const std::string &text);
 
 	void broadcastInWorld(Player *player, int flags, Packet &pkt);
+	void broadcastInWorld(const World *world, int flags, Packet &pkt);
 
 	#define SERVER_PKT_CB [&](Packet &out, u16 proto_ver) -> void
 	void broadcastInWorld(Player *player, RemotePlayerState min_state,
@@ -56,8 +57,9 @@ private:
 
 	static const ServerPacketHandler packet_actions[];
 
-	RefCnt<World> loadWorldNoLock(const std::string &id);
+	bool loadWorldNoLock(World *world);
 	void writeWorldData(Packet &out, World &world, bool is_clear);
+	void setDefaultPlayerFlags(Player *player);
 	void teleportPlayer(Player *player, core::vector2df dst, bool reset_progress = false);
 	void respawnPlayer(Player *player, bool send_packet, bool reset_progress = true);
 
@@ -103,6 +105,8 @@ private:
 	CHATCMD_FUNC(chat_Teleport);
 	CHATCMD_FUNC(chat_Clear);
 	CHATCMD_FUNC(chat_Import);
+	/// Players must already have joined the new world
+	void sendPlayerFlags(const World *world);
 	CHATCMD_FUNC(chat_Load);
 	CHATCMD_FUNC(chat_Save);
 	CHATCMD_FUNC(chat_Title);

@@ -33,20 +33,33 @@ static void do_lifetime_test(const char *v)
 static void test_playerflags()
 {
 	using P = PlayerFlags;
+
+	{
+		PlayerFlags p3;
+		p3.repair();
+		CHECK(p3.flags == 0);
+		printf("Role of p3: flags=%08X, str=%s\n", p3.flags, p3.toHumanReadable().c_str());
+	}
+
+	// Interact check
 	PlayerFlags pf;
 	CHECK(!pf.check(P::PF_GODMODE));
 	pf.set(P::PF_EDIT_DRAW, 0);
 	CHECK(pf.check(P::PF_EDIT));
 
-	pf.flags = P::PF_COOWNER;
-	pf.repair();
-	CHECK(pf.check(P::PF_EDIT_DRAW));
+	pf.set(P::PF_COOWNER, P::PF_MASK_WORLD);
+	CHECK(pf.check(P::PF_EDIT_DRAW | P::PF_COOWNER));
 
-	PlayerFlags p2;
-	p2.flags = P::PF_ADMIN;
+	PlayerFlags p2(P::PF_ADMIN);
 
 	CHECK(!pf.mayManipulate(p2, P::PF_MASK_WORLD));
 	CHECK(p2.mayManipulate(pf, P::PF_MASK_WORLD) & P::PF_COOWNER);
+
+	pf.repair();
+	printf("Role of p1: flags=%08X, str=%s\n", pf.flags, pf.toHumanReadable().c_str());
+
+	p2.repair();
+	printf("Role of p2: flags=%08X, str=%s\n", p2.flags, p2.toHumanReadable().c_str());
 }
 
 void unittest_utilities()

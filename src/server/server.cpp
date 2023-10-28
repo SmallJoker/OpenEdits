@@ -137,15 +137,8 @@ void Server::step(float dtime)
 			if (out.size() > CONNECTION_MTU)
 				break;
 		}
-		out.write<peer_t>(0); // end
+		broadcastInWorld(world.get(), 0, out);
 
-		// Distribute to players within this world
-		for (auto it : m_players) {
-			if (it.second->getWorld() != world)
-				continue;
-
-			m_con->send(it.first, 0, out);
-		}
 	}
 
 	for (auto &world : worlds) {
@@ -309,21 +302,25 @@ void Server::processPacket(peer_t peer_id, Packet &pkt)
 	try {
 		(this->*handler.func)(peer_id, pkt);
 	} catch (std::out_of_range &e) {
-		printf("Server: Action %d parsing error: %s\n", action, e.what());
+		Player *player = getPlayerNoLock(peer_id);
+		fprintf(stderr, "Server: Packet out_of_range. action=%d, player=%s, msg=%s\n",
+			action,
+			player ? player->name.c_str() : "(null)",
+			e.what()
+		);
 	} catch (std::exception &e) {
-		printf("Server: Action %d general error: %s\n", action, e.what());
+		Player *player = getPlayerNoLock(peer_id);
+		fprintf(stderr, "Server: Packet exception. action=%d, player=%s, msg=%s\n",
+			action,
+			player ? player->name.c_str() : "(null)",
+			e.what()
+		);
 	}
 }
 
-RefCnt<World> Server::loadWorldNoLock(const std::string &id)
+bool Server::loadWorldNoLock(World *world)
 {
-	if (!m_world_db)
-		return nullptr;
-
-	// try to load from the database
-	auto world = std::make_shared<World>(m_bmgr, id);
-
-	return m_world_db->load(world.get()) ? world : nullptr;
+	return m_world_db && world && m_world_db->load(world);
 }
 
 void Server::writeWorldData(Packet &out, World &world, bool is_clear)
@@ -341,6 +338,40 @@ void Server::writeWorldData(Packet &out, World &world, bool is_clear)
 	}
 }
 
+void Server::setDefaultPlayerFlags(Player *player)
+{
+	auto world = player->getWorld();
+	if (!world)
+		return;
+
+	WorldMeta &meta = world->getMeta();
+	PlayerFlags pf = meta.getPlayerFlags(player->name);
+	// Owner permssions
+	if (meta.owner == player->name) {
+		pf.set(PlayerFlags::PF_OWNER, PlayerFlags::PF_MASK_WORLD);
+	}
+
+	// Grant admin permissions if applicable
+	if (m_auth_db) {
+		AuthAccount auth;
+		m_auth_db->load(player->name, &auth);
+		switch (auth.level) {
+			case AuthAccount::AL_MODERATOR:
+				pf.set(PlayerFlags::PF_MODERATOR, PlayerFlags::PF_MASK_SERVER);
+				break;
+			case AuthAccount::AL_SERVER_ADMIN:
+				pf.set(PlayerFlags::PF_ADMIN, PlayerFlags::PF_MASK_SERVER);
+				break;
+			default: break;
+		}
+	}
+
+	DEBUGLOG("setDefaultPlayerFlags: name=%s, flags=%08X\n", player->name.c_str(), pf.flags);
+	meta.setPlayerFlags(player->name, pf);
+
+	DEBUGLOG("\t-> readback=%08X\n", meta.getPlayerFlags(player->name).flags);
+}
+
 void Server::teleportPlayer(Player *player, core::vector2df dst, bool reset_progress)
 {
 	Packet pkt;
@@ -349,7 +380,6 @@ void Server::teleportPlayer(Player *player, core::vector2df dst, bool reset_prog
 	pkt.write(player->peer_id);
 	pkt.write(dst.X);
 	pkt.write(dst.Y);
-	pkt.write<peer_t>(0); // end of bulk
 
 	// Same channel as world data
 	broadcastInWorld(player, 0, pkt);
@@ -359,6 +389,9 @@ void Server::teleportPlayer(Player *player, core::vector2df dst, bool reset_prog
 
 void Server::respawnPlayer(Player *player, bool send_packet, bool reset_progress)
 {
+	if (player->godmode)
+		return;
+
 	auto &meta = player->getWorld()->getMeta();
 	auto blocks = player->getWorld()->getBlocks(Block::ID_SPAWN, nullptr);
 

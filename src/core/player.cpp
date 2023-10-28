@@ -15,6 +15,8 @@ Player::~Player()
 
 void Player::setWorld(RefCnt<World> world)
 {
+	bool keep_progress = m_world && world && m_world->getMeta().id == world->getMeta().id;
+
 	if (m_world.get())
 		m_world->getMeta().online--;
 
@@ -23,8 +25,11 @@ void Player::setWorld(RefCnt<World> world)
 	if (m_world.get())
 		m_world->getMeta().online++;
 
-	setPosition({0, 0}, true);
-	setGodMode(false);
+	controls_enabled = true;
+	if (!keep_progress) {
+		setPosition({0, 0}, true);
+		setGodMode(false);
+	}
 }
 
 RefCnt<World> Player::getWorld() const

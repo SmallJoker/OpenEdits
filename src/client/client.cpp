@@ -421,9 +421,19 @@ void Client::processPacket(peer_t peer_id, Packet &pkt)
 	try {
 		(this->*handler.func)(pkt);
 	} catch (std::out_of_range &e) {
-		printf("Client: Action %d parsing error: %s\n", action, e.what());
+		Player *player = getPlayerNoLock(peer_id);
+		fprintf(stderr, "Client: Packet out_of_range. action=%d, player=%s, msg=%s\n",
+			action,
+			player ? player->name.c_str() : "(null)",
+			e.what()
+		);
 	} catch (std::exception &e) {
-		printf("Client: Action %d general error: %s\n", action, e.what());
+		Player *player = getPlayerNoLock(peer_id);
+		fprintf(stderr, "Client: Packet exception. action=%d, player=%s, msg=%s\n",
+			action,
+			player ? player->name.c_str() : "(null)",
+			e.what()
+		);
 	}
 }
 

@@ -4,6 +4,12 @@
 #include "core/blockmanager.h"
 #include "core/packet.h"
 
+#if 0
+	#define DEBUGLOG(...) printf(__VA_ARGS__)
+#else
+	#define DEBUGLOG(...) /* SILENCE */
+#endif
+
 const ClientPacketHandler Client::packet_actions[] = {
 	{ ClientState::None,      &Client::pkt_Quack }, // 0
 	{ ClientState::None,      &Client::pkt_Hello },
@@ -106,7 +112,7 @@ void Client::pkt_Auth(Packet &pkt)
 void Client::pkt_Lobby(Packet &pkt)
 {
 	world_list.clear();
-	while (true) {
+	while (pkt.getRemainingBytes()) {
 		bool is_ok = pkt.read<u8>();
 		if (!is_ok)
 			break;
@@ -137,7 +143,21 @@ void Client::pkt_WorldData(Packet &pkt)
 		return;
 	}
 
-	auto world = std::make_shared<World>(m_bmgr, m_world_id);
+	SimpleLock lock(m_players_lock);
+	Player *player = getPlayerNoLock(m_my_peer_id);
+	if (!player) {
+		auto ret = m_players.emplace(m_my_peer_id, new LocalPlayer(m_my_peer_id));
+		player = ret.first->second;
+	}
+	auto world_old = player->getWorld();
+
+	RefCnt<World> world;
+	if (world_old) {
+		// Already joined
+		world = std::make_shared<World>(world_old.get());
+	} else {
+		world = std::make_shared<World>(m_bmgr, m_world_id);
+	}
 
 	world->getMeta().readCommon(pkt);
 	blockpos_t size;
@@ -149,15 +169,8 @@ void Client::pkt_WorldData(Packet &pkt)
 		world->read(pkt, m_protocol_version);
 	} // else: clear
 
-	SimpleLock lock(m_players_lock);
-	Player *player = getPlayerNoLock(m_my_peer_id);
-	if (!player) {
-		auto ret = m_players.emplace(m_my_peer_id, new LocalPlayer(m_my_peer_id));
-		player = ret.first->second;
-	}
-
 	// World kept alive by at least one player
-	bool is_new_join = player->getWorld() == nullptr;
+	bool is_new_join = !world_old;
 	for (auto it : m_players)
 		it.second->setWorld(world);
 
@@ -175,6 +188,7 @@ void Client::pkt_WorldData(Packet &pkt)
 		GameEvent e2(GameEvent::C2G_META_UPDATE);
 		sendNewEvent(e2);
 	}
+	DEBUGLOG("pkt_WorldData: done.\n");
 }
 
 void Client::pkt_Join(Packet &pkt)
@@ -253,7 +267,7 @@ void Client::pkt_SetPosition(Packet &pkt)
 	bool reset_progress = pkt.read<u8>();
 	bool my_player_affected = false;
 
-	while (true) {
+	while (pkt.getRemainingBytes()) {
 		peer_t peer_id = pkt.read<peer_t>();
 		if (!peer_id)
 			break;
@@ -302,7 +316,7 @@ void Client::pkt_Move(Packet &pkt)
 	SimpleLock lock(m_players_lock);
 	LocalPlayer dummy(0);
 
-	while (true) {
+	while (pkt.getRemainingBytes()) {
 		peer_t peer_id = pkt.read<peer_t>();
 		if (!peer_id)
 			break;
@@ -351,7 +365,7 @@ void Client::pkt_PlaceBlock(Packet &pkt)
 	SimpleLock lock(world->mutex);
 
 	BlockUpdate bu(m_bmgr);
-	while (true) {
+	while (pkt.getRemainingBytes()) {
 		peer_t peer_id = pkt.read<peer_t>();
 		if (!peer_id)
 			break;
@@ -417,11 +431,13 @@ void Client::pkt_Key(Packet &pkt)
 
 void Client::pkt_GodMode(Packet &pkt)
 {
-	SimpleLock lock(m_players_lock);
-
 	peer_t peer_id = pkt.read<peer_t>();
+	if (!peer_id)
+		return;
+
 	bool state = pkt.read<u8>();
 
+	SimpleLock lock(m_players_lock);
 	LocalPlayer *player = getPlayerNoLock(peer_id);
 	if (player) {
 		player->setGodMode(state);
@@ -443,6 +459,10 @@ void Client::pkt_GodMode(Packet &pkt)
 			sendNewEvent(e);
 		}
 	}
+
+	// Allow multiple changes per packet
+	if (pkt.getRemainingBytes())
+		pkt_GodMode(pkt);
 }
 
 void Client::pkt_Smiley(Packet &pkt)
@@ -461,17 +481,23 @@ void Client::pkt_Smiley(Packet &pkt)
 
 void Client::pkt_PlayerFlags(Packet &pkt)
 {
-	while (pkt.getRemainingBytes() > 0) {
+	LocalPlayer dummy(0);
+
+	while (pkt.getRemainingBytes()) {
 		peer_t peer_id = pkt.read<peer_t>();
 		if (!peer_id)
 			break;
 
 		auto player = getPlayerNoLock(peer_id);
 		if (!player)
-			continue;
+			player = &dummy;
 
 		player->readFlags(pkt);
 
+		if (player == &dummy)
+			continue;
+
+		DEBUGLOG("pkt_PlayerFlags: player=%s, flags=%08X\n", player->name.c_str(), player->getFlags().flags);
 		GameEvent e(GameEvent::C2G_PLAYERFLAGS);
 		e.player = player;
 		sendNewEvent(e);

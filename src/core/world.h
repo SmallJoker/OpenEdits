@@ -103,8 +103,7 @@ struct WorldMeta : public IWorldMeta {
 
 	static Type idToType(const std::string &id);
 
-	std::string edit_code;
-
+	/// Fields to keep on clear
 	PlayerFlags getPlayerFlags(const std::string &name) const;
 	void setPlayerFlags(const std::string &name, const PlayerFlags pf);
 	void changePlayerFlags(const std::string &name, playerflags_t changed, playerflags_t mask);
@@ -115,7 +114,7 @@ struct WorldMeta : public IWorldMeta {
 
 	// Activated keys
 	Timer keys[3] = {};
-
+	std::string edit_code;
 	int spawn_index = -1;
 
 private:

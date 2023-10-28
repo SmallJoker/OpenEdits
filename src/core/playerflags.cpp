@@ -1,5 +1,11 @@
 #include "playerflags.h"
 
+#if 0
+	#define DEBUGLOG(...) printf(__VA_ARGS__)
+#else
+	#define DEBUGLOG(...) /* SILENCE */
+#endif
+
 using P = PlayerFlags::PlayerFlagsEnum;
 static constexpr struct Role {
 	const char *name;
@@ -11,8 +17,8 @@ static constexpr struct Role {
 	{
 		"Admin",
 		P::PF_ADMIN,
-		0,
-		P::PF_MASK_SERVER | P::PF_MASK_WORLD | P::PF_MASK_TMP,
+		P::PF_MODERATOR,
+		P::PF_MASK_SERVER,
 		0xFFFFFF00 // yellow
 	},
 	{
@@ -25,15 +31,15 @@ static constexpr struct Role {
 	{
 		"Owner",
 		P::PF_OWNER, // world owner (1 player)
-		P::PF_COOWNER | P::PF_COLLAB | P::PF_EDIT_DRAW | P::PF_GODMODE,
-		P::PF_COOWNER | P::PF_COLLAB | P::PF_MASK_TMP,
+		P::PF_COOWNER,
+		P::PF_COOWNER,
 		0xFF77AAFF // baby blue
 	},
 	{
 		"Co-owner",
 		P::PF_COOWNER,
-		P::PF_COLLAB | P::PF_EDIT_DRAW | P::PF_GODMODE,
-		P::PF_COLLAB | P::PF_MASK_TMP,
+		P::PF_COLLAB,
+		P::PF_COLLAB,
 		0xFF0088EE // light blue
 	},
 	{
@@ -43,24 +49,46 @@ static constexpr struct Role {
 		0, // no permission to change flags
 		0xFF00EECC // teal
 	},
-	// termination
 	{
 		"Normal",
 		P::PF_NONE, // normal player
 		0,
 		0,
 		0xFFBBBBBB // grey
+	},
+	// termination
+	{
+		nullptr, P::PF_NONE, 0, 0, 0
 	}
 };
 
 static Role get_role(const playerflags_t flags)
 {
+	Role sum;
 	const Role *r = ROLES;
-	for (; r->main; ++r) {
-		if (flags & r->main)
+	for (; r->name; ++r) {
+		if (flags & r->main) {
+			DEBUGLOG("get_role: main=%s\n", r->name);
+			sum = *r;
+			r++;
 			break;
+		}
 	}
-	return *r; // can be the last one too
+
+	// No match: Normal player
+	if (!r->name)
+		return r[-1];
+
+	// Admins and moderators can be (co-)owners as well
+	for (; r->name; ++r) {
+		if (sum.default_flags & r->main) {
+			DEBUGLOG("\t + role=%s\n", r->name);
+			sum.default_flags |= r->main | r->default_flags;
+			sum.allowed_to_change |= r->allowed_to_change | sum.default_flags;
+		}
+	}
+	DEBUGLOG("\t -> flags=%08X\n", sum.default_flags);
+	return sum; // can be the last one too
 }
 
 playerflags_t PlayerFlags::mayManipulate(const PlayerFlags target, const playerflags_t mask)
@@ -89,6 +117,11 @@ std::string PlayerFlags::toHumanReadable() const
 	if (r.main) {
 		out.append("[Role: ");
 		out.append(r.name);
+
+		char buf[20];
+		if (snprintf(buf, sizeof(buf), ", %08X", r.default_flags | r.main) > 0) {
+			out.append(buf);
+		}
 		out.append("] ");
 	}
 

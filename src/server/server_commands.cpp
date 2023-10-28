@@ -9,6 +9,11 @@
 #include "server/eeo_converter.h"
 #include "version.h"
 
+#if 0
+	#define DEBUGLOG(...) printf(__VA_ARGS__)
+#else
+	#define DEBUGLOG(...) /* SILENCE */
+#endif
 
 void Server::registerChatCommands()
 {
@@ -663,6 +668,7 @@ CHATCMD_FUNC(Server::chat_Clear)
 			m_con->send(it.first, 0, out);
 		}
 	}
+	old_world.reset();
 
 	systemChatSend(player, "Cleared!");
 }
@@ -713,6 +719,51 @@ CHATCMD_FUNC(Server::chat_Import)
 	}
 }
 
+void Server::sendPlayerFlags(const World *world)
+{
+	// Cannot detect changes because WorldMeta is carried over (same instance)
+	auto &meta = world->getMeta();
+
+	Packet pkt_pf;
+	pkt_pf.write(Packet2Client::PlayerFlags);
+
+	Packet pkt_god;
+	pkt_god.write(Packet2Client::GodMode);
+	for (auto it : m_players) {
+		if (it.second->getWorld().get() != world)
+			continue;
+
+		auto pf = meta.getPlayerFlags(it.second->name);
+		DEBUGLOG("sendPlayerFlags: name=%s, flags=%08X\n", it.second->name.c_str(), pf.flags);
+		{
+			// Relevant to other players
+			it.second->writeFlags(pkt_pf, PlayerFlags::PF_MASK_SEND_OTHERS);
+		}
+
+		{
+			// Player-specific relevant flags
+			Packet pkt_prv;
+			pkt_prv.write(Packet2Client::PlayerFlags);
+			it.second->writeFlags(pkt_prv, PlayerFlags::PF_MASK_SEND_PLAYER);
+			// Channel 0 like the block data
+			m_con->send(it.first, 0, pkt_prv);
+		}
+
+		if (it.second->godmode && !pf.check(PlayerFlags::PF_GODMODE)) {
+			it.second->godmode = false;
+
+			pkt_god.write<peer_t>(it.first);
+			pkt_god.write<uint8_t>(false);
+		}
+	}
+
+	if (pkt_pf.size() > 2)
+		broadcastInWorld(world, 0, pkt_pf);
+
+	if (pkt_god.size() > 2)
+		broadcastInWorld(world, 1, pkt_god);
+}
+
 CHATCMD_FUNC(Server::chat_Load)
 {
 	if (!player->getFlags().check(PlayerFlags::PF_OWNER)) {
@@ -721,8 +772,8 @@ CHATCMD_FUNC(Server::chat_Load)
 	}
 
 	auto old_world = player->getWorld();
-	auto world = loadWorldNoLock(old_world->getMeta().id);
-	if (!world) {
+	auto world = std::make_shared<World>(old_world.get());
+	if (!loadWorldNoLock(world.get())) {
 		systemChatSend(player, "Failed to load world from database");
 		return;
 	}
@@ -734,13 +785,21 @@ CHATCMD_FUNC(Server::chat_Load)
 		if (it.second->getWorld() == old_world) {
 			it.second->setWorld(world);
 			m_con->send(it.first, 0, pkt_world);
+
+			setDefaultPlayerFlags(it.second);
 		}
 	}
+	old_world.reset();
 
-	Packet pkt_meta;
-	pkt_meta.write(Packet2Client::WorldMeta);
-	world->getMeta().writeCommon(pkt_meta);
-	broadcastInWorld(player, 1, pkt_meta);
+	{
+		Packet pkt_meta;
+		pkt_meta.write(Packet2Client::WorldMeta);
+		world->getMeta().writeCommon(pkt_meta);
+		broadcastInWorld(player, 1, pkt_meta);
+	}
+
+	// Must be sent after the world data
+	sendPlayerFlags(world.get());
 
 	// TODO: this is inefficient
 	for (auto it : m_players) {

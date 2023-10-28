@@ -105,7 +105,6 @@ WorldMeta::Type WorldMeta::idToType(const std::string &id)
 	return WorldMeta::Type::MAX_INVALID;
 }
 
-
 PlayerFlags WorldMeta::getPlayerFlags(const std::string &name) const
 {
 	auto it = m_player_flags.find(name);
