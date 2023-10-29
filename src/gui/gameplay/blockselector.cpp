@@ -13,9 +13,12 @@
 
 enum ElementId : int {
 	ID_HOTBAR_0 = 300, // Counted by button number
-	ID_SHOWMORE = 350, // [+] [-] button
+	ID_SHOWMORE = 320, // [+] [-] button
 	ID_TabControl,
 	ID_BoxCoinDoor,
+	ID_TabTeleporter,
+	ID_TabTeleporter_ID,
+	ID_TabTeleporter_DST,
 
 	ID_SELECTOR_TAB_0, // Offset for BlockDrawType tabs
 	ID_SELECTOR_0 = 400, // Offset for the block ID
@@ -64,6 +67,132 @@ void SceneBlockSelector::draw()
 	selectBlockId(m_selected_bid, false);
 }
 
+static void editbox_move_to_end(gui::IGUIElement *element)
+{
+	SEvent ev;
+	memset(&ev, 0, sizeof(ev));
+	ev.EventType = EET_KEY_INPUT_EVENT;
+	ev.KeyInput.PressedDown = true;
+	ev.KeyInput.Char = '\0';
+	ev.KeyInput.Key = KEY_END;
+	element->OnEvent(ev);
+}
+
+void SceneBlockSelector::toggleCoinBox(const SEvent &e)
+{
+	auto elem = m_showmore->getElementFromId(ID_BoxCoinDoor, true);
+	bool may_open = m_selected_bid == Block::ID_COINDOOR || m_selected_bid == Block::ID_COINGATE;
+	if (!may_open || elem) {
+		if (elem)
+			elem->remove();
+		return;
+	}
+
+	core::recti rect(
+		core::vector2di(-BTN_SIZE.Width * 0.5f, BTN_SIZE.Height + 2),
+		core::dimension2di(BTN_SIZE.Width * 2, 30)
+	);
+
+	wchar_t buf[10];
+	swprintf(buf, 10, L"%d", (int)m_selected_param1);
+	auto element = m_gui->addEditBox(buf, rect, true, e.GUIEvent.Caller, ID_BoxCoinDoor);
+	element->setNotClipped(true);
+	element->setTextAlignment(gui::EGUIA_CENTER, gui::EGUIA_CENTER);
+	m_gui->setFocus(element);
+	editbox_move_to_end(element);
+}
+
+static bool sanitize_input(gui::IGUIEditBox *box, int *val, int min, int max)
+{
+	auto wtext = box->getText();
+	int n = swscanf(wtext, L"%d", val);
+	// Indicate bad numeric input
+	if (n == 1 && *val >= min && *val <= max) {
+		box->setOverrideColor(0xFF000000);
+		return true;
+	}
+
+	// red highlight
+	box->setOverrideColor(0xFFCC0000);
+	return false;
+}
+
+void SceneBlockSelector::readCoinBoxValue(const SEvent &e)
+{
+	auto box = (gui::IGUIEditBox *)e.GUIEvent.Caller;
+	int val = -1;
+	if (sanitize_input(box, &val, 0, 127))
+		m_selected_param1 = val;
+}
+
+void SceneBlockSelector::toggleTeleporterBox(const SEvent &e)
+{
+	auto elem = m_showmore->getElementFromId(ID_TabTeleporter, true);
+	bool may_open = m_selected_bid == Block::ID_TELEPORTER;
+	if (!may_open || elem) {
+		if (elem)
+			elem->remove();
+		return;
+	}
+
+	core::recti rect_tab(
+		core::vector2di(-BTN_SIZE.Width * 2.0f, BTN_SIZE.Height + 2),
+		core::dimension2di(BTN_SIZE.Width * 2 + 42, 70)
+	);
+
+	auto skin = m_gui->getSkin();
+	video::SColor color(skin->getColor(gui::EGDC_3D_FACE));
+
+	auto tab = m_gui->addTab(rect_tab, e.GUIEvent.Caller, ID_TabTeleporter);
+	tab->setBackgroundColor(color);
+	tab->setDrawBackground(true);
+	tab->setNotClipped(true);
+
+	// Add labels and inputs
+	core::recti rect_label(
+		core::vector2di(1, 8),
+		core::dimension2di(40, 30)
+	);
+	core::recti rect_input(
+		core::vector2di(40, 2),
+		core::dimension2di(BTN_SIZE.Width * 2, 30)
+	);
+
+	{
+		// ID
+		m_gui->addStaticText(L"ID", rect_label, false, false, tab);
+		wchar_t buf[10];
+		swprintf(buf, 10, L"%d", (int)m_selected_tp_id);
+		auto inp = m_gui->addEditBox(buf, rect_input, true, tab, ID_TabTeleporter_ID);
+		inp->setTextAlignment(gui::EGUIA_CENTER, gui::EGUIA_CENTER);
+	}
+	core::vector2di spacing(0, rect_input.getHeight() + 2);
+	rect_label += spacing;
+	rect_input += spacing;
+	{
+		// DST
+		m_gui->addStaticText(L"DST", rect_label, false, false, tab);
+		wchar_t buf[10];
+		swprintf(buf, 10, L"%d", (int)m_selected_tp_dst);
+		auto inp = m_gui->addEditBox(buf, rect_input, true, tab, ID_TabTeleporter_DST);
+		inp->setTextAlignment(gui::EGUIA_CENTER, gui::EGUIA_CENTER);
+	}
+}
+
+void SceneBlockSelector::readTeleporterBox()
+{
+	auto inp_id = (gui::IGUIEditBox *)m_showmore->getElementFromId(ID_TabTeleporter_ID, true);
+	auto inp_dst = (gui::IGUIEditBox *)m_showmore->getElementFromId(ID_TabTeleporter_DST, true);
+	if (!inp_id || !inp_dst)
+		return;
+
+	int val = -1;
+	if (sanitize_input(inp_id, &val, 0, 255))
+		m_selected_tp_id = val;
+	if (sanitize_input(inp_dst, &val, 0, 255))
+		m_selected_tp_dst = val;
+}
+
 bool SceneBlockSelector::OnEvent(const SEvent &e)
 {
 	if (!m_enabled)
@@ -110,36 +239,17 @@ bool SceneBlockSelector::OnEvent(const SEvent &e)
 			break;
 			default: break;
 		}
-
-		core::vector2di pos(e.MouseInput.X, e.MouseInput.Y);
-		auto element = m_showmore->getElementFromPoint(pos);
-		auto focused = m_gui->getFocus();
-		if (!element && focused && focused->getID() == ID_BoxCoinDoor) {
-			switch (e.MouseInput.Event) {
-			case EMIE_LMOUSE_PRESSED_DOWN:
-			case EMIE_RMOUSE_PRESSED_DOWN:
-			case EMIE_MMOUSE_PRESSED_DOWN:
-				m_gui->setFocus(nullptr);
-				break;
-			default: break;
-			}
-		}
 	}
 	if (e.EventType == EET_GUI_EVENT && e.GUIEvent.EventType == gui::EGET_EDITBOX_CHANGED) {
 		int id = e.GUIEvent.Caller->getID();
-		if (id == ID_BoxCoinDoor) {
-			auto box = (gui::IGUIEditBox *)e.GUIEvent.Caller;
-			auto wtext = box->getText();
-			int val = -1;
-			int n = swscanf(wtext, L"%d", &val);
-			// Indicate bad numeric input
-			if (n == 1 && val >= 0 && val <= 127) {
-				m_selected_param1 = val;
-				box->setOverrideColor(0xFF000000);
-			} else {
-				// red highlight
-				box->setOverrideColor(0xFFCC0000);
-			}
+		switch (id) {
+			case ID_BoxCoinDoor:
+				readCoinBoxValue(e);
+				break;
+			case ID_TabTeleporter_ID:
+			case ID_TabTeleporter_DST:
+				readTeleporterBox();
+				break;
 		}
 	}
 	if (e.EventType == EET_GUI_EVENT && e.GUIEvent.EventType == gui::EGET_BUTTON_CLICKED) {
@@ -155,24 +265,8 @@ bool SceneBlockSelector::OnEvent(const SEvent &e)
 			if (!selectBlockId(id - ID_SELECTOR_0, false))
 				return false;
 
-			auto elem = m_showmore->getElementFromId(ID_BoxCoinDoor, true);
-			if (!elem && (m_selected_bid == Block::ID_COINDOOR || m_selected_bid == Block::ID_COINGATE)) {
-				core::recti rect(
-					core::vector2di(-BTN_SIZE.Width * 0.5f, BTN_SIZE.Height + 2),
-					core::dimension2di(BTN_SIZE.Width * 2, 35)
-				);
-
-				wchar_t buf[10];
-				swprintf(buf, 10, L"%d", (int)m_selected_param1);
-				auto element = m_gui->addEditBox(buf, rect, true, btn, ID_BoxCoinDoor);
-				element->setNotClipped(true);
-				element->setTextAlignment(gui::EGUIA_CENTER, gui::EGUIA_CENTER);
-				m_gui->setFocus(element);
-			} else if (elem) {
-				elem->remove();
-			}
-
-			m_gui->setFocus(nullptr);
+			toggleCoinBox(e);
+			toggleTeleporterBox(e);
 			return true;
 		}
 		// Show/hide block selector
@@ -240,10 +334,14 @@ void SceneBlockSelector::getBlockUpdate(BlockUpdate &bu)
 {
 	bu.set(m_selected_bid);
 
-	using T = BlockParams::Type;
-	switch (bu.params.getType()) {
-		case T::U8:
+	switch (bu.getId()) {
+		case Block::ID_COINDOOR:
+		case Block::ID_COINGATE:
 			bu.params.param_u8 = m_selected_param1;
+			break;
+		case Block::ID_TELEPORTER:
+			bu.params.teleporter.id = m_selected_tp_id;
+			bu.params.teleporter.dst_id = m_selected_tp_dst;
 			break;
 		default:
 			break;

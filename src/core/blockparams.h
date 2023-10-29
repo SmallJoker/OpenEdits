@@ -35,7 +35,7 @@ struct BlockParams {
 		std::string *text;
 		uint8_t param_u8;
 		struct {
-			uint8_t visual; // e.g. rotation
+			uint8_t rotation;
 			uint8_t id;
 			uint8_t dst_id;
 		} teleporter;

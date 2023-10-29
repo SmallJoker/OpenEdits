@@ -25,6 +25,64 @@ static BP_STEP_CALLBACK(step_arrow_none)
 {
 }
 
+static BP_STEP_CALLBACK(step_portal)
+{
+	player.acc.Y = Player::GRAVITY_NORMAL;
+
+	if (pos == player.last_pos) {
+		return; // No teleport loop
+	}
+
+	auto world = player.getWorld();
+	BlockParams src_bp;
+	if (!world->getParams(pos, &src_bp))
+		return;
+
+	auto positions = world->getBlocks(Block::ID_TELEPORTER, [&] (const Block &b) {
+		blockpos_t dst_pos = world->getBlockPos(&b);
+		if (dst_pos == pos)
+			return false;
+
+		BlockParams dst_bp;
+		if (!world->getParams(dst_pos, &dst_bp))
+			return false;
+
+		return dst_bp.teleporter.id == src_bp.teleporter.dst_id;
+	});
+
+	if (positions.empty())
+		return;
+
+	auto dst_pos = positions[rand() % positions.size()];
+	BlockParams dst_bp;
+	world->getParams(dst_pos, &dst_bp);
+
+	// Teleport!
+	player.pos = core::vector2df(dst_pos.X, dst_pos.Y);
+	int rotation = (dst_bp.teleporter.rotation - src_bp.teleporter.rotation + 4) % 4;
+
+	switch (rotation) {
+		case 1: // 90° CW
+			player.vel = core::vector2df(
+				- player.vel.Y,
+				+ player.vel.X
+			);
+			break;
+		case 2: // 180° turn
+			player.vel *= -1;
+			break;
+		case 3: // 90° CCW
+			player.vel = core::vector2df(
+				+ player.vel.Y,
+				- player.vel.X
+			);
+			break;
+		default:
+			// Same rotation
+			break;
+	}
+}
+
 static BP_STEP_CALLBACK(step_freeze)
 {
 	player.controls_enabled = false;
@@ -215,6 +273,22 @@ void BlockManager::doPackRegistration()
 		// Walk-through is player-specific, hence using the onCollide callback
 		props->tiles[0].have_alpha = true;
 		props->onCollide = onCollide_coingate;
+	}
+
+	{
+		BlockPack *pack = new BlockPack("teleporter");
+		pack->default_type = BlockDrawType::Action;
+		pack->block_ids = { Block::ID_TELEPORTER };
+		registerPack(pack);
+
+		auto props = m_props[Block::ID_TELEPORTER];
+		props->paramtypes = BlockParams::Type::Teleporter;
+		props->trigger_on_touch = true;
+		props->setTiles({
+			BlockDrawType::Action, BlockDrawType::Action,
+			BlockDrawType::Action, BlockDrawType::Action
+		});
+		props->step = step_portal;
 	}
 
 	// Decoration

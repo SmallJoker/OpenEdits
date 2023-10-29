@@ -11,7 +11,7 @@ static void test_blockparams()
 	BlockParams p1(BlockParams::Type::Text);
 	*p1.text = val_str;
 	BlockParams p2(BlockParams::Type::Teleporter);
-	p2.teleporter.visual = 0;
+	p2.teleporter.rotation = 0;
 	p2.teleporter.id = 10;
 	p2.teleporter.dst_id = 42;
 

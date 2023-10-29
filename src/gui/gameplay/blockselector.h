@@ -32,6 +32,12 @@ public:
 	void getBlockUpdate(BlockUpdate &bu);
 
 private:
+	void toggleCoinBox(const SEvent &e);
+	void readCoinBoxValue(const SEvent &e);
+
+	void toggleTeleporterBox(const SEvent &e);
+	void readTeleporterBox();
+
 	bool drawBlockButton(bid_t bid, const core::recti &rect, gui::IGUIElement *parent, int id);
 	void drawBlockSelector();
 	bool selectBlockId(int what, bool is_element_id);
@@ -47,6 +53,8 @@ private:
 	bid_t m_selected_bid = 0;
 	bid_t m_last_selected_bid = 0; // when holding shift
 	u8 m_selected_param1 = 0;
+	u8 m_selected_tp_id = 0;
+	u8 m_selected_tp_dst = 0;
 
 	bool m_show_selector = false;
 	bid_t m_dragged_bid = Block::ID_INVALID;

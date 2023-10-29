@@ -413,6 +413,8 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 							world->getBlock(bp, &bt);
 							if (bt.id == Block::ID_SPIKES)
 								m_drag_draw_block.params.param_u8 = (bt.tile + 1) % 4;
+							if (bt.id == Block::ID_TELEPORTER)
+								m_drag_draw_block.params.teleporter.rotation = (bt.tile + 1) % 4;
 						}
 					}
 

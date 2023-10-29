@@ -98,7 +98,7 @@ void Player::setPosition(core::vector2df newpos, bool reset_progress)
 	vel = core::vector2df();
 	acc = core::vector2df();
 
-	m_last_pos = blockpos_t(-1, -1);
+	last_pos = blockpos_t(-1, -1);
 	controls_enabled = true;
 }
 
@@ -229,19 +229,21 @@ void Player::stepInternal(float dtime)
 		props = m_world->getBlockMgr()->getProps(block.id);
 	}
 
-	if (triggered_blocks && bp != m_last_pos) {
+	if (triggered_blocks && bp != last_pos) {
 		if (props && props->trigger_on_touch) {
-			if (bp != m_last_pos) {
-				triggered_blocks->emplace(bp);
-			}
+			triggered_blocks->emplace(bp);
 		}
-		m_last_pos = bp;
 	}
 
 	if (!godmode) {
 		if (!stepCollisions(dtime))
-			return;
+			return; // fail!
+
+		// Position changes (e.g. portal)
+		bp = blockpos_t(pos.X + 0.5f, pos.Y + 0.5f);
 	}
+
+	last_pos = bp;
 
 	// Controls handling
 	if (m_controls.jump && m_jump_cooldown <= 0) {
@@ -312,6 +314,8 @@ bool Player::stepCollisions(float dtime)
 	// single block effect
 	if (props && props->step) {
 		props->step(*this, bp);
+		// Position changes (e.g. portal)
+		bp = blockpos_t(pos.X + 0.5f, pos.Y + 0.5f);
 	} else {
 		// default step
 		acc.Y += Player::GRAVITY_NORMAL;
@@ -407,6 +411,6 @@ void Player::setGodMode(bool value)
 		controls_enabled = true;
 	} else {
 		// Trigger the current block once (e.g. spikes)
-		m_last_pos = blockpos_t(-1, -1);
+		last_pos = blockpos_t(-1, -1);
 	}
 }

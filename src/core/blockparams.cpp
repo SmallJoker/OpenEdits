@@ -81,7 +81,7 @@ bool BlockParams::operator==(const BlockParams &other) const
 		case Type::U8:
 			return param_u8 == other.param_u8;
 		case Type::Teleporter:
-			return teleporter.visual == other.teleporter.visual
+			return teleporter.rotation == other.teleporter.rotation
 				&& teleporter.id == other.teleporter.id
 				&& teleporter.dst_id == other.teleporter.dst_id;
 	}
@@ -103,7 +103,7 @@ void BlockParams::read(Packet &pkt)
 			pkt.read(param_u8);
 			break;
 		case Type::Teleporter:
-			pkt.read(teleporter.visual);
+			pkt.read(teleporter.rotation);
 			pkt.read(teleporter.id);
 			pkt.read(teleporter.dst_id);
 			break;
@@ -123,7 +123,7 @@ void BlockParams::write(Packet &pkt) const
 			pkt.write(param_u8);
 			break;
 		case Type::Teleporter:
-			pkt.write(teleporter.visual);
+			pkt.write(teleporter.rotation);
 			pkt.write(teleporter.id);
 			pkt.write(teleporter.dst_id);
 			break;

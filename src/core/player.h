@@ -50,6 +50,7 @@ public:
 	core::vector2df pos;
 	core::vector2df vel;
 	core::vector2df acc;
+	blockpos_t last_pos;
 
 	// For keys or killing blocks
 	std::set<blockpos_t> *triggered_blocks = nullptr;
@@ -83,5 +84,4 @@ protected:
 	core::vector2d<s8> m_collision;
 
 	float m_jump_cooldown = 0;
-	blockpos_t m_last_pos;
 };

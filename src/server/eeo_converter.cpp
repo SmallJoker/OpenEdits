@@ -45,6 +45,7 @@ struct EBlockParams {
 
 	bool importParams(bid_t id, BlockParams &params);
 
+	// BlockParams is initialized by BlockUpdate::set() based on BlockProperties::paramtypes
 	PARAM_CONV_IMPORT_REG(importSpike)
 	{
 		params.param_u8 = (val_I[0] + 3) % 4;
@@ -53,6 +54,13 @@ struct EBlockParams {
 	PARAM_CONV_IMPORT_REG(importCoindoor)
 	{
 		params.param_u8 = val_I[0];
+	}
+
+	PARAM_CONV_IMPORT_REG(importTeleporter)
+	{
+		params.teleporter.rotation = val_I[0];
+		params.teleporter.id = val_I[1];
+		params.teleporter.dst_id = val_I[2];
 	}
 };
 
@@ -230,6 +238,7 @@ static void fill_block_translations()
 
 	set_range(Block::ID_SPIKES, 1625, 1636); // spikes, every 2nd is not rotatable
 	BLOCK_ID_LUT.at(1580) = Block::ID_SPIKES; // not rotatable
+	BLOCK_ID_LUT.at(381) = Block::ID_TELEPORTER; // invisible teleporter
 }
 
 void EBlockParams::registerImports()
@@ -238,6 +247,7 @@ void EBlockParams::registerImports()
 		conv_import[id] = &EBlockParams::importSpike;
 	for (bid_t id : { Block::ID_COINDOOR, Block::ID_COINGATE })
 		conv_import[id] = &EBlockParams::importCoindoor;
+	conv_import[Block::ID_TELEPORTER] = &EBlockParams::importTeleporter;
 }
 
 bool EBlockParams::importParams(bid_t id, BlockParams &params)
@@ -385,9 +395,10 @@ void EEOconverter::fromFile(const std::string &filename_)
 				params_in.importParams(block_id, bu.params);
 				break;
 			case PType::III:
-				zs.read<s32>();
-				zs.read<s32>();
-				zs.read<s32>();
+				params_in.val_I[0] = zs.read<s32>();
+				params_in.val_I[1] = zs.read<s32>();
+				params_in.val_I[2] = zs.read<s32>();
+				params_in.importParams(block_id, bu.params);
 				break;
 			case PType::SI:
 				zs.readStr16();
