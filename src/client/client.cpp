@@ -364,14 +364,21 @@ LocalPlayer *Client::getPlayerNoLock(peer_t peer_id)
 
 // -------------- Networking -------------
 
+Packet Client::createPacket(Packet2Server type)
+{
+	Packet pkt;
+	pkt.data_version = m_protocol_version;
+	pkt.write(type);
+	return pkt;
+}
+
 void Client::sendPlayerMove()
 {
 	auto player = getMyPlayer();
 	if (!player)
 		return;
 
-	Packet pkt;
-	pkt.write(Packet2Server::Move);
+	Packet pkt = createPacket(Packet2Server::Move);
 	player->writePhysics(pkt);
 	m_con->send(0, 1 | Connection::FLAG_UNRELIABLE, pkt);
 }
@@ -419,6 +426,7 @@ void Client::processPacket(peer_t peer_id, Packet &pkt)
 	}
 
 	try {
+		pkt.data_version = m_protocol_version;
 		(this->*handler.func)(pkt);
 	} catch (std::out_of_range &e) {
 		Player *player = getPlayerNoLock(peer_id);

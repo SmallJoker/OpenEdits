@@ -39,6 +39,7 @@ Packet::Packet(Packet *pkt)
 
 	m_read_offset = pkt->m_read_offset;
 	m_write_offset = pkt->m_write_offset;
+	data_version = pkt->data_version;
 }
 
 

@@ -1,5 +1,6 @@
 #include "player.h"
 #include "blockmanager.h"
+#include "macros.h" // ASSERT_FORCED
 #include "packet.h"
 #include "utils.h"
 #include "world.h"
@@ -39,6 +40,8 @@ RefCnt<World> Player::getWorld() const
 
 void Player::readPhysics(Packet &pkt)
 {
+	ASSERT_FORCED(pkt.data_version != 0, "invalid proto ver");
+
 	pkt.read(pos.X);
 	pkt.read(pos.Y);
 
@@ -55,10 +58,15 @@ void Player::readPhysics(Packet &pkt)
 	m_controls.jump = pkt.read<u8>();
 	pkt.read(m_controls.dir.X);
 	pkt.read(m_controls.dir.Y);
+
+	if (pkt.data_version >= 6)
+		dtime_delay = pkt.read<float>();
 }
 
 void Player::writePhysics(Packet &pkt) const
 {
+	ASSERT_FORCED(pkt.data_version != 0, "invalid proto ver");
+
 	pkt.write(pos.X);
 	pkt.write(pos.Y);
 
@@ -76,6 +84,9 @@ void Player::writePhysics(Packet &pkt) const
 	pkt.write<u8>(m_controls.jump);
 	pkt.write(m_controls.dir.X);
 	pkt.write(m_controls.dir.Y);
+
+	if (pkt.data_version >= 6)
+		pkt.write<float>(dtime_delay);
 }
 
 bool Player::setControls(const PlayerControls &ctrl)
@@ -130,7 +141,20 @@ void Player::writeFlags(Packet &pkt, playerflags_t mask) const
 
 void Player::step(float dtime)
 {
-	if (!m_world)
+	/*
+		NOTE: This is an incomplete delay compensation
+		1. Player creates movement packet
+		2. Client may send the packet at a delay due to enet_host_service
+		3. Network delay Client ----> Server (covered by server)
+		4. Server may distribute the packet at a delay due to enet_host_service
+		5. Network delay Server ----> Client (covered by client)
+		6. Client delay for rendering (covered by dtime)
+	*/
+
+	dtime += std::min<float>(dtime_delay, 0.1f);
+	dtime_delay = 0;
+
+	if (!m_world || dtime <= 0)
 		return;
 
 	m_collision = core::vector2d<s8>(0, 0);

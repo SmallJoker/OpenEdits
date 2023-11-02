@@ -17,6 +17,10 @@
 const uint16_t CON_PORT = 0xC014;
 const size_t CON_CLIENTS = 32; // server only
 const size_t CON_CHANNELS = 2;
+
+// Globally accessible values
+const uint16_t PROTOCOL_VERSION = 6;
+const uint16_t PROTOCOL_VERSION_MIN = 5;
 size_t CONNECTION_MTU;
 
 struct enet_init {
@@ -178,6 +182,15 @@ std::string Connection::getPeerAddress(peer_t peer_id)
 		return "";
 
 	return buf;
+}
+
+float Connection::getPeerRTT(peer_t peer_id)
+{
+	auto peer = findPeer(peer_id);
+	if (!peer)
+		return 0;
+
+	return peer->roundTripTime * 0.001f; // ms -> s
 }
 
 void Connection::send(peer_t peer_id, uint16_t flags, Packet &pkt)

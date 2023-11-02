@@ -230,7 +230,7 @@ void Client::pkt_Leave(Packet &pkt)
 
 	m_players.erase(peer_id);
 
-	{
+	if (player) {
 		GameEvent e(GameEvent::C2G_PLAYER_LEAVE);
 		e.player = player;
 		sendNewEvent(e);
@@ -239,7 +239,9 @@ void Client::pkt_Leave(Packet &pkt)
 	// HACK: keep alive until the function finishes !
 	// gameplay.cpp might access the World object at the same time,
 	// which somehow results in a double-free ??
-	auto world = player->getWorld();
+	RefCnt<World> world;
+	if (player)
+		world = player->getWorld();
 
 	if (peer_id == m_my_peer_id) {
 		for (auto it : m_players) {
@@ -248,8 +250,10 @@ void Client::pkt_Leave(Packet &pkt)
 		m_players.clear();
 
 		// Keep myself in the list
-		m_players.emplace(peer_id, player);
-		player->setWorld(nullptr);
+		if (player) {
+			m_players.emplace(peer_id, player);
+			player->setWorld(nullptr);
+		}
 
 		m_state = ClientState::LobbyIdle;
 
@@ -329,6 +333,7 @@ void Client::pkt_Move(Packet &pkt)
 
 		// maybe do interpolation?
 		player->readPhysics(pkt);
+		player->dtime_delay += m_con->getPeerRTT(0) / 2.0f;
 	}
 }
 

@@ -52,6 +52,8 @@ public:
 	core::vector2df acc;
 	blockpos_t last_pos;
 
+	float dtime_delay = 0; //< RTT compensation upon the next ::step call
+
 	// For keys or killing blocks
 	std::set<blockpos_t> *triggered_blocks = nullptr;
 

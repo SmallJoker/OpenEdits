@@ -9,6 +9,7 @@ class LocalPlayer;
 class Connection;
 
 struct ClientPacketHandler;
+enum class Packet2Server : uint16_t;
 
 // Similar to RemotePlayerState
 enum class ClientState {
@@ -51,6 +52,7 @@ public:
 	ClientState getState() { return m_state; }
 
 	// ----------- Networking -----------
+	Packet createPacket(Packet2Server type);
 	void sendPlayerMove();
 
 	void onPeerConnected(peer_t peer_id) override;

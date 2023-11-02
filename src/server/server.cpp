@@ -297,6 +297,8 @@ void Server::processPacket(peer_t peer_id, Packet &pkt)
 			printf("Server: peer_id=%u is not ready for action=%d.\n", peer_id, action);
 			return;
 		}
+
+		pkt.data_version = player->protocol_version;
 	}
 
 	try {

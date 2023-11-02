@@ -494,29 +494,34 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 	}
 
 	// Notify about new player
-	auto make_join_packet = [](Player *player, Packet &pkt) {
-		pkt.write(Packet2Client::Join);
-		pkt.write(player->peer_id);
-		pkt.writeStr16(player->name);
-		pkt.write<u8>(player->godmode);
-		pkt.write<u8>(player->smiley_id);
-		player->writePhysics(pkt);
+	auto make_join_packet = [](RemotePlayer *player, Packet &out) {
+		out.write(Packet2Client::Join);
+		out.write(player->peer_id);
+		out.writeStr16(player->name);
+		out.write<u8>(player->godmode);
+		out.write<u8>(player->smiley_id);
+		player->writePhysics(out);
 	};
 
-	Packet pkt_new;
-	make_join_packet(player, pkt_new);
+	// Announce this player to all those who already joined
+	broadcastInWorld(player, RemotePlayerState::WorldPlay, 0, SERVER_PKT_CB {
+		make_join_packet(player, out);
+	});
 
+	// Announce all existing players to the current player
 	for (auto it : m_players) {
 		auto *p = it.second;
+		if (p == player)
+			continue; // already sent
 		if (p->getWorld() != world)
 			continue;
 
-		// Notify existing players about the new one
-		m_con->send(it.first, 0, pkt_new);
-
 		// Notify new player about existing ones
+		RemotePlayer *p2 = (RemotePlayer *)it.second;
+
 		Packet out;
-		make_join_packet(p, out);
+		out.data_version = p2->protocol_version;
+		make_join_packet(p2, out);
 		m_con->send(peer_id, 0, out);
 	}
 
@@ -575,17 +580,17 @@ void Server::pkt_Move(peer_t peer_id, Packet &pkt)
 		acc = player->acc;*/
 
 	player->readPhysics(pkt);
+	player->dtime_delay = m_con->getPeerRTT(peer_id) / 2.0f;
 
 	// broadcast to connected players
-	Packet out;
-	out.write(Packet2Client::Move);
-	{
+	broadcastInWorld(player, RemotePlayerState::WorldPlay, 1 | Connection::FLAG_UNRELIABLE,
+			SERVER_PKT_CB {
+		out.write(Packet2Client::Move);
+
 		// Bulk sending (future)
 		out.write(peer_id);
 		player->writePhysics(out);
-	}
-
-	broadcastInWorld(player, 1 | Connection::FLAG_UNRELIABLE, out);
+	});
 }
 
 void Server::pkt_Chat(peer_t peer_id, Packet &pkt)
@@ -792,7 +797,7 @@ void Server::broadcastInWorld(const World *world, int flags, Packet &pkt)
 }
 
 void Server::broadcastInWorld(Player *player, RemotePlayerState min_state,
-	int flags, std::function<void(Packet &, u16)> cb)
+	int flags, std::function<void(Packet &)> cb)
 {
 	if (!player)
 		return;
@@ -820,16 +825,19 @@ void Server::broadcastInWorld(Player *player, RemotePlayerState min_state,
 		Packet *pkt = nullptr;
 		if (it_pkt == compat.end()) {
 			pkt = &compat[proto_ver];
-			cb(*pkt, proto_ver);
+			pkt->data_version = proto_ver;
+			cb(*pkt);
 		} else {
 			pkt = &it_pkt->second;
 		}
 
-		// Packet not available
-		if (pkt->size() == 0)
+		// No relevant data
+		if (pkt->size() <= sizeof(Packet2Client))
 			continue;
 
 		m_con->send(it.first, flags, *pkt);
+		DEBUGLOG("broadcastInWorld: send after cb. name=%s, ver=%d\n",
+			it.second->name.c_str(), p->protocol_version);
 	}
 
 #if 0

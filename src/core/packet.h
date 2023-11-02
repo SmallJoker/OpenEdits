@@ -23,6 +23,7 @@ public:
 
 	~Packet();
 	DISABLE_COPY(Packet);
+	Packet(Packet &&) = default;
 
 	void setBigEndian(bool b = true) { m_is_big_endian = b; }
 	inline size_t getReadPos() const { return m_read_offset; };
@@ -66,6 +67,8 @@ public:
 	uint8_t *writePreallocStart(size_t n_reserve);
 	/// Move forth N bytes that were written to
 	void     writePreallocEnd(size_t nbytes);
+
+	uint16_t data_version = 0;
 
 private:
 	inline void checkLength(size_t nbytes);

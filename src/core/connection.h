@@ -4,8 +4,8 @@
 #include <cstdint>
 #include <vector>
 
-const uint16_t PROTOCOL_VERSION = 5;
-const uint16_t PROTOCOL_VERSION_MIN = 5;
+extern const uint16_t PROTOCOL_VERSION;
+extern const uint16_t PROTOCOL_VERSION_MIN;
 extern size_t CONNECTION_MTU;
 
 namespace std {
@@ -36,6 +36,7 @@ public:
 	bool listenAsync(PacketProcessor &proc);
 	void disconnect(peer_t peer_id);
 	std::string getPeerAddress(peer_t peer_id);
+	float getPeerRTT(peer_t peer_id);
 
 	// use only on single connections
 	static const peer_t PEER_ID_FIRST = 0;
