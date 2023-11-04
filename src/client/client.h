@@ -82,6 +82,7 @@ private:
 	void pkt_Smiley(Packet &pkt);
 	void pkt_PlayerFlags(Packet &pkt);
 	void pkt_WorldMeta(Packet &pkt);
+	void pkt_ChatReplay(Packet &pkt);
 	void pkt_Deprecated(Packet &pkt);
 
 	static const ClientPacketHandler packet_actions[];

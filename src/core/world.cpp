@@ -180,6 +180,16 @@ void WorldMeta::writePlayerFlags(Packet &pkt) const
 	pkt.writeStr16(""); // end
 }
 
+void WorldMeta::trimChatHistory(size_t nelements)
+{
+	for (auto it = chat_history.begin(); it != chat_history.end();) {
+		if (chat_history.size() <= nelements)
+			return;
+
+		it = chat_history.erase(it);
+	}
+}
+
 
 // -------------- World class -------------
 

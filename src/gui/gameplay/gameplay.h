@@ -2,6 +2,7 @@
 
 #include "gui/game_commands.h"
 #include "gui/gui.h"
+#include <list>
 #include <string>
 
 namespace irr {
@@ -37,8 +38,11 @@ public:
 	video::ITexture *generateTexture(const std::string &text, u32 color = 0xFFFFFFFF, u32 bgcolor = 0xFF000000);
 
 private:
+	bool initChatHistory();
 	bool handleChatInput(const SEvent &e);
-	std::wstring m_previous_chat_message;
+	int m_chat_input_index = -1;
+	/// New entries added to the front, old removed from the back
+	std::list<std::wstring> m_chat_input_history;
 
 	bool getBlockFromPixel(int x, int y, blockpos_t &bp);
 

@@ -61,6 +61,8 @@ void SceneGameplay::OnOpen()
 void SceneGameplay::OnClose()
 {
 	m_chathistory_text.clear();
+	m_chat_input_history.clear();
+	m_chat_input_index = -1;
 	if (m_minimap)
 		m_minimap->markDirty();
 
@@ -176,8 +178,9 @@ void SceneGameplay::draw()
 			core::vector2di(SIZEW, 160),
 			core::dimension2di(wsize.Width - SIZEW, wsize.Height - 5 - 160)
 		);
+
 		if (m_chathistory_text.empty())
-			m_chathistory_text = L"--- Start of chat history ---\n";
+			initChatHistory();
 
 		auto e = gui->addEditBox(m_chathistory_text.c_str(), rect_ch, true);
 		e->setAutoScroll(true);
@@ -350,12 +353,21 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 						m_gui->sendNewEvent(e);
 					}
 
-					if (m_previous_chat_message != textw)
-						m_previous_chat_message = textw;
+					// Find existing history
+					for (auto it = m_chat_input_history.begin(); it != m_chat_input_history.end(); ++it) {
+						if (*it == textw) {
+							m_chat_input_history.erase(it);
+							break;
+						}
+					}
+
+					if (!strtrim(textn).empty())
+						m_chat_input_history.push_front(textw);
 
 					e.GUIEvent.Caller->setText(L"");
 					e.GUIEvent.Caller->setVisible(false);
 					m_gui->guienv->setFocus(nullptr);
+					m_chat_input_index = -1;
 					return true;
 				}
 				break;
@@ -581,6 +593,9 @@ bool SceneGameplay::OnEvent(GameEvent &e)
 				m_chathistory_text_dirty = true;
 			}
 			return true;
+		case E::C2G_CHAT_HISTORY:
+			// This is usually not yet received because SceneGameplay updates in the next cycle
+			return initChatHistory();
 		case E::C2G_PLAYERFLAGS:
 			if (e.player->peer_id == m_gui->getClient()->getMyPeerId()) {
 				m_gui->requestRenew();
@@ -591,6 +606,32 @@ bool SceneGameplay::OnEvent(GameEvent &e)
 	}
 	return false;
 }
+
+bool SceneGameplay::initChatHistory()
+{
+	auto world = m_gui->getClient()->getWorld();
+	if (!world)
+		return false;
+
+	m_chathistory_text = L"--- Start of chat history ---\n";
+
+	auto &meta = world->getMeta();
+	for (const WorldMeta::ChatHistory &entry : meta.chat_history) {
+		char buf[200];
+		snprintf(buf, sizeof(buf), "> %s: %s\n",
+			entry.name.c_str(), entry.message.c_str()
+		);
+
+		std::wstring line;
+		utf8_to_wide(line, buf);
+
+		m_chathistory_text.append(line.c_str());
+	}
+
+	m_chathistory_text_dirty = true;
+	return true;
+}
+
 
 bool SceneGameplay::handleChatInput(const SEvent &e)
 {
@@ -609,20 +650,41 @@ bool SceneGameplay::handleChatInput(const SEvent &e)
 		element->setText(L"");
 		element->setVisible(false);
 		m_gui->guienv->setFocus(nullptr);
+		m_chat_input_index = -1;
 		return true;
 	}
 
-	if (key == KEY_UP && focused) {
-		if (!m_previous_chat_message.empty()) {
-			element->setText(m_previous_chat_message.c_str());
-			editbox_move_to_end(m_gui->guienv);
+	auto scroll_input = [&] () {
+		int maxsize = (int)m_chat_input_history.size();
+		if (m_chat_input_index >= maxsize || m_chat_input_index < 0) {
+			if (m_chat_input_index > maxsize)
+				m_chat_input_index = maxsize - 1;
+
+			if (m_chat_input_index < 0) {
+				m_chat_input_index = -1;
+				element->setText(L"");
+			}
+			return;
+		}
+
+		auto it = m_chat_input_history.begin();
+		std::advance(it, m_chat_input_index);
+		element->setText(it->c_str());
+		editbox_move_to_end(m_gui->guienv);
+	};
+
+	if (focused && down) {
+		if (key == KEY_UP) {
+			m_chat_input_index++;
+			scroll_input();
 			return true;
 		}
-	}
 
-	if (key == KEY_DOWN && focused) {
-		element->setText(L"");
-		return true;
+		if (key == KEY_DOWN) {
+			m_chat_input_index--;
+			scroll_input();
+			return true;
+		}
 	}
 
 	if (key == KEY_TAB && focused) {

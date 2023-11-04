@@ -24,10 +24,11 @@ const ClientPacketHandler Client::packet_actions[] = {
 	{ ClientState::WorldPlay, &Client::pkt_Chat }, // 10
 	{ ClientState::WorldPlay, &Client::pkt_PlaceBlock },
 	{ ClientState::WorldPlay, &Client::pkt_Key },
-	{ ClientState::WorldJoin, &Client::pkt_GodMode },
-	{ ClientState::WorldJoin, &Client::pkt_Smiley },
+	{ ClientState::WorldPlay, &Client::pkt_GodMode },
+	{ ClientState::WorldPlay, &Client::pkt_Smiley },
 	{ ClientState::WorldPlay, &Client::pkt_PlayerFlags }, // 15
-	{ ClientState::WorldJoin, &Client::pkt_WorldMeta },
+	{ ClientState::WorldPlay, &Client::pkt_WorldMeta },
+	{ ClientState::WorldPlay, &Client::pkt_ChatReplay },
 	{ ClientState::Invalid, 0 }
 };
 
@@ -522,6 +523,27 @@ void Client::pkt_WorldMeta(Packet &pkt)
 	sendNewEvent(e);
 }
 
+void Client::pkt_ChatReplay(Packet &pkt)
+{
+	auto player = getMyPlayer();
+	if (!player)
+		return;
+
+	auto &meta = player->getWorld()->getMeta();
+	while (pkt.getRemainingBytes() > 0) {
+		WorldMeta::ChatHistory entry;
+		entry.timestamp = pkt.read<u64>();
+		if (!entry.timestamp)
+			break;
+
+		entry.name = pkt.readStr16();
+		entry.message = pkt.readStr16();
+		meta.chat_history.push_back(std::move(entry));
+	}
+
+	GameEvent e(GameEvent::C2G_CHAT_HISTORY);
+	sendNewEvent(e);
+}
 
 void Client::pkt_Deprecated(Packet &pkt)
 {

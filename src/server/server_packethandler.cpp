@@ -525,6 +525,21 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 		m_con->send(peer_id, 0, out);
 	}
 
+	// Chat history replay
+	{
+		Packet out;
+		out.write(Packet2Client::ChatReplay);
+		auto &meta = world->getMeta();
+		for (const WorldMeta::ChatHistory &entry : meta.chat_history) {
+			out.write<u64>(entry.timestamp);
+			out.writeStr16(entry.name);
+			out.writeStr16(entry.message);
+		}
+		if (out.size() > 2)
+			m_con->send(peer_id, 0, out);
+	}
+
+	// Player flags
 	{
 		setDefaultPlayerFlags(player);
 
@@ -596,8 +611,6 @@ void Server::pkt_Move(peer_t peer_id, Packet &pkt)
 void Server::pkt_Chat(peer_t peer_id, Packet &pkt)
 {
 	RemotePlayer *player = getPlayerNoLock(peer_id);
-	if (player->getFlags().check(PlayerFlags::PF_MUTED))
-		return;
 
 	std::string message(pkt.readStr16());
 	if (message.size() > 200)
@@ -625,6 +638,20 @@ void Server::pkt_Chat(peer_t peer_id, Packet &pkt)
 		// Unknown command
 		systemChatSend(player, "Unknown command. See /help");
 		return;
+	}
+
+	if (player->getFlags().check(PlayerFlags::PF_MUTED))
+		return;
+
+	{
+		auto &meta = player->getWorld()->getMeta();
+		meta.trimChatHistory(15);
+
+		WorldMeta::ChatHistory h;
+		h.timestamp = time(nullptr);
+		h.name = player->name;
+		h.message = message;
+		meta.chat_history.push_back(std::move(h));
 	}
 
 	Packet out;

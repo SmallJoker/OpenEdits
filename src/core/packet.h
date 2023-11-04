@@ -98,6 +98,7 @@ enum class Packet2Client : uint16_t {
 	Smiley,
 	PlayerFlags,
 	WorldMeta,
+	ChatReplay,
 	MAX_END
 };
 

@@ -23,6 +23,7 @@ GameEvent::~GameEvent()
 		case C::C2G_META_UPDATE:
 		case C::C2G_PLAYER_JOIN:
 		case C::C2G_PLAYER_LEAVE:
+		case C::C2G_CHAT_HISTORY:
 		case C::C2G_PLAYERFLAGS:
 			break;
 	}

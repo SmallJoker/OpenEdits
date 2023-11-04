@@ -117,6 +117,17 @@ struct WorldMeta : public IWorldMeta {
 	std::string edit_code;
 	int spawn_index = -1;
 
+	/// Removes the oldest history until nelements is reached
+	void trimChatHistory(size_t nelements);
+
+	struct ChatHistory {
+		time_t timestamp;
+		std::string name;
+		std::string message;
+	};
+	/// Newest messages added to back, oldest removed from front
+	std::vector<ChatHistory> chat_history;
+
 private:
 	std::map<std::string, PlayerFlags> m_player_flags;
 };
