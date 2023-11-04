@@ -108,7 +108,8 @@ bool DatabaseWorld::load(World *world)
 		const void *blob = sqlite3_column_blob(s, 8);
 		const size_t len = sqlite3_column_bytes(s, 8);
 		Packet pkt((const char *)blob, len);
-		world->read(pkt, PROTOCOL_VERSION_FAKE_DISK);
+		pkt.data_version = PROTOCOL_VERSION_FAKE_DISK;
+		world->read(pkt);
 	}
 
 	sqlite3_step(s);
@@ -147,7 +148,8 @@ bool DatabaseWorld::save(const World *world)
 	sqlite3_bind_blob(s, 8, p_flags.data(), p_flags.size(), nullptr);
 
 	Packet p_world;
-	world->write(p_world, World::Method::Plain, PROTOCOL_VERSION_FAKE_DISK);
+	p_world.data_version = PROTOCOL_VERSION_FAKE_DISK;
+	world->write(p_world, World::Method::Plain);
 	sqlite3_bind_blob(s, 9, p_world.data(), p_world.size(), nullptr);
 
 	bool good = ok("save_s", sqlite3_step(s));

@@ -92,8 +92,8 @@ public:
 
 	void doPackRegistration();
 
-	void read(Packet &pkt, u16 protocol_version);
-	void write(Packet &pkt, u16 protocol_version) const;
+	void read(Packet &pkt);
+	void write(Packet &pkt) const;
 
 	void registerPack(BlockPack *pack);
 	void setDriver(video::IVideoDriver *driver);

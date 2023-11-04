@@ -243,8 +243,10 @@ void World::createDummy(blockpos_t size)
 static constexpr u32 SIGNATURE = 0x6677454F; // OEwf
 static constexpr u16 VALIDATION = 0x4B4F; // OK
 
-void World::read(Packet &pkt, u16 protocol_version)
+void World::read(Packet &pkt)
 {
+	ASSERT_FORCED(pkt.data_version != 0, "invalid proto ver");
+
 	if (m_size.X == 0 || m_size.Y == 0)
 		throw std::runtime_error("World size error (not initialized?)");
 	if (pkt.getRemainingBytes() == 0)
@@ -257,7 +259,7 @@ void World::read(Packet &pkt, u16 protocol_version)
 	switch (method) {
 		case Method::Dummy: break;
 		case Method::Plain:
-			readPlain(pkt, protocol_version);
+			readPlain(pkt);
 			break;
 		default:
 			throw std::runtime_error("Unsupported world read method");
@@ -269,7 +271,7 @@ void World::read(Packet &pkt, u16 protocol_version)
 	// good. done
 }
 
-void World::write(Packet &pkt, Method method, u16 protocol_version) const
+void World::write(Packet &pkt, Method method) const
 {
 	pkt.write<u32>(SIGNATURE);
 	pkt.write((u8)method);
@@ -286,7 +288,7 @@ void World::write(Packet &pkt, Method method, u16 protocol_version) const
 	switch (method) {
 		case Method::Dummy: break;
 		case Method::Plain:
-			writePlain(pkt, protocol_version);
+			writePlain(pkt);
 			break;
 		default:
 			throw std::runtime_error("Unsupported world write method");
@@ -295,7 +297,7 @@ void World::write(Packet &pkt, Method method, u16 protocol_version) const
 	pkt.write<u16>(VALIDATION); // validity check
 }
 
-void World::readPlain(Packet &pkt_in, u16 protocol_version)
+void World::readPlain(Packet &pkt_in)
 {
 	u8 version = pkt_in.read<u8>();
 	if (version < 2 || version > 5)
@@ -311,7 +313,7 @@ void World::readPlain(Packet &pkt_in, u16 protocol_version)
 
 	// Describes the block parameters (thus length) that are to be expected
 	std::map<bid_t, BlockParams::Type> mapper;
-	if (protocol_version == PROTOCOL_VERSION_FAKE_DISK) {
+	if (pkt_in.data_version == PROTOCOL_VERSION_FAKE_DISK) {
 		// Load params from the disk
 		if (version >= 4) {
 			while (true) {
@@ -366,7 +368,7 @@ void World::readPlain(Packet &pkt_in, u16 protocol_version)
 	}
 }
 
-void World::writePlain(Packet &pkt_out, u16 protocol_version) const
+void World::writePlain(Packet &pkt_out) const
 {
 	u8 version = 5;
 	// if (protocol_version < ??)
@@ -377,7 +379,7 @@ void World::writePlain(Packet &pkt_out, u16 protocol_version) const
 	Packet pkt_tmp_comp;
 	Packet &pkt = do_compress ? pkt_tmp_comp : pkt_out;
 
-	if (protocol_version == PROTOCOL_VERSION_FAKE_DISK) {
+	if (pkt_out.data_version == PROTOCOL_VERSION_FAKE_DISK) {
 		// Mapping of the known types
 		auto &list = m_bmgr->getProps();
 		for (size_t i = 0; i < list.size(); ++i) {

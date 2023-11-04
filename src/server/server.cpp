@@ -335,8 +335,7 @@ void Server::writeWorldData(Packet &out, World &world, bool is_clear)
 	out.write(size.X); // dimensions
 	out.write(size.Y);
 	if (!is_clear) {
-		// TODO: make player-specific
-		world.write(out, World::Method::Plain, PROTOCOL_VERSION);
+		world.write(out, World::Method::Plain);
 	}
 }
 

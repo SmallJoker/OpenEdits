@@ -49,8 +49,9 @@ BlockManager::~BlockManager()
 	printf("BlockManager: Freed registered data\n");
 }
 
-void BlockManager::read(Packet &pkt, u16 protocol_version)
+void BlockManager::read(Packet &pkt)
 {
+	ASSERT_FORCED(pkt.data_version != 0, "invalid proto ver");
 	// TODO: How to read/write the physics functions?
 
 	std::vector<bool> handled_props;
@@ -126,8 +127,10 @@ void BlockManager::read(Packet &pkt, u16 protocol_version)
 	m_populated = false;
 }
 
-void BlockManager::write(Packet &pkt, u16 protocol_version) const
+void BlockManager::write(Packet &pkt) const
 {
+	ASSERT_FORCED(pkt.data_version != 0, "invalid proto ver");
+
 	// Data of each block
 	for (size_t i = 0; i < m_props.size(); ++i) {
 		auto props = m_props[i];

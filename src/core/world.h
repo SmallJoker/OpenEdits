@@ -152,8 +152,8 @@ public:
 	void createEmpty(blockpos_t size);
 	void createDummy(blockpos_t size);
 
-	void read(Packet &pkt, u16 protocol_version);
-	void write(Packet &pkt, Method method, u16 protocol_version) const;
+	void read(Packet &pkt);
+	void write(Packet &pkt, Method method) const;
 
 	inline bool isValidPosition(int x, int y) const
 	{
@@ -188,8 +188,8 @@ protected:
 		return m_data[pos.Y * m_size.X + pos.X];
 	}
 
-	void readPlain(Packet &pkt, u16 protocol_version);
-	void writePlain(Packet &pkt, u16 protocol_version) const;
+	void readPlain(Packet &pkt);
+	void writePlain(Packet &pkt) const;
 
 	blockpos_t m_size;
 	const BlockManager *m_bmgr;

@@ -42,12 +42,14 @@ void Client::pkt_Hello(Packet &pkt)
 	m_protocol_version = pkt.read<uint16_t>();
 	m_my_peer_id = pkt.read<peer_t>();
 
+	pkt.data_version = m_protocol_version; // for bmgr->read
+
 	auto player = new LocalPlayer(m_my_peer_id);
 	m_start_data.nickname = player->name = pkt.readStr16();
 	m_players.emplace(m_my_peer_id, player);
 
 	// Load the server's block properties
-	m_bmgr->read(pkt, m_protocol_version);
+	m_bmgr->read(pkt);
 
 	m_auth = Auth();
 
@@ -167,7 +169,7 @@ void Client::pkt_WorldData(Packet &pkt)
 	world->createEmpty(size);
 	bool have_world_data = (mode == 1);
 	if (have_world_data) {
-		world->read(pkt, m_protocol_version);
+		world->read(pkt);
 	} // else: clear
 
 	// World kept alive by at least one player

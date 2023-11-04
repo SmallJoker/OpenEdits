@@ -7,6 +7,7 @@
 #include "server/database_auth.h"
 #include "server/database_world.h"
 #include "server/eeo_converter.h"
+#include "server/remoteplayer.h" // RemotePlayerState
 #include "version.h"
 
 #if 0
@@ -659,15 +660,15 @@ CHATCMD_FUNC(Server::chat_Clear)
 		return;
 	}
 
-	Packet out;
-	writeWorldData(out, *world.get(), true);
-
 	for (auto it : m_players) {
-		if (it.second->getWorld() == old_world) {
+		if (it.second->getWorld() == old_world)
 			it.second->setWorld(world);
-			m_con->send(it.first, 0, out);
-		}
 	}
+
+	broadcastInWorld(player, RemotePlayerState::WorldJoin, 0, SERVER_PKT_CB {
+		writeWorldData(out, *world.get(), true);
+	});
+
 	old_world.reset();
 
 	systemChatSend(player, "Cleared!");
@@ -705,18 +706,21 @@ CHATCMD_FUNC(Server::chat_Import)
 		return;
 	}
 
-	systemChatSend(player, "Imported!");
+	for (auto it : m_players) {
+		if (it.second->getWorld() == old_world)
+			it.second->setWorld(world);
+	}
 
-	Packet out;
-	writeWorldData(out, *world.get(), false);
+	broadcastInWorld(player, RemotePlayerState::WorldJoin, 0, SERVER_PKT_CB {
+		writeWorldData(out, *world.get(), false);
+	});
 
 	for (auto it : m_players) {
-		if (it.second->getWorld() == old_world) {
-			it.second->setWorld(world);
-			m_con->send(it.first, 0, out);
+		if (it.second->getWorld() == world)
 			respawnPlayer(it.second, true);
-		}
 	}
+
+	systemChatSend(player, "Imported!");
 }
 
 void Server::sendPlayerFlags(const World *world)
@@ -778,18 +782,21 @@ CHATCMD_FUNC(Server::chat_Load)
 		return;
 	}
 
-	Packet pkt_world;
-	writeWorldData(pkt_world, *world.get(), false);
+	for (auto it : m_players) {
+		if (it.second->getWorld() == old_world)
+			it.second->setWorld(world);
+	}
+
+	broadcastInWorld(player, RemotePlayerState::WorldJoin, 0, SERVER_PKT_CB {
+		writeWorldData(out, *world.get(), false);
+	});
+
+	old_world.reset();
 
 	for (auto it : m_players) {
-		if (it.second->getWorld() == old_world) {
-			it.second->setWorld(world);
-			m_con->send(it.first, 0, pkt_world);
-
+		if (it.second->getWorld() == world)
 			setDefaultPlayerFlags(it.second);
-		}
 	}
-	old_world.reset();
 
 	{
 		Packet pkt_meta;
