@@ -23,11 +23,19 @@ void CBulkSceneNode::addTile(core::vector2di coord)
 {
 	m_tiles.push_back(coord);
 
-	// The 0.5f center offset is neccessary to avoid too early culling
-	const f32 x = m_tile_size.Width * (coord.X + 0.5f);
+	/*
+		X+ = right side
+		Y+ = bottom side
+	*/
+	const f32 x = m_tile_size.Width * (coord.X - 0.5f);
 	const f32 y = m_tile_size.Height * (coord.Y - 0.5f);
 
-	m_bbox_large.addInternalPoint(x, y, RelativeTranslation.Z + 1);
+	if (m_tiles.size() == 1) {
+		m_bbox_large.reset(x, y, RelativeTranslation.Z);
+	} else {
+		m_bbox_large.addInternalPoint(x, y, RelativeTranslation.Z + 1);
+	}
+	m_bbox_large.addInternalPoint(x + m_tile_size.Width, y + m_tile_size.Height, RelativeTranslation.Z + 1);
 }
 
 video::SMaterial &CBulkSceneNode::getMaterial(u32 i)

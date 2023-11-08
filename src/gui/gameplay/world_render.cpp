@@ -218,7 +218,7 @@ void SceneWorldRender::drawBlocksInView()
 		CBulkSceneNode *node;
 		bool is_solid;
 	};
-	std::map<bid_t, BulkData> bulk_map;
+	std::map<size_t, BulkData> bulk_map;
 
 	// This is very slow. Isn't there a faster way to draw stuff?
 	// also camera->setFar(-camera_pos.Z + 0.1) does not filter them out (bug?)
@@ -236,9 +236,9 @@ void SceneWorldRender::drawBlocksInView()
 
 			// MSVC is a bitch Part 2
 			// Unique ID for each appearance type
-			bid_t block_tile = (b.tile << 13) | b.id;
+			size_t hash_node_id = (size_t)(b.tile << 16) | b.id;
 
-			auto it = bulk_map.find(block_tile);
+			auto it = bulk_map.find(hash_node_id);
 			if (it == bulk_map.end()) {
 				// Yet not cached: Add.
 
@@ -257,7 +257,8 @@ void SceneWorldRender::drawBlocksInView()
 					core::vector3df(0, 0, z),
 					core::dimension2d<f32>(10, 10)
 				);
-				auto [it2, tmp] = bulk_map.insert({block_tile, d});
+				//d.node->setDebugDataVisible(scene::EDS_BBOX);
+				auto [it2, tmp] = bulk_map.insert({hash_node_id, d});
 				d.node->drop();
 
 				it = it2;

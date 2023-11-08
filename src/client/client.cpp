@@ -464,7 +464,7 @@ uint8_t Client::getBlockTile(const Player *player, const Block *b) const
 			return get_params().teleporter.rotation;
 		case Block::ID_COINDOOR:
 		case Block::ID_COINGATE:
-			return get_params().param_u8 >= player->coins;
+			return player->coins >= get_params().param_u8;
 		case Block::ID_DOOR_R:
 		case Block::ID_DOOR_G:
 		case Block::ID_DOOR_B:
@@ -484,22 +484,7 @@ void Client::updateWorld()
 
 	// Restore visuals to Block::tile after new world data
 	for (Block *b = world->begin(); b < world->end(); ++b) {
-		switch (b->id) {
-			case Block::ID_SPIKES:
-				{
-					BlockParams params;
-					world->getParams(world->getBlockPos(b), &params);
-					b->tile = params.param_u8;
-				}
-				break;
-			case Block::ID_TELEPORTER:
-				{
-					BlockParams params;
-					world->getParams(world->getBlockPos(b), &params);
-					b->tile = params.teleporter.rotation;
-				}
-				break;
-		}
+		b->tile = getBlockTile(player, b);
 	}
 }
 
