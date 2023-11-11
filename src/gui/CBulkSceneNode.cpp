@@ -9,6 +9,7 @@ CBulkSceneNode::CBulkSceneNode(ISceneNode *parent, scene::ISceneManager *mgr, s3
 	m_buffer(new scene::SMeshBuffer())
 {
 	m_tile_size = tile_size;
+	m_vertex_size = tile_size;
 	m_tiles.reserve(20 * 20);
 
 	m_buffer->setHardwareMappingHint(scene::EHM_STATIC);
@@ -35,7 +36,7 @@ void CBulkSceneNode::addTile(core::vector2di coord)
 	} else {
 		m_bbox_large.addInternalPoint(x, y, RelativeTranslation.Z + 1);
 	}
-	m_bbox_large.addInternalPoint(x + m_tile_size.Width, y + m_tile_size.Height, RelativeTranslation.Z + 1);
+	m_bbox_large.addInternalPoint(x + m_vertex_size.Width, y + m_vertex_size.Height, RelativeTranslation.Z + 1);
 }
 
 video::SMaterial &CBulkSceneNode::getMaterial(u32 i)
@@ -93,8 +94,8 @@ void CBulkSceneNode::OnAnimate(u32 t_ms)
 	core::vector3df node_pos = getAbsolutePosition()
 		- core::vector3df(m_tile_size.Width, m_tile_size.Height, 0) / 2;
 
-	core::vector3df h_len(m_tile_size.Width, 0, 0);
-	core::vector3df v_len(0, m_tile_size.Height, 0);
+	core::vector3df h_len(m_vertex_size.Width, 0, 0);
+	core::vector3df v_len(0, m_vertex_size.Height, 0);
 	for (size_t i = vertices_size_old / 4; i < m_tiles.size(); ++i) {
 		auto v_offset = &vertices[4 * i];
 

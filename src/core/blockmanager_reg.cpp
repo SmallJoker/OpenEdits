@@ -241,13 +241,17 @@ void BlockManager::doPackRegistration()
 		// Spawn block only (for now)
 		BlockPack *pack = new BlockPack("owner");
 		pack->default_type = BlockDrawType::Action;
-		pack->block_ids = { Block::ID_SPAWN, Block::ID_SECRET };
+		pack->block_ids = { Block::ID_SPAWN, Block::ID_SECRET, Block::ID_TEXT };
 		registerPack(pack);
 
 		auto props = m_props[Block::ID_SECRET];
 		props->trigger_on_touch = true;
 		props->setTiles({ BlockDrawType::Solid, BlockDrawType::Solid });
 		props->tiles[0].have_alpha = true;
+
+		props = m_props[Block::ID_TEXT];
+		props->paramtypes = BlockParams::Type::Text;
+		props->setTiles({ BlockDrawType::Decoration });
 	}
 
 	{

@@ -3,6 +3,7 @@
 #include "compressor.h"
 #include "macros.h"
 #include "packet.h"
+#include "utils.h" // strtrim
 #include <cstring> // memset
 
 bool BlockUpdate::set(bid_t block_id)
@@ -44,6 +45,26 @@ bool BlockUpdate::check(bid_t *block_id, bool *is_bg) const
 	*is_bg = is_background;
 	return true;
 }
+
+bool BlockUpdate::sanitizeParams()
+{
+	switch (getId()) {
+		case Block::ID_TEXT: {
+			constexpr size_t LEN_MAX = 50;
+
+			std::string &text = *params.text;
+			text = strtrim(text);
+			if (text.empty())
+				return false;
+
+			if (text.size() > LEN_MAX)
+				text.resize(LEN_MAX);
+		}
+		break;
+	}
+	return true;
+}
+
 
 void BlockUpdate::read(Packet &pkt)
 {
@@ -456,7 +477,7 @@ blockpos_t World::getBlockPos(const Block *b) const
 	return pos;
 }
 
-bool World::checkUpdateBlockNeeded(const BlockUpdate bu)
+bool World::checkUpdateBlockNeeded(BlockUpdate &bu)
 {
 	if (bu.pos.X >= m_size.X || bu.pos.Y >= m_size.Y)
 		return false;
@@ -470,6 +491,9 @@ bool World::checkUpdateBlockNeeded(const BlockUpdate bu)
 	if (is_background)
 		return new_id != ref.bg;
 
+	if (!bu.sanitizeParams())
+		return false;
+
 	if (new_id != ref.id)
 		return true;
 
@@ -480,7 +504,7 @@ bool World::checkUpdateBlockNeeded(const BlockUpdate bu)
 	return false;
 }
 
-Block *World::updateBlock(const BlockUpdate bu)
+Block *World::updateBlock(BlockUpdate bu)
 {
 	if (!checkUpdateBlockNeeded(bu))
 		return nullptr;

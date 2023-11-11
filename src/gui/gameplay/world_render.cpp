@@ -234,9 +234,22 @@ void SceneWorldRender::drawBlocksInView()
 			if (b.id == 0)
 				break;
 
-			// MSVC is a bitch Part 2
 			// Unique ID for each appearance type
 			size_t hash_node_id = (size_t)(b.tile << 16) | b.id;
+
+			if (b.id == Block::ID_TEXT) {
+				size_t hash = 0;
+				// TODO: use murmur hash
+				BlockParams params;
+				world->getParams(bp, &params);
+				if (params != BlockParams::Type::Text)
+					break;
+
+				for (char v : *params.text)
+					hash = hash ^ (~hash << 1) ^ v;
+
+				hash_node_id = (hash << 13) | 1000;
+			}
 
 			auto it = bulk_map.find(hash_node_id);
 			if (it == bulk_map.end()) {
@@ -267,7 +280,6 @@ void SceneWorldRender::drawBlocksInView()
 				it->second.is_solid = assignBlockTexture(tile, it->second.node);
 			}
 
-			it->second.node->addTile({x, -y});
 			have_solid_above = it->second.is_solid;
 
 			BlockParams params;
@@ -283,7 +295,7 @@ void SceneWorldRender::drawBlocksInView()
 						int required = params.param_u8;
 						required -= player->coins;
 
-						auto texture = m_gameplay->generateTexture(std::to_string(required), 0xFF000000, 0xFFFFFFFF);
+						auto texture = m_gameplay->generateTexture(std::to_string(required), 0xFF000000, 0x00000000);
 						auto dim = texture->getOriginalSize();
 
 						auto nb = smgr->addBillboardSceneNode(m_blocks_node,
@@ -292,9 +304,22 @@ void SceneWorldRender::drawBlocksInView()
 						);
 						nb->getMaterial(0).Lighting = false;
 						nb->getMaterial(0).setTexture(0, texture);
+						nb->getMaterial(0).MaterialType = video::EMT_TRANSPARENT_ALPHA_CHANNEL_REF;
 					}
 			break;
+				case Block::ID_TEXT: {
+					world->getParams(bp, &params);
+					video::ITexture *txt = m_gameplay->generateTexture(*params.text, 0xFFFFFFFF, 0x77000000);
+					auto dim = txt->getOriginalSize();
+
+					auto node = it->second.node;
+					node->getMaterial(0).setTexture(0, txt);
+					node->setVertexSize(core::dimension2df((float)dim.Width / dim.Height * 8, 8));
+				}
+			break;
 			}
+
+			it->second.node->addTile({x, -y});
 		} while (false);
 
 

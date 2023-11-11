@@ -43,6 +43,7 @@ struct Block {
 		ID_SPAWN = 255,
 		ID_CHECKPOINT = 360,
 		ID_SPIKES = 361,
+		ID_TEXT = 1000,
 		ID_INVALID = UINT16_MAX
 	};
 

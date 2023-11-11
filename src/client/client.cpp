@@ -338,7 +338,7 @@ RefCnt<World> Client::getWorld()
 }
 
 
-bool Client::updateBlock(const BlockUpdate bu)
+bool Client::updateBlock(BlockUpdate bu)
 {
 	auto world = getWorld();
 	if (!world)

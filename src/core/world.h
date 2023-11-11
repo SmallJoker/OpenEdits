@@ -22,7 +22,11 @@ struct BlockUpdate {
 	bool set(bid_t block_id);
 	void setErase(bool background);
 
+	/// Checks whether the background flag matches the block properties
 	bool check(bid_t *block_id, bool *is_bg) const;
+	/// Sanitizes the BlockParams (length, ranges, ...)
+	bool sanitizeParams();
+
 	inline bool isBackground() const { return (id & BG_FLAG) > 0; }
 	inline bid_t getId() const
 	{
@@ -164,8 +168,8 @@ public:
 	bool getBlock(blockpos_t pos, Block *block) const;
 	bool setBlock(blockpos_t pos, const Block block);
 	blockpos_t getBlockPos(const Block *b) const;
-	bool checkUpdateBlockNeeded(const BlockUpdate bu);
-	Block *updateBlock(const BlockUpdate bu);
+	bool checkUpdateBlockNeeded(BlockUpdate &bu);
+	Block *updateBlock(BlockUpdate bu);
 	bool getParams(blockpos_t pos, BlockParams *params) const;
 
 	const BlockManager *getBlockMgr() const { return m_bmgr; }

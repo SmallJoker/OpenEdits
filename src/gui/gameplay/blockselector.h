@@ -38,6 +38,9 @@ private:
 	void toggleTeleporterBox(const SEvent &e);
 	void readTeleporterBox();
 
+	void toggleTextBox(const SEvent &e);
+	void readTextBoxValue(const SEvent &e);
+
 	bool drawBlockButton(bid_t bid, const core::recti &rect, gui::IGUIElement *parent, int id);
 	void drawBlockSelector();
 	bool selectBlockId(int what, bool is_element_id);
@@ -55,6 +58,7 @@ private:
 	u8 m_selected_param1 = 0;
 	u8 m_selected_tp_id = 0;
 	u8 m_selected_tp_dst = 0;
+	std::string m_selected_text = "Hello World";
 
 	bool m_show_selector = false;
 	bid_t m_dragged_bid = Block::ID_INVALID;

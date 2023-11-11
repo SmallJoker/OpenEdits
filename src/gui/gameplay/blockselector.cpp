@@ -19,6 +19,7 @@ enum ElementId : int {
 	ID_TabTeleporter,
 	ID_TabTeleporter_ID,
 	ID_TabTeleporter_DST,
+	ID_BoxText,
 
 	ID_SELECTOR_TAB_0, // Offset for BlockDrawType tabs
 	ID_SELECTOR_0 = 400, // Offset for the block ID
@@ -136,7 +137,7 @@ void SceneBlockSelector::toggleTeleporterBox(const SEvent &e)
 	}
 
 	core::recti rect_tab(
-		core::vector2di(-BTN_SIZE.Width * 2.0f, BTN_SIZE.Height + 2),
+		core::vector2di(-BTN_SIZE.Width * 1.5f, BTN_SIZE.Height + 2),
 		core::dimension2di(BTN_SIZE.Width * 2 + 42, 70)
 	);
 
@@ -150,11 +151,11 @@ void SceneBlockSelector::toggleTeleporterBox(const SEvent &e)
 
 	// Add labels and inputs
 	core::recti rect_label(
-		core::vector2di(1, 8),
+		core::vector2di(3, 9),
 		core::dimension2di(40, 30)
 	);
 	core::recti rect_input(
-		core::vector2di(40, 2),
+		core::vector2di(40, 3),
 		core::dimension2di(BTN_SIZE.Width * 2, 30)
 	);
 
@@ -192,6 +193,36 @@ void SceneBlockSelector::readTeleporterBox()
 	if (sanitize_input(inp_dst, &val, 0, 255))
 		m_selected_tp_dst = val;
 }
+
+void SceneBlockSelector::toggleTextBox(const SEvent &e)
+{
+	auto elem = m_showmore->getElementFromId(ID_BoxText, true);
+	bool may_open = m_selected_bid == Block::ID_TEXT;
+	if (!may_open || elem) {
+		if (elem)
+			elem->remove();
+		return;
+	}
+
+	core::recti rect(
+		core::vector2di(-BTN_SIZE.Width, BTN_SIZE.Height + 2),
+		core::dimension2di(BTN_SIZE.Width * 4, 30)
+	);
+
+	std::wstring wstr;
+	utf8_to_wide(wstr, m_selected_text.c_str());
+	auto element = m_gui->addEditBox(wstr.c_str(), rect, true, e.GUIEvent.Caller, ID_BoxText);
+	element->setNotClipped(true);
+	m_gui->setFocus(element);
+	editbox_move_to_end(element);
+}
+
+void SceneBlockSelector::readTextBoxValue(const SEvent &e)
+{
+	auto box = (gui::IGUIEditBox *)e.GUIEvent.Caller;
+	wide_to_utf8(m_selected_text, box->getText());
+}
+
 
 bool SceneBlockSelector::OnEvent(const SEvent &e)
 {
@@ -250,6 +281,8 @@ bool SceneBlockSelector::OnEvent(const SEvent &e)
 			case ID_TabTeleporter_DST:
 				readTeleporterBox();
 				break;
+			case ID_BoxText:
+				readTextBoxValue(e);
 		}
 	}
 	if (e.EventType == EET_GUI_EVENT && e.GUIEvent.EventType == gui::EGET_BUTTON_CLICKED) {
@@ -267,6 +300,7 @@ bool SceneBlockSelector::OnEvent(const SEvent &e)
 
 			toggleCoinBox(e);
 			toggleTeleporterBox(e);
+			toggleTextBox(e);
 			return true;
 		}
 		// Show/hide block selector
@@ -343,6 +377,8 @@ void SceneBlockSelector::getBlockUpdate(BlockUpdate &bu)
 			bu.params.teleporter.id = m_selected_tp_id;
 			bu.params.teleporter.dst_id = m_selected_tp_dst;
 			break;
+		case Block::ID_TEXT:
+			*bu.params.text = m_selected_text;
 		default:
 			break;
 	}

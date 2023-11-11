@@ -42,7 +42,7 @@ public:
 	peer_t getMyPeerId() { return m_my_peer_id; }
 	PtrLock<decltype(m_players)> getPlayerList();
 	RefCnt<World> getWorld();
-	bool updateBlock(const BlockUpdate bu);
+	bool updateBlock(BlockUpdate bu);
 
 	std::vector<LobbyWorld> world_list;
 
