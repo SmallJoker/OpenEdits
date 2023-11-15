@@ -140,6 +140,21 @@ void SceneWorldRender::setCamera(core::vector3df pos)
 	m_camera->updateAbsolutePosition();
 }
 
+struct BlockDrawData {
+	struct BulkData {
+		CBulkSceneNode *node = nullptr;
+		bool is_solid = false;
+	};
+	std::map<size_t, BulkData> bulk_map;
+
+	LocalPlayer *player = nullptr;
+	World *world = nullptr;
+
+	blockpos_t pos;
+	Block b;
+	BulkData *bulk = nullptr;
+};
+
 void SceneWorldRender::drawBlocksInView()
 {
 	auto world = m_gui->getClient()->getWorld();
@@ -202,7 +217,6 @@ void SceneWorldRender::drawBlocksInView()
 		m_dirty_worldmesh = false;
 	}
 
-	auto smgr = m_gui->scenemgr;
 	m_blocks_node->removeAll();
 
 	// Draw more than necessary to skip on render steps when moving only slightly
@@ -214,11 +228,9 @@ void SceneWorldRender::drawBlocksInView()
 	const auto upperleft = m_drawn_blocks.UpperLeftCorner; // move to stack
 	const auto lowerright = m_drawn_blocks.LowerRightCorner;
 
-	struct BulkData {
-		CBulkSceneNode *node;
-		bool is_solid;
-	};
-	std::map<size_t, BulkData> bulk_map;
+	BlockDrawData bdd;
+	bdd.player = player.ptr();
+	bdd.world = world.get();
 
 	// This is very slow. Isn't there a faster way to draw stuff?
 	// also camera->setFar(-camera_pos.Z + 0.1) does not filter them out (bug?)
@@ -229,7 +241,10 @@ void SceneWorldRender::drawBlocksInView()
 		if (!world->getBlock(bp, &b))
 			continue;
 
-		bool have_solid_above = false;
+		bdd.pos = blockpos_t(x, y);
+		bdd.b = b;
+		bdd.bulk = nullptr;
+
 		do {
 			if (b.id == 0)
 				break;
@@ -251,111 +266,116 @@ void SceneWorldRender::drawBlocksInView()
 				hash_node_id = (hash << 13) | 1000;
 			}
 
-			auto it = bulk_map.find(hash_node_id);
-			if (it == bulk_map.end()) {
+			bdd.bulk = &bdd.bulk_map[hash_node_id];
+			if (!bdd.bulk->node) {
 				// Yet not cached: Add.
-
-				const BlockProperties *props = g_blockmanager->getProps(b.id);
-				BlockTile tile;
-				if (props)
-					tile = props->getTile(b);
-				else
-					tile.type = BlockDrawType::Solid;
-				auto z = ZINDEX_LOOKUP[(int)tile.type];
-
-				// New scene node
-				BulkData d;
-				d.is_solid = true;
-				d.node = new CBulkSceneNode(m_blocks_node, smgr, -1,
-					core::vector3df(0, 0, z),
-					core::dimension2d<f32>(10, 10)
-				);
-				//d.node->setDebugDataVisible(scene::EDS_BBOX);
-				auto [it2, tmp] = bulk_map.insert({hash_node_id, d});
-				d.node->drop();
-
-				it = it2;
-
-				// Set up scene node
-				it->second.is_solid = assignBlockTexture(tile, it->second.node);
+				assignNewForeground(bdd);
 			}
 
-			have_solid_above = it->second.is_solid;
+			drawBlockParams(bdd);
 
-			BlockParams params;
-			switch (b.id) {
-				case Block::ID_COINDOOR:
-				case Block::ID_COINGATE:
-					if (b.tile != 0)
-						break;
-					if (!world->getParams(bp, &params) || params != BlockParams::Type::U8)
-						break;
-
-					{
-						int required = params.param_u8;
-						required -= player->coins;
-
-						auto texture = m_gameplay->generateTexture(std::to_string(required), 0xFF000000, 0x00000000);
-						auto dim = texture->getOriginalSize();
-
-						auto nb = smgr->addBillboardSceneNode(m_blocks_node,
-							core::dimension2d<f32>((float)dim.Width / dim.Height * 5, 5),
-							core::vector3df((x * 10) + 0, (y * -10) - 2, -0.05)
-						);
-						nb->getMaterial(0).Lighting = false;
-						nb->getMaterial(0).setTexture(0, texture);
-						nb->getMaterial(0).MaterialType = video::EMT_TRANSPARENT_ALPHA_CHANNEL_REF;
-					}
-			break;
-				case Block::ID_TEXT: {
-					world->getParams(bp, &params);
-					video::ITexture *txt = m_gameplay->generateTexture(*params.text, 0xFFFFFFFF, 0x77000000);
-					auto dim = txt->getOriginalSize();
-
-					auto node = it->second.node;
-					node->getMaterial(0).setTexture(0, txt);
-					node->setVertexSize(core::dimension2df((float)dim.Width / dim.Height * 8, 8));
-				}
-			break;
-			}
-
-			it->second.node->addTile({x, -y});
+			bdd.bulk->node->addTile({x, -y});
 		} while (false);
 
 
 		do {
-			if (have_solid_above)
-				break;
+			if (bdd.bulk && bdd.bulk->is_solid)
+				break; // solid above; no background needed
 
-			auto it = bulk_map.find(b.bg);
-			if (it == bulk_map.end()) {
+			bdd.bulk = &bdd.bulk_map[b.bg];
+			if (!bdd.bulk->node) {
 				// Yet not cached: Add.
-
-				const BlockProperties *props = g_blockmanager->getProps(b.bg);
-				BlockTile tile;
-				if (props)
-					tile = props->tiles[0]; // backgrounds do not change
-				auto z = ZINDEX_LOOKUP[(int)BlockDrawType::Background];
-
-				// New scene node
-				BulkData d;
-				d.is_solid = false;
-				d.node = new CBulkSceneNode(m_blocks_node, smgr, -1,
-					core::vector3df(0, 0, z),
-					core::dimension2d<f32>(10, 10)
-				);
-
-				auto [it2, tmp] = bulk_map.insert({b.bg, d});
-				d.node->drop();
-
-				it = it2;
-
-				// Set up scene node
-				assignBlockTexture(tile, it->second.node);
+				assignNewBackground(bdd);
 			}
 
-			it->second.node->addTile({x, -y});
+			bdd.bulk->node->addTile({x, -y});
 		} while (false);
+	}
+}
+
+void SceneWorldRender::assignNewForeground(BlockDrawData &bdd)
+{
+	auto smgr = m_gui->scenemgr;
+
+	const BlockProperties *props = g_blockmanager->getProps(bdd.b.id);
+	BlockTile tile;
+	if (props)
+		tile = props->getTile(bdd.b);
+	else
+		tile.type = BlockDrawType::Solid;
+	auto z = ZINDEX_LOOKUP[(int)tile.type];
+
+	// New scene node
+	bdd.bulk->node = new CBulkSceneNode(m_blocks_node, smgr, -1,
+		core::vector3df(0, 0, z),
+		core::dimension2d<f32>(10, 10)
+	);
+	bdd.bulk->node->drop();
+	bdd.bulk->is_solid = assignBlockTexture(tile, bdd.bulk->node);
+
+	//bdd.bulk->node->setDebugDataVisible(scene::EDS_BBOX);
+}
+
+void SceneWorldRender::assignNewBackground(BlockDrawData &bdd)
+{
+	auto smgr = m_gui->scenemgr;
+
+	const BlockProperties *props = g_blockmanager->getProps(bdd.b.bg);
+	BlockTile tile;
+	if (props)
+		tile = props->tiles[0]; // backgrounds cannot change (yet?)
+	auto z = ZINDEX_LOOKUP[(int)BlockDrawType::Background];
+
+	// New scene node
+	bdd.bulk->node = new CBulkSceneNode(m_blocks_node, smgr, -1,
+		core::vector3df(0, 0, z),
+		core::dimension2d<f32>(10, 10)
+	);
+	bdd.bulk->node->drop();
+
+	// Set up scene node
+	assignBlockTexture(tile, bdd.bulk->node);
+}
+
+void SceneWorldRender::drawBlockParams(BlockDrawData &bdd)
+{
+	auto smgr = m_gui->scenemgr;
+
+	BlockParams params;
+	switch (bdd.b.id) {
+		case Block::ID_COINDOOR:
+		case Block::ID_COINGATE:
+			if (bdd.b.tile != 0)
+				break;
+			if (!bdd.world->getParams(bdd.pos, &params) || params != BlockParams::Type::U8)
+				break;
+
+			{
+				int required = params.param_u8;
+				required -= bdd.player->coins;
+
+				auto texture = m_gameplay->generateTexture(std::to_string(required), 0xFF000000, 0x00000000);
+				auto dim = texture->getOriginalSize();
+
+				auto nb = smgr->addBillboardSceneNode(m_blocks_node,
+					core::dimension2d<f32>((float)dim.Width / dim.Height * 5, 5),
+					core::vector3df((bdd.pos.X * 10) + 0, (bdd.pos.Y * -10) - 2, -0.05)
+				);
+				nb->getMaterial(0).Lighting = false;
+				nb->getMaterial(0).setTexture(0, texture);
+				nb->getMaterial(0).MaterialType = video::EMT_TRANSPARENT_ALPHA_CHANNEL_REF;
+			}
+	break;
+		case Block::ID_TEXT: {
+			bdd.world->getParams(bdd.pos, &params);
+			video::ITexture *txt = m_gameplay->generateTexture(*params.text, 0xFFFFFFFF, 0x77000000);
+			auto dim = txt->getOriginalSize();
+
+			auto node = bdd.bulk->node;
+			node->getMaterial(0).setTexture(0, txt);
+			node->setVertexSize(core::dimension2df((float)dim.Width / dim.Height * 8, 8));
+		}
+	break;
 	}
 }
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <line3d.h>
+#include <map>
 #include <rect.h>
 #include <vector3d.h>
 
@@ -19,6 +20,7 @@ using namespace irr;
 
 class Gui;
 class SceneGameplay;
+struct BlockDrawData; // Internal
 struct BlockTile;
 
 class SceneWorldRender {
@@ -50,6 +52,10 @@ private:
 	scene::ISceneManager *m_world_smgr = nullptr;
 
 	void drawBlocksInView();
+	void assignNewForeground(BlockDrawData &bdd);
+	void assignNewBackground(BlockDrawData &bdd);
+	void drawBlockParams(BlockDrawData &bdd);
+
 	bool assignBlockTexture(const BlockTile tile, scene::ISceneNode *node);
 	bool m_dirty_worldmesh = false;
 	core::recti m_drawn_blocks; // excess area, more drawn than needed
