@@ -238,10 +238,10 @@ void BlockManager::doPackRegistration()
 	}
 
 	{
-		// Spawn block only (for now)
-		BlockPack *pack = new BlockPack("owner");
+		// Special uncover on touch
+		BlockPack *pack = new BlockPack("hidden");
 		pack->default_type = BlockDrawType::Action;
-		pack->block_ids = { Block::ID_SPAWN, Block::ID_SECRET, Block::ID_TEXT };
+		pack->block_ids = { Block::ID_SECRET, Block::ID_BLACKREAL, Block::ID_BLACKFAKE };
 		registerPack(pack);
 
 		auto props = m_props[Block::ID_SECRET];
@@ -249,7 +249,23 @@ void BlockManager::doPackRegistration()
 		props->setTiles({ BlockDrawType::Solid, BlockDrawType::Solid });
 		props->tiles[0].have_alpha = true;
 
-		props = m_props[Block::ID_TEXT];
+		props = m_props[Block::ID_BLACKREAL];
+		props->setTiles({ BlockDrawType::Solid });
+
+		props = m_props[Block::ID_BLACKFAKE];
+		props->trigger_on_touch = true;
+		props->setTiles({ BlockDrawType::Action, BlockDrawType::Action });
+		props->tiles[1].have_alpha = true;
+	}
+
+	{
+		// Spawn block only (for now)
+		BlockPack *pack = new BlockPack("owner");
+		pack->default_type = BlockDrawType::Action;
+		pack->block_ids = { Block::ID_SPAWN, Block::ID_TEXT };
+		registerPack(pack);
+
+		auto props = m_props[Block::ID_TEXT];
 		props->paramtypes = BlockParams::Type::Text;
 		props->setTiles({ BlockDrawType::Decoration });
 	}

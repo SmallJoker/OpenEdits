@@ -80,6 +80,26 @@ void SceneWorldRender::draw()
 
 void SceneWorldRender::step(float dtime)
 {
+	do {
+		// Update camera position before rendering
+		auto player = m_gui->getClient()->getMyPlayer();
+		if (!player)
+			break;
+
+		float x = player->pos.X *  10;
+		float y = player->pos.Y * -10;
+		if (player->did_jerk) {
+			m_camera_pos.X = x;
+			m_camera_pos.Y = y;
+		} else {
+			// Exponential-like interpolation
+			m_camera_pos.X += (x - m_camera_pos.X) * 5 * dtime;
+			m_camera_pos.Y += (y - m_camera_pos.Y) * 5 * dtime;
+		}
+
+		setCamera(m_camera_pos);
+	} while (false);
+
 	// Actually draw the world contents
 
 	drawBlocksInView();
@@ -101,17 +121,6 @@ void SceneWorldRender::step(float dtime)
 
 		m_gui->driver->setViewPort(old_viewport);
 	}
-
-	do {
-		auto player = m_gui->getClient()->getMyPlayer();
-		if (!player)
-			break;
-
-		m_camera_pos.X += ((player->pos.X *  10) - m_camera_pos.X) * 5 * dtime;
-		m_camera_pos.Y += ((player->pos.Y * -10) - m_camera_pos.Y) * 5 * dtime;
-
-		setCamera(m_camera_pos);
-	} while (false);
 }
 
 
@@ -265,6 +274,9 @@ void SceneWorldRender::drawBlocksInView()
 
 				hash_node_id = (hash << 13) | 1000;
 			}
+			if (b.id == Block::ID_BLACKFAKE && b.tile == 0) {
+				bdd.b.id = Block::ID_BLACKREAL;
+			}
 
 			bdd.bulk = &bdd.bulk_map[hash_node_id];
 			if (!bdd.bulk->node) {
@@ -354,12 +366,12 @@ void SceneWorldRender::drawBlockParams(BlockDrawData &bdd)
 				int required = params.param_u8;
 				required -= bdd.player->coins;
 
-				auto texture = m_gameplay->generateTexture(std::to_string(required), 0xFF000000, 0x00000000);
+				auto texture = m_gameplay->generateTexture(std::to_string(required), 0xFF000000, 0xFFEECC00);
 				auto dim = texture->getOriginalSize();
 
 				auto nb = smgr->addBillboardSceneNode(m_blocks_node,
-					core::dimension2d<f32>((float)dim.Width / dim.Height * 5, 5),
-					core::vector3df((bdd.pos.X * 10) + 0, (bdd.pos.Y * -10) - 2, -0.05)
+					core::dimension2d<f32>((float)dim.Width / dim.Height * 6, 6),
+					core::vector3df((bdd.pos.X * 10) + 0, (bdd.pos.Y * -10) - 1, -0.05)
 				);
 				nb->getMaterial(0).Lighting = false;
 				nb->getMaterial(0).setTexture(0, texture);

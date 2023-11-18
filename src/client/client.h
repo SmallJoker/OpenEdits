@@ -62,6 +62,8 @@ public:
 	void processPacket(peer_t peer_id, Packet &pkt) override;
 
 private:
+	void stepPhysics(float dtime);
+
 	uint8_t getBlockTile(const Player *player, const Block *b) const;
 
 	// Prepare for rendering

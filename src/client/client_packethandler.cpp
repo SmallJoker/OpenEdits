@@ -468,7 +468,9 @@ void Client::pkt_GodMode(Packet &pkt)
 		player->acc = core::vector2df();
 	}
 	if (peer_id == m_my_peer_id) {
-		auto out = player->getWorld()->getBlocks(Block::ID_SECRET, [state](Block &b) -> bool {
+		bool map_dirty = false;
+
+		auto bump_tile = [state](Block &b) -> bool {
 			if (state)
 				b.tile++;
 			else if (b.tile)
@@ -476,9 +478,17 @@ void Client::pkt_GodMode(Packet &pkt)
 			else
 				return false;
 			return true;
-		});
+		};
 
-		if (!out.empty()) {
+		auto out = player->getWorld()->getBlocks(Block::ID_SECRET, bump_tile);
+		if (!out.empty())
+			map_dirty = true;
+
+		out = player->getWorld()->getBlocks(Block::ID_BLACKFAKE, bump_tile);
+		if (!out.empty())
+			map_dirty = true;
+
+		if (map_dirty) {
 			GameEvent e(GameEvent::C2G_MAP_UPDATE);
 			sendNewEvent(e);
 		}

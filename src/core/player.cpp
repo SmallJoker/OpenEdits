@@ -110,6 +110,7 @@ void Player::setPosition(core::vector2df newpos, bool reset_progress)
 	acc = core::vector2df();
 
 	last_pos = blockpos_t(-1, -1);
+	did_jerk = true;
 	controls_enabled = true;
 }
 
@@ -160,6 +161,7 @@ void Player::step(float dtime)
 	m_collision = core::vector2d<s8>(0, 0);
 	if (m_jump_cooldown > 0)
 		m_jump_cooldown -= dtime;
+	did_jerk = false;
 
 	//printf("dtime: %g, v=%g, a=%g\n", dtime, vel.getLength(), acc.getLength());
 
@@ -338,8 +340,12 @@ bool Player::stepCollisions(float dtime)
 	// single block effect
 	if (props && props->step) {
 		props->step(*this, bp);
+
 		// Position changes (e.g. portal)
-		bp = blockpos_t(pos.X + 0.5f, pos.Y + 0.5f);
+		blockpos_t bp2(pos.X + 0.5f, pos.Y + 0.5f);
+		if (bp != bp2)
+			did_jerk = true;
+		bp = bp2;
 	} else {
 		// default step
 		acc.Y += Player::GRAVITY_NORMAL;

@@ -89,100 +89,7 @@ void Client::step(float dtime)
 	}
 
 	// Run physics engine
-	if (world.get()) {
-		std::set<blockpos_t> triggered_blocks;
-		SimpleLock lock(m_players_lock);
-
-		for (auto it : m_players) {
-			if (it.first == m_my_peer_id) {
-				it.second->triggered_blocks = &triggered_blocks;
-				it.second->step(dtime);
-				it.second->triggered_blocks = nullptr;
-			} else {
-				it.second->step(dtime);
-			}
-		}
-
-		auto &meta = world->getMeta();
-
-		// Process triggers
-		bool trigger_event = false;
-		Packet pkt;
-		pkt.write(Packet2Server::TriggerBlocks);
-
-		auto player = getPlayerNoLock(m_my_peer_id);
-		for (blockpos_t bp : triggered_blocks) {
-			Block b;
-			if (!world->getBlock(bp, &b))
-				continue;
-
-			switch (b.id) {
-				case Block::ID_KEY_R:
-				case Block::ID_KEY_G:
-				case Block::ID_KEY_B:
-				{
-					int key_id = b.id - Block::ID_KEY_R;
-					auto &kdata = meta.keys[key_id];
-					if (kdata.set(-1.0f)) {
-						pkt.write(bp.X);
-						pkt.write(bp.Y);
-					}
-				}
-				break;
-				case Block::ID_COIN:
-				case Block::ID_SECRET:
-				if (!b.tile) {
-					b.tile = 1;
-					world->setBlock(bp, b);
-					trigger_event = true;
-				}
-				break;
-				case Block::ID_CHECKPOINT:
-					if (player->godmode)
-						break;
-					{
-						// Unmark previous checkpoint
-						Block b2;
-						world->getBlock(player->checkpoint, &b2);
-						if (b2.id == Block::ID_CHECKPOINT) {
-							b2.tile = 0;
-							world->setBlock(player->checkpoint, b2);
-						}
-					}
-					{
-						// Mark current checkpoint
-						player->checkpoint = bp;
-						b.tile = 1;
-						world->setBlock(player->checkpoint, b);
-						trigger_event = true;
-					}
-					// fall-through
-				case Block::ID_SPIKES:
-					if (player->godmode)
-						break;
-					{
-						pkt.write(bp.X);
-						pkt.write(bp.Y);
-					}
-				break;
-			}
-		} // for
-
-		if (pkt.size() > 4) {
-			pkt.write(BLOCKPOS_INVALID); // end
-
-			m_con->send(0, 1, pkt);
-		}
-
-		if (trigger_event) {
-			// Triggering an event anyway. Update coin doors.
-			auto player = getPlayerNoLock(m_my_peer_id);
-			player->updateCoinCount();
-
-			GameEvent e(GameEvent::C2G_MAP_UPDATE);
-			sendNewEvent(e);
-		}
-	}
+	stepPhysics(dtime);
 }
 
 bool Client::OnEvent(GameEvent &e)
@@ -445,6 +352,107 @@ void Client::processPacket(peer_t peer_id, Packet &pkt)
 	}
 }
 
+void Client::stepPhysics(float dtime)
+{
+	auto world = getWorld();
+	if (!world.get())
+		return;
+
+	std::set<blockpos_t> triggered_blocks;
+	SimpleLock lock(m_players_lock);
+
+	for (auto it : m_players) {
+		if (it.first == m_my_peer_id) {
+			it.second->triggered_blocks = &triggered_blocks;
+			it.second->step(dtime);
+			it.second->triggered_blocks = nullptr;
+		} else {
+			it.second->step(dtime);
+		}
+	}
+
+	auto &meta = world->getMeta();
+
+	// Process triggers
+	bool map_dirty = false;
+	Packet pkt;
+	pkt.write(Packet2Server::TriggerBlocks);
+
+	auto player = getPlayerNoLock(m_my_peer_id);
+	for (blockpos_t bp : triggered_blocks) {
+		Block b;
+		if (!world->getBlock(bp, &b))
+			continue;
+
+		switch (b.id) {
+			case Block::ID_KEY_R:
+			case Block::ID_KEY_G:
+			case Block::ID_KEY_B:
+			{
+				int key_id = b.id - Block::ID_KEY_R;
+				auto &kdata = meta.keys[key_id];
+				if (kdata.set(-1.0f)) {
+					pkt.write(bp.X);
+					pkt.write(bp.Y);
+				}
+			}
+			break;
+			case Block::ID_COIN:
+			case Block::ID_SECRET:
+			case Block::ID_BLACKFAKE:
+			if (!b.tile) {
+				b.tile = 1;
+				world->setBlock(bp, b);
+				map_dirty = true;
+			}
+			break;
+			case Block::ID_CHECKPOINT:
+				if (player->godmode)
+					break;
+				{
+					// Unmark previous checkpoint
+					Block b2;
+					world->getBlock(player->checkpoint, &b2);
+					if (b2.id == Block::ID_CHECKPOINT) {
+						b2.tile = 0;
+						world->setBlock(player->checkpoint, b2);
+					}
+				}
+				{
+					// Mark current checkpoint
+					player->checkpoint = bp;
+					b.tile = 1;
+					world->setBlock(player->checkpoint, b);
+					map_dirty = true;
+				}
+				// fall-through
+			case Block::ID_SPIKES:
+				if (player->godmode)
+					break;
+				{
+					pkt.write(bp.X);
+					pkt.write(bp.Y);
+				}
+			break;
+		}
+	} // for
+
+	if (pkt.size() > 4) {
+		pkt.write(BLOCKPOS_INVALID); // end
+
+		m_con->send(0, 1, pkt);
+	}
+
+	if (map_dirty) {
+		// Triggering an event anyway. Update coin doors.
+		auto player = getPlayerNoLock(m_my_peer_id);
+		player->updateCoinCount();
+
+		GameEvent e(GameEvent::C2G_MAP_UPDATE);
+		sendNewEvent(e);
+	}
+}
+
 uint8_t Client::getBlockTile(const Player *player, const Block *b) const
 {
 	auto world = player->getWorld();
@@ -459,6 +467,7 @@ uint8_t Client::getBlockTile(const Player *player, const Block *b) const
 		case Block::ID_SPIKES:
 			return get_params().param_u8;
 		case Block::ID_SECRET:
+		case Block::ID_BLACKFAKE:
 			return player->godmode;
 		case Block::ID_TELEPORTER:
 			return get_params().teleporter.rotation;

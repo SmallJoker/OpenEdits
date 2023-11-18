@@ -51,6 +51,7 @@ public:
 	core::vector2df vel;
 	core::vector2df acc;
 	blockpos_t last_pos;
+	bool did_jerk = false; //< abrupt position changes. e.g. teleporter
 
 	float dtime_delay = 0; //< RTT compensation upon the next ::step call
 
