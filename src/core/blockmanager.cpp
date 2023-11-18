@@ -13,6 +13,7 @@ BlockProperties::BlockProperties(BlockDrawType type)
 
 void BlockProperties::setTiles(std::vector<BlockDrawType> types)
 {
+	ASSERT_FORCED(types.size() > 0, "Must have > 0 tiles");
 	tiles.resize(types.size());
 
 	for (size_t i = 0; i < tiles.size(); ++i) {

@@ -259,10 +259,10 @@ void SceneWorldRender::drawBlocksInView()
 				break;
 
 			// Unique ID for each appearance type
-			size_t hash_node_id = (size_t)(b.tile << 16) | b.id;
+			size_t tile_hash = b.tile;
 
 			if (b.id == Block::ID_TEXT) {
-				size_t hash = 0;
+				tile_hash = 0;
 				// TODO: use murmur hash
 				BlockParams params;
 				world->getParams(bp, &params);
@@ -270,14 +270,15 @@ void SceneWorldRender::drawBlocksInView()
 					break;
 
 				for (char v : *params.text)
-					hash = hash ^ (~hash << 1) ^ v;
-
-				hash_node_id = (hash << 13) | 1000;
+					tile_hash = tile_hash ^ (~tile_hash << 1) ^ v;
 			}
+
 			if (b.id == Block::ID_BLACKFAKE && b.tile == 0) {
 				bdd.b.id = Block::ID_BLACKREAL;
+				tile_hash = 0;
 			}
 
+			size_t hash_node_id = (tile_hash << 16) | bdd.b.id;
 			bdd.bulk = &bdd.bulk_map[hash_node_id];
 			if (!bdd.bulk->node) {
 				// Yet not cached: Add.
