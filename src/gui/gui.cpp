@@ -283,6 +283,9 @@ void Gui::disconnect()
 void Gui::joinWorld(SceneLobby *sc)
 {
 	// Similar to the "Connect" scene. More fields might be added to create and delete worlds
+	if (sc->world_id.empty())
+		return;
+
 	GameEvent e(GameEvent::G2C_JOIN);
 	e.text = new std::string(sc->world_id);
 	sendNewEvent(e);

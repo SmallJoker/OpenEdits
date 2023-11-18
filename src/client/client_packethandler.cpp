@@ -128,6 +128,22 @@ void Client::pkt_Lobby(Packet &pkt)
 		world_list.emplace_back(world);
 	}
 
+	// Friends
+	friend_list.clear();
+	while (pkt.getRemainingBytes()) {
+		bool is_ok = pkt.read<u8>();
+		if (!is_ok)
+			break;
+
+		LobbyFriend f;
+		f.type = (LobbyFriend::Type)pkt.read<u8>();
+		f.name = pkt.readStr16();
+		f.world_id = pkt.readStr16();
+
+		friend_list.emplace_back(f);
+	}
+
+
 	{
 		GameEvent e(GameEvent::C2G_LOBBY_UPDATE);
 		sendNewEvent(e);

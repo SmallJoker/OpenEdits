@@ -1,6 +1,7 @@
 #include "server.h"
 #include "remoteplayer.h"
 #include "core/blockmanager.h"
+#include "core/friends.h"
 #include "core/packet.h"
 #include "core/utils.h"
 #include "core/world.h"
@@ -303,6 +304,7 @@ void Server::pkt_GetLobby(peer_t peer_id, Packet &)
 			worlds.insert(world);
 	}
 
+	// Currently online worlds
 	for (auto world : worlds) {
 		const auto &meta = world->getMeta();
 		if (!meta.is_public)
@@ -317,6 +319,7 @@ void Server::pkt_GetLobby(peer_t peer_id, Packet &)
 		out.write(size.Y);
 	}
 
+	// This player's worlds
 	if (m_world_db) {
 		auto player = getPlayerNoLock(peer_id);
 		auto found = m_world_db->getByPlayer(player->name);
@@ -330,6 +333,7 @@ void Server::pkt_GetLobby(peer_t peer_id, Packet &)
 		}
 	}
 
+	// EELVL importable worlds
 	{
 		if (!m_importable_worlds_timer.isActive()) {
 			m_importable_worlds_timer.set(60);
@@ -345,7 +349,23 @@ void Server::pkt_GetLobby(peer_t peer_id, Packet &)
 		}
 	}
 
-	out.write<u8>(false); // done
+	out.write<u8>(false); // done with worlds
+
+	// Friends
+	if (m_auth_db) {
+		RemotePlayer *player = getPlayerNoLock(peer_id);
+
+		// TODO: Pull the data from somewhere
+
+		for (u8 type = 0; type < (u8)LobbyFriend::Type::MAX_INVALID; ++type) {
+			out.write<u8>(true);
+			out.write(type);
+			out.writeStr16("FOOBAR" + std::to_string(type));
+			out.writeStr16("WORLDID");
+		}
+
+		out.write<u8>(false); // done with friends
+	}
 
 	m_con->send(peer_id, 0, out);
 }

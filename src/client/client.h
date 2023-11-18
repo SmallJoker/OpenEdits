@@ -2,6 +2,7 @@
 
 #include "core/auth.h"
 #include "core/environment.h"
+#include "core/friends.h"
 #include "gameevent.h"
 #include <string>
 
@@ -45,6 +46,7 @@ public:
 	bool updateBlock(BlockUpdate bu);
 
 	std::vector<LobbyWorld> world_list;
+	std::vector<LobbyFriend> friend_list;
 
 	// ----------- Utility functions -----------
 

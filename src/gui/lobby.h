@@ -1,6 +1,7 @@
 #pragma once
 
 #include "gui.h"
+#include "core/friends.h"
 #include <string>
 
 namespace irr {
@@ -8,6 +9,7 @@ namespace irr {
 		class IGUIButton;
 		class IGUIEditBox;
 		class IGUIListBox;
+		class IGUITabControl;
 	}
 }
 
@@ -25,8 +27,12 @@ public:
 	std::string title, code;
 
 private:
+	void addWorldsTab(gui::IGUITabControl *tc);
+	void addFriendsTab(gui::IGUITabControl *tc);
+
 	void updateWorldList();
 	bool m_dirty_worldlist = false;
+
 	std::vector<std::string>
 		m_public_index_to_worldid,
 		m_my_index_to_worldid,
@@ -35,4 +41,13 @@ private:
 	gui::IGUIListBox *m_mylist = nullptr;
 	gui::IGUIListBox *m_importlist = nullptr;
 	gui::IGUIButton *m_refreshbtn = nullptr;
+
+	// Called by updateWorldList
+	void updateFriendsList();
+
+	struct FriendsList {
+		std::vector<LobbyFriend> index_LUT;
+
+		gui::IGUIListBox *list = nullptr;
+	} m_friends;
 };
