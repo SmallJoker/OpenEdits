@@ -2,6 +2,74 @@
 #include "core/auth.h"
 #include "server/database_auth.h"
 
+
+static void auth_friends_test(DatabaseAuth &db)
+{
+	// Two friends
+	{
+		AuthAccount auth;
+		auth.name = "Buddy";
+
+		CHECK(db.save(auth));
+	}
+	{
+		AuthAccount auth;
+		auth.name = "Terry";
+
+		CHECK(db.save(auth));
+	}
+
+	{
+		// First friend entry
+		AuthFriend f;
+		f.p1.name = "Buddy";
+		f.p2.name = "Terry";
+
+		CHECK(db.setFriend(f));
+		// Try a second time
+		std::swap(f.p1.name, f.p2.name);
+		CHECK(db.setFriend(f));
+
+		std::vector<AuthFriend> friends;
+		CHECK(db.listFriends("Terry", &friends));
+		CHECK(friends.size() == 1);
+	}
+
+	{
+		// Non-existent account
+		AuthFriend f;
+		f.p1.name = "Terry";
+		f.p2.name = "____";
+
+		CHECK(!db.setFriend(f));
+	}
+
+	{
+		AuthAccount auth;
+		auth.name = "Wilson";
+
+		CHECK(db.save(auth));
+
+		AuthFriend f;
+		f.p1.name = "Wilson";
+		f.p1.status = 420;
+
+		f.p2.name = "Terry";
+		f.p2.status = 1;
+
+		CHECK(db.setFriend(f));
+
+		std::vector<AuthFriend> friends;
+		db.listFriends("Terry", &friends);
+		CHECK(friends.size() == 2);
+
+		// Other side
+		db.listFriends("Wilson", &friends);
+		CHECK(friends.size() == 1);
+		CHECK(friends[0].p1.status == 420);
+	}
+}
+
 static void auth_database_test()
 {
 	const char *filepath = "unittest_auth.sqlite3";
@@ -20,6 +88,7 @@ static void auth_database_test()
 		auth.password = newauth.output;
 
 		CHECK(db.save(auth));
+		CHECK(db.save(auth)); // overwrite
 
 		// By name
 		AuthAccount out;
@@ -44,6 +113,8 @@ static void auth_database_test()
 		CHECK(db.setConfig(cfg));
 		CHECK(!db.getConfig(&cfg));
 	}
+
+	auth_friends_test(db);
 
 	db.close();
 

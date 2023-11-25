@@ -6,6 +6,14 @@
 
 constexpr int AUTH_DB_VERSION_LATEST = 1;
 
+
+DatabaseAuth::DatabaseAuth() : Database()
+{
+	for (size_t i = 0; i < STMT_MAX; ++i)
+		m_stmt[i] = nullptr;
+}
+
+
 DatabaseAuth::~DatabaseAuth()
 {
 	close();
@@ -16,9 +24,22 @@ bool DatabaseAuth::tryOpen(const char *filepath)
 	if (!Database::tryOpen(filepath))
 		return false;
 
+	if (sqlite3_libversion_number() < 3024000) {
+		fprintf(stderr, "Auth DB requires sqlite3 >= 3.24.0 for UPSERT support");
+		return false;
+	}
+
+	for (size_t i = 0; i < STMT_MAX; ++i) {
+		if (!m_stmt[i])
+			continue;
+
+		fprintf(stderr, "sqlite statements were not freed properly!");
+		return false;
+	}
+
 	// Do not execute when failed
 #define PREPARE(NAME, STMT) \
-	good &= good && ok(#NAME, sqlite3_prepare_v2(m_database, STMT, -1, &m_stmt_##NAME, nullptr))
+	good &= good && ok(#NAME, sqlite3_prepare_v2(m_database, STMT, -1, &m_stmt[NAME], nullptr))
 
 	bool good = true;
 
@@ -30,15 +51,15 @@ bool DatabaseAuth::tryOpen(const char *filepath)
 		")",
 		nullptr, nullptr, nullptr));
 
-	PREPARE(cfg_read,
+	PREPARE(STMT_CFG_READ,
 		"SELECT * FROM `config` WHERE key = ? LIMIT 1"
 	);
-	PREPARE(cfg_write,
+	PREPARE(STMT_CFG_WRITE,
 		"REPLACE INTO `config` "
 		"(`key`, `value`) "
 		"VALUES (?, ?)"
 	);
-	PREPARE(cfg_delete,
+	PREPARE(STMT_CFG_REMOVE,
 		"DELETE FROM `config` WHERE key = ?"
 	);
 
@@ -57,6 +78,7 @@ bool DatabaseAuth::tryOpen(const char *filepath)
 		}
 	}
 
+	good &= runCustomQuery("PRAGMA foreign_keys = ON;");
 
 	good &= ok("create_auth", sqlite3_exec(m_database,
 		"CREATE TABLE IF NOT EXISTS `auth` ("
@@ -64,21 +86,58 @@ bool DatabaseAuth::tryOpen(const char *filepath)
 		"`password`   BLOB,"
 		"`last_login` INTEGER,"
 		"`level`      INTEGER,"
-		"`metadata`   TEXT,"
+		"`metadata`   BLOB,"
 		"PRIMARY KEY(`name`)"
 		")",
 		nullptr, nullptr, nullptr));
 
-	PREPARE(auth_read,
+	PREPARE(STMT_AUTH_READ,
 		"SELECT * FROM `auth` WHERE `name` = ? LIMIT 1"
 	);
-	PREPARE(auth_write,
-		"REPLACE INTO `auth` "
-		"(`name`, `password`, `last_login`, `level`, `metadata`) "
-		"VALUES (?, ?, ?, ?, ?)"
+	PREPARE(STMT_AUTH_WRITE,
+		"INSERT INTO `auth` VALUES(?, ?, ?, ?, ?) "
+		"ON CONFLICT(`name`) DO UPDATE SET "
+		"	password = excluded.password,"
+		"	last_login = excluded.last_login,"
+		"	level = excluded.level,"
+		"	metadata = excluded.metadata;"
 	);
-	PREPARE(auth_set_pw,
+	PREPARE(STMT_AUTH_SET_PW,
 		"UPDATE `auth` SET password = ? WHERE name = ?"
+	);
+
+	good &= ok("create_friends", sqlite3_exec(m_database,
+		"CREATE TABLE IF NOT EXISTS `friends` ("
+		"`name1`    TEXT,"
+		"`name2`    TEXT,"
+		"`status1`   INTEGER,"
+		"`status2`   INTEGER,"
+		"`metadata` BLOB,"
+		"PRIMARY KEY(`name1`, `name2`)"
+		// Automatically delete entries when users are removed
+		// Also happens when using "REPLACE INTO"
+		"CONSTRAINT cs_name1"
+		"	FOREIGN KEY (name1)"
+		"	REFERENCES auth(name)"
+		"		ON DELETE CASCADE,"
+		"CONSTRAINT cs_name2"
+		"	FOREIGN KEY (name2)"
+		"	REFERENCES auth(name)"
+		"		ON DELETE CASCADE"
+		");",
+		nullptr, nullptr, nullptr));
+	PREPARE(STMT_FRIENDS_LIST,
+		"SELECT * FROM `friends` WHERE name1 = ? OR name2 = ?"
+	);
+	PREPARE(STMT_FRIENDS_WRITE,
+		"INSERT INTO `friends` VALUES(?, ?, ?, ?, ?) "
+		"ON CONFLICT(`name1`, `name2`) DO UPDATE SET "
+		"	status1 = excluded.status1,"
+		"	status2 = excluded.status2,"
+		"	metadata = excluded.metadata;"
+	);
+	PREPARE(STMT_FRIENDS_REMOVE,
+		"DELETE FROM `friends` WHERE name1 = ? AND name2 = ?"
 	);
 
 	good &= ok("create_f2b", sqlite3_exec(m_database,
@@ -90,14 +149,14 @@ bool DatabaseAuth::tryOpen(const char *filepath)
 		")",
 		nullptr, nullptr, nullptr));
 
-	PREPARE(f2b_add,
+	PREPARE(STMT_F2B_INSERT,
 		"INSERT INTO `fail2ban` (`expiry`, `affected`, `context`, `comment`) "
 		"VALUES (?, ?, ?, ?)"
 	);
-	PREPARE(f2b_read,
+	PREPARE(STMT_F2B_READ,
 		"SELECT * FROM `fail2ban` WHERE `affected` = ? AND `context` = ? LIMIT 1"
 	);
-	PREPARE(f2b_cleanup,
+	PREPARE(STMT_F2B_CLEANUP,
 		"DELETE FROM `fail2ban` WHERE `expiry` <= ?"
 	);
 
@@ -109,7 +168,7 @@ bool DatabaseAuth::tryOpen(const char *filepath)
 		")",
 		nullptr, nullptr, nullptr));
 
-	PREPARE(log,
+	PREPARE(STMT_LOG_INSERT,
 		"INSERT INTO `log` "
 		"(`timestamp`, `subject`, `text`) "
 		"VALUES (?, ?, ?)"
@@ -130,21 +189,13 @@ void DatabaseAuth::close()
 	if (!m_database)
 		return;
 
-#define FINALIZE(NAME) \
-	ok("~"#NAME, sqlite3_finalize(m_stmt_##NAME))
+	for (size_t i = 0; i < STMT_MAX; ++i) {
+		if (!m_stmt[i])
+			continue;
 
-	FINALIZE(auth_read);
-	FINALIZE(auth_write);
-	FINALIZE(auth_set_pw);
-
-	FINALIZE(cfg_read);
-	FINALIZE(cfg_write);
-
-	FINALIZE(f2b_add);
-	FINALIZE(f2b_read);
-	FINALIZE(f2b_cleanup);
-
-	FINALIZE(log);
+		ok("~stmt[]", sqlite3_finalize(m_stmt[i]));
+		m_stmt[i] = nullptr;
+	}
 
 	Database::close();
 }
@@ -166,12 +217,74 @@ static std::string custom_column_blob(sqlite3_stmt *s, int col)
 	return std::string((const char *)blob, len);
 }
 
+bool DatabaseAuth::getConfig(AuthConfig *entry)
+{
+	if (!m_database || !entry)
+		return false;
+
+	auto s = m_stmt[STMT_CFG_READ];
+	custom_bind_string(s, 1, entry->first);
+
+	if (sqlite3_step(s) != SQLITE_ROW) {
+		// Not found
+		sqlite3_reset(s);
+		return false;
+	}
+
+	int i = 0;
+
+	entry->first  = (const char *)sqlite3_column_text(s, i++);
+	entry->second = custom_column_blob(s, i++);
+
+	bool good = ok("cfg_read", sqlite3_step(s));
+	sqlite3_reset(s);
+
+	return good;
+}
+
+#define WRITE_ACTION(code) \
+	sqlite3_step(m_stmt_begin); \
+	sqlite3_reset(m_stmt_begin); \
+	do \
+		code \
+	while (0); \
+	sqlite3_step(m_stmt_end); \
+	sqlite3_reset(m_stmt_end);
+
+
+bool DatabaseAuth::setConfig(const AuthConfig &entry)
+{
+	if (!m_database)
+		return false;
+
+	bool good = false;
+
+WRITE_ACTION({
+	sqlite3_stmt *s;
+	if (entry.second.empty()) {
+		// Remove
+		s = m_stmt[STMT_CFG_REMOVE];
+		custom_bind_string(s, 1, entry.first);
+	} else {
+		// Update
+		s = m_stmt[STMT_CFG_WRITE];
+		custom_bind_string(s, 1, entry.first);
+		custom_bind_blob(s, 2, entry.second);
+	}
+
+	good = ok("cfg_write_s", sqlite3_step(s));
+	ok("cfg_write_r", sqlite3_reset(s));
+})
+
+	return good;
+}
+
 bool DatabaseAuth::load(const std::string &name, AuthAccount *auth)
 {
 	if (!m_database || !auth)
 		return false;
 
-	auto s = m_stmt_auth_read;
+	auto s = m_stmt[STMT_AUTH_READ];
 	custom_bind_string(s, 1, name);
 
 	if (sqlite3_step(s) != SQLITE_ROW) {
@@ -198,78 +311,28 @@ bool DatabaseAuth::save(const AuthAccount &auth)
 	if (!m_database)
 		return false;
 
-	sqlite3_step(m_stmt_begin);
-	sqlite3_reset(m_stmt_begin);
+	bool good = false;
 
-	auto s = m_stmt_auth_write;
+WRITE_ACTION({
+	sqlite3_stmt *s = m_stmt[STMT_AUTH_WRITE];
 	int i = 1;
 	custom_bind_string(s, i++, auth.name);
 	custom_bind_blob  (s, i++, auth.password);
 	sqlite3_bind_int64(s, i++, auth.last_login);
 	sqlite3_bind_int  (s, i++, auth.level);
-	custom_bind_blob(s, i++, ""); // TODO: Use for per-user settings (Packet)
+	custom_bind_blob  (s, i++, ""); // TODO: Use for per-user settings (Packet)
 
-	bool good = ok("auth_save_s", sqlite3_step(s));
+	good = ok("auth_save_s", sqlite3_step(s));
 	ok("auth_save_r", sqlite3_reset(s));
 
-	sqlite3_step(m_stmt_end);
-	sqlite3_reset(m_stmt_end);
-	return good;
-}
-
-bool DatabaseAuth::getConfig(AuthConfig *entry)
-{
-	if (!m_database || !entry)
-		return false;
-
-	auto s = m_stmt_cfg_read;
-	custom_bind_string(s, 1, entry->first);
-
-	if (sqlite3_step(s) != SQLITE_ROW) {
-		// Not found
-		sqlite3_reset(s);
-		return false;
-	}
-
-	int i = 0;
-
-	entry->first  = (const char *)sqlite3_column_text(s, i++);
-	entry->second = custom_column_blob(s, i++);
-
-	bool good = ok("cfg_read", sqlite3_step(s));
-	sqlite3_reset(s);
-
-	return good;
-}
-
-bool DatabaseAuth::setConfig(const AuthConfig &entry)
-{
-	if (!m_database)
-		return false;
-
-	sqlite3_step(m_stmt_begin);
-	sqlite3_reset(m_stmt_begin);
-
-	sqlite3_stmt *s;
-	if (entry.second.empty()) {
-		// Remove
-		s = m_stmt_cfg_delete;
-		custom_bind_string(s, 1, entry.first);
-	} else {
-		// Update
-		s = m_stmt_cfg_write;
-		custom_bind_string(s, 1, entry.first);
-		custom_bind_blob(s, 2, entry.second);
-	}
-
-	bool good = ok("cfg_write_s", sqlite3_step(s));
-	ok("cfg_write_r", sqlite3_reset(s));
+	good = good && sqlite3_changes(m_database);
 
 	sqlite3_step(m_stmt_end);
 	sqlite3_reset(m_stmt_end);
+})
+
 	return good;
 }
-
 
 const std::string &DatabaseAuth::getUniqueSalt()
 {
@@ -298,19 +361,99 @@ bool DatabaseAuth::setPassword(const std::string &name, const std::string &hash)
 	if (!m_database)
 		return false;
 
-	sqlite3_step(m_stmt_begin);
-	sqlite3_reset(m_stmt_begin);
+	bool good = false;
 
-	auto s = m_stmt_auth_set_pw;
+WRITE_ACTION({
+	auto s = m_stmt[STMT_AUTH_SET_PW];
 	int i = 1;
 	custom_bind_blob(s, i++, hash);
 	custom_bind_string(s, i++, name);
 
-	bool good = ok("auth_set_pw_s", sqlite3_step(s));
+	good = ok("auth_set_pw_s", sqlite3_step(s));
 	ok("auth_set_pw_r", sqlite3_reset(s));
+})
 
-	sqlite3_step(m_stmt_end);
-	sqlite3_reset(m_stmt_end);
+	return good;
+}
+
+bool DatabaseAuth::listFriends(const std::string &name, std::vector<AuthFriend> *friends)
+{
+	if (!m_database || !friends)
+		return false;
+
+	friends->clear();
+	auto s = m_stmt[STMT_FRIENDS_LIST];
+	custom_bind_string(s, 1, name);
+	custom_bind_string(s, 2, name);
+
+	bool good = false;
+	while (sqlite3_step(s) == SQLITE_ROW) {
+		int i = 0;
+		AuthFriend f;
+
+		f.p1.name = (const char *)sqlite3_column_text(s, i++);
+		f.p2.name = (const char *)sqlite3_column_text(s, i++);
+		f.p1.status = sqlite3_column_int(s, i++);
+		f.p2.status = sqlite3_column_int(s, i++);
+		//f.metadata = ...
+
+		if (f.p1.name != name)
+			std::swap(f.p1, f.p2);
+
+		friends->push_back(std::move(f));
+	}
+
+	good = ok("friends_list", sqlite3_errcode(m_database));
+	sqlite3_reset(s);
+
+	return good;
+}
+
+bool DatabaseAuth::setFriend(AuthFriend f)
+{
+	if (!m_database)
+		return false;
+
+	bool good = false;
+
+	if (f.p1.name > f.p2.name)
+		std::swap(f.p1, f.p2);
+
+WRITE_ACTION({
+	sqlite3_stmt *s = m_stmt[STMT_FRIENDS_WRITE];
+	int i = 1;
+	custom_bind_string(s, i++, f.p1.name);
+	custom_bind_string(s, i++, f.p2.name);
+	sqlite3_bind_int(s, i++, f.p1.status);
+	sqlite3_bind_int(s, i++, f.p2.status);
+	custom_bind_blob(s, i++, ""); // placeholder
+
+	good = ok("friends_set", sqlite3_step(s));
+	sqlite3_reset(s);
+})
+
+	return good;
+}
+
+bool DatabaseAuth::removeFriend(const std::string &name1, const std::string &name2)
+{
+	if (!m_database)
+		return false;
+
+	bool good = false;
+
+	bool swap = name1 > name2;
+
+WRITE_ACTION({
+	auto s = m_stmt[STMT_FRIENDS_REMOVE];
+	int i = 1;
+	custom_bind_string(s, i++, swap ? name2 : name1);
+	custom_bind_string(s, i++, swap ? name1 : name2);
+
+	good = ok("friends_remove", sqlite3_step(s));
+	sqlite3_reset(s);
+})
+
 	return good;
 }
 
@@ -330,7 +473,7 @@ bool DatabaseAuth::ban(const AuthBanEntry &entry)
 	sqlite3_step(m_stmt_begin);
 	sqlite3_reset(m_stmt_begin);
 
-	auto s = m_stmt_f2b_add;
+	auto s = m_stmt[STMT_F2B_INSERT];
 	int i = 1;
 	sqlite3_bind_int64(s, i++, entry.expiry);
 	custom_bind_string(s, i++, entry.affected);
@@ -357,7 +500,7 @@ bool DatabaseAuth::getBanRecord(const std::string &affected, const std::string &
 	if (!m_database)
 		return false;
 
-	auto s = m_stmt_f2b_read;
+	auto s = m_stmt[STMT_F2B_READ];
 	custom_bind_string(s, 1, affected);
 	custom_bind_string(s, 2, context);
 
@@ -390,7 +533,7 @@ bool DatabaseAuth::cleanupBans()
 	sqlite3_step(m_stmt_begin);
 	sqlite3_reset(m_stmt_begin);
 
-	auto s = m_stmt_f2b_cleanup;
+	auto s = m_stmt[STMT_F2B_CLEANUP];
 	int i = 1;
 	sqlite3_bind_int64(s, i++, time(nullptr));
 
@@ -409,7 +552,7 @@ bool DatabaseAuth::logNow(AuthLogEntry entry)
 	sqlite3_step(m_stmt_begin);
 	sqlite3_reset(m_stmt_begin);
 
-	auto s = m_stmt_log;
+	auto s = m_stmt[STMT_LOG_INSERT];
 	int i = 1;
 	sqlite3_bind_int64(s, i++, entry.timestamp);
 	custom_bind_string(s, i++, entry.subject);

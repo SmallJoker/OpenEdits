@@ -2,6 +2,7 @@
 
 #include "database.h"
 #include <ctime>
+#include <vector> // friends
 
 struct AuthAccount {
 	std::string name;
@@ -18,6 +19,16 @@ struct AuthAccount {
 	int level = 0;
 
 	//std::map<std::string, std::string> metadata;
+};
+
+struct AuthFriend {
+	// sorted alphabetically for the database
+	struct Entry {
+		std::string name;
+		int status = 0;
+	} p1, p2;
+
+	// void *metadata;
 };
 
 using AuthConfig = std::pair<std::string, std::string>;
@@ -42,7 +53,7 @@ struct AuthLogEntry {
 
 class DatabaseAuth : public Database {
 public:
-	DatabaseAuth() : Database() {}
+	DatabaseAuth();
 	~DatabaseAuth();
 
 	bool tryOpen(const char *filepath) override;
@@ -52,11 +63,19 @@ public:
 	bool getConfig(AuthConfig *entry);
 	bool setConfig(const AuthConfig &entry);
 
+	/// Returns false on error or when `auth`==nullptr
 	bool load(const std::string &name, AuthAccount *auth);
 	bool save(const AuthAccount &auth);
 
 	const std::string &getUniqueSalt();
 	bool setPassword(const std::string &name, const std::string &hash);
+
+	/// AuthFriend::p1 is guaranteed to correspond to "name"
+	/// Returns false on error or when `friends`==nullptr
+	bool listFriends(const std::string &name, std::vector<AuthFriend> *friends);
+	/// Inserts or overwrites an existing friend record
+	bool setFriend(AuthFriend f);
+	bool removeFriend(const std::string &name1, const std::string &name2);
 
 	bool ban(const AuthBanEntry &entry);
 	// returns whether an active ban was found
@@ -67,19 +86,29 @@ public:
 
 
 private:
-	sqlite3_stmt *m_stmt_cfg_read = nullptr;
-	sqlite3_stmt *m_stmt_cfg_write = nullptr;
-	sqlite3_stmt *m_stmt_cfg_delete = nullptr;
+	enum {
+		STMT_CFG_READ,
+		STMT_CFG_WRITE,
+		STMT_CFG_REMOVE,
 
-	sqlite3_stmt *m_stmt_auth_read = nullptr;
-	sqlite3_stmt *m_stmt_auth_write = nullptr;
-	sqlite3_stmt *m_stmt_auth_set_pw = nullptr;
+		STMT_AUTH_READ,
+		STMT_AUTH_WRITE,
+		STMT_AUTH_SET_PW,
 
-	sqlite3_stmt *m_stmt_f2b_add = nullptr;
-	sqlite3_stmt *m_stmt_f2b_read = nullptr;
-	sqlite3_stmt *m_stmt_f2b_cleanup = nullptr;
+		STMT_FRIENDS_LIST,
+		STMT_FRIENDS_WRITE,
+		STMT_FRIENDS_REMOVE,
 
-	sqlite3_stmt *m_stmt_log = nullptr;
+		STMT_F2B_INSERT,
+		STMT_F2B_READ,
+		STMT_F2B_CLEANUP,
+
+		STMT_LOG_INSERT,
+
+		STMT_MAX
+	};
+
+	sqlite3_stmt *m_stmt[STMT_MAX];
 
 	std::string m_unique_salt;
 };
