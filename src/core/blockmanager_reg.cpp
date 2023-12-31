@@ -296,6 +296,19 @@ void BlockManager::doPackRegistration()
 	}
 
 	{
+		BlockPack *pack = new BlockPack("timed_gates");
+		pack->default_type = BlockDrawType::Action;
+		pack->block_ids = { Block::ID_TIMED_GATE };
+		registerPack(pack);
+
+		auto props = m_props[Block::ID_TIMED_GATE];
+		props->setTiles({
+			BlockDrawType::Action, BlockDrawType::Action, BlockDrawType::Action, BlockDrawType::Action,
+			BlockDrawType::Solid,  BlockDrawType::Solid,  BlockDrawType::Solid,  BlockDrawType::Solid
+		});
+	}
+
+	{
 		BlockPack *pack = new BlockPack("teleporter");
 		pack->default_type = BlockDrawType::Action;
 		pack->block_ids = { Block::ID_TELEPORTER };

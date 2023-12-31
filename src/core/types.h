@@ -37,6 +37,7 @@ struct Block {
 		ID_GATE_B,
 		ID_COINDOOR = 43,
 		ID_COINGATE = 165,
+		ID_TIMED_GATE = 157, // EE: tiles [0,3] = 157, tiles = [4,7] = 156]
 		ID_SECRET = 50,
 		ID_BLACKREAL = 44,
 		ID_BLACKFAKE = 243,

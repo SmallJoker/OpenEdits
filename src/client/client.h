@@ -91,6 +91,10 @@ private:
 
 	static const ClientPacketHandler packet_actions[];
 
+	static constexpr uint64_t TIME_RESOLUTION = 100; // divisions per second
+	uint64_t m_time = 0,
+		m_time_prev = 0; // old time, before step() call
+
 	// State used for packet filtering
 	ClientState m_state = ClientState::None;
 	uint16_t m_protocol_version = 0;

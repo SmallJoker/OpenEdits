@@ -15,6 +15,7 @@ worlds/exports/
 *.diff
 make.sh
 *.bat
+assets/textures/source/
 
 # IDEs
 .kdev4/

@@ -113,7 +113,7 @@ enum class Packet2Server : uint16_t {
 	Move,
 	Chat,
 	PlaceBlock,
-	TriggerBlocks, // key/kill ?
+	OnTouchBlock, // key/kill ?
 	GodMode,
 	Smiley,
 	MAX_END

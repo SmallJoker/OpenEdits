@@ -52,7 +52,7 @@ struct BlockProperties {
 	BlockPack *pack = nullptr;
 	BlockParams::Type paramtypes = BlockParams::Type::None;
 
-	// whether to add the block position to the triggered blocks list
+	// whether to add the block position to the touched blocks list
 	bool trigger_on_touch = false;
 
 	// -------------- Visuals -------------

@@ -54,6 +54,15 @@ Client::~Client()
 
 void Client::step(float dtime)
 {
+	m_time_prev = m_time;
+	{
+		// This is a monstrosity
+		namespace sc = std::chrono;
+		auto since_epoch = sc::system_clock::now().time_since_epoch();
+		auto millis = sc::duration_cast<sc::duration<uint64_t, std::ratio<1, TIME_RESOLUTION>>>(since_epoch);
+		m_time = millis.count();
+	}
+
 	auto world = getWorld();
 
 	// Process block updates
@@ -90,6 +99,26 @@ void Client::step(float dtime)
 
 	// Run physics engine
 	stepPhysics(dtime);
+
+	// Timed gates update
+	while (world.get()) { // run once
+		uint8_t tile_new = (m_time      / TIME_RESOLUTION) % 8;
+		uint8_t tile_old = (m_time_prev / TIME_RESOLUTION) % 8;
+		if (tile_new == tile_old)
+			break;
+
+		// TODO: Sync with the server
+		auto list = world->getBlocks(Block::ID_TIMED_GATE, [tile_new](Block &b) -> bool {
+			b.tile = tile_new;
+			return true;
+		});
+
+		if (!list.empty()) {
+			GameEvent e(GameEvent::C2G_MAP_UPDATE);
+			sendNewEvent(e);
+		}
+		break;
+	}
 }
 
 bool Client::OnEvent(GameEvent &e)
@@ -358,14 +387,14 @@ void Client::stepPhysics(float dtime)
 	if (!world.get())
 		return;
 
-	std::set<blockpos_t> triggered_blocks;
+	std::set<blockpos_t> on_touch_blocks;
 	SimpleLock lock(m_players_lock);
 
 	for (auto it : m_players) {
 		if (it.first == m_my_peer_id) {
-			it.second->triggered_blocks = &triggered_blocks;
+			it.second->on_touch_blocks = &on_touch_blocks;
 			it.second->step(dtime);
-			it.second->triggered_blocks = nullptr;
+			it.second->on_touch_blocks = nullptr;
 		} else {
 			it.second->step(dtime);
 		}
@@ -373,13 +402,13 @@ void Client::stepPhysics(float dtime)
 
 	auto &meta = world->getMeta();
 
-	// Process triggers
+	// Process node events
 	bool map_dirty = false;
 	Packet pkt;
-	pkt.write(Packet2Server::TriggerBlocks);
+	pkt.write(Packet2Server::OnTouchBlock);
 
 	auto player = getPlayerNoLock(m_my_peer_id);
-	for (blockpos_t bp : triggered_blocks) {
+	for (blockpos_t bp : on_touch_blocks) {
 		Block b;
 		if (!world->getBlock(bp, &b))
 			continue;
@@ -482,6 +511,8 @@ uint8_t Client::getBlockTile(const Player *player, const Block *b) const
 		case Block::ID_GATE_G:
 		case Block::ID_GATE_B:
 			return world->getMeta().keys[b->id - Block::ID_GATE_R].isActive();
+		case Block::ID_TIMED_GATE:
+			return (m_time / TIME_RESOLUTION) % 8;
 	}
 	return 0;
 }

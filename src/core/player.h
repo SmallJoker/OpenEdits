@@ -56,7 +56,7 @@ public:
 	float dtime_delay = 0; //< RTT compensation upon the next ::step call
 
 	// For keys or killing blocks
-	std::set<blockpos_t> *triggered_blocks = nullptr;
+	std::set<blockpos_t> *on_touch_blocks = nullptr;
 
 	void setGodMode(bool value);
 	bool godmode = false;

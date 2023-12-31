@@ -255,9 +255,9 @@ void Player::stepInternal(float dtime)
 		props = m_world->getBlockMgr()->getProps(block.id);
 	}
 
-	if (triggered_blocks && bp != last_pos) {
+	if (on_touch_blocks && bp != last_pos) {
 		if (props && props->trigger_on_touch) {
-			triggered_blocks->emplace(bp);
+			on_touch_blocks->emplace(bp);
 		}
 	}
 
@@ -426,8 +426,8 @@ void Player::collideWith(float dtime, int x, int y)
 
 			// fall through
 		case CT::None:
-			if (triggered_blocks && props->trigger_on_touch)
-				triggered_blocks->emplace(bp);
+			if (on_touch_blocks && props->trigger_on_touch)
+				on_touch_blocks->emplace(bp);
 
 			break;
 	}
