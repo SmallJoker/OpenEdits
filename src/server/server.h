@@ -34,6 +34,7 @@ public:
 private:
 	void pkt_Quack(peer_t peer_id, Packet &pkt);
 	void pkt_Hello(peer_t peer_id, Packet &pkt);
+	void signInPlayer(RemotePlayer *player);
 	void pkt_Auth(peer_t peer_id, Packet &pkt);
 	void pkt_GetLobby(peer_t peer_id, Packet &pkt);
 	void pkt_Join(peer_t peer_id, Packet &pkt);

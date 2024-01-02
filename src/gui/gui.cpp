@@ -175,6 +175,12 @@ bool Gui::OnEvent(const SEvent &event)
 	if (!m_initialized)
 		return false;
 
+	if (event.EventType == EET_KEY_INPUT_EVENT) {
+		if (event.KeyInput.Key == KEY_F1 && event.KeyInput.PressedDown) {
+			m_show_debug ^= true;
+		}
+	}
+
 	return getHandler(m_scenetype)->OnEvent(event);
 }
 
@@ -367,14 +373,37 @@ void Gui::displaceRect(core::recti &rect, core::vector2df pos_perc)
 void Gui::drawFPS()
 {
 	// FPS indicator text on the bottom right
-	int fps = driver->getFPS();
-	core::stringw str;
-	core::multibyteToWString(str, std::to_string(fps).c_str());
-	core::recti rect(
-		core::vector2di(window_size.Width - 40, 5),
-		core::dimension2di(50, 50)
-	);
-	font->draw(str, rect, 0xFFFFFF00);
+	{
+		int fps = driver->getFPS();
+		core::stringw str;
+		core::multibyteToWString(str, std::to_string(fps).c_str());
+		core::recti rect(
+			core::vector2di(window_size.Width - 40, 5),
+			core::dimension2di(50, 50)
+		);
+		font->draw(str, rect, 0xFFFFFF00);
+	}
+
+	// Debug info
+	if (m_show_debug && m_client) {
+		core::stringw str;
+
+		core::multibyteToWString(str, m_client->getDebugInfo().c_str());
+		auto dim = font->getDimension(str.c_str());
+
+		core::recti rect(
+			core::vector2di(5, 5),
+			dim
+		);
+
+		core::vector2di border(2, 2);
+		core::recti rect2 = rect;
+		rect2.UpperLeftCorner -= border;
+		rect2.LowerRightCorner += border;
+
+		guienv->getSkin()->draw2DRectangle(nullptr, 0x77222222, rect2);
+		font->draw(str, rect, 0xFFFFFF00);
+	}
 }
 
 

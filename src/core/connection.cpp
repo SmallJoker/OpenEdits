@@ -193,6 +193,28 @@ float Connection::getPeerRTT(peer_t peer_id)
 	return peer->roundTripTime * 0.001f; // ms -> s
 }
 
+std::string Connection::getDebugInfo(peer_t peer_id) const
+{
+	auto peer = findPeer(peer_id);
+	if (!peer)
+		return "";
+
+	char buf[255];
+	snprintf(buf, sizeof(buf),
+		"RTT [ms]: last=% 3i, mean=% 3i\n"
+		"MTU [bytes]: peer=%i, global=%lu\n"
+		"Window size: %i\n"
+		"Packet loss: mean=%.0f %%, total=%i\n",
+		peer->lastRoundTripTime, peer->roundTripTime,
+		peer->mtu, CONNECTION_MTU,
+		peer->windowSize,
+		(100.f * peer->packetLoss) / ENET_PEER_PACKET_LOSS_SCALE,
+		peer->packetsLost
+	);
+
+	return std::string(buf);
+}
+
 void Connection::send(peer_t peer_id, uint16_t flags, Packet &pkt)
 {
 	if (pkt.getReadPos() > 0) {
@@ -326,7 +348,7 @@ void Connection::recvAsyncInternal()
 	}
 }
 
-_ENetPeer *Connection::findPeer(peer_t peer_id)
+_ENetPeer *Connection::findPeer(peer_t peer_id) const
 {
 	// m_host->peers is a simple array. Thread locks are not important.
 

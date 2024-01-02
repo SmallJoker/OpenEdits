@@ -55,13 +55,7 @@ Client::~Client()
 void Client::step(float dtime)
 {
 	m_time_prev = m_time;
-	{
-		// This is a monstrosity
-		namespace sc = std::chrono;
-		auto since_epoch = sc::system_clock::now().time_since_epoch();
-		auto millis = sc::duration_cast<sc::duration<uint64_t, std::ratio<1, TIME_RESOLUTION>>>(since_epoch);
-		m_time = millis.count();
-	}
+	m_time = getTimeNow();
 
 	auto world = getWorld();
 
@@ -246,6 +240,44 @@ bool Client::OnEvent(GameEvent &e)
 
 // -------------- Functions for the GUI -------------
 
+std::string Client::getDebugInfo()
+{
+	std::string str;
+	if (m_con)
+		str = m_con->getDebugInfo(0);
+
+	char buf[255];
+	snprintf(buf, sizeof(buf),
+		"Protocol version: cur=%i, max=%i\n"
+		"Client state: %i\n"
+		"Last world ID: %s\n",
+		m_protocol_version, PROTOCOL_VERSION,
+		(int)getState(),
+		m_world_id.c_str()
+	);
+
+	str.append(buf);
+
+	auto player = getMyPlayer();
+	if (player.ptr() && player->getWorld()) {
+		snprintf(buf, sizeof(buf),
+			"Pos: (%.1f, %.1f)\n"
+			"Vel: (%.1f, %.1f)\n"
+			"Acc: (%.0f, %.0f)\n"
+			"Events: %s%s%s\n",
+			player->pos.X, player->pos.Y,
+			player->vel.X, player->vel.Y,
+			player->acc.X, player->acc.Y,
+			(player->did_jerk ? "jerk " : ""),
+			(player->controls_enabled ? "" : "locked "),
+			(player->godmode ? "god " : "")
+		);
+		str.append(buf);
+	}
+	return str;
+}
+
+
 PtrLock<LocalPlayer> Client::getMyPlayer()
 {
 	m_players_lock.lock();
@@ -300,7 +332,7 @@ LocalPlayer *Client::getPlayerNoLock(peer_t peer_id)
 
 // -------------- Networking -------------
 
-Packet Client::createPacket(Packet2Server type)
+Packet Client::createPacket(Packet2Server type) const
 {
 	Packet pkt;
 	pkt.data_version = m_protocol_version;

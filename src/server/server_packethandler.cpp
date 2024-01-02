@@ -111,13 +111,9 @@ void Server::pkt_Hello(peer_t peer_id, Packet &pkt)
 
 		if (is_guest) {
 			player->auth.status = Auth::Status::Guest;
-			player->state = RemotePlayerState::Idle;
 
 			// Log in instantly
-			Packet out;
-			out.write(Packet2Client::Auth);
-			out.writeStr16("signed_in");
-			m_con->send(peer_id, 0, out);
+			signInPlayer(player);
 			return;
 		}
 
@@ -150,6 +146,17 @@ void Server::pkt_Hello(peer_t peer_id, Packet &pkt)
 		}
 	}
 }
+
+void Server::signInPlayer(RemotePlayer *player)
+{
+	player->state = RemotePlayerState::Idle;
+
+	Packet out;
+	out.write(Packet2Client::Auth);
+	out.writeStr16("signed_in");
+	m_con->send(player->peer_id, 0, out);
+}
+
 
 void Server::pkt_Auth(peer_t peer_id, Packet &pkt)
 {
@@ -195,12 +202,8 @@ void Server::pkt_Auth(peer_t peer_id, Packet &pkt)
 
 		player->auth.salt_2_var.clear(); // would allow to change the password directly
 		player->auth.status = Auth::Status::SignedIn;
-		player->state = RemotePlayerState::Idle;
 
-		Packet out;
-		out.write(Packet2Client::Auth);
-		out.writeStr16("signed_in");
-		m_con->send(peer_id, 0, out);
+		signInPlayer(player);
 
 		// Update last login timestamp
 		info.last_login = time(nullptr);

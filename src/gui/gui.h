@@ -106,6 +106,8 @@ private:
 
 	void drawFPS();
 
+	bool m_show_debug = false;
+
 	void drawPopup(float dtime);
 	float m_popup_timer = 0;
 	core::stringw m_popup_text;

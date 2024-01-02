@@ -14,6 +14,10 @@ public:
 
 	virtual void step(float dtime) = 0;
 
+	static constexpr uint64_t TIME_RESOLUTION = 100; // divisions per second
+	/// Returns the system time in respect to TIME_RESOLUTION
+	uint64_t getTimeNow();
+
 protected:
 	Connection *m_con = nullptr;
 	BlockManager *m_bmgr;

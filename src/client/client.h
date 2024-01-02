@@ -39,6 +39,10 @@ public:
 	bool OnEvent(GameEvent &e) override;
 
 	// ----------- Functions for the GUI -----------
+
+	/// Main purpose: client-sided information display
+	std::string getDebugInfo();
+
 	PtrLock<LocalPlayer> getMyPlayer();
 	peer_t getMyPeerId() { return m_my_peer_id; }
 	PtrLock<decltype(m_players)> getPlayerList();
@@ -51,10 +55,10 @@ public:
 	// ----------- Utility functions -----------
 
 	LocalPlayer *getPlayerNoLock(peer_t peer_id);
-	ClientState getState() { return m_state; }
+	ClientState getState() const { return m_state; }
 
 	// ----------- Networking -----------
-	Packet createPacket(Packet2Server type);
+	Packet createPacket(Packet2Server type) const;
 	void sendPlayerMove();
 
 	void onPeerConnected(peer_t peer_id) override;
@@ -91,7 +95,6 @@ private:
 
 	static const ClientPacketHandler packet_actions[];
 
-	static constexpr uint64_t TIME_RESOLUTION = 100; // divisions per second
 	uint64_t m_time = 0,
 		m_time_prev = 0; // old time, before step() call
 

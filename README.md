@@ -27,6 +27,7 @@ The project direction can be found in [doc/DIRECTION.md](doc/DIRECTION.md).
  * E: Toggle block selector
  * G: Toggle god mode
  * M: Toggle minimap
+ * F1: Toggle debug information
 
 
 **Chat commands**

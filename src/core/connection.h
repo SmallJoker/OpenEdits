@@ -38,6 +38,9 @@ public:
 	std::string getPeerAddress(peer_t peer_id);
 	float getPeerRTT(peer_t peer_id);
 
+	/// Main purpose: client-sided information display
+	std::string getDebugInfo(peer_t peer_id) const;
+
 	// use only on single connections
 	static const peer_t PEER_ID_FIRST = 0;
 	enum PacketFlags {
@@ -51,7 +54,7 @@ public:
 private:
 	static void *recvAsync(void *con);
 	void recvAsyncInternal();
-	_ENetPeer *findPeer(peer_t peer_id);
+	_ENetPeer *findPeer(peer_t peer_id) const;
 
 	const char *m_name = "";
 	std::thread *m_thread = nullptr;
