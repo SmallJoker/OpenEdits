@@ -298,14 +298,16 @@ void BlockManager::doPackRegistration()
 	{
 		BlockPack *pack = new BlockPack("timed_gates");
 		pack->default_type = BlockDrawType::Action;
-		pack->block_ids = { Block::ID_TIMED_GATE };
+		pack->block_ids = { Block::ID_TIMED_GATE_1, Block::ID_TIMED_GATE_2 };
 		registerPack(pack);
 
-		auto props = m_props[Block::ID_TIMED_GATE];
+		auto props = m_props[Block::ID_TIMED_GATE_1];
 		props->setTiles({
-			BlockDrawType::Action, BlockDrawType::Action, BlockDrawType::Action, BlockDrawType::Action,
-			BlockDrawType::Solid,  BlockDrawType::Solid,  BlockDrawType::Solid,  BlockDrawType::Solid
+			BlockDrawType::Action, BlockDrawType::Action, BlockDrawType::Action, BlockDrawType::Action, BlockDrawType::Action,
+			BlockDrawType::Solid,  BlockDrawType::Solid,  BlockDrawType::Solid,  BlockDrawType::Solid,  BlockDrawType::Solid
 		});
+		props = m_props[Block::ID_TIMED_GATE_2];
+		props->setTiles({}); // filled in postprocess
 	}
 
 	{
@@ -340,5 +342,26 @@ void BlockManager::doPackRegistration()
 		pack->block_ids = { 500, 501, 502, 503, 504, 505, 506 };
 		registerPack(pack);
 	}
+}
+
+void BlockManager::doPackPostprocess()
+{
+	do {
+		auto gate1 = m_props[Block::ID_TIMED_GATE_1];
+		auto gate2 = m_props[Block::ID_TIMED_GATE_2];
+
+		if (!gate1 || !gate2)
+			break;
+
+		gate2->setTiles({
+			BlockDrawType::Solid,  BlockDrawType::Solid,  BlockDrawType::Solid,  BlockDrawType::Solid,  BlockDrawType::Solid,
+			BlockDrawType::Action, BlockDrawType::Action, BlockDrawType::Action, BlockDrawType::Action, BlockDrawType::Action
+		});
+
+		// Recycle the existing textures
+		for (size_t i = 0; i < gate2->tiles.size(); ++i) {
+			gate2->tiles[i] = gate1->tiles.at((i + 5) % 10);
+		}
+	} while (false);
 }
 

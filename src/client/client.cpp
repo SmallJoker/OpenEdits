@@ -96,18 +96,22 @@ void Client::step(float dtime)
 
 	// Timed gates update
 	while (world.get()) { // run once
-		uint8_t tile_new = (m_time      / TIME_RESOLUTION) % 8;
-		uint8_t tile_old = (m_time_prev / TIME_RESOLUTION) % 8;
+		uint8_t tile_new = (m_time      / TIME_RESOLUTION) % 10;
+		uint8_t tile_old = (m_time_prev / TIME_RESOLUTION) % 10;
 		if (tile_new == tile_old)
 			break;
 
 		// TODO: Sync with the server
-		auto list = world->getBlocks(Block::ID_TIMED_GATE, [tile_new](Block &b) -> bool {
-			b.tile = tile_new;
-			return true;
-		});
+		bool updated = false;
+		for (Block *b = world->begin(); b < world->end(); ++b) {
+			if (b->id == Block::ID_TIMED_GATE_1
+					|| b->id == Block::ID_TIMED_GATE_2) {
+				b->tile = tile_new;
+				updated = true;
+			}
+		}
 
-		if (!list.empty()) {
+		if (updated) {
 			GameEvent e(GameEvent::C2G_MAP_UPDATE);
 			sendNewEvent(e);
 		}
@@ -543,8 +547,9 @@ uint8_t Client::getBlockTile(const Player *player, const Block *b) const
 		case Block::ID_GATE_G:
 		case Block::ID_GATE_B:
 			return world->getMeta().keys[b->id - Block::ID_GATE_R].isActive();
-		case Block::ID_TIMED_GATE:
-			return (m_time / TIME_RESOLUTION) % 8;
+		case Block::ID_TIMED_GATE_1:
+		case Block::ID_TIMED_GATE_2:
+			return (m_time / TIME_RESOLUTION) % 10;
 	}
 	return 0;
 }

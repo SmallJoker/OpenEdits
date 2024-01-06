@@ -261,6 +261,14 @@ void SceneWorldRender::drawBlocksInView()
 			// Unique ID for each appearance type
 			size_t tile_hash = b.tile;
 
+			if (b.id == Block::ID_SECRET && b.tile == 0)
+				break;
+
+			if (b.id == Block::ID_BLACKFAKE && b.tile == 0) {
+				bdd.b.id = Block::ID_BLACKREAL;
+				tile_hash = 0;
+			}
+
 			if (b.id == Block::ID_TEXT) {
 				tile_hash = 0;
 				// TODO: use murmur hash
@@ -271,11 +279,6 @@ void SceneWorldRender::drawBlocksInView()
 
 				for (char v : *params.text)
 					tile_hash = tile_hash ^ (~tile_hash << 1) ^ v;
-			}
-
-			if (b.id == Block::ID_BLACKFAKE && b.tile == 0) {
-				bdd.b.id = Block::ID_BLACKREAL;
-				tile_hash = 0;
 			}
 
 			size_t hash_node_id = (tile_hash << 16) | bdd.b.id;
@@ -491,7 +494,7 @@ void SceneWorldRender::updatePlayerPositions(float dtime)
 			auto nt_size = nt_texture->getOriginalSize();
 			auto nt = smgr->addBillboardSceneNode(nf,
 				core::dimension2d<f32>(nt_size.Width * 0.4f, nt_size.Height * 0.4f),
-				core::vector3df(0, -10, 0),
+				core::vector3df(0, -10, -0.08),
 				nf_id + 1
 			);
 			nt->forEachMaterial([](video::SMaterial &mat){

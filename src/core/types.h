@@ -37,7 +37,8 @@ struct Block {
 		ID_GATE_B,
 		ID_COINDOOR = 43,
 		ID_COINGATE = 165,
-		ID_TIMED_GATE = 157, // EE: tiles [0,3] = 157, tiles = [4,7] = 156]
+		ID_TIMED_GATE_1 = 156,
+		ID_TIMED_GATE_2 = 157,
 		ID_SECRET = 50,
 		ID_BLACKREAL = 44,
 		ID_BLACKFAKE = 243,
@@ -51,8 +52,8 @@ struct Block {
 	};
 
 	// Apparently we cannot use "union" to write to both fields at once because MSVC is a bitch
-	bid_t id : 13;    // Foreground block ID (max. 8000)
-	uint8_t tile : 3; // Tile number (client-side only, for rendering)
+	bid_t id : 12;    // Foreground block ID (max. 4000)
+	uint8_t tile : 4; // Tile number (client-side only, for rendering)
 
 	bid_t bg = 0; // Background block ID
 };

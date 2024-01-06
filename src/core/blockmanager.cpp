@@ -11,9 +11,14 @@ BlockProperties::BlockProperties(BlockDrawType type)
 	setTiles({ type });
 }
 
+BlockProperties::~BlockProperties()
+{
+	// No need to free the textures. The driver does that.
+}
+
+
 void BlockProperties::setTiles(std::vector<BlockDrawType> types)
 {
-	ASSERT_FORCED(types.size() > 0, "Must have > 0 tiles");
 	tiles.resize(types.size());
 
 	for (size_t i = 0; i < tiles.size(); ++i) {
@@ -22,9 +27,12 @@ void BlockProperties::setTiles(std::vector<BlockDrawType> types)
 	}
 }
 
+static BlockTile invalid_tile;
 
 BlockTile BlockProperties::getTile(const Block b) const
 {
+	if (tiles.empty())
+		return invalid_tile;
 	return b.tile < tiles.size() ? tiles[b.tile] : tiles.back();
 }
 
@@ -267,8 +275,10 @@ void BlockManager::populateTextures()
 		}
 	}
 
-	printf("BlockManager: Registered textures of %d blocks in %zu packs\n", count, m_packs.size());
 	m_populated = true;
+
+	doPackPostprocess();
+	printf("BlockManager: Registered textures of %d blocks in %zu packs\n", count, m_packs.size());
 }
 
 const BlockProperties *BlockManager::getProps(bid_t block_id) const

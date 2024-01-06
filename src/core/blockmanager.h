@@ -28,26 +28,33 @@ enum class BlockDrawType {
 	Invalid
 };
 
+/// A pack may contain multiple block IDs, which have their own BlockProperties instance.
 struct BlockPack {
 	BlockPack(const std::string &name) :
 		name(name) {}
 	std::string imagepath;
 	std::string name;
 
+	/// Describes the tab where the pack shows up
 	BlockDrawType default_type = BlockDrawType::Invalid;
 
 	std::vector<bid_t> block_ids;
 };
 
+/// One of the many possible tiles for a single block
 struct BlockTile {
+	/// Defines the rendering mode of this tile
+	/// Solid+Background: no alpha, Action: alpha_ref, Decoration: alpha
 	BlockDrawType type = BlockDrawType::Invalid;
 	video::ITexture *texture = nullptr;
 	bool is_known_tile = false; // true when registered by registerPack()
 	bool have_alpha = false; // false: use BlockDrawType
 };
 
+/// Properties of a single block
 struct BlockProperties {
 	BlockProperties(BlockDrawType type);
+	~BlockProperties();
 
 	BlockPack *pack = nullptr;
 	BlockParams::Type paramtypes = BlockParams::Type::None;
@@ -57,7 +64,7 @@ struct BlockProperties {
 
 	// -------------- Visuals -------------
 
-	u32 color = 0; // minimap
+	u32 color = 0; // AARRGGBB minimap color
 	// maximal count of tiles: 8 (3 bits from Block struct)
 	std::vector<BlockTile> tiles; // usually: [0] = normal, [1] = active
 	void setTiles(std::vector<BlockDrawType> types);
@@ -91,6 +98,7 @@ public:
 	~BlockManager();
 
 	void doPackRegistration();
+	void doPackPostprocess();
 
 	void read(Packet &pkt);
 	void write(Packet &pkt) const;
