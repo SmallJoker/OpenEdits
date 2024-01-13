@@ -84,10 +84,11 @@ Permission/player flag examples:
  * SQLite3 : auth & world saving
  * Threads (pthread?)
  * zlib: world compression (including EELVL import/export)
+ * OpenAL: sound (for GUI builds only)
 
 Debian/Ubuntu:
 
-	sudo apt install libenet-dev libsqlite3-dev zlib1g-dev
+	sudo apt install libenet-dev libopenal-dev libsqlite3-dev zlib1g-dev
 
 Project compiling:
 

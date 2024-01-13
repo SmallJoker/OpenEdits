@@ -8,6 +8,7 @@ void unittest_eeo_converter();
 void unittest_database();
 void unittest_packet();
 void unittest_physics();
+void unittest_sound();
 void unittest_utilities();
 void unittest_world();
 
@@ -43,6 +44,7 @@ void unittest()
 		unittest_packet();
 		unittest_database(); // depends on world & packet
 		unittest_connection(); // depends on packet
+		unittest_sound();
 
 		puts("<== Unittest completed");
 	}

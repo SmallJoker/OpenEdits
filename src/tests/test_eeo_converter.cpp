@@ -69,13 +69,9 @@ static void eeoc_read_check()
 
 void unittest_eeo_converter()
 {
-#ifndef HAVE_ZLIB
 	puts("EEOconverter is not available");
 	// Compile the functions regardless
-	if (0)
-#else
-	if (1)
-#endif
+
 	{
 		eeoc_write();
 		eeoc_read_check();

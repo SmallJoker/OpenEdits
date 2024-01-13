@@ -25,6 +25,10 @@ set(IRRLICHTMT_BUILD_DIR "" CACHE PATH "Client: Path to IrrlichtMt build directo
 if (BUILD_CLIENT)
 	message("--- Type: Client (GUI) & Server")
 
+	set(OPENAL_FOUND FALSE)
+	find_package(OpenAL)
+	message("--- OpenAL sound support: ${OPENAL_FOUND}")
+
 	# Irrlicht detection code imported from minetest/CMakeLists.cpp, commit 38ba813c by JosiahWI
 	find_package(IrrlichtMt QUIET
 		PATHS "${IRRLICHTMT_BUILD_DIR}"
@@ -134,18 +138,19 @@ target_link_libraries(
 	${PROJECT_NAME}
 	${ENet_LIBRARY}
 	Threads::Threads
+	ZLIB::ZLIB
 )
 
 if(BUILD_CLIENT)
 	target_link_libraries(${PROJECT_NAME} IrrlichtMt::IrrlichtMt)
 endif()
 
-if(ZLIB_FOUND)
-	message("--- Found ZLIB for world compression")
-	add_compile_definitions(HAVE_ZLIB)
-	include_directories(${ZLIB_INCLUDE_DIRS})
-	target_link_libraries(${PROJECT_NAME} ZLIB::ZLIB)
+if(OPENAL_FOUND)
+	add_compile_definitions(HAVE_SOUND)
+	include_directories(${OPENAL_INCLUDE_DIR})
+	target_link_libraries(${PROJECT_NAME} ${OPENAL_LIBRARY})
 endif()
+
 
 if(MSVC)
 	# For ENet

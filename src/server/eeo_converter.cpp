@@ -597,20 +597,8 @@ void EEOconverter::listImportableWorlds(std::map<std::string, LobbyWorld> &world
 {
 	worlds.clear();
 
-#ifdef HAVE_ZLIB
-	if (0)
-#endif
-	{
-		LobbyWorld dummy;
-		dummy.id = "";
-		dummy.title = "Feature unsupported by server";
-		worlds[""] = dummy;
-		return;
-	}
-
 	std::filesystem::create_directories(IMPORT_DIR);
 
-#ifdef HAVE_ZLIB
 	for (const auto &entry : std::filesystem::recursive_directory_iterator(IMPORT_DIR)) {
 		if (!is_path_ok(entry))
 			continue;
@@ -629,18 +617,10 @@ void EEOconverter::listImportableWorlds(std::map<std::string, LobbyWorld> &world
 		meta.id = path_to_worldid(path);
 		worlds[path] = meta;
 	}
-#endif
 }
 
 std::string EEOconverter::findWorldPath(const std::string &world_id)
 {
-#ifdef HAVE_ZLIB
-	if (0)
-#endif
-	{
-		return "";
-	}
-
 	std::filesystem::path root(IMPORT_DIR);
 	for (const auto &entry : std::filesystem::recursive_directory_iterator(root)) {
 		if (!is_path_ok(entry))
