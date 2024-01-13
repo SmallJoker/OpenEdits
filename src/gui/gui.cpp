@@ -164,6 +164,7 @@ void Gui::run()
 		driver->endScene();
 	}
 
+	getHandler(m_scenetype)->OnClose();
 	scenemgr->clear();
 	guienv->clear();
 	puts("Gui: Terminated properly.");

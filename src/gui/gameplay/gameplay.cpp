@@ -2,6 +2,7 @@
 #include "client/client.h"
 #include "client/localplayer.h"
 #include "core/blockmanager.h"
+#include "gui/sound.h"
 #include "blockselector.h"
 #include "minimap.h"
 #include "smileyselector.h"
@@ -32,6 +33,7 @@ SceneGameplay::~SceneGameplay()
 	delete m_minimap;
 	delete m_smileyselector;
 	delete m_world_render;
+	delete m_soundplayer;
 }
 
 #if 0
@@ -56,6 +58,8 @@ void SceneGameplay::OnOpen()
 	m_gamecmd.initialize(m_gui->getClient());
 
 	m_drag_draw_block.set(Block::ID_INVALID);
+	if (!m_soundplayer)
+		m_soundplayer = new SoundPlayer(true);
 }
 
 void SceneGameplay::OnClose()
@@ -70,6 +74,9 @@ void SceneGameplay::OnClose()
 		m_gui->driver->removeTexture(it.second);
 	}
 	m_cached_textures.clear();
+
+	delete m_soundplayer;
+	m_soundplayer = nullptr;
 }
 
 
@@ -239,6 +246,12 @@ void SceneGameplay::draw()
 void SceneGameplay::step(float dtime)
 {
 	m_world_render->step(dtime);
+	{
+		auto *cam_pos = m_world_render->getCameraPos();
+		m_soundplayer->updateListener(core::vector2df(
+			cam_pos->X / 10.0f, cam_pos->Y / -10.0f
+		));
+	}
 
 	updatePlayerlist();
 	updateWorldStuff();
@@ -566,6 +579,16 @@ bool SceneGameplay::OnEvent(GameEvent &e)
 
 			if (m_minimap)
 				m_minimap->markDirty();
+			break;
+		case E::C2G_ON_TOUCH_BLOCK:
+			{
+				core::vector2df block_pos(e.block->pos.X, e.block->pos.Y);
+				switch (e.block->b.id) {
+					case Block::ID_COIN:
+						m_soundplayer->play("coin.mono_s16.raw", block_pos, 1.6f + (rand() / (float)RAND_MAX) * 0.1f);
+						break;
+				}
+			}
 			break;
 		case E::C2G_PLAYER_JOIN:
 			m_dirty_playerlist = true;

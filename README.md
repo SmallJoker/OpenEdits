@@ -133,3 +133,7 @@ IconMarket (CC BY 3.0)
 ZUMMACO (CC BY 3.0)
 
  * [`ìcon_leave.png`](https://www.iconfinder.com/icons/7030313/sign_out_ui_basic_logout_app_user_interface_ui_icon)
+
+### Sounds
+
+Sounds that are not listed below were created by SmallJoker (CC BY 4.0).

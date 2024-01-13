@@ -12,6 +12,9 @@ GameEvent::~GameEvent()
 		case C::C2G_LOCAL_CHAT:
 			delete player_chat;
 			break;
+		case C::C2G_ON_TOUCH_BLOCK:
+			delete block;
+			break;
 		// List of no-ops
 		case C::C2G_INVALID:
 		case C::C2G_DISCONNECT:
@@ -74,7 +77,8 @@ bool GameEventHandler::sendNewEvent(GameEvent &e)
 {
 	bool handled = false;
 	if (m_eventhandler) {
-		printf("Processing GameEvent c2g=%d, g2c=%d\n", (int)e.type_c2g, (int)e.type_g2c);
+		if (e.type_c2g != GameEvent::C2G_ON_TOUCH_BLOCK)
+			printf("Processing GameEvent c2g=%d, g2c=%d\n", (int)e.type_c2g, (int)e.type_g2c);
 		handled = m_eventhandler->OnEvent(e);
 	}
 

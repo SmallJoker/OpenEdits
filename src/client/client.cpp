@@ -465,11 +465,20 @@ void Client::stepPhysics(float dtime)
 			case Block::ID_COIN:
 			case Block::ID_SECRET:
 			case Block::ID_BLACKFAKE:
-			if (!b.tile) {
+				if (b.tile)
+					break;
+
 				b.tile = 1;
 				world->setBlock(bp, b);
 				map_dirty = true;
-			}
+
+				if (b.id == Block::ID_COIN) {
+					GameEvent e(GameEvent::C2G_ON_TOUCH_BLOCK);
+					e.block = new GameEvent::BlockData();
+					e.block->b = b;
+					e.block->pos = bp;
+					sendNewEvent(e);
+				}
 			break;
 			case Block::ID_CHECKPOINT:
 				if (player->godmode)

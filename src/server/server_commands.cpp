@@ -122,7 +122,7 @@ CHATCMD_FUNC(Server::chat_Help)
 		{ "respawn", "Respawns you" },
 		{ "teleport", "Syntax: /teleport [SRC] DST.\nTeleports players. DST can be of the format 'X,Y'." },
 		// Permissions
-		{ "setpass", "Syntax: /flags [PLAYERNAME] PASSWORD PASSWORD" },
+		{ "setpass", "Syntax: /flags PLAYERNAME PASSWORD PASSWORD" },
 		{ "setcode", "Syntax: /setcode [-f] [WORLDCODE]\nChanges the world code or disables it. "
 			"-f (optional) removes all player's temporary edit and god mode flags." },
 		{ "code", "Syntax: /code WORLDCODE\nGrants edit access." },
@@ -167,17 +167,10 @@ CHATCMD_FUNC(Server::chat_Help)
 
 CHATCMD_FUNC(Server::chat_SetPass)
 {
-	// [who] pass pass
+	// who pass pass
+	std::string who(get_next_part(msg));
 	std::string newpass(get_next_part(msg));
 	std::string confirm(get_next_part(msg));
-	std::string who(get_next_part(msg));
-
-	if (!who.empty()) {
-		std::swap(newpass, confirm); // pass who pass
-		std::swap(confirm, who); // who pass pass
-	} else {
-		who = player->name;
-	}
 
 	for (char &c : who)
 		c = toupper(c);
@@ -199,19 +192,15 @@ CHATCMD_FUNC(Server::chat_SetPass)
 	}
 
 	if (who == player->name) {
-		for (auto p : m_players) {
-			if (p.second->name != player->name || p.second == player)
-				continue;
+		systemChatSend(player, "Cannot change your own password for safety reasons. Use the main menu.");
+		return;
+	}
 
-			systemChatSend(player, "For safety reasons please leave all other worlds first.");
-			return;
-		}
-	} else {
+	{
 		// Auth check
 		AuthAccount info_who;
 		if (!m_auth_db->load(who, &info_who)
-				|| info.level < AuthAccount::AL_MODERATOR
-				|| info.level < info_who.level) {
+				|| info.level <= info_who.level) {
 			systemChatSend(player, "Insufficient privileges or the specified account is not registered.");
 			return;
 		}

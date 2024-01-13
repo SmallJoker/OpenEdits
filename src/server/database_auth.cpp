@@ -1,6 +1,5 @@
 #include "database_auth.h"
 #include "core/auth.h"
-#include <memory> // unique_ptr
 #include <sqlite3.h>
 #include <stdexcept> // runtime_error
 

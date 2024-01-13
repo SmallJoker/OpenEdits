@@ -18,6 +18,7 @@ class SceneBlockSelector;
 class SceneMinimap;
 class SceneSmileySelector;
 class SceneWorldRender;
+class SoundPlayer;
 
 class SceneGameplay : public SceneHandler {
 public:
@@ -55,6 +56,8 @@ private:
 	SceneMinimap *m_minimap = nullptr;
 	SceneSmileySelector *m_smileyselector = nullptr;
 	SceneWorldRender *m_world_render = nullptr;
+
+	SoundPlayer *m_soundplayer = nullptr;
 
 	// Status indicators for mouse inputs
 	bool m_may_drag_draw = true;   // permission: free drawing

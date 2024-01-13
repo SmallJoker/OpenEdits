@@ -98,7 +98,7 @@ void SoundPlayer::step()
 
 void SoundPlayer::updateListener(core::vector2df pos)
 {
-	alListener3f(AL_POSITION, pos.X, pos.Y, 0);
+	alListener3f(AL_POSITION, pos.X, pos.Y, -10.0f); // reduces stereo effect
 }
 
 void SoundPlayer::play(const char *name, core::vector2df pos, float pitch)
@@ -112,6 +112,7 @@ void SoundPlayer::play(const char *name, core::vector2df pos, float pitch)
 	// http://openal.org/documentation/OpenAL_Programmers_Guide.pdf
 	alSourcei (src.source, AL_BUFFER, file->buffer);
 	alSource3f(src.source, AL_POSITION, pos.X, pos.Y, 0);
+	alSourcef (src.source, AL_GAIN, 4.0f);
 	alSourcef (src.source, AL_PITCH, pitch);
 
 	alSourcePlay(src.source);
@@ -154,7 +155,6 @@ const SoundFile *SoundPlayer::getOrLoad(const char *name)
 	alBufferData(sf.buffer, format, &data[0], data.size(), samplerate);
 	return &sf;
 }
-
 
 
 #else // HAVE_SOUND
