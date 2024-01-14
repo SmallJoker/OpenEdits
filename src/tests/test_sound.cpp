@@ -9,10 +9,17 @@ void unittest_sound()
 {
 	SoundPlayer sp(true);
 
-	sp.play("coin.mono_s16.raw", {0, 0});
-	sleep_ms(500);
-	sp.play("coin.mono_s16.raw", {0, 0}, 1.5f);
-	sleep_ms(500);
+	{
+		SoundSpec spec("piano_c4");
+		sp.play(spec);
+		sleep_ms(500);
+	}
+	{
+		SoundSpec spec("piano_c4");
+		spec.pitch = 1.5f;
+		sp.play(spec);
+		sleep_ms(500);
+	}
 
 	sp.step();
 }

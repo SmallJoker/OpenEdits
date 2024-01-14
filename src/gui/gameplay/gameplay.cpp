@@ -59,7 +59,7 @@ void SceneGameplay::OnOpen()
 
 	m_drag_draw_block.set(Block::ID_INVALID);
 	if (!m_soundplayer)
-		m_soundplayer = new SoundPlayer(true);
+		m_soundplayer = new SoundPlayer(false);
 }
 
 void SceneGameplay::OnClose()
@@ -252,6 +252,7 @@ void SceneGameplay::step(float dtime)
 			cam_pos->X / 10.0f, cam_pos->Y / -10.0f
 		));
 	}
+	m_soundplayer->step();
 
 	updatePlayerlist();
 	updateWorldStuff();
@@ -581,14 +582,7 @@ bool SceneGameplay::OnEvent(GameEvent &e)
 				m_minimap->markDirty();
 			break;
 		case E::C2G_ON_TOUCH_BLOCK:
-			{
-				core::vector2df block_pos(e.block->pos.X, e.block->pos.Y);
-				switch (e.block->b.id) {
-					case Block::ID_COIN:
-						m_soundplayer->play("coin.mono_s16.raw", block_pos, 1.6f + (rand() / (float)RAND_MAX) * 0.1f);
-						break;
-				}
-			}
+			handleOnTouchBlock(e);
 			break;
 		case E::C2G_PLAYER_JOIN:
 			m_dirty_playerlist = true;
@@ -888,6 +882,35 @@ void SceneGameplay::updatePlayerlist()
 		e->setOverrideColor(Gui::COLOR_ON_BG);
 	}
 }
+
+void SceneGameplay::handleOnTouchBlock(GameEvent &e)
+{
+	switch (e.block->b.id) {
+	case Block::ID_COIN:
+		{
+			SoundSpec spec("coin");
+			// Add some variation
+			spec.pitch = 1.0f + (rand() / (float)RAND_MAX) * 0.1f;
+			m_soundplayer->play(spec);
+		}
+		break;
+	case Block::ID_PIANO:
+		{
+			auto world = m_gui->getClient()->getWorld();
+			BlockParams params;
+			world->getParams(e.block->pos, &params);
+			if (params.getType() != BlockParams::Type::U8)
+				break;
+
+			SoundSpec spec("piano_c4");
+			float tone_diff = params.param_u8 + 28 - 40 /* C4 */;
+			spec.pitch = std::pow(2.0f, tone_diff / 12.0f);
+			m_soundplayer->play(spec);
+		}
+		break;
+	}
+}
+
 
 void SceneGameplay::updateWorldStuff()
 {

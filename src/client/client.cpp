@@ -480,6 +480,15 @@ void Client::stepPhysics(float dtime)
 					sendNewEvent(e);
 				}
 			break;
+			case Block::ID_PIANO:
+				{
+					GameEvent e(GameEvent::C2G_ON_TOUCH_BLOCK);
+					e.block = new GameEvent::BlockData();
+					e.block->b = b;
+					e.block->pos = bp;
+					sendNewEvent(e);
+				}
+				break;
 			case Block::ID_CHECKPOINT:
 				if (player->godmode)
 					break;

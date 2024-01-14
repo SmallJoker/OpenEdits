@@ -57,6 +57,7 @@ private:
 	SceneSmileySelector *m_smileyselector = nullptr;
 	SceneWorldRender *m_world_render = nullptr;
 
+	void handleOnTouchBlock(GameEvent &e);
 	SoundPlayer *m_soundplayer = nullptr;
 
 	// Status indicators for mouse inputs

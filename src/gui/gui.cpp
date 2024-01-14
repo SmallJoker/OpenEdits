@@ -55,6 +55,8 @@ Gui::Gui()
 		skin->setColor(gui::EGDC_3D_HIGH_LIGHT, 0xDDEEEEEE); // button top/left & list background
 		skin->setColor(gui::EGDC_3D_SHADOW, 0xDD666666); // button 2nd level bottom/right
 		skin->setColor(gui::EGDC_3D_FACE, 0xDDCCCCCC); // button face (interpolated)
+
+		skin->setSize(gui::EGDS_SCROLLBAR_SIZE, 24);
 	}
 
 	{

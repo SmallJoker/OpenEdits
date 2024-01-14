@@ -112,6 +112,12 @@ Project compiling:
 
 Code: LGPL 2.1+
 
+**Imported code**
+
+ * [minimp3](https://github.com/lieff/minimp3) (CC 0), used in GUI builds only
+ * [SHA3IUF](https://github.com/brainhub/SHA3IUF) (MIT)
+
+
 ### Fonts
 
 DejaVu Sans bitmaps (Bitstream Vera license, extended MIT)
@@ -137,3 +143,7 @@ ZUMMACO (CC BY 3.0)
 ### Sounds
 
 Sounds that are not listed below were created by SmallJoker (CC BY 4.0).
+
+Piotr Barcz (CC 0)
+
+ * [`piano_c4.mp3`](https://freepats.zenvoid.org/Piano/honky-tonk-piano.html)

@@ -326,6 +326,19 @@ void BlockManager::doPackRegistration()
 		props->step = step_portal;
 	}
 
+	{
+		BlockPack *pack = new BlockPack("music");
+		pack->default_type = BlockDrawType::Action;
+		pack->block_ids = { Block::ID_PIANO };
+		registerPack(pack);
+
+		auto props = m_props[Block::ID_PIANO];
+		props->paramtypes = BlockParams::Type::U8;
+		props->trigger_on_touch = true;
+		props->setTiles({ BlockDrawType::Action });
+		props->tiles[0].have_alpha = true;
+	}
+
 	// Decoration
 	{
 		BlockPack *pack = new BlockPack("spring");

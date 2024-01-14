@@ -53,6 +53,8 @@ struct EBlockParams {
 
 	PARAM_CONV_IMPORT_REG(importCoindoor)
 	{
+		if (val_I[0] < 0 || val_I[0] > 255)
+			fprintf(stderr, "Invalid coindoor value: %i\n", val_I[0]);
 		params.param_u8 = val_I[0];
 	}
 
@@ -142,10 +144,15 @@ static void fill_block_translations()
 	const bid_t SOLID = 9;
 
 	set_range(SOLID, 17, 21); // brick
-	set_range(SOLID, 34, 36); // metal
+	set_range(SOLID, 29, 31); // metal
+	set_range(SOLID, 34, 36); // grass
 	set_range(SOLID, 51, 58); // glass
+	BLOCK_ID_LUT[59] = SOLID; // summer11
+	set_range(SOLID, 68, 69); // halloween11
 	set_range(SOLID, 70, 76); // minerals
 	set_range(SOLID, 78, 82); // xmas11
+	set_range(SOLID, 84, 88); // scifi
+	BLOCK_ID_LUT[92] = SOLID; // prison
 	set_range(SOLID, 99, 104); // cowboy
 	set_range(13, 137, 142); // sand -> yellow basic
 	set_range(SOLID, 144, 153); // industrial
@@ -245,7 +252,7 @@ void EBlockParams::registerImports()
 {
 	for (bid_t id : { 1625, 1627, 1629, 1631, 1633, 1635 })
 		conv_import[id] = &EBlockParams::importSpike;
-	for (bid_t id : { Block::ID_COINDOOR, Block::ID_COINGATE })
+	for (bid_t id : { Block::ID_COINDOOR, Block::ID_COINGATE, Block::ID_PIANO })
 		conv_import[id] = &EBlockParams::importCoindoor;
 	conv_import[Block::ID_TELEPORTER] = &EBlockParams::importTeleporter;
 }

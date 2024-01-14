@@ -398,8 +398,6 @@ void SceneWorldRender::drawBlockParams(BlockDrawData &bdd)
 
 bool SceneWorldRender::assignBlockTexture(const BlockTile tile, scene::ISceneNode *node)
 {
-	bool is_opaque = false;
-
 	auto &mat = node->getMaterial(0);
 	mat.Lighting = false;
 	mat.ZWriteEnable = video::EZW_AUTO;
@@ -412,15 +410,24 @@ bool SceneWorldRender::assignBlockTexture(const BlockTile tile, scene::ISceneNod
 		return true;
 	}
 
-	if (tile.type == BlockDrawType::Action || tile.have_alpha)
-		mat.MaterialType = video::EMT_TRANSPARENT_ALPHA_CHANNEL_REF;
-	else if (tile.type == BlockDrawType::Decoration)
-		mat.MaterialType = video::EMT_TRANSPARENT_ALPHA_CHANNEL;
-	else
-		is_opaque = true;
+	switch (tile.type) {
+		case BlockDrawType::Solid:
+			if (tile.have_alpha)
+				mat.MaterialType = video::EMT_TRANSPARENT_ALPHA_CHANNEL_REF;
+			break;
+		case BlockDrawType::Action:
+			mat.MaterialType = tile.have_alpha
+				? video::EMT_TRANSPARENT_ALPHA_CHANNEL
+				: video::EMT_TRANSPARENT_ALPHA_CHANNEL_REF;
+			break;
+		case BlockDrawType::Decoration:
+			mat.MaterialType = video::EMT_TRANSPARENT_ALPHA_CHANNEL_REF;
+			break;
+		default: break;
+	}
 
 	node->getMaterial(0).setTexture(0, tile.texture);
-	return is_opaque;
+	return mat.MaterialType == video::EMT_SOLID;
 }
 
 

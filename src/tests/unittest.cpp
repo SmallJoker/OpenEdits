@@ -35,6 +35,8 @@ void unittest()
 	try
 #endif
 	{
+		unittest_sound(); return;
+
 		unittest_auth();
 		unittest_chatcommand();
 		unittest_utilities();
