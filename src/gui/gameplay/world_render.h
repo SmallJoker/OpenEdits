@@ -18,6 +18,7 @@ namespace irr {
 
 using namespace irr;
 
+class CBulkSceneNode;
 class Gui;
 class SceneGameplay;
 struct BlockDrawData; // Internal
@@ -55,6 +56,7 @@ private:
 	void assignNewForeground(BlockDrawData &bdd);
 	void assignNewBackground(BlockDrawData &bdd);
 	void drawBlockParams(BlockDrawData &bdd);
+	CBulkSceneNode *drawBottomLeftText(video::ITexture *texture);
 
 	bool assignBlockTexture(const BlockTile tile, scene::ISceneNode *node);
 	bool m_dirty_worldmesh = false;

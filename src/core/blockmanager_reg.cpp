@@ -248,6 +248,7 @@ void BlockManager::doPackRegistration()
 		props->trigger_on_touch = true;
 		props->setTiles({ BlockDrawType::Solid, BlockDrawType::Solid });
 		props->tiles[0].have_alpha = true;
+		props->color = 0x00000001; // forced 100% transparent
 
 		props = m_props[Block::ID_BLACKREAL];
 		props->setTiles({ BlockDrawType::Solid });

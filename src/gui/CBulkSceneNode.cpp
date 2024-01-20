@@ -91,8 +91,12 @@ void CBulkSceneNode::OnAnimate(u32 t_ms)
 		v_offset[3].TCoords.set(0.0f, 1.0f);
 	}
 
+	const f32 TILE_W = m_tile_size.Width;
+	const f32 TILE_H = m_tile_size.Height;
+
+	// See also: size prediction in CBulkSceneNode::addTile(...)
 	core::vector3df node_pos = getAbsolutePosition()
-		- core::vector3df(m_tile_size.Width, m_tile_size.Height, 0) / 2;
+		- core::vector3df(TILE_W, TILE_H, 0) / 2; // center
 
 	core::vector3df h_len(m_vertex_size.Width, 0, 0);
 	core::vector3df v_len(0, m_vertex_size.Height, 0);
@@ -106,8 +110,8 @@ void CBulkSceneNode::OnAnimate(u32 t_ms)
 		3--0
 		*/
 		auto pos = node_pos;
-		pos.X += m_tiles[i].X * m_tile_size.Width;
-		pos.Y += m_tiles[i].Y * m_tile_size.Height;
+		pos.X += m_tiles[i].X * TILE_W;
+		pos.Y += m_tiles[i].Y * TILE_H;
 		v_offset[0].Pos = pos + h_len;
 		v_offset[1].Pos = pos + h_len + v_len;
 		v_offset[2].Pos = pos + v_len;
@@ -115,7 +119,8 @@ void CBulkSceneNode::OnAnimate(u32 t_ms)
 	}
 
 	m_buffer->setDirty();
-	m_buffer->recalculateBoundingBox();
+	//m_buffer->recalculateBoundingBox();
+	m_buffer->setBoundingBox(m_bbox_large);
 }
 
 

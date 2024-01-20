@@ -902,8 +902,9 @@ void SceneGameplay::handleOnTouchBlock(GameEvent &e)
 			if (params.getType() != BlockParams::Type::U8)
 				break;
 
-			SoundSpec spec("piano_c4");
-			float tone_diff = params.param_u8 + 28 - 40 /* C4 */;
+			SoundSpec spec("piano_c4"); // C4, MIDI 60, 261.63 Hz
+			// param = 0 --> C3, MIDI 48, 130.81 Hz
+			float tone_diff = (int)params.param_u8 + 48 - 60;
 			spec.pitch = std::pow(2.0f, tone_diff / 12.0f);
 			m_soundplayer->play(spec);
 		}

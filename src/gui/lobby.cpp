@@ -14,6 +14,7 @@
 
 enum ElementId : int {
 	ID_BtnRefresh,
+	ID_TabsMain,
 	ID_ListPublic,
 	ID_ListMine,
 	ID_ListImport,
@@ -66,7 +67,7 @@ void SceneLobby::draw()
 	text->setOverrideColor(Gui::COLOR_ON_BG);
 
 	auto rect_tc =  m_gui->getRect({10, 10}, {80, 55});
-	auto tc = gui->addTabControl(rect_tc);
+	auto tc = gui->addTabControl(rect_tc, 0, true, true, ID_TabsMain);
 
 	addWorldsTab(tc);
 	addFriendsTab(tc);
@@ -273,6 +274,27 @@ bool SceneLobby::OnEvent(const SEvent &e)
 
 						m_gui->joinWorld(this);
 						break;
+					}
+				}
+				break;
+			case gui::EGET_TAB_CHANGED:
+				{
+					auto caller = e.GUIEvent.Caller;
+					if (caller->getID() == ID_TabsMain) {
+						auto root = m_gui->guienv->getRootGUIElement();
+						static const ElementId IDS_TO_CHECK[] = {
+							ID_ListPublic,
+							ID_ListMine,
+							ID_ListImport,
+							ID_ListFriends
+						};
+						for (ElementId id : IDS_TO_CHECK) {
+							auto list = (gui::IGUIListBox *)root->getElementFromId(id, true);
+							if (list && list->isTrulyVisible()) {
+								m_gui->guienv->setFocus(list);
+								break;
+							}
+						}
 					}
 				}
 				break;

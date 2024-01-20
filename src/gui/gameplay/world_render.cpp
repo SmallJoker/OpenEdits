@@ -10,15 +10,22 @@
 #include <IVideoDriver.h>
 #include <SViewFrustum.h>
 
+#if 1
+	#define SANITY_LOG(...) do {} while (0)
+#else
+	#define SANITY_LOG(...) printf
+#endif
+
+
 static float ZINDEX_SMILEY[2] = {
 	0, // god off
-	-0.3
+	-3
 };
 static float ZINDEX_LOOKUP[(int)BlockDrawType::Invalid] = {
-	0.1, // Solid
-	0.1, // Action
-	-0.1, // Decoration
-	2.2, // Background
+	2, // Solid
+	2, // Action
+	-1, // Decoration
+	5, // Background
 };
 
 SceneWorldRender::SceneWorldRender(SceneGameplay* parent, Gui* gui)
@@ -154,6 +161,13 @@ struct BlockDrawData {
 		CBulkSceneNode *node = nullptr;
 		bool is_solid = false;
 	};
+
+	/// NOTE: Ensure there are no conflicts between the main block and the overlay!
+	static inline size_t hash(bid_t block_id, size_t payload)
+	{
+		return (payload << 16) | block_id;
+	}
+
 	std::map<size_t, BulkData> bulk_map;
 
 	LocalPlayer *player = nullptr;
@@ -281,7 +295,7 @@ void SceneWorldRender::drawBlocksInView()
 					tile_hash = tile_hash ^ (~tile_hash << 1) ^ v;
 			}
 
-			size_t hash_node_id = (tile_hash << 16) | bdd.b.id;
+			size_t hash_node_id = BlockDrawData::hash(bdd.b.id, tile_hash);
 			bdd.bulk = &bdd.bulk_map[hash_node_id];
 			if (!bdd.bulk->node) {
 				// Yet not cached: Add.
@@ -309,6 +323,9 @@ void SceneWorldRender::drawBlocksInView()
 	}
 }
 
+static const core::dimension2d<f32> DEFAULT_TILE_SIZE(10, 10);
+
+
 void SceneWorldRender::assignNewForeground(BlockDrawData &bdd)
 {
 	auto smgr = m_gui->scenemgr;
@@ -324,7 +341,7 @@ void SceneWorldRender::assignNewForeground(BlockDrawData &bdd)
 	// New scene node
 	bdd.bulk->node = new CBulkSceneNode(m_blocks_node, smgr, -1,
 		core::vector3df(0, 0, z),
-		core::dimension2d<f32>(10, 10)
+		DEFAULT_TILE_SIZE
 	);
 	bdd.bulk->node->drop();
 	bdd.bulk->is_solid = assignBlockTexture(tile, bdd.bulk->node);
@@ -345,7 +362,7 @@ void SceneWorldRender::assignNewBackground(BlockDrawData &bdd)
 	// New scene node
 	bdd.bulk->node = new CBulkSceneNode(m_blocks_node, smgr, -1,
 		core::vector3df(0, 0, z),
-		core::dimension2d<f32>(10, 10)
+		DEFAULT_TILE_SIZE
 	);
 	bdd.bulk->node->drop();
 
@@ -353,35 +370,63 @@ void SceneWorldRender::assignNewBackground(BlockDrawData &bdd)
 	assignBlockTexture(tile, bdd.bulk->node);
 }
 
+
 void SceneWorldRender::drawBlockParams(BlockDrawData &bdd)
 {
-	auto smgr = m_gui->scenemgr;
-
 	BlockParams params;
 	switch (bdd.b.id) {
+		case Block::ID_PIANO:
+			if (!bdd.world->getParams(bdd.pos, &params) || params != BlockParams::Type::U8) {
+				SANITY_LOG("Invalid Piano note at pos=(%i,%i)\n", bdd.pos.X, bdd.pos.Y);
+				break;
+			}
+
+			{
+				// see SceneGameplay::handleOnTouchBlock
+				uint8_t note = params.param_u8;
+
+				static const char *KEY_NAMES[] = { "C", "C'", "D", "D'", "E", "F", "F'", "G", "G'", "A", "A'", "B" };
+				static_assert(sizeof(KEY_NAMES) == 12 * sizeof(char *), "Invalid notes");
+
+				int octave = note / 12 + 3;
+				char buf[20];
+				snprintf(buf, sizeof(buf), "%s%d",
+					KEY_NAMES[note % 12], octave
+				);
+
+				size_t hash_node_id = BlockDrawData::hash(bdd.b.id, note + 8);
+				auto overlay = &bdd.bulk_map[hash_node_id];
+				if (!overlay->node) {
+					auto texture = m_gameplay->generateTexture(buf, 0xFFFFFFFF, 0xFF7B31EA);
+					overlay->node = drawBottomLeftText(texture);
+				}
+
+				overlay->node->addTile({bdd.pos.X, -bdd.pos.Y});
+			}
+			break;
 		case Block::ID_COINDOOR:
 		case Block::ID_COINGATE:
 			if (bdd.b.tile != 0)
 				break;
-			if (!bdd.world->getParams(bdd.pos, &params) || params != BlockParams::Type::U8)
+			if (!bdd.world->getParams(bdd.pos, &params) || params != BlockParams::Type::U8) {
+				SANITY_LOG("Invalid coin door/gate at pos=(%i,%i)\n", bdd.pos.X, bdd.pos.Y);
 				break;
+			}
 
 			{
-				int required = params.param_u8;
+				uint8_t required = params.param_u8;
 				required -= bdd.player->coins;
 
-				auto texture = m_gameplay->generateTexture(std::to_string(required), 0xFF000000, 0xFFEECC00);
-				auto dim = texture->getOriginalSize();
+				size_t hash_node_id = BlockDrawData::hash(bdd.b.id, required + 8);
+				auto overlay = &bdd.bulk_map[hash_node_id];
+				if (!overlay->node) {
+					auto texture = m_gameplay->generateTexture(std::to_string(required),0xFF000000, 0xFFEECC00);
+					overlay->node = drawBottomLeftText(texture);
+				}
 
-				auto nb = smgr->addBillboardSceneNode(m_blocks_node,
-					core::dimension2d<f32>((float)dim.Width / dim.Height * 6, 6),
-					core::vector3df((bdd.pos.X * 10) + 0, (bdd.pos.Y * -10) - 1, -0.05)
-				);
-				nb->getMaterial(0).Lighting = false;
-				nb->getMaterial(0).setTexture(0, texture);
-				nb->getMaterial(0).MaterialType = video::EMT_TRANSPARENT_ALPHA_CHANNEL_REF;
+				overlay->node->addTile({bdd.pos.X, -bdd.pos.Y});
 			}
-	break;
+			break;
 		case Block::ID_TEXT: {
 			bdd.world->getParams(bdd.pos, &params);
 			video::ITexture *txt = m_gameplay->generateTexture(*params.text, 0xFFFFFFFF, 0x77000000);
@@ -393,6 +438,28 @@ void SceneWorldRender::drawBlockParams(BlockDrawData &bdd)
 		}
 	break;
 	}
+}
+
+CBulkSceneNode *SceneWorldRender::drawBottomLeftText(video::ITexture *texture)
+{
+	auto dim_i = texture->getOriginalSize();
+	core::dimension2df dim;
+	dim.Height = 5;
+	dim.Width = (float)dim_i.Width / dim_i.Height * dim.Height;
+
+	// Align right
+	auto node = new CBulkSceneNode(m_blocks_node, m_gui->scenemgr, -1,
+		core::vector3df(DEFAULT_TILE_SIZE.Width - dim.Width - 1, 1, 0.5),
+		DEFAULT_TILE_SIZE
+	);
+	node->drop();
+
+	node->setVertexSize(dim);
+	node->getMaterial(0).Lighting = false;
+	node->getMaterial(0).setTexture(0, texture);
+	node->getMaterial(0).MaterialType = video::EMT_TRANSPARENT_ALPHA_CHANNEL_REF;
+
+	return node;
 }
 
 
