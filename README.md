@@ -110,7 +110,7 @@ Project compiling:
 
 ## Licenses
 
-Code: LGPL 2.1+
+Code: [LGPL 2.1](LICENSE.txt)+
 
 **Imported code**
 
