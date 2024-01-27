@@ -420,7 +420,26 @@ void SceneWorldRender::drawBlockParams(BlockDrawData &bdd)
 				size_t hash_node_id = BlockDrawData::hash(bdd.b.id, required + 8);
 				auto overlay = &bdd.bulk_map[hash_node_id];
 				if (!overlay->node) {
-					auto texture = m_gameplay->generateTexture(std::to_string(required),0xFF000000, 0xFFEECC00);
+					auto texture = m_gameplay->generateTexture(std::to_string(required), 0xFF000000, 0xFFEECC00);
+					overlay->node = drawBottomLeftText(texture);
+				}
+
+				overlay->node->addTile({bdd.pos.X, -bdd.pos.Y});
+			}
+			break;
+		case Block::ID_TELEPORTER:
+			if (!bdd.world->getParams(bdd.pos, &params) || params != BlockParams::Type::Teleporter) {
+				SANITY_LOG("Invalid teleporter at pos=(%i,%i)\n", bdd.pos.X, bdd.pos.Y);
+				break;
+			}
+
+			{
+				uint8_t tp_id = params.teleporter.id;
+
+				size_t hash_node_id = BlockDrawData::hash(bdd.b.id, tp_id + 8);
+				auto overlay = &bdd.bulk_map[hash_node_id];
+				if (!overlay->node) {
+					auto texture = m_gameplay->generateTexture(std::to_string(tp_id), 0xFF000000, 0);
 					overlay->node = drawBottomLeftText(texture);
 				}
 

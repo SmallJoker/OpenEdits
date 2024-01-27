@@ -15,6 +15,7 @@ The project direction can be found in [doc/DIRECTION.md](doc/DIRECTION.md).
  * Space: Jump
  * LMB: Place the selected block
  * RMB or Shift+LMB: Block eraser
+ * RMB + Ctrl: Select clicked block including params
  * Mouse scroll: Zoom in/out
      * Warning: Rendering performs pretty badly. Do not scroll out too far.
  * 1-9: Hotbar block selector

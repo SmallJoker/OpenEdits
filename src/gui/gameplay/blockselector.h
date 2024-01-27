@@ -7,12 +7,14 @@
 
 namespace irr {
 	namespace gui {
+		class IGUIEditBox;
 		class IGUIElement;
 		class IGUIEnvironment;
 		class IGUIImage;
 	}
 }
 
+struct BlockParams;
 struct BlockUpdate;
 class SceneGameplay;
 
@@ -29,11 +31,17 @@ public:
 	void toggleShowMore();
 	void setEraseMode(bool erase);
 
+	void setParamsFromBlock(bid_t block_id, BlockParams &params);
 	void getBlockUpdate(BlockUpdate &bu);
 
 private:
+	gui::IGUIEditBox *createInputBox(const SEvent &e, s32 id, bool may_open);
+
 	void toggleCoinBox(const SEvent &e);
 	void readCoinBoxValue(const SEvent &e);
+
+	void toggleNoteBox(const SEvent &e);
+	void readNoteBoxValue(const SEvent &e);
 
 	void toggleTeleporterBox(const SEvent &e);
 	void readTeleporterBox();
@@ -56,6 +64,7 @@ private:
 	bid_t m_selected_bid = 0;
 	bid_t m_last_selected_bid = 0; // when holding shift
 	u8 m_selected_param1 = 0;
+	u8 m_selected_note = 0;
 	u8 m_selected_tp_id = 0;
 	u8 m_selected_tp_dst = 0;
 	std::string m_selected_text = "Hello World";

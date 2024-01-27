@@ -422,6 +422,28 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 					bool l_pressed = e.MouseInput.Event == EMIE_LMOUSE_PRESSED_DOWN;
 					// Place bid=0
 					bool r_pressed = e.MouseInput.Event == EMIE_RMOUSE_PRESSED_DOWN;
+
+					if (r_pressed && e.MouseInput.Control) {
+						// Copy block
+						blockpos_t bp;
+						if (!getBlockFromPixel(e.MouseInput.X, e.MouseInput.Y, bp))
+							break;
+
+						bid_t block_id;
+						Block b;
+						BlockParams params;
+						if (!world->getBlock(bp, &b))
+							break;
+
+						block_id = b.id;
+						if (block_id == 0)
+							block_id = b.bg;
+						else
+							world->getParams(bp, &params);
+
+						m_blockselector->setParamsFromBlock(block_id, params);
+						break;
+					}
 					if (!((m_may_drag_draw && m_drag_draw_block.getId() != Block::ID_INVALID) || l_pressed || r_pressed))
 						break;
 

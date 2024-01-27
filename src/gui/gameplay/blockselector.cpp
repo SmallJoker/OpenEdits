@@ -16,6 +16,7 @@ enum ElementId : int {
 	ID_SHOWMORE = 320, // [+] [-] button
 	ID_TabControl,
 	ID_BoxCoinDoor,
+	ID_BoxNote,
 	ID_TabTeleporter,
 	ID_TabTeleporter_ID,
 	ID_TabTeleporter_DST,
@@ -79,14 +80,13 @@ static void editbox_move_to_end(gui::IGUIElement *element)
 	element->OnEvent(ev);
 }
 
-void SceneBlockSelector::toggleCoinBox(const SEvent &e)
+gui::IGUIEditBox *SceneBlockSelector::createInputBox(const SEvent &e, s32 id, bool may_open)
 {
-	auto elem = m_showmore->getElementFromId(ID_BoxCoinDoor, true);
-	bool may_open = m_selected_bid == Block::ID_COINDOOR || m_selected_bid == Block::ID_COINGATE;
+	auto elem = m_showmore->getElementFromId(id, true);
 	if (!may_open || elem) {
 		if (elem)
 			elem->remove();
-		return;
+		return nullptr;
 	}
 
 	core::recti rect(
@@ -94,12 +94,24 @@ void SceneBlockSelector::toggleCoinBox(const SEvent &e)
 		core::dimension2di(BTN_SIZE.Width * 2, 30)
 	);
 
-	wchar_t buf[10];
-	swprintf(buf, 10, L"%d", (int)m_selected_param1);
-	auto element = m_gui->addEditBox(buf, rect, true, e.GUIEvent.Caller, ID_BoxCoinDoor);
+	auto element = m_gui->addEditBox(L"", rect, true, e.GUIEvent.Caller, id);
 	element->setNotClipped(true);
 	element->setTextAlignment(gui::EGUIA_CENTER, gui::EGUIA_CENTER);
 	m_gui->setFocus(element);
+
+	return element;
+}
+
+void SceneBlockSelector::toggleCoinBox(const SEvent &e)
+{
+	bool may_open = m_selected_bid == Block::ID_COINDOOR || m_selected_bid == Block::ID_COINGATE;
+	auto element = createInputBox(e, ID_BoxCoinDoor, may_open);
+	if (!element)
+		return;
+
+	wchar_t buf[10];
+	swprintf(buf, 10, L"%d", (int)m_selected_param1);
+	element->setText(buf);
 	editbox_move_to_end(element);
 }
 
@@ -124,6 +136,28 @@ void SceneBlockSelector::readCoinBoxValue(const SEvent &e)
 	int val = -1;
 	if (sanitize_input(box, &val, 0, 127))
 		m_selected_param1 = val;
+}
+
+void SceneBlockSelector::toggleNoteBox(const SEvent &e)
+{
+	bool may_open = m_selected_bid == Block::ID_PIANO;
+	auto element = createInputBox(e, ID_BoxNote, may_open);
+	if (!element)
+		return;
+
+	// TODO: Change to a more readable format
+	wchar_t buf[10];
+	swprintf(buf, 10, L"%d", (int)m_selected_note);
+	element->setText(buf);
+	editbox_move_to_end(element);
+}
+
+void SceneBlockSelector::readNoteBoxValue(const SEvent &e)
+{
+	auto box = (gui::IGUIEditBox *)e.GUIEvent.Caller;
+	int val = -1;
+	if (sanitize_input(box, &val, 0, 8 * 3))
+		m_selected_note = val;
 }
 
 void SceneBlockSelector::toggleTeleporterBox(const SEvent &e)
@@ -277,6 +311,9 @@ bool SceneBlockSelector::OnEvent(const SEvent &e)
 			case ID_BoxCoinDoor:
 				readCoinBoxValue(e);
 				break;
+			case ID_BoxNote:
+				readNoteBoxValue(e);
+				break;
 			case ID_TabTeleporter_ID:
 			case ID_TabTeleporter_DST:
 				readTeleporterBox();
@@ -299,6 +336,7 @@ bool SceneBlockSelector::OnEvent(const SEvent &e)
 				return false;
 
 			toggleCoinBox(e);
+			toggleNoteBox(e);
 			toggleTeleporterBox(e);
 			toggleTextBox(e);
 			return true;
@@ -364,6 +402,47 @@ void SceneBlockSelector::setEraseMode(bool erase)
 		selectBlockId(m_last_selected_bid, false);
 }
 
+void SceneBlockSelector::setParamsFromBlock(bid_t block_id, BlockParams &params)
+{
+	if (!g_blockmanager->getProps(block_id))
+		return;
+
+	switch (block_id) {
+		case Block::ID_COINDOOR:
+		case Block::ID_COINGATE:
+			if (params.getType() != BlockParams::Type::U8)
+				return;
+
+			m_selected_param1 = params.param_u8;
+			break;
+		case Block::ID_PIANO:
+			if (params.getType() != BlockParams::Type::U8)
+				return;
+
+			m_selected_note = params.param_u8;
+			break;
+		case Block::ID_TELEPORTER:
+			if (params.getType() != BlockParams::Type::Teleporter)
+				return;
+
+			m_selected_tp_id = params.teleporter.id;
+			m_selected_tp_dst = params.teleporter.dst_id;
+			break;
+		case Block::ID_TEXT:
+			if (params.getType() != BlockParams::Type::Text)
+				return;
+
+			m_selected_text = *params.text;
+			break;
+		default:
+			if (params.getType() != BlockParams::Type::None)
+				return;
+			break; // select block
+	}
+
+	selectBlockId(block_id, false);
+}
+
 void SceneBlockSelector::getBlockUpdate(BlockUpdate &bu)
 {
 	bu.set(m_selected_bid);
@@ -372,6 +451,9 @@ void SceneBlockSelector::getBlockUpdate(BlockUpdate &bu)
 		case Block::ID_COINDOOR:
 		case Block::ID_COINGATE:
 			bu.params.param_u8 = m_selected_param1;
+			break;
+		case Block::ID_PIANO:
+			bu.params.param_u8 = m_selected_note;
 			break;
 		case Block::ID_TELEPORTER:
 			bu.params.teleporter.id = m_selected_tp_id;
