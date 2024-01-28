@@ -823,7 +823,10 @@ bool SceneGameplay::getBlockFromPixel(int x, int y, blockpos_t &bp)
 
 video::ITexture *SceneGameplay::generateTexture(const std::string &text, u32 color, u32 bgcolor)
 {
-	auto it = m_cached_textures.find(text);
+	char key[255];
+	snprintf(key, sizeof(key), "%s:%X:%X", text.c_str(), color, bgcolor);
+
+	auto it = m_cached_textures.find(key);
 	if (it != m_cached_textures.end())
 		return it->second;
 
@@ -842,7 +845,7 @@ video::ITexture *SceneGameplay::generateTexture(const std::string &text, u32 col
 
 	driver->setRenderTarget(nullptr, video::ECBF_ALL);
 
-	m_cached_textures.emplace(text, texture);
+	m_cached_textures.emplace(key, texture);
 	return texture;
 }
 

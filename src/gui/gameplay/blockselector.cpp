@@ -156,7 +156,7 @@ void SceneBlockSelector::readNoteBoxValue(const SEvent &e)
 {
 	auto box = (gui::IGUIEditBox *)e.GUIEvent.Caller;
 	int val = -1;
-	if (sanitize_input(box, &val, 0, 8 * 3))
+	if (sanitize_input(box, &val, 0, 12 * 4))
 		m_selected_note = val;
 }
 
