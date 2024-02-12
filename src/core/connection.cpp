@@ -202,7 +202,7 @@ std::string Connection::getDebugInfo(peer_t peer_id) const
 	char buf[255];
 	snprintf(buf, sizeof(buf),
 		"RTT [ms]: last=% 3i, mean=% 3i\n"
-		"MTU [bytes]: peer=%i, global=%lu\n"
+		"MTU [bytes]: peer=%i, global=%zu\n"
 		"Window size: %i\n"
 		"Packet loss: mean=%.0f %%, total=%i\n",
 		peer->lastRoundTripTime, peer->roundTripTime,

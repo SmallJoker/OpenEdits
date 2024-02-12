@@ -6,8 +6,7 @@
 #include "core/utils.h"
 #include <fstream>
 
-GameCommands::GameCommands() :
-	m_chatcmd(this)
+GameCommands::GameCommands()
 {
 }
 
@@ -20,8 +19,8 @@ void GameCommands::initialize(Client *cli)
 		return;
 
 	// Chat command registration
-	m_chatcmd.add(".help", (ChatCommandAction)&GameCommands::chat_Help);
-	m_chatcmd.add(".export", (ChatCommandAction)&GameCommands::chat_Export);
+	m_chatcmd.add(".help", CHATCMD_REGISTER(chat_Help));
+	m_chatcmd.add(".export", CHATCMD_REGISTER(chat_Export));
 }
 
 bool GameCommands::process(std::string message)

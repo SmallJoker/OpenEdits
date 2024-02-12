@@ -4,11 +4,19 @@
 #include <stddef.h> // size_t
 #include <vector2d.h>
 
-struct ALCcontext_struct;
-typedef struct ALCcontext_struct ALCcontext;
+extern "C" {
+#ifdef OPENAL_OLDER_THAN_1_21_0
+	struct ALCcontext_struct;
+	typedef struct ALCcontext_struct ALCcontext;
 
-struct ALCdevice_struct;
-typedef struct ALCdevice_struct ALCdevice;
+	struct ALCdevice_struct;
+	typedef struct ALCdevice_struct ALCdevice;
+#else
+	/// If this throws an error: toggle the CMake option
+	struct ALCcontext;
+	struct ALCdevice;
+#endif
+}
 
 struct SoundFile;
 struct SoundSource;

@@ -18,26 +18,26 @@
 
 void Server::registerChatCommands()
 {
-	m_chatcmd.add("/help", (ChatCommandAction)&Server::chat_Help);
-	m_chatcmd.add("/respawn", (ChatCommandAction)&Server::chat_Respawn);
-	m_chatcmd.add("/teleport", (ChatCommandAction)&Server::chat_Teleport);
+	m_chatcmd.add("/help", CHATCMD_REGISTER(chat_Help));
+	m_chatcmd.add("/respawn", CHATCMD_REGISTER(chat_Respawn));
+	m_chatcmd.add("/teleport", CHATCMD_REGISTER(chat_Teleport));
 
 	// Permissions
-	m_chatcmd.add("/setpass", (ChatCommandAction)&Server::chat_SetPass);
-	m_chatcmd.add("/setcode", (ChatCommandAction)&Server::chat_SetCode);
-	m_chatcmd.add("/code", (ChatCommandAction)&Server::chat_Code);
-	m_chatcmd.add("/ban", (ChatCommandAction)&Server::chat_Ban);
-	m_chatcmd.add("/flags", (ChatCommandAction)&Server::chat_Flags);
-	m_chatcmd.add("/ffilter", (ChatCommandAction)&Server::chat_FFilter);
-	m_chatcmd.add("/fset", (ChatCommandAction)&Server::chat_FSet);
-	m_chatcmd.add("/fdel", (ChatCommandAction)&Server::chat_FDel);
+	m_chatcmd.add("/setpass", CHATCMD_REGISTER(chat_SetPass));
+	m_chatcmd.add("/setcode", CHATCMD_REGISTER(chat_SetCode));
+	m_chatcmd.add("/code", CHATCMD_REGISTER(chat_Code));
+	m_chatcmd.add("/ban", CHATCMD_REGISTER(chat_Ban));
+	m_chatcmd.add("/flags", CHATCMD_REGISTER(chat_Flags));
+	m_chatcmd.add("/ffilter", CHATCMD_REGISTER(chat_FFilter));
+	m_chatcmd.add("/fset", CHATCMD_REGISTER(chat_FSet));
+	m_chatcmd.add("/fdel", CHATCMD_REGISTER(chat_FDel));
 
 	// World control
-	m_chatcmd.add("/clear", (ChatCommandAction)&Server::chat_Clear);
-	m_chatcmd.add("/import", (ChatCommandAction)&Server::chat_Import);
-	m_chatcmd.add("/load", (ChatCommandAction)&Server::chat_Load);
-	m_chatcmd.add("/save", (ChatCommandAction)&Server::chat_Save);
-	m_chatcmd.add("/title", (ChatCommandAction)&Server::chat_Title);
+	m_chatcmd.add("/clear", CHATCMD_REGISTER(chat_Clear));
+	m_chatcmd.add("/import", CHATCMD_REGISTER(chat_Import));
+	m_chatcmd.add("/load", CHATCMD_REGISTER(chat_Load));
+	m_chatcmd.add("/save", CHATCMD_REGISTER(chat_Save));
+	m_chatcmd.add("/title", CHATCMD_REGISTER(chat_Title));
 }
 
 // ----------- Server checks -----------

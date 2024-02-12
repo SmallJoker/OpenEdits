@@ -16,8 +16,7 @@
 static uint16_t PACKET_ACTIONS_MAX; // initialized in ctor
 
 Server::Server(bool *shutdown_requested) :
-	Environment(new BlockManager()),
-	m_chatcmd(this)
+	Environment(new BlockManager())
 {
 	puts("Server: startup");
 	m_stdout_flush_timer.set(1);

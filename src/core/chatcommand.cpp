@@ -2,13 +2,6 @@
 #include "macros.h"
 #include "utils.h"
 
-ChatCommand::ChatCommand(ChatCommandHandler *env)
-{
-	m_env = env;
-	if (!m_env)
-		m_root = this;
-}
-
 
 void ChatCommand::add(const std::string &subcmd, ChatCommandAction action)
 {
@@ -18,8 +11,7 @@ void ChatCommand::add(const std::string &subcmd, ChatCommandAction action)
 
 ChatCommand &ChatCommand::add(const std::string &subcmd)
 {
-	auto [it, is_new] = m_subcommands.insert({subcmd, ChatCommand(m_env)});
-	it->second.m_root = m_root;
+	auto [it, is_new] = m_subcommands.insert({subcmd, ChatCommand()});
 
 	if (!is_new) {
 		fprintf(stderr, "Overriding command %s !\n", subcmd.c_str());
@@ -42,8 +34,8 @@ const ChatCommand *ChatCommand::get(const std::string &subcmd) const
 bool ChatCommand::run(Player *player, std::string msg) const
 {
 	// Main command
-	if (m_env && m_action && (msg.empty() || m_subcommands.empty())) {
-		(m_env->*m_action)(player, msg);
+	if (m_action && (msg.empty() || m_subcommands.empty())) {
+		m_action(player, msg);
 		return true;
 	}
 
@@ -56,8 +48,8 @@ bool ChatCommand::run(Player *player, std::string msg) const
 	}
 
 	// Show help function if available
-	if (m_env && m_action) {
-		(m_env->*m_action)(player, msg);
+	if (m_action) {
+		m_action(player, msg);
 		return true;
 	}
 	return false;

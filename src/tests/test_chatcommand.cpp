@@ -11,8 +11,8 @@ public:
 	void setupCommands(ChatCommand &cmd, bool assign_main)
 	{
 		if (assign_main)
-			cmd.setMain((ChatCommandAction)&TestHandler::mainCommand);
-		cmd.add("!help", (ChatCommandAction)&TestHandler::normalCommand);
+			cmd.setMain(CHATCMD_REGISTER(mainCommand));
+		cmd.add("!help", CHATCMD_REGISTER(normalCommand));
 	}
 
 	CHATCMD_FUNC(normalCommand)
@@ -33,7 +33,7 @@ void unittest_chatcommand()
 	call_counter = 0;
 
 	{
-		ChatCommand cmd(&env);
+		ChatCommand cmd;
 		env.setupCommands(cmd, true);
 		CHECK(cmd.dumpUI().size() > 0);
 
@@ -48,7 +48,7 @@ void unittest_chatcommand()
 
 	{
 		// Without main command
-		ChatCommand cmd(&env);
+		ChatCommand cmd;
 		env.setupCommands(cmd, false);
 		CHECK(cmd.run(nullptr, "!help") == true);
 		CHECK(call_counter == 19);

@@ -149,6 +149,11 @@ if(OPENAL_FOUND)
 	add_compile_definitions(HAVE_SOUND)
 	include_directories(${OPENAL_INCLUDE_DIR})
 	target_link_libraries(${PROJECT_NAME} ${OPENAL_LIBRARY})
+
+	set (OPENAL_OLDER_THAN_1_21_0 FALSE CACHE BOOL "Forwards declaration changed with 1.21.0.")
+	if (OPENAL_OLDER_THAN_1_21_0)
+		add_compile_definitions(OPENAL_OLDER_THAN_1_21_0)
+	endif()
 endif()
 
 
