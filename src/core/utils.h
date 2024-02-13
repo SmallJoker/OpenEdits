@@ -20,6 +20,22 @@ bool string2int64(const char *str, int64_t *val);
 std::string generate_world_title();
 std::string generate_world_id(unsigned length);
 
+// ------------------  Time   ------------------
+
+void sleep_ms(long delay);
+
+class TimeTaker {
+public:
+	TimeTaker(bool do_start);
+	~TimeTaker();
+	void start();
+	double stop();
+
+private:
+	void *m_start_time = nullptr;
+};
+
+
 // ------------------ Numeric ------------------
 
 inline float get_sign(float f)

@@ -119,8 +119,8 @@ CHATCMD_FUNC(Server::chat_Help)
 		const std::string cmd;
 		const std::string text;
 	} help_LUT[] = {
-		{ "respawn", "Respawns you" },
-		{ "teleport", "Syntax: /teleport [SRC] DST.\nTeleports players. DST can be of the format 'X,Y'." },
+		{ "respawn", "Syntax: /respawn [PLAYERNAME|*]\nRespawns you, someone else or everyone." },
+		{ "teleport", "Syntax: /teleport [PLAYERNAME] DST\nTeleports players. DST can be of the format 'X,Y'." },
 		// Permissions
 		{ "setpass", "Syntax: /flags PLAYERNAME PASSWORD PASSWORD" },
 		{ "setcode", "Syntax: /setcode [-f] [WORLDCODE]\nChanges the world code or disables it. "
@@ -135,7 +135,7 @@ CHATCMD_FUNC(Server::chat_Help)
 		{ "clear", "Syntax: /clear [W] [H]\nW,H: integer (optional) to specify the new world dimensions." },
 		{ "import", "Syntax: /import FILENAME\nFILENAME: .eelvl format without the file extension" },
 		{ "save", "Saves the world blocks, meta and player flags." },
-		{ "title", "Syntax: /title TITLE\nChanges the world's title (not saved)" },
+		{ "title", "Syntax: /title TITLE\nChanges the world's title (use /save to persist)" },
 		// Other
 		{ "version", std::string("Server version: ") + VERSION_STRING },
 	};
@@ -545,7 +545,39 @@ CHATCMD_FUNC(Server::chat_FDel)
 
 CHATCMD_FUNC(Server::chat_Respawn)
 {
-	respawnPlayer(player, true);
+	std::string who(get_next_part(msg));
+	const auto world = player->getWorld();
+
+	if (who == "*") {
+		for (auto it : m_players) {
+			if (it.second->getWorld() == world) {
+				respawnPlayer(it.second, true);
+			}
+		}
+		return;
+	}
+
+	Player *tp_player = nullptr;
+
+	if (who.empty())
+		tp_player = player;
+	else
+		tp_player = findPlayer(world.get(), who);
+
+	if (!tp_player) {
+		systemChatSend(player, "Specified player not found");
+		return;
+	}
+
+	if (tp_player != player) {
+		// Same as /teleport
+		if (!player->getFlags().check(PlayerFlags::PF_COOWNER)) {
+			systemChatSend(player, "Insufficient permissions");
+			return;
+		}
+	}
+
+	respawnPlayer(tp_player, true, true);
 }
 
 CHATCMD_FUNC(Server::chat_Teleport)
@@ -558,16 +590,16 @@ CHATCMD_FUNC(Server::chat_Teleport)
 	std::string src_str(get_next_part(msg));
 	std::string dst_str(get_next_part(msg));
 
-	Player *src = nullptr;
+	Player *tp_player = nullptr;
 	core::vector2df dst;
 
 	if (dst_str.empty()) {
 		// teleport DESTINATION
-		src = player;
+		tp_player = player;
 		dst_str = src_str;
 	} else {
 		// teleport SRC DST
-		src = findPlayer(player->getWorld().get(), src_str);
+		tp_player = findPlayer(player->getWorld().get(), src_str);
 	}
 
 	auto parts = strsplit(dst_str, ',');
@@ -583,13 +615,14 @@ CHATCMD_FUNC(Server::chat_Teleport)
 		// Player name
 		Player *player_dst = findPlayer(player->getWorld().get(), dst_str);
 		if (!player_dst) {
-			systemChatSend(player, "Destination player not found");
+			systemChatSend(player, "Specified player not found");
 			return;
 		}
 		dst = player_dst->pos;
 	}
 
-	if (src == player) {
+	if (tp_player != player) {
+		// Same as /respawn
 		if (!player->getFlags().check(PlayerFlags::PF_COOWNER)) {
 			systemChatSend(player, "Insufficient permissions");
 			return;
@@ -601,7 +634,7 @@ CHATCMD_FUNC(Server::chat_Teleport)
 		return;
 	}
 
-	teleportPlayer(src, dst, false);
+	teleportPlayer(tp_player, dst, false);
 }
 
 /// cmd: /clear [width] [height]
@@ -836,9 +869,15 @@ CHATCMD_FUNC(Server::chat_Save)
 		m_auth_db->ban(entry);
 	}
 
-	if (m_world_db->save(world.get()))
-		systemChatSend(player, "Saved!");
-	else
+	TimeTaker tt(true);
+	bool ok = m_world_db->save(world.get());
+	double elapsed = tt.stop();
+
+	if (ok) {
+		char buf[255];
+		snprintf(buf, sizeof(buf), "Saved! (took %.2f ms)", elapsed);
+		systemChatSend(player, buf);
+	} else
 		systemChatSend(player, "Failed to save (server error)");
 }
 

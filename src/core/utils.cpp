@@ -284,3 +284,42 @@ std::string generate_world_id(unsigned length)
 
 	return result;
 }
+
+
+// ------------------  Time   ------------------
+
+
+#include <chrono>
+#include <thread>
+namespace sc = std::chrono;
+using timepoint_t = sc::steady_clock::time_point;
+
+void sleep_ms(long delay)
+{
+	std::this_thread::sleep_for(sc::milliseconds(delay));
+}
+
+TimeTaker::TimeTaker(bool do_start)
+{
+	(timepoint_t *&)m_start_time = new timepoint_t();
+
+	if (do_start)
+		start();
+}
+
+TimeTaker::~TimeTaker()
+{
+	delete (timepoint_t *)m_start_time;
+}
+
+void TimeTaker::start()
+{
+	*(timepoint_t *)m_start_time = sc::steady_clock::now();
+}
+
+double TimeTaker::stop()
+{
+	auto stop_time = sc::steady_clock::now();
+	return sc::duration_cast<sc::duration<double>>
+		(stop_time - *(timepoint_t *)m_start_time).count();
+}

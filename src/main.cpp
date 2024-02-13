@@ -12,13 +12,6 @@
 	#include <signal.h>
 #endif
 
-#include <chrono>
-#include <thread>
-void sleep_ms(long delay)
-{
-	std::this_thread::sleep_for(std::chrono::milliseconds(delay));
-}
-
 
 void unittest();
 

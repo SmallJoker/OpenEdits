@@ -8,8 +8,19 @@
 To-do:
 
  * Private worlds
- * Blocks: teleportation, text
  * Animated coins (rotating mesh?)
+ * Singleplayer mode (also with CLI args)
+ * Moderator tools in the main menu
+    * Event logger + "Inbox"
+    * IP/user bans or mutes
+ * Chat commands
+    * `/pm`
+    * `/ignore` (server-wide)
+ * More sounds: on collide, jump (also of other players)
+ * Anti-Cheat
+    * Opt-in by chat commands
+    * Confirmation by server-side physics simulation
+    * Abort simulation near modified blocks
 
 Maybe:
 

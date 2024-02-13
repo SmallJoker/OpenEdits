@@ -55,7 +55,7 @@ Client::~Client()
 void Client::step(float dtime)
 {
 	m_time_prev = m_time;
-	m_time = getTimeNow();
+	m_time = getTimeNowDIV();
 
 	auto world = getWorld();
 

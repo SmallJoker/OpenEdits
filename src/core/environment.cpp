@@ -1,7 +1,7 @@
 #include "environment.h"
 #include <chrono>
 
-uint64_t Environment::getTimeNow()
+uint64_t Environment::getTimeNowDIV()
 {
 	// This is a monstrosity
 	namespace sc = std::chrono;

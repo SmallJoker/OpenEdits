@@ -14,9 +14,9 @@ public:
 
 	virtual void step(float dtime) = 0;
 
-	static constexpr uint64_t TIME_RESOLUTION = 100; // divisions per second
+	static constexpr uint64_t TIME_RESOLUTION = 100;
 	/// Returns the system time in respect to TIME_RESOLUTION
-	uint64_t getTimeNow();
+	static uint64_t getTimeNowDIV();
 
 protected:
 	Connection *m_con = nullptr;
