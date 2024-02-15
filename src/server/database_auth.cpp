@@ -2,6 +2,7 @@
 #include "core/auth.h"
 #include <sqlite3.h>
 #include <stdexcept> // runtime_error
+#include <cstdint>
 
 constexpr int AUTH_DB_VERSION_LATEST = 1;
 

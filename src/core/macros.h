@@ -2,6 +2,7 @@
 // Types related to the std library
 
 #include <mutex>
+#include <stdexcept> // for ASSERT_FORCED
 //#include <shared_mutex>
 
 #define DISABLE_COPY(T) \

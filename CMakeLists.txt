@@ -141,6 +141,11 @@ target_link_libraries(
 	ZLIB::ZLIB
 )
 
+if (MINGW)
+	# Needed by ENet but is not carried over (?)
+	target_link_libraries(${PROJECT_NAME} winmm ws2_32)
+endif()
+
 if(BUILD_CLIENT)
 	target_link_libraries(${PROJECT_NAME} IrrlichtMt::IrrlichtMt)
 endif()
@@ -184,9 +189,10 @@ install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/README.md" DESTINATION ${INSTALL_DIR}
 install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/misc/licenses" DESTINATION ${INSTALL_DIR})
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE.txt" DESTINATION "${INSTALL_DIR}/licenses" RENAME "openedits.txt")
 
-if(MSVC)
+if(WIN32)
 	# Copy DLL directly
 	install(FILES ${ENet_LIBRARY} DESTINATION ${INSTALL_DIR} RENAME ${ENET_DLL_NAME})
+	install(FILES ${ZLIB_LIBRARY} DESTINATION ${INSTALL_DIR} RENAME ${ZLIB_DLL_NAME})
 else()
 	# Resolve symlink and perform hack
 	get_filename_component(ENET_DLL ${ENet_LIBRARY} REALPATH) # resolve symlink

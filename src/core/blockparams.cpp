@@ -1,5 +1,6 @@
 #include "blockparams.h"
 #include "packet.h"
+#include <stdexcept> // runtime_error
 #include <string.h> // memset
 
 BlockParams::BlockParams(BlockParams::Type type)
