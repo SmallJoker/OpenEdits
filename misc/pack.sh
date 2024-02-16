@@ -1,25 +1,31 @@
-#!/usr/bin/env sh
+#!/usr/bin/env bash
 # To be executed in a separate directory for packing
 
-# change me if needed
-GAMEDIR="$PWD/OpenEdits"
+set -e
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+PROJ="OpenEdits"
+
+# fake install location from CMake
+GAMEDIR="$SCRIPT_DIR/../../packages/$PROJ"
 
 # ----------------
 
-set -e
+binary="$PROJ"
+[ ! -e "$GAMEDIR/$binary" ] && binary="$binary.exe"
+filestr=$(file "$GAMEDIR/$binary")
 
 ostype=""
-binary="OpenEdits"
-case "$OSTYPE" in
-	darwin*)  ostype="macOS"   ;;
-	linux*)   ostype="Linux"   ;;
-	bsd*)     ostype="BSD"     ;;
-	msys*)    ostype="Windows" ;;
-	cygwin*)  ostype="Windows" ;;
+arch=""
+case "$filestr" in
+	*"MS Windows"*) ostype="Windows" ;;
+	*"Linux"*)      ostype="Linux"   ;;
+esac
+case "$filestr" in
+	*" x86-64"*) arch="x86_64" ;;
 esac
 
 [ -z "$ostype" ] && echo "Unhandled platform." && exit 1
-[ "$ostype" = "Windows" ] && binary="OpenEdits.exe"
+[ -z "$arch" ]   && echo "Unhandled architecture." && exit 1
 
 echo "--- Removing testing files"
 rm -vf "$GAMEDIR"/*.sqlite*
@@ -28,11 +34,12 @@ rm -vrf "$GAMEDIR/worlds"
 
 # zipping
 version=$(grep -Eoa "v[0-9]+\.[0-9]+\.[0-9]+[^ ]*" "$GAMEDIR/$binary")
+echo "--- Found version: $version"
 #version=$(strings "$GAMEDIR/$binary" | grep -Eo "v[0-9]+\.[0-9]+\.[0-9]+[^ ]*")
-zipfile="OpenEdits-$version-$ostype-x86_64.7z"
+zipfile="$GAMEDIR/../$PROJ-$version-$ostype-x86_64.7z"
 
 rm -f "$zipfile" # old archive
-7z a -t7z -scrcSHA1 "$zipfile" "$GAMEDIR"
+7z a -t7z -scrcSHA256 "$zipfile" "$GAMEDIR"
 
 echo ""
 echo "--- sha256 checksum"
