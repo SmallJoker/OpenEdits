@@ -5,6 +5,16 @@
 
 class Packet;
 
+/* TODO: Change to the following format
+enum Type : u16 {
+	FIXED_LEN_0,
+	FIXED_LEN_1,
+	...
+	DYNAMIC_LENGTH_U16 = 254
+	DYNAMIC_LENGTH_U32 = 255
+}
+... then typecast the pointer to the desired packed struct
+*/
 struct BlockParams {
 	// Order must not be changed: is saved to disk
 	enum class Type : uint8_t {
@@ -39,6 +49,7 @@ struct BlockParams {
 			uint8_t id;
 			uint8_t dst_id;
 		} teleporter;
+		uint32_t param_u32;
 	};
 
 private:

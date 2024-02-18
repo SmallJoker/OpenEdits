@@ -23,6 +23,7 @@ Gui::Gui()
 	params.WindowSize = window_size;
 	params.Stencilbuffer = false;
 	params.EventReceiver = this;
+	params.WindowResizable = 1; // Haiku (SDL2) does not like = 2
 
 	m_device = createDeviceEx(params);
 

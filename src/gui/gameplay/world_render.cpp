@@ -527,6 +527,11 @@ void SceneWorldRender::updatePlayerPositions(float dtime)
 	int texture_tiles = dim.Width / dim.Height;
 
 	do {
+		if (m_nametag_force_show) {
+			m_nametag_show_timer = 420; // show it
+			break;
+		}
+
 		// Hide nametags after a certain duration
 		// Nested because "getMyPlayer" contains a lock
 		auto me = m_gui->getClient()->getMyPlayer();

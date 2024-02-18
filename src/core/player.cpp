@@ -82,8 +82,10 @@ void Player::writePhysics(Packet &pkt) const
 	pkt.write(flags);
 
 	pkt.write<u8>(m_controls.jump);
-	pkt.write(m_controls.dir.X);
-	pkt.write(m_controls.dir.Y);
+	core::vector2df dir_normal = m_controls.dir;
+	dir_normal.normalize();
+	pkt.write(dir_normal.X);
+	pkt.write(dir_normal.Y);
 
 	if (pkt.data_version >= 6)
 		pkt.write<float>(dtime_delay);
@@ -282,12 +284,16 @@ void Player::stepInternal(float dtime)
 		}
 	}
 
-	// Apply controls
+	// Do NOT normalize "m_controls.dir" directly. It must represent the pressed keys.
+	core::vector2df dir_normal = m_controls.dir;
+	dir_normal.normalize();
+
+	// Apply direction
 	if (controls_enabled) {
 		if (acc.X == 0)
-			acc.X += m_controls.dir.X * Player::CONTROLS_ACCEL;
+			acc.X += dir_normal.X * Player::CONTROLS_ACCEL;
 		if (acc.Y == 0)
-			acc.Y += m_controls.dir.Y * Player::CONTROLS_ACCEL;
+			acc.Y += dir_normal.Y * Player::CONTROLS_ACCEL;
 		//printf("ctrl x=%g,y=%g\n", m_controls.dir.X, m_controls.dir.Y);
 	}
 
@@ -295,9 +301,9 @@ void Player::stepInternal(float dtime)
 		// Stokes friction to stop movement after releasing keys
 		const float viscosity = props ? props->viscosity : 1.0f;
 		const float coeff_s = godmode ? 1.5f : 4.0f * viscosity; // Stokes
-		if (std::fabs(acc.X) < 0.01f && !m_controls.dir.X)
+		if (std::fabs(acc.X) < 0.01f && !dir_normal.X)
 			acc.X += -coeff_s * vel.X;
-		if (std::fabs(acc.Y) < 0.01f && !m_controls.dir.Y)
+		if (std::fabs(acc.Y) < 0.01f && !dir_normal.Y)
 			acc.Y += -coeff_s * vel.Y;
 
 		const float sign_x = get_sign(vel.X);

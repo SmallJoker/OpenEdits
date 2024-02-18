@@ -591,12 +591,18 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 			m_con->send(player->peer_id, 0, out);
 	}
 
-	printf("Server: Player %s joined\n", player->name.c_str());
+	printf("Server: Player %s joined world id=%s\n",
+		player->name.c_str(), world->getMeta().id.c_str()
+	);
 }
 
 void Server::pkt_Leave(peer_t peer_id, Packet &pkt)
 {
 	RemotePlayer *player = getPlayerNoLock(peer_id);
+
+	printf("Server: Player %s left world id=%s\n",
+		player->name.c_str(), player->getWorld()->getMeta().id.c_str()
+	);
 
 	Packet out;
 	out.write(Packet2Client::Leave);
@@ -781,6 +787,8 @@ void Server::pkt_GodMode(peer_t peer_id, Packet &pkt)
 	}
 
 	player->setGodMode(status);
+	if (status)
+		m_deaths.erase(player->peer_id);
 
 	Packet out;
 	out.write(Packet2Client::GodMode);

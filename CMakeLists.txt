@@ -165,6 +165,8 @@ endif()
 if(MSVC)
 	# For ENet
 	target_link_libraries(${PROJECT_NAME} ws2_32.lib winmm.lib)
+elseif(HAIKU)
+	target_link_libraries(${PROJECT_NAME} SQLite::SQLite3)
 else()
 	target_link_libraries(${PROJECT_NAME} stdc++fs SQLite::SQLite3)
 endif()

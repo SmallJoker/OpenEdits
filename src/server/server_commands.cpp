@@ -875,7 +875,7 @@ CHATCMD_FUNC(Server::chat_Save)
 
 	if (ok) {
 		char buf[255];
-		snprintf(buf, sizeof(buf), "Saved! (took %.2f ms)", elapsed);
+		snprintf(buf, sizeof(buf), "Saved! (took %.2f ms)", elapsed * 1000.0f);
 		systemChatSend(player, buf);
 	} else
 		systemChatSend(player, "Failed to save (server error)");

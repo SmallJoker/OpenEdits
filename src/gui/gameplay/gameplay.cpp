@@ -64,7 +64,7 @@ void SceneGameplay::OnOpen()
 
 void SceneGameplay::OnClose()
 {
-	m_chathistory_text.clear();
+	m_chat_history_text.clear();
 	m_chat_input_history.clear();
 	m_chat_input_index = -1;
 	if (m_minimap)
@@ -186,10 +186,11 @@ void SceneGameplay::draw()
 			core::dimension2di(wsize.Width - SIZEW, wsize.Height - 5 - 160)
 		);
 
-		if (m_chathistory_text.empty())
+		if (m_chat_history_text.empty())
 			initChatHistory();
 
-		auto e = gui->addEditBox(m_chathistory_text.c_str(), rect_ch, true);
+		std::wstring text = joinChatHistoryText();
+		auto e = gui->addEditBox(text.c_str(), rect_ch, true);
 		e->setAutoScroll(true);
 		e->setMultiLine(true);
 		e->setWordWrap(true);
@@ -258,10 +259,11 @@ void SceneGameplay::step(float dtime)
 	updateWorldStuff();
 	m_minimap->step(dtime);
 
-	if (m_chathistory_text_dirty) {
-		m_chathistory_text_dirty = false;
+	if (m_chat_history_dirty) {
+		m_chat_history_dirty = false;
 		// GUI elements must be updated in sync with the render thread to avoid segfaults
-		m_chathistory->setText(m_chathistory_text.c_str());
+		std::wstring text = joinChatHistoryText();
+		m_chathistory->setText(text.c_str());
 	}
 
 	do {
@@ -392,6 +394,7 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 		if (e.KeyInput.Key == KEY_LSHIFT || e.KeyInput.Key == KEY_RSHIFT) {
 			m_erase_mode = e.KeyInput.PressedDown;
 			m_blockselector->setEraseMode(m_erase_mode);
+			m_world_render->forceShowNametags(m_erase_mode);
 		}
 	}
 	if (e.EventType == EET_MOUSE_INPUT_EVENT) {
@@ -576,7 +579,6 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 			default: break;
 		}
 
-		controls.dir = controls.dir.normalize();
 		bool changed = player->setControls(controls);
 
 		if (changed) {
@@ -625,17 +627,19 @@ bool SceneGameplay::OnEvent(GameEvent &e)
 				snprintf(buf, sizeof(buf), "%s: %s\n",
 					who, e.player_chat->message.c_str()
 				);
+				printf("[Chat] %s", buf); // for logging
 
 				std::wstring line;
 				utf8_to_wide(line, buf);
-				m_chathistory_text.append(line.c_str());
-				m_chathistory_text_dirty = true;
+				m_chat_history_text.push_back(std::move(line));
+				m_chat_history_dirty = true;
 			}
 			return true;
 		case E::C2G_CHAT_HISTORY:
 			// This is usually not yet received because SceneGameplay updates in the next cycle
 			return initChatHistory();
 		case E::C2G_PLAYERFLAGS:
+			// TODO FIXME: This also closes the chat window. That's not good.
 			if (e.player->peer_id == m_gui->getClient()->getMyPeerId()) {
 				m_gui->requestRenew();
 			}
@@ -652,7 +656,7 @@ bool SceneGameplay::initChatHistory()
 	if (!world)
 		return false;
 
-	m_chathistory_text = L"--- Start of chat history ---\n";
+	m_chat_history_text.push_back(L"--- Start of chat history ---\n");
 
 	auto &meta = world->getMeta();
 	for (const WorldMeta::ChatHistory &entry : meta.chat_history) {
@@ -664,10 +668,10 @@ bool SceneGameplay::initChatHistory()
 		std::wstring line;
 		utf8_to_wide(line, buf);
 
-		m_chathistory_text.append(line.c_str());
+		m_chat_history_text.push_back(std::move(line));
 	}
 
-	m_chathistory_text_dirty = true;
+	m_chat_history_dirty = true;
 	return true;
 }
 
@@ -763,7 +767,10 @@ bool SceneGameplay::handleChatInput(const SEvent &e)
 		utf8_to_wide(namew, playername.c_str());
 		text.resize(word_start);
 		text.append(namew);
-		text.append(L" ");
+		if (word_start == 0)
+			text.append(L": "); // "PLAYERNAME: hello"
+		else
+			text.append(L" "); // "hello PLAYERNAME "
 
 		element->setText(text.c_str());
 		editbox_move_to_end(m_gui->guienv);
@@ -876,6 +883,8 @@ void SceneGameplay::updatePlayerlist()
 	auto e = gui->addListBox(rect, nullptr, ID_ListPlayers);
 
 	auto list = m_gui->getClient()->getPlayerList();
+
+	// TODO FIXME: rank sorting first, alphabetical sorting after.
 	for (auto &it : *list.ptr()) {
 		core::stringw wstr;
 		core::multibyteToWString(wstr, it.second->name.c_str());
@@ -951,4 +960,27 @@ void SceneGameplay::updateWorldStuff()
 	// Update coin count
 	auto blocks = world->getBlocks(Block::ID_COIN, nullptr);
 	m_total_coins = blocks.size();
+}
+
+
+std::wstring SceneGameplay::joinChatHistoryText()
+{
+	// Avoid high CPU usage due to XXL history
+	while (m_chat_history_text.size() > 50) {
+		m_chat_history_text.pop_front();
+	}
+
+	size_t length = 0;
+	for (const std::wstring &str : m_chat_history_text) {
+		length += str.size(); // includes '\n'
+	}
+
+	std::wstring out;
+	out.reserve(length);
+
+	for (const std::wstring &str : m_chat_history_text) {
+		out.append(str);
+	}
+
+	return out;
 }

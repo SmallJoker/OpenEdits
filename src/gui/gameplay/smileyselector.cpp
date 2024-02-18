@@ -23,6 +23,7 @@ SceneSmileySelector::SceneSmileySelector(Gui *gui)
 {
 	m_gui = gui;
 
+	// TODO FIXME: Split into separate files
 	m_texture = gui->guienv->getVideoDriver()->getTexture("assets/textures/smileys.png");
 }
 

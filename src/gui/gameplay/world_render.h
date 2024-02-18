@@ -38,6 +38,7 @@ public:
 	f32 zoom_factor = 1.0f;
 
 	void markDirty() { m_dirty_worldmesh = true; }
+	inline void forceShowNametags(bool v) { m_nametag_force_show = v; }
 
 private:
 	SceneGameplay *m_gameplay = nullptr;
@@ -64,4 +65,5 @@ private:
 
 	void updatePlayerPositions(float dtime);
 	float m_nametag_show_timer = 0;
+	bool m_nametag_force_show = false;
 };
