@@ -2,6 +2,7 @@
 
 #include "core/auth.h"
 #include "core/player.h"
+#include "core/timer.h"
 
 enum class RemotePlayerState {
 	Invalid,
@@ -19,4 +20,8 @@ public:
 
 	Auth auth;
 	RemotePlayerState state = RemotePlayerState::Invalid;
+
+	// Rate limits
+	RateLimit rl_blocks;
+	RateLimit rl_chat;
 };

@@ -662,6 +662,13 @@ void Server::pkt_Chat(peer_t peer_id, Packet &pkt)
 		return;
 	}
 
+	bool was_active = player->rl_chat.isActive();
+	if (player->rl_chat.add(1)) {
+		if (!was_active)
+			sendMsg(peer_id, "Chat message ignored. Please chat less.");
+		return;
+	}
+
 	if (m_chatcmd.run(player, message))
 		return; // Handled
 
@@ -699,7 +706,10 @@ void Server::pkt_PlaceBlock(peer_t peer_id, Packet &pkt)
 	PlayerFlags pflags = player->getFlags();
 	if ((pflags.flags & PlayerFlags::PF_EDIT_DRAW) == 0)
 		return; // Missing permissions
-	// TODO: Add cooldown check for non-draw users
+
+	// Cooldown for block placement, especially for players without draw
+	float value = pflags.check(PlayerFlags::PF_EDIT_DRAW) ?
+		1.0f : 5.0f;
 
 	auto world = player->getWorld();
 	SimpleLock lock(world->mutex);
@@ -709,6 +719,9 @@ void Server::pkt_PlaceBlock(peer_t peer_id, Packet &pkt)
 		bool is_ok = pkt.read<u8>();
 		if (!is_ok)
 			break;
+
+		if (player->rl_blocks.add(value))
+			return; // WARNING: Remaining data in pkt!
 
 		bu.peer_id = peer_id;
 		bu.read(pkt);

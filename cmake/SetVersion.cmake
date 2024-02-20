@@ -1,6 +1,6 @@
 
 execute_process(
-	COMMAND git describe --always --abbrev=7 --dirty
+	COMMAND git describe --always --abbrev=7 --match="^[0-9a-f]+$" --dirty
 	WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
 	OUTPUT_VARIABLE GIT_SHA1
 	OUTPUT_STRIP_TRAILING_WHITESPACE

@@ -1,5 +1,6 @@
 #include "unittest_internal.h"
 #include "core/playerflags.h"
+#include "core/timer.h"
 #include "core/utils.h"
 
 // Whether the object lifespan outlasts a function call when
@@ -62,6 +63,40 @@ static void test_playerflags()
 	printf("Role of p2: flags=%08X, str=%s\n", p2.flags, p2.toHumanReadable().c_str());
 }
 
+static void test_timer()
+{
+	Timer t;
+	CHECK(!t.isActive());
+
+	// overwrite with 3s cooldown
+	t.set(3.0f);
+	CHECK(!t.set(-2.0f)); // do not refill
+	t.step(2.9f);
+	CHECK(t.isActive());
+
+	CHECK(t.step(0.2f)); // timer stopped
+	CHECK(!t.isActive());
+
+	CHECK(t.set(-2.0f)); // allow refill
+	CHECK(t.isActive());
+	CHECK(t.step(2.2f)); // timer stopped
+}
+
+static void test_rate_limit()
+{
+	RateLimit rl(20, 2);
+	CHECK(!rl.isActive());
+	rl.add(39);
+	CHECK(!rl.isActive());
+	rl.add(2);
+	CHECK(rl.isActive());
+
+	rl.step(1.0f); // 1 second passes (-20)
+	CHECK(!rl.isActive());
+	rl.add(21);
+	CHECK(rl.isActive());
+}
+
 void unittest_utilities()
 {
 	const std::string utf8_in1 = "Hello Wörld!";
@@ -83,4 +118,6 @@ void unittest_utilities()
 
 	do_lifetime_test(LifetimeTest().get());
 	test_playerflags();
+	test_timer();
+	test_rate_limit();
 }

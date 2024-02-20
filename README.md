@@ -87,26 +87,42 @@ Permission/player flag examples:
  * zlib: world compression (including EELVL import/export)
  * OpenAL: sound (for GUI builds only)
 
+Dependency tree:
+
+	OpenEdits
+	├── enet
+	├── irrlicht-mt (server)
+	├── irrlicht-mt (client)
+	│   ├── libjpeg
+	│   ├── libpng
+	│   │   └── zlib
+	│   └── zlib
+	├── openal-soft (client, optional)
+	└── sqlite3
+	└── zlib
+
 Debian/Ubuntu:
 
 	sudo apt install libenet-dev libopenal-dev libsqlite3-dev zlib1g-dev
 
 Project compiling:
 
-	cmake -B build
+	cmake -S . -B build
+	cd build
+	make -j
 
 **Headless server compiling**
 
-1. Install the required libraries
+1. Install the minimal required libraries
 2. Put the IrrlichtMt headers (include directory) somewhere
-3. `cmake -B build -DBUILD_CLIENT=0 -DIRRLICHTMT_BUILD_DIR="/path/to/irrlicht/include/"`
+3. `cmake -S . -B build -DBUILD_CLIENT=0 -DIRRLICHTMT_BUILD_DIR="/path/to/irrlicht/include/"`
 4. `cd build` -> build `make -j` -> start `./OpenEdits-server`
 
-**Distributing**
+**Distributing** (simplified)
 
 	cd build
 	make install
-	bash ../REPO_NAME/misc/pack.sh
+	bash ../misc/pack.sh
 
 
 ## Licenses

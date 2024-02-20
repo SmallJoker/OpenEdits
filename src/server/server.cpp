@@ -109,8 +109,13 @@ void Server::step(float dtime)
 		if (!world)
 			continue;
 
+		RemotePlayer *player = (RemotePlayer *)p.second;
+		player->rl_blocks.step(dtime);
+		player->rl_chat.step(dtime);
+
 		worlds.emplace(world);
 
+		// Process block placement queue of this world for broacast
 		auto &queue = world->proc_queue;
 		if (queue.empty())
 			continue;

@@ -41,3 +41,33 @@ public:
 private:
 	float m_cooldown = 0;
 };
+
+class RateLimit {
+public:
+	RateLimit(float units_per_second, float seconds_limit) :
+		m_weight(1.0f / units_per_second),
+		m_limit(seconds_limit)
+	{}
+
+	void step(float dtime)
+	{
+		if (m_timer > 0)
+			m_timer -= dtime;
+	}
+
+	bool add(float units)
+	{
+		float seconds = units * m_weight;
+		// Avoid permanent lock-out
+		if (m_timer < 1.5f * (m_limit + seconds))
+			m_timer += seconds;
+		return isActive();
+	}
+
+	inline bool isActive() { return m_timer > m_limit; }
+
+private:
+	float m_weight,
+		m_limit,
+		m_timer = 0;
+};
