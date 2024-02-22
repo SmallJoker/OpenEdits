@@ -60,7 +60,8 @@ Permission/player flag examples:
  * See `worlds/README.txt` for further information
 
 
-## Available archives
+## [Downloads](https://github.com/SmallJoker/OpenEdits/releases)
+<!-- ^ I'm not a smelly nerd -->
 
 ### Linux
 

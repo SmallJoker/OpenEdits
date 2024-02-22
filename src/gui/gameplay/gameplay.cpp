@@ -364,6 +364,7 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 					wide_to_utf8(textn, textw);
 
 					if (!m_gamecmd.process(textn)) {
+						// Send as regular chat message
 						GameEvent e(GameEvent::G2C_CHAT);
 						e.text = new std::string(textn);
 						m_gui->sendNewEvent(e);

@@ -294,17 +294,10 @@ void World::read(Packet &pkt)
 
 void World::write(Packet &pkt, Method method) const
 {
+	ASSERT_FORCED(pkt.data_version != 0, "Invalid proto ver");
+
 	pkt.write<u32>(SIGNATURE);
 	pkt.write((u8)method);
-
-
-	/*
-		Compatiblity solution: serialize the known param1 types
-		so that the reader can discard unknown ones or use placeholders
-
-		242:  portal_params = { INT16 }
-		1000: text_params = { STRING }
-	*/
 
 	switch (method) {
 		case Method::Dummy: break;
@@ -392,8 +385,8 @@ void World::readPlain(Packet &pkt_in)
 void World::writePlain(Packet &pkt_out) const
 {
 	u8 version = 5;
-	// if (protocol_version < ??)
-	//     version = 3;
+	//if (pkt_out.data_version >= 7)
+	//	version = 6;
 	pkt_out.write(version);
 
 	const bool do_compress = version >= 5;
@@ -415,17 +408,19 @@ void World::writePlain(Packet &pkt_out) const
 	}
 
 	pkt.ensureCapacity(m_size.X * m_size.Y * sizeof(Block));
-	for (size_t y = 0; y < m_size.Y; ++y)
-	for (size_t x = 0; x < m_size.X; ++x) {
-		blockpos_t pos(x, y);
 
-		Block &b = getBlockRefNoCheck(pos);
-		pkt.write(b.id);
-		pkt.write(b.bg);
+	// Compressing backgrounds separate can result in 5-8% smaller files
+	// But is it worth the effort?
 
-		auto props = m_bmgr->getProps(b.id);
+	for (const Block *b = begin(); b != end(); ++b) {
+		pkt.write(b->id);
+		pkt.write(b->bg);
+
+		auto props = m_bmgr->getProps(b->id);
 		if (!props || props->paramtypes == BlockParams::Type::None)
 			continue;
+
+		blockpos_t pos = getBlockPos(b);
 
 		// Write paramtype if there is any
 		auto it = m_params.find(pos);
@@ -434,6 +429,7 @@ void World::writePlain(Packet &pkt_out) const
 				throw std::runtime_error("Unexpected param format");
 			it->second.write(pkt);
 		} else {
+			// Placeholder in case of missing data
 			BlockParams params(props->paramtypes);
 			params.write(pkt);
 		}

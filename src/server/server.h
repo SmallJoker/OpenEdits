@@ -17,7 +17,7 @@ struct LobbyWorld;
 
 class Server : public Environment, public ChatCommandHandler {
 public:
-	Server(bool *shutdown_requested = nullptr);
+	Server(bool *shutdown_requested);
 	~Server();
 
 	void step(float dtime) override;
@@ -79,6 +79,10 @@ private:
 	Timer m_ban_cleanup_timer;
 	Timer m_stdout_flush_timer;
 
+	bool *m_shutdown_requested;
+	Timer m_shutdown_timer;
+	Timer m_shutdown_timer_remind;
+
 	// ----------- World imports -----------
 
 	std::map<std::string, LobbyWorld> m_importable_worlds;
@@ -90,6 +94,7 @@ private:
 	Player *findPlayer(const World *world, std::string name);
 
 	CHATCMD_FUNC(chat_Help);
+	CHATCMD_FUNC(chat_Shutdown);
 	CHATCMD_FUNC(chat_SetPass);
 	CHATCMD_FUNC(chat_SetCode);
 	CHATCMD_FUNC(chat_Code);

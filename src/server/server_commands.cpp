@@ -22,6 +22,9 @@ void Server::registerChatCommands()
 	m_chatcmd.add("/respawn", CHATCMD_REGISTER(chat_Respawn));
 	m_chatcmd.add("/teleport", CHATCMD_REGISTER(chat_Teleport));
 
+	// Admin
+	m_chatcmd.add("/shutdown", CHATCMD_REGISTER(chat_Shutdown));
+
 	// Permissions
 	m_chatcmd.add("/setpass", CHATCMD_REGISTER(chat_SetPass));
 	m_chatcmd.add("/setcode", CHATCMD_REGISTER(chat_SetCode));
@@ -121,6 +124,8 @@ CHATCMD_FUNC(Server::chat_Help)
 	} help_LUT[] = {
 		{ "respawn", "Syntax: /respawn [PLAYERNAME|*]\nRespawns you, someone else or everyone." },
 		{ "teleport", "Syntax: /teleport [PLAYERNAME] DST\nTeleports players. DST can be of the format 'X,Y'." },
+		// Admin
+		{ "shutdown", "Syntax: /shutdown SECONDS\nShuts down the server." },
 		// Permissions
 		{ "setpass", "Syntax: /flags PLAYERNAME PASSWORD PASSWORD" },
 		{ "setcode", "Syntax: /setcode [-f] [WORLDCODE]\nChanges the world code or disables it. "
@@ -163,6 +168,31 @@ CHATCMD_FUNC(Server::chat_Help)
 	}
 
 	systemChatSend(player, "No help available for command " + cmd);
+}
+
+CHATCMD_FUNC(Server::chat_Shutdown)
+{
+	if (!player->getFlags().check(PlayerFlags::PF_ADMIN)) {
+		systemChatSend(player, "Insufficient permissions");
+		return;
+	}
+
+	if (!m_shutdown_requested) {
+		systemChatSend(player, "Internal error.");
+		return;
+	}
+
+	std::string time_s(get_next_part(msg));
+
+	int64_t time_i;
+	if (!string2int64(time_s.c_str(), &time_i) || time_i <= 0) {
+		systemChatSend(player, "Time must be > 0");
+		return;
+	}
+
+	m_shutdown_timer.set(time_i);
+	m_shutdown_timer_remind.set(0.1f);
+	systemChatSend(player, "Shutting down in " + std::to_string(time_i) + " seconds");
 }
 
 CHATCMD_FUNC(Server::chat_SetPass)

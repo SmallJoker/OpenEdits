@@ -16,7 +16,8 @@
 static uint16_t PACKET_ACTIONS_MAX; // initialized in ctor
 
 Server::Server(bool *shutdown_requested) :
-	Environment(new BlockManager())
+	Environment(new BlockManager()),
+	m_shutdown_requested(shutdown_requested)
 {
 	puts("Server: startup");
 	m_stdout_flush_timer.set(1);
@@ -217,6 +218,44 @@ void Server::step(float dtime)
 
 		if (m_auth_db)
 			m_auth_db->cleanupBans();
+	}
+
+	if (m_shutdown_timer_remind.step(dtime)) {
+		float rem = m_shutdown_timer.remainder();
+		char tbuf[50];
+		if (rem > 2.0f * 60.0f)
+			snprintf(tbuf, sizeof(tbuf), "%d minute(s)", (int)rem / 60);
+		else
+			snprintf(tbuf, sizeof(tbuf), "%d second(s)", (int)rem);
+
+		char mbuf[200];
+		snprintf(mbuf, sizeof(mbuf), "Server will shut down in %s. Save your changes!", tbuf);
+
+		// Send to all connected players
+		for (auto p : m_players) {
+			sendMsg(p.first, mbuf);
+			if (p.second->getWorld())
+				systemChatSend(p.second, mbuf);
+		}
+
+		// Reload countdown timer if needed
+		if (rem > 6.0f * 60.0f)
+			m_shutdown_timer_remind.set(5.0f * 60.0f);
+		else if (rem > 2.0f * 60.0f)
+			m_shutdown_timer_remind.set(0.5f * 60.0f);
+		else
+			m_shutdown_timer_remind.set(10.0f);
+
+		// For debugging only
+		if (false && m_shutdown_timer_remind.isActive()) {
+			m_shutdown_timer.set(rem - m_shutdown_timer_remind.remainder() + 0.5f);
+			m_shutdown_timer_remind.set(0.5f);
+		}
+	}
+
+	if (m_shutdown_timer.step(dtime)) {
+		if (m_shutdown_requested)
+			*m_shutdown_requested = true;
 	}
 
 	m_importable_worlds_timer.step(dtime);

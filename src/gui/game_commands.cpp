@@ -2,6 +2,7 @@
 #include "client/client.h"
 #include "client/localplayer.h"
 #include "server/eeo_converter.h" // TODO:move the file to 'core'
+#include "core/packet.h"
 #include "core/player.h"
 #include "core/utils.h"
 #include <fstream>
@@ -29,8 +30,13 @@ bool GameCommands::process(std::string message)
 	if (message.empty() || message[0] != '.')
 		return false;
 
-	auto player = m_client->getMyPlayer();
-	m_chatcmd.run(player.ptr(), message);
+	try {
+		auto player = m_client->getMyPlayer();
+		m_chatcmd.run(player.ptr(), message);
+	} catch (std::runtime_error &e) {
+		sendChat(std::string("Error while executing command: ") + e.what());
+	}
+
 	return true;
 }
 
@@ -102,13 +108,7 @@ CHATCMD_FUNC(GameCommands::chat_Export)
 	}
 
 	EEOconverter conv(*world);
-
-	try {
-		conv.toFile(filename);
-	} catch (std::runtime_error &e) {
-		sendChat(std::string("ERROR: ") + e.what());
-		return;
-	}
+	conv.toFile(filename);
 
 	sendChat("Exported to: " + filename);
 }

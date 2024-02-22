@@ -413,8 +413,6 @@ void Gui::drawFPS()
 
 void Gui::showPopupText(const std::string &str)
 {
-	printf("GUI popup: %s\n", str.c_str());
-
 	std::wstring wstr;
 	utf8_to_wide(wstr, str.c_str());
 

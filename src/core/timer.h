@@ -22,6 +22,7 @@ public:
 		return to_start;
 	}
 
+	inline float remainder() const { return m_cooldown; }
 	inline void stop() { m_cooldown = 0; }
 
 	/// @return true if the timer stopped in this step
