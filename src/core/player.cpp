@@ -154,8 +154,11 @@ void Player::step(float dtime)
 		6. Client delay for rendering (covered by dtime)
 	*/
 
-	dtime += std::min<float>(dtime_delay, 0.1f);
-	dtime_delay = 0;
+	// Allow up to 30% faster execution to catch up slowly.
+	// A too high percentage results a jittery appearance of other players.
+	float compensation = std::min<float>(dtime_delay, dtime * 0.3f);
+	dtime_delay -= compensation;
+	dtime += compensation;
 
 	if (!m_world || dtime <= 0)
 		return;
@@ -388,7 +391,9 @@ void Player::collideWith(float dtime, int x, int y)
 		return;
 
 	auto props = m_world->getBlockMgr()->getProps(b.id);
-	if (!props || props->getTile(b).type != BlockDrawType::Solid)
+	if (!props)
+		return;
+	if (props->getTile(b).type != BlockDrawType::Solid && !props->onCollide)
 		return;
 
 	core::rectf player(0, 0, 1, 1);

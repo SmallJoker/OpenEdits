@@ -98,6 +98,8 @@ private:
 	uint64_t m_time = 0,
 		m_time_prev = 0; // old time, before step() call
 
+	Timer m_pos_send_timer;
+
 	// State used for packet filtering
 	ClientState m_state = ClientState::None;
 	uint16_t m_protocol_version = 0;

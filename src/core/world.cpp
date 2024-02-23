@@ -409,8 +409,8 @@ void World::writePlain(Packet &pkt_out) const
 
 	pkt.ensureCapacity(m_size.X * m_size.Y * sizeof(Block));
 
-	// Compressing backgrounds separate can result in 5-8% smaller files
-	// But is it worth the effort?
+	// Compressing backgrounds separate can result in 5-8% smaller files.
+	// Busy worlds however benefit more from FG + BG in combination
 
 	for (const Block *b = begin(); b != end(); ++b) {
 		pkt.write(b->id);

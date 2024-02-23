@@ -141,7 +141,17 @@ static void fill_block_translations()
 			first++;
 		}
 	};
-	const bid_t SOLID = 9;
+	enum : bid_t {
+		SOLID = 9,
+
+		BG_GREY = 500,
+		BG_BLUE,
+		BG_PURPLE,
+		BG_RED,
+		BG_YELLOW,
+		BG_GREEN,
+		BG_CYAN
+	};
 
 	set_range(SOLID, 17, 21); // brick
 	set_range(SOLID, 29, 31); // metal
@@ -246,6 +256,20 @@ static void fill_block_translations()
 	set_range(Block::ID_SPIKES, 1625, 1636); // spikes, every 2nd is not rotatable
 	BLOCK_ID_LUT.at(1580) = Block::ID_SPIKES; // not rotatable
 	BLOCK_ID_LUT.at(381) = Block::ID_TELEPORTER; // invisible teleporter
+
+	// Backgrounds
+	bid_t id = 507;
+	BLOCK_ID_LUT[id++] = BG_RED; // dirt
+	BLOCK_ID_LUT[id++] = BG_BLUE;
+	BLOCK_ID_LUT[id++] = BG_PURPLE;
+	BLOCK_ID_LUT[id++] = BG_GREEN;
+	BLOCK_ID_LUT[id++] = BG_RED;
+	BLOCK_ID_LUT[id++] = BG_GREY;
+
+	for (bid_t i = 0; i <= 6; ++i) {
+		BLOCK_ID_LUT[513 + i] = BG_GREY + i;
+		BLOCK_ID_LUT[520 + i] = BG_GREY + i;
+	}
 }
 
 void EBlockParams::registerImports()
@@ -388,10 +412,8 @@ void EEOconverter::fromFile(const std::string &filename_)
 
 		if (!bu.set(block_id)) {
 			// Attempt to remap unknown blocks
-			if (layer == 0) {
-				if ((size_t)block_id < BLOCK_ID_LUT.size()) {
-					bu.set(BLOCK_ID_LUT[block_id]);
-				}
+			if ((size_t)block_id < BLOCK_ID_LUT.size()) {
+				bu.set(BLOCK_ID_LUT[block_id]);
 			}
 		}
 
@@ -423,6 +445,10 @@ void EEOconverter::fromFile(const std::string &filename_)
 				zs.readStr16();
 				break;
 		}
+		/*for (size_t i = 0; i < pos_x.size(); ++i) {
+			if (pos_x[i] == 21 && pos_y[i] == 6)
+				printf("block: %d\n", block_id);
+		}*/
 
 		if (bu.getId() == 0 || bu.getId() == Block::ID_INVALID)
 			continue; // do not add these blocks to the map

@@ -13,6 +13,8 @@
 static uint16_t PACKET_ACTIONS_MAX; // initialized in ctor
 extern BlockManager *g_blockmanager; // for client-only use
 
+static const float POSITION_SEND_INTERVAL = 5.0f;
+
 Client::Client(ClientStartData &init) :
 	Environment(g_blockmanager),
 	m_start_data(init)
@@ -32,6 +34,8 @@ Client::Client(ClientStartData &init) :
 		PACKET_ACTIONS_MAX = handler - packet_actions;
 		ASSERT_FORCED(PACKET_ACTIONS_MAX == (int)Packet2Client::MAX_END, "Packet handler mismatch");
 	}
+
+	m_pos_send_timer.set(POSITION_SEND_INTERVAL);
 }
 
 Client::~Client()
@@ -93,6 +97,16 @@ void Client::step(float dtime)
 
 	// Run physics engine
 	stepPhysics(dtime);
+
+	if (world.get() && m_pos_send_timer.step(dtime)) {
+		auto player = getMyPlayer();
+		if (player->last_sent_pos != player->last_pos) {
+			player.release();
+			sendPlayerMove();
+		}
+
+		m_pos_send_timer.set(POSITION_SEND_INTERVAL);
+	}
 
 	// Timed gates update
 	while (world.get()) { // run once
@@ -353,6 +367,9 @@ void Client::sendPlayerMove()
 	Packet pkt = createPacket(Packet2Server::Move);
 	player->writePhysics(pkt);
 	m_con->send(0, 1 | Connection::FLAG_UNRELIABLE, pkt);
+
+	player->last_sent_pos = player->last_pos;
+	m_pos_send_timer.set(POSITION_SEND_INTERVAL);
 }
 
 

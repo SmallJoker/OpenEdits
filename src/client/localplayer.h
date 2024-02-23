@@ -15,6 +15,8 @@ public:
 	// Executa only on the own player!
 	bool updateCoinCount(bool force = false);
 
+	blockpos_t last_sent_pos;
+
 private:
 	s32 m_gui_smiley_id = -1; // tag is + 1
 };

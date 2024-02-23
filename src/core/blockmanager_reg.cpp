@@ -5,6 +5,7 @@
 
 // -------------- Block registrations -------------
 
+// ------> Action
 
 static BP_STEP_CALLBACK(step_arrow_left)
 {
@@ -24,6 +25,37 @@ static BP_STEP_CALLBACK(step_arrow_right)
 static BP_STEP_CALLBACK(step_arrow_none)
 {
 }
+
+
+// ------> Boost
+
+static float BOOST_SPEED = 70.0f;
+static BP_STEP_CALLBACK(step_boost_left)
+{
+	player.acc.X = -Player::GRAVITY_NORMAL;
+	player.vel.X = -BOOST_SPEED;
+}
+
+static BP_STEP_CALLBACK(step_boost_right)
+{
+	player.acc.X = +Player::GRAVITY_NORMAL;
+	player.vel.X = +BOOST_SPEED;
+}
+
+static BP_STEP_CALLBACK(step_boost_up)
+{
+	player.acc.Y = -Player::GRAVITY_NORMAL;
+	player.vel.Y = -BOOST_SPEED;
+}
+
+static BP_STEP_CALLBACK(step_boost_down)
+{
+	player.acc.Y = +Player::GRAVITY_NORMAL;
+	player.vel.Y = +BOOST_SPEED;
+}
+
+
+// ------> Other specials
 
 static BP_STEP_CALLBACK(step_portal)
 {
@@ -53,6 +85,7 @@ static BP_STEP_CALLBACK(step_portal)
 	if (positions.empty())
 		return;
 
+	// TODO: This must be deterministic for accurate client-side prediction
 	auto dst_pos = positions[rand() % positions.size()];
 	BlockParams dst_bp;
 	world->getParams(dst_pos, &dst_bp);
@@ -89,6 +122,9 @@ static BP_STEP_CALLBACK(step_freeze)
 	player.vel *= 0.2f;
 }
 
+
+// ------> Coins
+
 static BP_COLLIDE_CALLBACK(onCollide_coindoor)
 {
 	BlockParams params;
@@ -122,6 +158,12 @@ static BP_COLLIDE_CALLBACK(onCollide_oneway)
 		: BlockProperties::CollisionType::None;
 }
 
+static BP_COLLIDE_CALLBACK(onCollide_solid)
+{
+	return BlockProperties::CollisionType::Position;
+}
+
+#if 0
 static BP_COLLIDE_CALLBACK(onCollide_b10_bouncy)
 {
 	if (is_x) {
@@ -133,6 +175,7 @@ static BP_COLLIDE_CALLBACK(onCollide_b10_bouncy)
 	}
 	return BlockProperties::CollisionType::None;
 }
+#endif
 
 
 void BlockManager::doPackRegistration()
@@ -183,8 +226,10 @@ void BlockManager::doPackRegistration()
 		pack->block_ids = { 60, 61, 62, 63, 64, 65, 66, 67 };
 		registerPack(pack);
 		// one-way gates
-		for (size_t i = 61; i <= 64; ++i)
+		for (size_t i = 61; i <= 64; ++i) {
+			m_props[i]->tiles[0].type = BlockDrawType::Decoration;
 			m_props[i]->onCollide = onCollide_oneway;
+		}
 		for (bid_t id : pack->block_ids)
 			m_props[id]->tiles[0].have_alpha = true;
 	}
@@ -204,6 +249,18 @@ void BlockManager::doPackRegistration()
 	}
 
 	{
+		BlockPack *pack = new BlockPack("boost");
+		pack->default_type = BlockDrawType::Action;
+		pack->block_ids = { 114, 115, 116, 117 };
+		registerPack(pack);
+
+		m_props[114]->step = step_boost_left;
+		m_props[115]->step = step_boost_right;
+		m_props[116]->step = step_boost_up;
+		m_props[117]->step = step_boost_down;
+	}
+
+	{
 		BlockPack *pack = new BlockPack("keys");
 		pack->default_type = BlockDrawType::Action;
 		pack->block_ids = { Block::ID_KEY_R, Block::ID_KEY_G, Block::ID_KEY_B };
@@ -212,9 +269,6 @@ void BlockManager::doPackRegistration()
 		for (bid_t id : pack->block_ids)
 			m_props[id]->trigger_on_touch = true;
 	}
-
-	// For testing. bouncy blue basic block
-	m_props[10]->onCollide = onCollide_b10_bouncy;
 
 	{
 		// Spawn block only (for now)
@@ -251,7 +305,8 @@ void BlockManager::doPackRegistration()
 		props->color = 0x00000001; // forced 100% transparent
 
 		props = m_props[Block::ID_BLACKREAL];
-		props->setTiles({ BlockDrawType::Solid });
+		props->setTiles({ BlockDrawType::Decoration });
+		props->onCollide = onCollide_solid;
 
 		props = m_props[Block::ID_BLACKFAKE];
 		props->trigger_on_touch = true;
