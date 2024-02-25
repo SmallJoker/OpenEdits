@@ -857,6 +857,104 @@ video::ITexture *SceneGameplay::generateTexture(const std::string &text, u32 col
 	return texture;
 }
 
+static const char *PIANO_KEY_NAMES[] = { "C", "C'", "D", "D'", "E", "F", "F'", "G", "G'", "A", "A'", "B" };
+static_assert(sizeof(PIANO_KEY_NAMES) == 12 * sizeof(char *), "Invalid notes");
+
+bool SceneGameplay::pianoParamToNote(u8 param, std::string *note_out)
+{
+	// param = 0 : octave = 3, key = "C"
+	int octave = param / 12 + 3;
+	char buf[20];
+	snprintf(buf, sizeof(buf), "%s%d",
+		PIANO_KEY_NAMES[param % 12], octave
+	);
+
+	if (note_out)
+		note_out->assign(buf);
+
+	return true;
+}
+
+bool SceneGameplay::pianoNoteToParam(const char *note, u8 *param_out)
+{
+	enum class Token {
+		Letter, // CDEFGHAB
+		Shift,  // b  and  #'
+		Octave, // 0-9
+		Done
+	} step = Token::Letter;
+	char letter[2] { 0, '\0' };
+	s8 shift = 0;
+	s8 octave = 0;
+
+	for (; *note; ++note) {
+		char c = *note;
+		if (std::isspace(c))
+			continue;
+
+		if (step == Token::Letter) {
+			c = std::toupper(c);
+			if (c >= 'A' && c <= 'H') {
+				letter[0] = c;
+				step = Token::Shift;
+				continue;
+			}
+			return false;
+		}
+
+		// Optional
+		if (step == Token::Shift) {
+			step = Token::Octave;
+
+			if (c == 'b') {
+				shift = -1;
+				continue;
+			} else if (c == '\'' || c == '#') {
+				shift = 1;
+				continue;
+			}
+		}
+
+		if (step == Token::Octave) {
+			if (c >= '0' && c <= '9') {
+				octave = c - '0';
+				step = Token::Done;
+				continue;
+			}
+			return false;
+		}
+
+		// Tailing garbage
+		if (step == Token::Done)
+			return false;
+	}
+
+	if (step != Token::Done)
+		return false;
+
+	// Look up the letter in the possible keys list
+	u8 key_i = 0;
+	for (const char *key : PIANO_KEY_NAMES) {
+		if (strcmp(letter, key) != 0) {
+			key_i++;
+			continue;
+		}
+
+		goto found;
+	}
+	return false;
+
+found:
+	s16 out = (octave - 3) * 12 + key_i + shift;
+	if (out < 0 || out > 50)
+		return false;
+
+	if (param_out)
+		*param_out = out;
+	return true;
+}
+
+
 void SceneGameplay::updatePlayerlist()
 {
 	auto world = m_gui->getClient()->getWorld();

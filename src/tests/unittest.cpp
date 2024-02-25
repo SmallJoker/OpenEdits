@@ -11,6 +11,7 @@ void unittest_physics();
 void unittest_sound();
 void unittest_utilities();
 void unittest_world();
+void unittest_gui_gameplay();
 
 static auto time_start = std::chrono::steady_clock::now();
 void unittest_tic()
@@ -38,13 +39,14 @@ void unittest()
 		unittest_auth();
 		unittest_chatcommand();
 		unittest_utilities();
-		unittest_world();
+		unittest_packet();
+		unittest_world(); // depends on packet
 		unittest_eeo_converter(); // depends on world
 		unittest_physics(); // depends on world
-		unittest_packet();
 		unittest_database(); // depends on world & packet
 		unittest_connection(); // depends on packet
 		unittest_sound();
+		unittest_gui_gameplay();
 
 		puts("<== Unittest completed");
 	}

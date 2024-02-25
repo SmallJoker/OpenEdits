@@ -145,19 +145,26 @@ void SceneBlockSelector::toggleNoteBox(const SEvent &e)
 	if (!element)
 		return;
 
-	// TODO: Change to a more readable format
-	wchar_t buf[10];
-	swprintf(buf, 10, L"%d", (int)m_selected_note);
-	element->setText(buf);
+	std::string note;
+	SceneGameplay::pianoParamToNote(m_selected_note, &note);
+
+	std::wstring wnote;
+	utf8_to_wide(wnote, note.c_str());
+
+	element->setText(wnote.c_str());
 	editbox_move_to_end(element);
 }
 
 void SceneBlockSelector::readNoteBoxValue(const SEvent &e)
 {
 	auto box = (gui::IGUIEditBox *)e.GUIEvent.Caller;
-	int val = -1;
-	if (sanitize_input(box, &val, 0, 12 * 4))
-		m_selected_note = val;
+	std::string note;
+	wide_to_utf8(note, box->getText());
+
+	if (SceneGameplay::pianoNoteToParam(note.c_str(), &m_selected_note))
+		box->setOverrideColor(0xFF000000); // black
+	else
+		box->setOverrideColor(0xFFCC0000); // red
 }
 
 void SceneBlockSelector::toggleTeleporterBox(const SEvent &e)

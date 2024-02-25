@@ -384,20 +384,13 @@ void SceneWorldRender::drawBlockParams(BlockDrawData &bdd)
 			{
 				// see SceneGameplay::handleOnTouchBlock
 				uint8_t note = params.param_u8;
-
-				static const char *KEY_NAMES[] = { "C", "C'", "D", "D'", "E", "F", "F'", "G", "G'", "A", "A'", "B" };
-				static_assert(sizeof(KEY_NAMES) == 12 * sizeof(char *), "Invalid notes");
-
-				int octave = note / 12 + 3;
-				char buf[20];
-				snprintf(buf, sizeof(buf), "%s%d",
-					KEY_NAMES[note % 12], octave
-				);
+				std::string note_str = "??";
+				SceneGameplay::pianoParamToNote(note, &note_str);
 
 				size_t hash_node_id = BlockDrawData::hash(bdd.b.id, note + 8);
 				auto overlay = &bdd.bulk_map[hash_node_id];
 				if (!overlay->node) {
-					auto texture = m_gameplay->generateTexture(buf, 0xFFFFFFFF, 0xFF7B31EA);
+					auto texture = m_gameplay->generateTexture(note_str.c_str(), 0xFFFFFFFF, 0xFF7B31EA);
 					overlay->node = drawBottomLeftText(texture);
 				}
 
