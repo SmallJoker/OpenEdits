@@ -43,11 +43,11 @@ void Server::pkt_Hello(peer_t peer_id, Packet &pkt)
 	uint16_t protocol_max = pkt.read<uint16_t>();
 	uint16_t protocol_min = pkt.read<uint16_t>();
 
-	uint16_t protocol_ver = std::min(PROTOCOL_VERSION, protocol_max);
+	uint16_t protocol_ver = std::min(PROTOCOL_VERSION_MAX, protocol_max);
 	if (protocol_ver < protocol_min || protocol_ver < PROTOCOL_VERSION_MIN) {
 		char buf[255];
 		snprintf(buf, sizeof(buf), "server=[%d,%d], client=[%d,%d]",
-			protocol_min, protocol_max, PROTOCOL_VERSION_MIN, PROTOCOL_VERSION);
+			protocol_min, protocol_max, PROTOCOL_VERSION_MIN, PROTOCOL_VERSION_MAX);
 
 		printf("Protocol mismatch. peer_id=%u tried to connect: %s\n", peer_id, buf);
 		sendMsg(peer_id, std::string("Incompatible protocol versions. ") + buf);

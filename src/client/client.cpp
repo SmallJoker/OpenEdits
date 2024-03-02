@@ -269,7 +269,7 @@ std::string Client::getDebugInfo()
 		"Protocol version: cur=%i, max=%i\n"
 		"Client state: %i\n"
 		"Last world ID: %s\n",
-		m_protocol_version, PROTOCOL_VERSION,
+		m_protocol_version, PROTOCOL_VERSION_MAX,
 		(int)getState(),
 		m_world_id.c_str()
 	);
@@ -380,7 +380,7 @@ void Client::onPeerConnected(peer_t peer_id)
 
 	Packet pkt;
 	pkt.write(Packet2Server::Hello);
-	pkt.write(PROTOCOL_VERSION);
+	pkt.write(PROTOCOL_VERSION_MAX);
 	pkt.write(PROTOCOL_VERSION_MIN);
 	pkt.writeStr16(m_start_data.nickname);
 

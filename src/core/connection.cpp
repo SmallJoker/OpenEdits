@@ -19,7 +19,7 @@ const size_t CON_CLIENTS = 32; // server only
 const size_t CON_CHANNELS = 2;
 
 // Globally accessible values
-const uint16_t PROTOCOL_VERSION = 6;
+const uint16_t PROTOCOL_VERSION_MAX = 6;
 const uint16_t PROTOCOL_VERSION_MIN = 5;
 size_t CONNECTION_MTU;
 

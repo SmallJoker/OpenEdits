@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <vector>
 
-extern const uint16_t PROTOCOL_VERSION;
+extern const uint16_t PROTOCOL_VERSION_MAX;
 extern const uint16_t PROTOCOL_VERSION_MIN;
 extern size_t CONNECTION_MTU;
 

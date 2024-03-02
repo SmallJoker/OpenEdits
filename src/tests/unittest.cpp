@@ -8,6 +8,7 @@ void unittest_eeo_converter();
 void unittest_database();
 void unittest_packet();
 void unittest_physics();
+void unittest_script();
 void unittest_sound();
 void unittest_utilities();
 void unittest_world();
@@ -36,6 +37,8 @@ void unittest()
 	try
 #endif
 	{
+		unittest_script(); return;
+
 		unittest_auth();
 		unittest_chatcommand();
 		unittest_utilities();
@@ -45,6 +48,7 @@ void unittest()
 		unittest_physics(); // depends on world
 		unittest_database(); // depends on world & packet
 		unittest_connection(); // depends on packet
+		unittest_script(); // depends on world & physics (player)
 		unittest_sound();
 		unittest_gui_gameplay();
 

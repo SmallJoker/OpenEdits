@@ -64,6 +64,27 @@ else()
 endif()
 
 
+# Scripting support (optional for now)
+
+find_package(LuaJIT)
+set(HAVE_LUA FALSE)
+
+if(LUAJIT_FOUND)
+	message("--- Found LuaJIT")
+	set(HAVE_LUA TRUE)
+else()
+	find_package(Lua51) # -> LUA51_FOUND
+	if(LUA51_FOUND)
+		message("--- Found Lua: ${LUA_VERSION_STRING}")
+		set(HAVE_LUA TRUE)
+	endif()
+endif()
+
+if(NOT HAVE_LUA)
+	message(WARNING "Lua not found. Will be required soon.")
+endif()
+
+
 ### Compiler options
 
 # Is there no easier way?
@@ -91,6 +112,7 @@ else()
 
 	set(CMAKE_SHARED_LINKER_FLAGS "-Wl,--no-undefined")
 endif()
+
 
 ### Inline version information
 
@@ -161,6 +183,14 @@ if(OPENAL_FOUND)
 	endif()
 endif()
 
+if(HAVE_LUA)
+	add_compile_definitions(HAVE_LUA)
+	include_directories(${LUA_INCLUDE_DIR})
+	target_link_libraries(${PROJECT_NAME}
+		${LUA_LIBRARIES} # FindLua51
+		${LUA_LIBRARY}   # FindLuaJIT
+	)
+endif()
 
 if(MSVC)
 	# For ENet

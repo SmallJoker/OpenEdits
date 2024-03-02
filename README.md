@@ -134,7 +134,8 @@ Code: [LGPL 2.1](LICENSE.txt)+
 
  * [minimp3](https://github.com/lieff/minimp3) (CC 0), used in GUI builds only
  * [SHA3IUF](https://github.com/brainhub/SHA3IUF) (MIT)
-
+ * [FindENet.cmake](https://www.orxonox.net/browser/code/trunk/cmake/tools) (GPL 2)
+ * [FindLuaJIT.cmake](https://github.com/minetest/minetest/tree/master/cmake/Modules) (LGPL 2.1+)
 
 ### Fonts
 
