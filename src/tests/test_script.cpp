@@ -3,6 +3,7 @@
 
 #ifdef HAVE_LUA
 
+#include "core/blockmanager.h"
 #include "core/connection.h" // PROTOCOL_VERSION_*
 #include "core/script.h"
 #include "server/remoteplayer.h"
@@ -10,13 +11,17 @@
 
 void unittest_script()
 {
-	Script script;
+	BlockManager bmgr;
+	Script script(&bmgr);
 	script.init();
-	script.loadFromFile("assets/scripts/main.lua");
+	CHECK(script.loadFromFile("assets/scripts/main.lua"));
 
 	RemotePlayer p(12345, PROTOCOL_VERSION_MAX);
-	CHECK(script.loadDefinition(666));
-	//script.whileIntersecting(&p);
+	script.setPlayer(&p);
+
+	Script::IntersectionData id;
+	id.block_id = 12;
+	script.whileIntersecting(id);
 
 }
 
