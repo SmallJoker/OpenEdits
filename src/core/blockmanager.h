@@ -90,6 +90,10 @@ struct BlockProperties {
 	#define BP_COLLIDE_CALLBACK(name) \
 		BlockProperties::CollisionType (name)(Player &player, blockpos_t pos, bool is_x)
 	BP_COLLIDE_CALLBACK(*onCollide) = nullptr;
+
+	// Lua callbacks. Make sure to update `Script::close` too.
+	int ref_on_intersect = -2; // LUA_NOREF
+	int ref_on_collide = -2; // LUA_NOREF
 };
 
 class BlockManager {
@@ -107,10 +111,19 @@ public:
 	void setDriver(video::IVideoDriver *driver);
 	void populateTextures();
 
-	const BlockProperties *getProps(bid_t block_id) const;
+	// Blocks
+	const BlockProperties *getProps(bid_t block_id) const;;
 	const std::vector<BlockProperties *> &getProps() const { return m_props; }
-	BlockPack *getPack(const std::string &name);
+
+	// Only for Script
+	BlockProperties *getPropsForModification(bid_t block_id) const;
+	std::vector<BlockProperties *> &getPropsForModification() { return m_props; }
+
+	// Packs
+	const BlockPack *getPack(const std::string &name) const;
 	const std::vector<BlockPack *> &getPacks() { return m_packs; }
+
+	// Client
 	video::ITexture *getMissingTexture() { return m_missing_texture; }
 
 private:

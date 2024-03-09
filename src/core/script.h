@@ -3,6 +3,7 @@
 #include "types.h" // bid_t
 #include <string>
 
+struct BlockProperties;
 struct lua_State;
 class BlockManager;
 class Player;
@@ -13,18 +14,27 @@ public:
 	~Script();
 
 	bool init();
+	void close();
 	bool loadFromFile(const std::string &filename);
 
 	bool loadDefinition(bid_t block_id);
 
 	void setPlayer(Player *player) { m_player = player; }
 
-	struct IntersectionData {
-		float dtime;
-		bid_t block_id;
+	/// Setter for `env.test_mode` (unittests)
+	void setTestMode(const std::string &value);
+
+	void onIntersect(const BlockProperties *props);
+
+	struct CollisionInfo {
+		const BlockProperties *props = nullptr;
 		blockpos_t pos;
+		bool is_x = false;
 	};
-	void whileIntersecting(IntersectionData &id);
+	/// Returns a valid value of BlockProperties::CollisionType
+	int onCollide(CollisionInfo ci);
+
+	bool do_load_string_n_table = false;
 
 private:
 
@@ -35,8 +45,6 @@ private:
 	static int l_player_get_pos(lua_State *L);
 	static int l_player_set_pos(lua_State *L);
 
-
-	std::vector<int> m_ref_while_intersecting;
 	lua_State *m_lua = nullptr;
 	BlockManager *m_bmgr = nullptr;
 	Player *m_player = nullptr;

@@ -102,113 +102,18 @@ static lua_Integer check_field_int(lua_State *L, int idx, const char *field)
 	return ret;
 }
 
-// -------------- Static Script class functions -------------
-
-// yet unused!
-int Script::l_register_pack(lua_State *L)
-{
-	Script *script = get_script(L);
-
-	const char *name = check_field_string(L, -1, "name");
-	auto pack = std::make_unique<BlockPack>(name);
-
-	lua_getfield(L, -1, "blocks");
-	{
-		int table = lua_gettop(L);
-		lua_pushnil(L);
-		while (lua_next(L, table)){
-			// key @ -2, value @ -1
-			int id = check_field_int(L, -1, "id");
-			pack->block_ids.push_back(id);
-			lua_pop(L, 1); // value
-		}
-	}
-	lua_pop(L, 1); // table
-
-	DEBUGLOG("register pack: %s\n", pack->name.c_str());
-	//script->m_bmgr->registerPack(pack.release());
-	return 0;
-}
-
-int Script::l_register_block(lua_State *L)
-{
-	Script *script = get_script(L);
-
-	lua_getfield(L, -1, "id");
-	bid_t block_id = luaL_checkinteger(L, -1);
-	lua_pop(L, 1);
-
-	lua_getfield(L, -1, "while_intersecting");
-	if (!lua_isnil(L, -1) || block_id == 0) {
-		luaL_checktype(L, -1, LUA_TFUNCTION);
-
-		auto &reg = script->m_ref_while_intersecting;
-		if (block_id >= reg.size())
-			reg.resize(block_id + 200);
-
-		int ref = luaL_ref(L, LUA_REGISTRYINDEX); // pops value
-		if (ref > 0) {
-			reg[block_id] = ref;
-		} else {
-			ERRORLOG("Failed to create Lua ref for %i\n", block_id);
-		}
-	}
-	DEBUGLOG("Lua registered block_id=%i\n", block_id);
-	return 0;
-}
-
-static void push_v2f(lua_State *L, core::vector2df vec)
-{
-	lua_pushnumber(L, vec.X);
-	lua_pushnumber(L, vec.Y);
-}
-
-static void pull_v2f(lua_State *L, int idx, core::vector2df &vec)
-{
-	if (!lua_isnil(L, idx))
-		vec.X = luaL_checknumber(L, idx);
-	if (!lua_isnil(L, idx + 1))
-		vec.Y = luaL_checknumber(L, idx + 1);
-}
-
-int Script::l_player_get_pos(lua_State *L)
-{
-	Player *player = get_script(L)->m_player;
-	if (!player)
-		return 0;
-
-	push_v2f(L, player->pos);
-	return 2;
-}
-
-int Script::l_player_set_pos(lua_State *L)
-{
-	Player *player = get_script(L)->m_player;
-	if (player)
-		pull_v2f(L, 1, player->pos);
-	return 0;
-}
-
-
 // -------------- Script class functions -------------
 
-Script::Script(BlockManager *bmgr)
+Script::Script(BlockManager *bmgr) :
+	m_bmgr(bmgr)
 {
-	m_bmgr = bmgr;
+	ASSERT_FORCED(m_bmgr, "Missing BlockManager");
 }
 
 
 Script::~Script()
 {
-	if (m_lua) {
-		for (int ref : m_ref_while_intersecting) {
-			if (ref != 0)
-				luaL_unref(m_lua, LUA_REGISTRYINDEX, ref);
-		}
-
-		lua_close(m_lua);
-		m_lua = nullptr;
-	}
+	close();
 }
 
 static const std::string G_WHITELIST[] = {
@@ -269,8 +174,11 @@ bool Script::init()
 	process_api_whitelist(L);
 
 	luaopen_math(L);
-	luaopen_string(L); // not really needed
-	luaopen_table(L);
+	if (do_load_string_n_table) {
+		// not really needed but helpful for tests
+		luaopen_string(L);
+		luaopen_table(L);
+	}
 
 	// The most important functions
 	lua_atpanic(L, l_panic);
@@ -310,8 +218,29 @@ bool Script::init()
 	lua_setglobal(L, "env");
 
 #undef FIELD_SET_FUNC
+	puts("--> Lua start");
 
 	return true;
+}
+
+void Script::close()
+{
+	if (!m_lua)
+		return;
+
+	puts("<-- Lua stop");
+
+	auto &list = m_bmgr->getPropsForModification();
+	// Unregister any callbacks. `lua_close` will clean up the references
+	for (BlockProperties *props : list) {
+		if (!props)
+			continue;
+		props->ref_on_intersect = LUA_REFNIL;
+		props->ref_on_collide = LUA_REFNIL;
+	}
+
+	lua_close(m_lua);
+	m_lua = nullptr;
 }
 
 
@@ -361,36 +290,196 @@ bool Script::loadDefinition(bid_t block_id)
 	return true;
 }
 
-
-void Script::whileIntersecting(IntersectionData &id)
+void Script::setTestMode(const std::string &value)
 {
 	lua_State *L = m_lua;
 
-	bid_t block_id = id.block_id;
-	if (id.block_id >= m_ref_while_intersecting.size()
-			|| m_ref_while_intersecting[block_id] == 0) {
-		// no callback registered: fall back to air
-		block_id = 0;
+	lua_getglobal(L, "env");
+	lua_pushlstring(L, value.c_str(), value.size());
+	lua_setfield(L, -2, "test_mode");
+	lua_pop(L, 1); // env
+}
+
+void Script::onIntersect(const BlockProperties *props)
+{
+	lua_State *L = m_lua;
+
+	if (!props || props->ref_on_intersect < 0) {
+		// no callback registered: fall-back to air
+		props = m_bmgr->getProps(0);
 	}
 
-	// replacement for BlockDefinition::step
-	// push a reference (table or userdata) to modify
-
+	int top = lua_gettop(L);
 	// Function call prepration
 	// This is faster than calling a getter function
-	lua_rawgeti(L, LUA_REGISTRYINDEX, m_ref_while_intersecting.at(block_id));
+	lua_rawgeti(L, LUA_REGISTRYINDEX, props->ref_on_intersect);
 	luaL_checktype(L, -1, LUA_TFUNCTION);
 	// Execute!
 	if (lua_pcall(L, 0, 0, 0)) {
-		ERRORLOG("Lua: def for block_id=%d failed: %s\n",
-			block_id,
+		ERRORLOG("Lua: on_intersect pack='%s' failed: %s\n",
+			props->pack->name.c_str(),
 			lua_tostring(L, -1)
 		);
-		lua_pop(L, 2 + 1);
+		lua_settop(L, top); // function + error msg
 		return;
 	}
 
-	lua_pop(L, 2); // registryindex + function
+	lua_settop(L, top);
+}
+
+int Script::onCollide(CollisionInfo ci)
+{
+	lua_State *L = m_lua;
+	using BPCT = BlockProperties::CollisionType;
+	int collision_type = (int)BPCT::None;
+
+	if (!ci.props || ci.props->ref_on_collide < 0)
+		return collision_type;
+
+	int top = lua_gettop(L);
+	lua_rawgeti(L, LUA_REGISTRYINDEX, ci.props->ref_on_collide);
+	luaL_checktype(L, -1, LUA_TFUNCTION);
+	lua_pushinteger(L, ci.pos.X);
+	lua_pushinteger(L, ci.pos.Y);
+	lua_pushboolean(L, ci.is_x);
+	// Execute!
+	if (lua_pcall(L, 3, 1, 0)) {
+		ERRORLOG("Lua: on_collide pack='%s' failed: %s\n",
+			ci.props->pack->name.c_str(),
+			lua_tostring(L, -1)
+		);
+		lua_settop(L, top);
+		return collision_type;
+	}
+
+	if (lua_isnumber(L, -1))
+		collision_type = lua_tonumber(L, -1);
+	else
+		collision_type = -1; // invalid
+
+	switch (collision_type) {
+		case (int)BPCT::None:
+		case (int)BPCT::Velocity:
+		case (int)BPCT::Position:
+			// good
+			break;
+		default:
+			collision_type = 0;
+			ERRORLOG("Lua: invalid collision in pack='%s'\n",
+				ci.props->pack->name.c_str()
+			);
+			break;
+	}
+	lua_settop(L, top);
+
+	return collision_type;
+}
+
+// -------------- Static Script class functions -------------
+
+// yet unused!
+int Script::l_register_pack(lua_State *L)
+{
+	Script *script = get_script(L);
+
+	const char *name = check_field_string(L, -1, "name");
+	auto pack = std::make_unique<BlockPack>(name);
+
+	lua_getfield(L, -1, "blocks");
+	{
+		int table = lua_gettop(L);
+		lua_pushnil(L);
+		while (lua_next(L, table)){
+			// key @ -2, value @ -1
+			int id = check_field_int(L, -1, "id");
+			pack->block_ids.push_back(id);
+			lua_pop(L, 1); // value
+		}
+	}
+	lua_pop(L, 1); // table
+
+	DEBUGLOG("register pack: %s\n", pack->name.c_str());
+	//script->m_bmgr->registerPack(pack.release());
+	return 0;
+}
+
+/// true on success
+static bool function_to_ref(lua_State *L, int &ref)
+{
+	luaL_checktype(L, -1, LUA_TFUNCTION);
+	if (ref >= 0)
+		luaL_unref(L, LUA_REGISTRYINDEX, ref);
+
+	ref = luaL_ref(L, LUA_REGISTRYINDEX); // pops value
+	return ref >= 0;
+}
+
+int Script::l_register_block(lua_State *L)
+{
+	Script *script = get_script(L);
+
+	lua_getfield(L, -1, "id");
+	bid_t block_id = luaL_checkinteger(L, -1);
+	lua_pop(L, 1);
+
+	BlockProperties *props = script->m_bmgr->getPropsForModification(block_id);
+	if (!props)
+		return luaL_error(L, "block_id=%i not found", block_id);
+
+	lua_getfield(L, -1, "on_intersect");
+	if (!lua_isnil(L, -1) || block_id == 0) {
+		bool ok = function_to_ref(L, props->ref_on_intersect);
+		if (!ok) {
+			ERRORLOG("Lua %s ref failed: block_id= %i\n", lua_tostring(L, -2), block_id);
+		}
+	} else {
+		lua_pop(L, 1);
+	}
+
+	lua_getfield(L, -1, "on_collide");
+	if (!lua_isnil(L, -1) || block_id == 0) {
+		bool ok = function_to_ref(L, props->ref_on_collide);
+		if (!ok) {
+			ERRORLOG("Lua %s ref failed: block_id= %i\n", lua_tostring(L, -2), block_id);
+		}
+	} else {
+		lua_pop(L, 1);
+	}
+
+	DEBUGLOG("Lua registered block_id=%i\n", block_id);
+	return 0;
+}
+
+static void push_v2f(lua_State *L, core::vector2df vec)
+{
+	lua_pushnumber(L, vec.X);
+	lua_pushnumber(L, vec.Y);
+}
+
+static void pull_v2f(lua_State *L, int idx, core::vector2df &vec)
+{
+	if (!lua_isnil(L, idx))
+		vec.X = luaL_checknumber(L, idx);
+	if (!lua_isnil(L, idx + 1))
+		vec.Y = luaL_checknumber(L, idx + 1);
+}
+
+int Script::l_player_get_pos(lua_State *L)
+{
+	Player *player = get_script(L)->m_player;
+	if (!player)
+		return 0;
+
+	push_v2f(L, player->pos);
+	return 2;
+}
+
+int Script::l_player_set_pos(lua_State *L)
+{
+	Player *player = get_script(L)->m_player;
+	if (player)
+		pull_v2f(L, 1, player->pos);
+	return 0;
 }
 
 #endif

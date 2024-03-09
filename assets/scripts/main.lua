@@ -3,6 +3,7 @@
 --[[
 env.player = <userdata>
 env.API_VERSION = 1
+env.test_mode = string/nil (used by unittest)
 env.register_block(def)
 ]]
 
@@ -13,25 +14,34 @@ JUMP_SPEED =  60 -- m/s  for use in callbacks
 
 env.register_block({
 	id = 0,
-	while_intersecting = function()
+	on_intersect = function()
+		-- TODO
+	end,
+	on_collide = function()
+		-- TODO
 	end
 })
 
 env.register_block({
-	id = 12,
+	id = 2,
 	-- name = "boost:up"
 	-- texture_start_index = 3,
 	-- params (types)
 	-- tiles (0 .. 7)
-	while_intersecting = function()
+	on_intersect = function()
 		local px, py = env.player.get_pos()
-		px = px + 12345
-		py = py + 1
-		env.player.set_pos(nil, py)
+		if env.test_mode == "set_pos" then
+			px = px + 12345
+			py = py + 1
+			env.player.set_pos(nil, py)
 
-		px, py = env.player.get_pos()
-		print(px, py)
-	end
+			px, py = env.player.get_pos()
+			print(px, py)
+		end
+	end,
+	on_collide = function(bx, by, is_x)
+		print("collide", by, by, is_x)
+	end,
 })
 
 

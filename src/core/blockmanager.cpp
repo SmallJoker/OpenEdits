@@ -289,7 +289,21 @@ const BlockProperties *BlockManager::getProps(bid_t block_id) const
 	return m_props[block_id];
 }
 
-BlockPack *BlockManager::getPack(const std::string &name)
+BlockProperties *BlockManager::getPropsForModification(bid_t block_id) const
+{
+	if (m_populated) {
+		fprintf(stderr, "BlockManager: Cannot modify blocks. Already in use.");
+		return nullptr;
+	}
+
+	if (block_id >= m_props.size())
+		return nullptr;
+
+	return m_props[block_id];
+}
+
+
+const BlockPack *BlockManager::getPack(const std::string &name) const
 {
 	for (auto p : m_packs) {
 		if (p->name == name)
