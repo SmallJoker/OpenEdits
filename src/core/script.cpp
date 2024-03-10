@@ -11,7 +11,7 @@ extern "C" {
 	#include <lualib.h>
 }
 
-#if 1
+#if 0
 	#define DEBUGLOG(...) printf(__VA_ARGS__)
 #else
 	#define DEBUGLOG(...) /* SILENCE */
@@ -212,12 +212,19 @@ bool Script::init()
 		{
 			FIELD_SET_FUNC(player_, get_pos);
 			FIELD_SET_FUNC(player_, set_pos);
+			FIELD_SET_FUNC(player_, get_acc);
+			FIELD_SET_FUNC(player_, set_acc);
 		}
 		lua_setfield(L, -2, "player");
 	}
 	lua_setglobal(L, "env");
 
 #undef FIELD_SET_FUNC
+	if (!do_load_string_n_table) {
+		lua_pushnil(L);
+		lua_setglobal(L, "_G");
+	}
+
 	puts("--> Lua start");
 
 	return true;
@@ -300,11 +307,17 @@ void Script::setTestMode(const std::string &value)
 	lua_pop(L, 1); // env
 }
 
+
+bool Script::haveOnIntersect(const BlockProperties *props) const
+{
+	return props && props->ref_on_intersect >= 0;
+}
+
 void Script::onIntersect(const BlockProperties *props)
 {
 	lua_State *L = m_lua;
 
-	if (!props || props->ref_on_intersect < 0) {
+	if (!haveOnIntersect(props)) {
 		// no callback registered: fall-back to air
 		props = m_bmgr->getProps(0);
 	}
@@ -327,14 +340,20 @@ void Script::onIntersect(const BlockProperties *props)
 	lua_settop(L, top);
 }
 
+
+bool Script::haveOnCollide(const BlockProperties *props) const
+{
+	return props && props->ref_on_collide >= 0;
+}
+
 int Script::onCollide(CollisionInfo ci)
 {
 	lua_State *L = m_lua;
-	using BPCT = BlockProperties::CollisionType;
-	int collision_type = (int)BPCT::None;
+	using CT = BlockProperties::CollisionType;
+	int collision_type = (int)CT::None;
 
-	if (!ci.props || ci.props->ref_on_collide < 0)
-		return collision_type;
+	if (!haveOnCollide(ci.props))
+		return collision_type; // should not be returned: incorrect on solids
 
 	int top = lua_gettop(L);
 	lua_rawgeti(L, LUA_REGISTRYINDEX, ci.props->ref_on_collide);
@@ -344,7 +363,7 @@ int Script::onCollide(CollisionInfo ci)
 	lua_pushboolean(L, ci.is_x);
 	// Execute!
 	if (lua_pcall(L, 3, 1, 0)) {
-		ERRORLOG("Lua: on_collide pack='%s' failed: %s\n",
+		ERRORLOG("Script: on_collide pack='%s' failed: %s\n",
 			ci.props->pack->name.c_str(),
 			lua_tostring(L, -1)
 		);
@@ -358,14 +377,17 @@ int Script::onCollide(CollisionInfo ci)
 		collision_type = -1; // invalid
 
 	switch (collision_type) {
-		case (int)BPCT::None:
-		case (int)BPCT::Velocity:
-		case (int)BPCT::Position:
+		case (int)CT::None:
+		case (int)CT::Velocity:
+		case (int)CT::Position:
 			// good
+			DEBUGLOG("Script: collision_type=%i, pos=(%i,%i), dir=%s\n",
+				collision_type, ci.pos.X, ci.pos.Y, ci.is_x ? "X" : "Y"
+			);
 			break;
 		default:
 			collision_type = 0;
-			ERRORLOG("Lua: invalid collision in pack='%s'\n",
+			ERRORLOG("Script: invalid collision in pack='%s'\n",
 				ci.props->pack->name.c_str()
 			);
 			break;
@@ -427,7 +449,7 @@ int Script::l_register_block(lua_State *L)
 		return luaL_error(L, "block_id=%i not found", block_id);
 
 	lua_getfield(L, -1, "on_intersect");
-	if (!lua_isnil(L, -1) || block_id == 0) {
+	if (!lua_isnil(L, -1)) {
 		bool ok = function_to_ref(L, props->ref_on_intersect);
 		if (!ok) {
 			ERRORLOG("Lua %s ref failed: block_id= %i\n", lua_tostring(L, -2), block_id);
@@ -437,7 +459,7 @@ int Script::l_register_block(lua_State *L)
 	}
 
 	lua_getfield(L, -1, "on_collide");
-	if (!lua_isnil(L, -1) || block_id == 0) {
+	if (!lua_isnil(L, -1)) {
 		bool ok = function_to_ref(L, props->ref_on_collide);
 		if (!ok) {
 			ERRORLOG("Lua %s ref failed: block_id= %i\n", lua_tostring(L, -2), block_id);
@@ -479,6 +501,24 @@ int Script::l_player_set_pos(lua_State *L)
 	Player *player = get_script(L)->m_player;
 	if (player)
 		pull_v2f(L, 1, player->pos);
+	return 0;
+}
+
+int Script::l_player_get_acc(lua_State *L)
+{
+	Player *player = get_script(L)->m_player;
+	if (!player)
+		return 0;
+
+	push_v2f(L, player->acc);
+	return 2;
+}
+
+int Script::l_player_set_acc(lua_State *L)
+{
+	Player *player = get_script(L)->m_player;
+	if (player)
+		pull_v2f(L, 1, player->acc);
 	return 0;
 }
 

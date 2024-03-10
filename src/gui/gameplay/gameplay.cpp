@@ -57,7 +57,9 @@ void SceneGameplay::OnOpen()
 {
 	m_gamecmd.initialize(m_gui->getClient());
 
+	m_drag_draw_block = BlockUpdate(g_blockmanager);
 	m_drag_draw_block.set(Block::ID_INVALID);
+
 	if (!m_soundplayer)
 		m_soundplayer = new SoundPlayer(false);
 }

@@ -1,8 +1,10 @@
 #include "client.h"
 #include "localplayer.h"
 #include "core/auth.h"
+#include "core/blockmanager.h"
 #include "core/connection.h"
 #include "core/packet.h"
+#include "core/script.h"
 
 #if 0
 	#define DEBUGLOG(...) printf(__VA_ARGS__)
@@ -35,6 +37,21 @@ Client::Client(ClientStartData &init) :
 		ASSERT_FORCED(PACKET_ACTIONS_MAX == (int)Packet2Client::MAX_END, "Packet handler mismatch");
 	}
 
+#ifdef HAVE_LUA
+	if (1)
+#else
+	if (0)
+#endif
+	{
+		m_script = new Script(m_bmgr);
+		m_script->init();
+		// TODO: receive from server
+		if (!m_script->loadFromFile("assets/scripts/main.lua")) {
+			delete m_script;
+			m_script = nullptr;
+		}
+	}
+
 	m_pos_send_timer.set(POSITION_SEND_INTERVAL);
 }
 
@@ -49,6 +66,17 @@ Client::~Client()
 		for (auto it : m_players)
 			delete it.second;
 		m_players.clear();
+	}
+
+	if (m_script) {
+		delete m_script;
+		m_script = nullptr;
+	}
+
+	if (m_bmgr == g_blockmanager) {
+		// restore for reconnect
+		delete g_blockmanager;
+		g_blockmanager = new BlockManager();
 	}
 
 	delete m_con;
@@ -305,15 +333,6 @@ PtrLock<LocalPlayer> Client::getMyPlayer()
 PtrLock<decltype(Client::m_players)> Client::getPlayerList()
 {
 	m_players_lock.lock();
-
-#if 0
-	std::vector<std::string> list;
-	list.reserve(m_players.size());
-	for (auto it : m_players) {
-		list.push_back(it.second->name);
-	}
-	return list;
-#endif
 	return PtrLock<decltype(m_players)>(m_players_lock, &m_players);
 }
 

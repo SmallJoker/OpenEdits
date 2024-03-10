@@ -17,8 +17,8 @@ void unittest_script()
 	Script script(&bmgr);
 	script.do_load_string_n_table = true;
 	CHECK(script.init());
-	CHECK(script.loadFromFile("assets/scripts/main.lua"));
 	script.setTestMode("init");
+	CHECK(script.loadFromFile("assets/scripts/main.lua"));
 
 	RemotePlayer p(12345, PROTOCOL_VERSION_MAX);
 	script.setPlayer(&p);

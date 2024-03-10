@@ -44,9 +44,9 @@ void Client::pkt_Hello(Packet &pkt)
 
 	pkt.data_version = m_protocol_version; // for bmgr->read
 
-	auto player = new LocalPlayer(m_my_peer_id);
+	auto player = std::make_unique<LocalPlayer>(m_my_peer_id);
 	m_start_data.nickname = player->name = pkt.readStr16();
-	m_players.emplace(m_my_peer_id, player);
+	m_players.emplace(m_my_peer_id, player.release());
 
 	// Load the server's block properties
 	m_bmgr->read(pkt);
@@ -173,7 +173,7 @@ void Client::pkt_WorldData(Packet &pkt)
 	RefCnt<World> world;
 	if (world_old) {
 		// Already joined
-		world = std::make_shared<World>(world_old.get());
+		world = world_old;
 	} else {
 		world = std::make_shared<World>(m_bmgr, m_world_id);
 	}
@@ -223,6 +223,7 @@ void Client::pkt_Join(Packet &pkt)
 	}
 	player = getPlayerNoLock(peer_id);
 	player->setWorld(getWorld());
+	player->setScript(m_script);
 
 	player->name = pkt.readStr16();
 	player->setGodMode(pkt.read<u8>());

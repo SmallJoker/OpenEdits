@@ -180,6 +180,9 @@ static BP_COLLIDE_CALLBACK(onCollide_b10_bouncy)
 
 void BlockManager::doPackRegistration()
 {
+	if (!m_packs.empty())
+		return;
+
 	{
 		BlockPack *pack = new BlockPack("basic");
 		pack->default_type = BlockDrawType::Solid;

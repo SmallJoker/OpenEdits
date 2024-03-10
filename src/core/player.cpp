@@ -2,6 +2,7 @@
 #include "blockmanager.h"
 #include "macros.h" // ASSERT_FORCED
 #include "packet.h"
+#include "script.h"
 #include "utils.h"
 #include "world.h"
 #include <rect.h>
@@ -169,6 +170,8 @@ void Player::step(float dtime)
 	did_jerk = false;
 
 	//printf("dtime: %g, v=%g, a=%g\n", dtime, vel.getLength(), acc.getLength());
+	if (m_script)
+		m_script->setPlayer(this);
 
 	// Maximal travel distance per iteration
 	while (true) {
@@ -347,9 +350,17 @@ bool Player::stepCollisions(float dtime)
 
 	auto props = m_world->getBlockMgr()->getProps(block.id);
 	// single block effect
-	if (props && props->step) {
-		props->step(*this, bp);
-
+	bool handled = false;
+	if (props) {
+		if (m_script && m_script->haveOnIntersect(props)) {
+			m_script->onIntersect(props);
+			handled = true;
+		} else if (props->step) {
+			props->step(*this, bp);
+			handled = true;
+		}
+	}
+	if (handled) {
 		// Position changes (e.g. portal)
 		blockpos_t bp2(pos.X + 0.5f, pos.Y + 0.5f);
 		if (bp != bp2)
@@ -393,7 +404,11 @@ void Player::collideWith(float dtime, int x, int y)
 	auto props = m_world->getBlockMgr()->getProps(b.id);
 	if (!props)
 		return;
-	if (props->getTile(b).type != BlockDrawType::Solid && !props->onCollide)
+
+	bool have_on_collide_script = m_script && m_script->haveOnCollide(props);
+
+	if (props->getTile(b).type != BlockDrawType::Solid
+			&& !(props->onCollide || have_on_collide_script))
 		return;
 
 	core::rectf player(0, 0, 1, 1);
@@ -410,9 +425,16 @@ void Player::collideWith(float dtime, int x, int y)
 	const bool is_x = player.getWidth() < player.getHeight();
 
 	using CT = BlockProperties::CollisionType;
-	CT type = CT::Position;
-	if (props->onCollide)
+	CT type = CT::Position; // default for BlockDrawType::Solid
+	if (have_on_collide_script) {
+		Script::CollisionInfo ci;
+		ci.props = props;
+		ci.pos = bp;
+		ci.is_x = is_x;
+		type = (CT)m_script->onCollide(ci);
+	} else if (props->onCollide) {
 		type = props->onCollide(*this, bp, is_x);
+	}
 
 	switch (type) {
 		case CT::Position:

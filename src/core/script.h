@@ -24,6 +24,7 @@ public:
 	/// Setter for `env.test_mode` (unittests)
 	void setTestMode(const std::string &value);
 
+	bool haveOnIntersect(const BlockProperties *props) const;
 	void onIntersect(const BlockProperties *props);
 
 	struct CollisionInfo {
@@ -31,6 +32,7 @@ public:
 		blockpos_t pos;
 		bool is_x = false;
 	};
+	bool haveOnCollide(const BlockProperties *props) const;
 	/// Returns a valid value of BlockProperties::CollisionType
 	int onCollide(CollisionInfo ci);
 
@@ -44,6 +46,8 @@ private:
 	// Player API
 	static int l_player_get_pos(lua_State *L);
 	static int l_player_set_pos(lua_State *L);
+	static int l_player_get_acc(lua_State *L);
+	static int l_player_set_acc(lua_State *L);
 
 	lua_State *m_lua = nullptr;
 	BlockManager *m_bmgr = nullptr;

@@ -6,20 +6,22 @@ env.API_VERSION = 1
 env.test_mode = string/nil (used by unittest)
 env.register_block(def)
 ]]
+env.COLLISION_TYPE_POSITION = 0
+env.COLLISION_TYPE_VELOCITY = 1
+env.COLLISION_TYPE_NONE = 2
 
 -------------- Client & server script
 
-GRAVITY    = 500 -- m/s² for use in callbacks
-JUMP_SPEED =  60 -- m/s  for use in callbacks
+local GRAVITY    = 100.0 -- m/s² for use in callbacks
+local JUMP_SPEED =  30.0 -- m/s  for use in callbacks
+
+local dbgprint = env.test_mode and print or function() end
 
 env.register_block({
 	id = 0,
 	on_intersect = function()
-		-- TODO
+		env.player.set_acc(0, GRAVITY)
 	end,
-	on_collide = function()
-		-- TODO
-	end
 })
 
 env.register_block({
@@ -38,9 +40,15 @@ env.register_block({
 			px, py = env.player.get_pos()
 			print(px, py)
 		end
+		if not env.test_mode then
+			env.player.set_acc(0, -GRAVITY)
+		end
 	end,
 	on_collide = function(bx, by, is_x)
-		print("collide", by, by, is_x)
+		dbgprint("on_colllide block_id=2")
+		return env.test_mode
+			and env.COLLISION_TYPE_VELOCITY
+			or env.COLLISION_TYPE_NONE
 	end,
 })
 

@@ -72,7 +72,6 @@ Gui::Gui()
 	m_scenetype_next = SceneHandlerType::CTRL_RENEW;
 
 	ASSERT_FORCED(g_blockmanager, "Missing BlockManager");
-	g_blockmanager->setDriver(driver);
 
 	m_initialized = true;
 }
@@ -257,6 +256,8 @@ void Gui::connect(SceneConnect *sc)
 	wide_to_utf8(init.nickname, sc->nickname.c_str());
 	wide_to_utf8(init.password, sc->password.c_str());
 
+	g_blockmanager->setDriver(driver);
+	g_blockmanager->doPackRegistration();
 
 	m_client = new Client(init);
 	m_client->setEventHandler(this);

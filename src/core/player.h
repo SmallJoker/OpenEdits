@@ -10,6 +10,7 @@
 using namespace irr;
 
 class Packet;
+class Script;
 class World;
 
 struct PlayerControls {
@@ -28,6 +29,8 @@ public:
 
 	void setWorld(RefCnt<World> world);
 	RefCnt<World> getWorld() const;
+
+	void setScript(Script *script) { m_script = script; }
 
 	void readPhysics(Packet &pkt);
 	void writePhysics(Packet &pkt) const;
@@ -82,6 +85,9 @@ protected:
 
 	// Currently active world (nullptr if lobby)
 	RefCnt<World> m_world;
+
+	// For callbacks
+	Script *m_script = nullptr;
 
 	PlayerControls m_controls;
 	core::vector2d<s8> m_collision;

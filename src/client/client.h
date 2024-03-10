@@ -6,8 +6,9 @@
 #include "gameevent.h"
 #include <string>
 
-class LocalPlayer;
 class Connection;
+class LocalPlayer;
+class Script;
 
 struct ClientPacketHandler;
 enum class Packet2Server : uint16_t;
@@ -109,6 +110,7 @@ private:
 	peer_t m_my_peer_id = 0;
 
 	Auth m_auth;
+	Script *m_script = nullptr;
 };
 
 struct ClientPacketHandler {

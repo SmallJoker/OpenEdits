@@ -292,7 +292,7 @@ const BlockProperties *BlockManager::getProps(bid_t block_id) const
 BlockProperties *BlockManager::getPropsForModification(bid_t block_id) const
 {
 	if (m_populated) {
-		fprintf(stderr, "BlockManager: Cannot modify blocks. Already in use.");
+		fprintf(stderr, "BlockManager: Cannot modify blocks. Already in use.\n");
 		return nullptr;
 	}
 
