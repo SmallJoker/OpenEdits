@@ -34,7 +34,8 @@ enum ElementId : int {
 };
 
 
-SceneLobby::SceneLobby()
+SceneLobby::SceneLobby() :
+	SceneHandler(L"Lobby")
 {
 }
 
@@ -55,28 +56,19 @@ void SceneLobby::draw()
 	// only on demand
 	g_blockmanager->populateTextures();
 
-
-	core::recti rect_title(
-		core::vector2di(m_gui->window_size.Width * 0.45f, 20),
-		core::dimension2di(100, 30)
-	);
-
 	auto gui = m_gui->guienv;
 
-	auto text = gui->addStaticText(L"Lobby", rect_title);
-	text->setOverrideColor(Gui::COLOR_ON_BG);
-
-	auto rect_tc =  m_gui->getRect({10, 10}, {80, 55});
+	auto rect_tc =  m_gui->getRect({10, 5}, {80, 55});
 	auto tc = gui->addTabControl(rect_tc, 0, true, true, ID_TabsMain);
 
 	addWorldsTab(tc);
 	addFriendsTab(tc);
 
+	const core::vector2di VSPACING(0, 35);
 	{
 		// New world creation options
-		const core::vector2di VSPACING(0, 35);
 
-		auto rect_lab = m_gui->getRect({25, 70}, {10, -30});
+		auto rect_lab = m_gui->getRect({35, 70}, {10, -30});
 		auto rect_box = m_gui->getRect({0, 0}, {17, -30}) + core::vector2di(0, -35);
 		auto get_box_rect = [&] () {
 			return rect_box + rect_lab.LowerRightCorner;
@@ -118,7 +110,7 @@ void SceneLobby::draw()
 
 	{
 		// Custom world ID box
-		auto rect = m_gui->getRect({60, 75}, {15, -30});
+		auto rect = m_gui->getRect({65, 75}, {15, -30});
 		gui->addEditBox(L"", rect, true, nullptr, ID_BoxWorldID);
 
 		core::recti rect_btn(
@@ -136,20 +128,16 @@ void SceneLobby::draw()
 
 	}
 
-	// Exit server
+	auto rect_bl = m_gui->getRect({10, -5}, {-150, -30});
+	rect_bl -= VSPACING * 3 / 2;
 	{
-		auto rect_btn =  m_gui->getRect({10, 88}, {-40, -30});
+		// Change password
+		gui->addButton(rect_bl, nullptr, ID_BtnChangePass, L"Change password");
+		rect_bl += VSPACING * 3 / 2;
 
-		auto eb = gui->addButton(rect_btn, nullptr, ID_BtnDisconnect);
-		eb->setImage(m_gui->driver->getTexture("assets/textures/icon_leave.png"));
-		eb->setScaleImage(true);
-		eb->setUseAlphaChannel(true);
-	}
+		// Exit server
+		gui->addButton(rect_bl, nullptr, ID_BtnDisconnect, L"<< Disconnect");
 
-	// Change password
-	{
-		auto rect_btn =  m_gui->getRect({-10, 88}, {-150, -30});
-		gui->addButton(rect_btn, nullptr, ID_BtnChangePass, L"Change password");
 	}
 
 	m_dirty_worldlist = true;

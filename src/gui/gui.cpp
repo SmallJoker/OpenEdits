@@ -29,13 +29,6 @@ Gui::Gui()
 
 	ASSERT_FORCED(m_device, "Failed to initialize driver");
 
-	{
-		// Title bar
-		core::stringw version;
-		core::multibyteToWString(version, VERSION_STRING);
-		m_device->setWindowCaption(version.c_str());
-	}
-
 	scenemgr = m_device->getSceneManager();
 	guienv = m_device->getGUIEnvironment();
 	driver = m_device->getVideoDriver();
@@ -70,6 +63,8 @@ Gui::Gui()
 
 	m_scenetype = SceneHandlerType::Connect;
 	m_scenetype_next = SceneHandlerType::CTRL_RENEW;
+
+	setWindowTitle();
 
 	ASSERT_FORCED(g_blockmanager, "Missing BlockManager");
 
@@ -147,6 +142,7 @@ void Gui::run()
 			getHandler(m_scenetype)->OnClose();
 			m_scenetype = m_scenetype_next;
 			getHandler(m_scenetype)->OnOpen();
+			setWindowTitle();
 		}
 
 		driver->beginScene(true, true, video::SColor(0xFF000000));
@@ -232,11 +228,23 @@ SceneHandler *Gui::getHandler(SceneHandlerType type)
 	return it->second;
 }
 
+void Gui::setWindowTitle()
+{
+	core::stringw version;
+	core::multibyteToWString(version, VERSION_STRING);
+	auto it = m_handlers.find(m_scenetype);
+	if (it != m_handlers.end()) {
+		version.append(L" - ");
+		version.append(it->second->m_scene_name);
+	}
+
+	m_device->setWindowCaption(version.c_str());
+}
+
 io::IFileSystem *Gui::getFileSystem()
 {
 	return m_device->getFileSystem();
 }
-
 
 void Gui::connect(SceneConnect *sc)
 {

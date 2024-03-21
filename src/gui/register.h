@@ -4,7 +4,7 @@
 
 class SceneRegister : public SceneHandler {
 public:
-	SceneRegister() {}
+	SceneRegister();
 
 	void draw() override;
 	void step(float dtime) override {};

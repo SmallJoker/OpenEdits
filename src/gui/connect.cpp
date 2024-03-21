@@ -19,7 +19,8 @@ enum ElementId : int {
 	ID_BtnDelServer
 };
 
-SceneConnect::SceneConnect()
+SceneConnect::SceneConnect() :
+	SceneHandler(L"Connect")
 {
 
 }

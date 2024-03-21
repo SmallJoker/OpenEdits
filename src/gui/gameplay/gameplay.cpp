@@ -22,6 +22,7 @@ enum ElementId : int {
 };
 
 SceneGameplay::SceneGameplay() :
+	SceneHandler(L"Gameplay"),
 	m_drag_draw_block(g_blockmanager)
 {
 	LocalPlayer::gui_smiley_counter = 300; // Unique ID for the player SceneNode

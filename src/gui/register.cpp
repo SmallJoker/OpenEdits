@@ -16,6 +16,12 @@ enum ElementId : int {
 };
 
 
+SceneRegister::SceneRegister() :
+	SceneHandler(L"Register")
+{
+}
+
+
 // -------------- Public members -------------
 
 void SceneRegister::draw()

@@ -104,6 +104,8 @@ private:
 	Client *m_client = nullptr;
 	Server *m_server = nullptr;
 
+	void setWindowTitle();
+
 	void drawFPS();
 
 	bool m_show_debug = false;
@@ -131,7 +133,9 @@ public:
 protected:
 	friend class Gui;
 
-	SceneHandler() = default;
+	SceneHandler(const wchar_t *scene_name) :
+		m_scene_name(scene_name) {}
 
 	Gui *m_gui = nullptr;
+	const wchar_t *m_scene_name;
 };
