@@ -12,6 +12,7 @@ void unittest_script();
 void unittest_sound();
 void unittest_utilities();
 void unittest_world();
+void unittest_gui_layout(int which);
 void unittest_gui_gameplay();
 
 static auto time_start = std::chrono::steady_clock::now();
@@ -23,8 +24,12 @@ void unittest_toc(const char *name)
 {
 	// Measure precise timings
 	auto time_now = std::chrono::steady_clock::now();
-	float dtime = std::chrono::duration<float>(time_now - time_start).count();
-	printf("[%s] Timer took %.3f ms\n", name, dtime * 1000.0f);
+	double dtime = std::chrono::duration<double>(time_now - time_start).count();
+	if (dtime > 2E-3) {
+		printf("[%s] Timer took %.3f ms\n", name, dtime * 1E3);
+	} else {
+		printf("[%s] Timer took %.3f us\n", name, dtime * 1E6);
+	}
 }
 
 //#define UNITTEST_CATCH_EX
@@ -37,7 +42,8 @@ void unittest()
 	try
 #endif
 	{
-		unittest_script(); return;
+		unittest_script();
+		unittest_gui_layout(1);
 
 		unittest_auth();
 		unittest_chatcommand();

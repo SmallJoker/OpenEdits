@@ -32,7 +32,7 @@ void unittest_gui_gameplay()
 	CHECK(note == "B4");
 }
 
-#else
+#else // BUILD_CLIENT
 
 #include <stdio.h>
 
