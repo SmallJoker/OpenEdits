@@ -1,5 +1,8 @@
 #include "guilayout.h"
 
+// This adds 1 MiB to the ELF with -gdwarf
+// That's way more than expected. Where does that bloat come from? STL headers?
+
 namespace guilayout {
 
 /*

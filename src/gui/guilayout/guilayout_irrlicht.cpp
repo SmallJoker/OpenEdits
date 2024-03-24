@@ -3,7 +3,7 @@
 #include <IGUITabControl.h>
 #include <IVideoDriver.h>
 
-#if 1
+#if 0
 	#define PRINT_DBG(...) printf(__VA_ARGS__)
 #else
 	#define PRINT_DBG(...) do {} while(0)
@@ -12,9 +12,9 @@
 
 namespace guilayout {
 
-IGUIElementWrapper::IGUIElementWrapper(gui::IGUIElement *elem) :
-	m_element(elem)
+IGUIElementWrapper::IGUIElementWrapper(gui::IGUIElement *elem)
 {
+	setElement(elem);
 	if (!m_element) {
 		PRINT_DBG("+ IGUIElement (nullptr)\n");
 		return;
@@ -38,6 +38,17 @@ IGUIElementWrapper::~IGUIElementWrapper()
 	core::stringc dst;
 	core::wStringToUTF8(dst, m_element->getTypeName());
 	PRINT_DBG("- IGUIElement %s\n", dst.c_str());
+
+	m_element->drop();
+}
+
+void IGUIElementWrapper::setElement(gui::IGUIElement *elem)
+{
+	if (m_element)
+		m_element->drop();
+
+	elem->grab();
+	m_element = elem;
 }
 
 void IGUIElementWrapper::updatePosition()

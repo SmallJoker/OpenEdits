@@ -1,8 +1,10 @@
 #include "connect.h"
+#include "guilayout/guilayout_irrlicht.h"
 #include <IGUIButton.h>
 #include <IGUIEditBox.h>
 #include <IGUIEnvironment.h>
 #include <IGUIFont.h>
+#include <IGUIImage.h>
 #include <IGUIListBox.h>
 #include <IGUIStaticText.h>
 #include <IVideoDriver.h>
@@ -27,8 +29,10 @@ SceneConnect::SceneConnect() :
 
 // -------------- Public members -------------
 
+static guilayout::Table layout_root;
 void SceneConnect::OnClose()
 {
+	layout_root.clear();
 	if (record_login) {
 		record_login = false;
 
@@ -68,107 +72,171 @@ end:
 	return;
 }
 
+static u16 BUTTON_H = 20;
+
+static void set_text_props(guilayout::IGUIElementWrapper *w)
+{
+	w->expand = { 0, 0 };
+	w->margin = { 1, 1, 1, 0 };
+	w->min_size = { 100, BUTTON_H }; // for Y center
+}
+
+static void set_field_props(guilayout::IGUIElementWrapper *w)
+{
+	w->expand = { 2, 1 };
+	w->margin = { 1, 1, 1, 1 };
+	w->min_size = { 150, (u16)(BUTTON_H * 1.5) }; // for Y center
+}
+
 void SceneConnect::draw()
 {
-	auto gui = m_gui->guienv;
+	using namespace guilayout;
+	using WRAP = guilayout::IGUIElementWrapper;
 
-	auto rect_1 = m_gui->getRect({50, 15}, {-160, -30});
+	Table &root = layout_root;
+	root.clear();
+	root.setSize(3, 5);
+	root.col(0)->weight = 3;
+	root.col(2)->weight = 3;
+	root.row(4)->weight = 3;
+
+	auto gui = m_gui->guienv;
+	core::recti norect;
+	core::vector2di nopos;
 
 	{
 		// Logo
 		auto texture = gui->getVideoDriver()->getTexture("assets/logo.png");
 		auto dim = texture->getOriginalSize();
 
-		core::vector2di pos = rect_1.getCenter() - core::vector2di(rect_1.getWidth() + dim.Width, dim.Height) / 2;
-		gui->addImage(texture, pos, false, 0, -1, L"test test");
-
-		rect_1 += core::vector2di(0, dim.Height);
+		auto *i_img = gui->addImage(texture, nopos, false, 0, -1, L"test test");
+		auto *g_img = root.add<WRAP>(1, 1, i_img);
+		g_img->expand = { 0, 0 };
+		g_img->margin = { 1, 1, 1, 1 };
+		g_img->min_size = { (u16)dim.Width, (u16)dim.Height };
+		//ge->fixed_aspect_ratio = true;
 	}
 
+	Table *table_prompt = root.add<Table>(1, 2);
+	table_prompt->setSize(3, 3);
 
-	// Label column
-	rect_1 += core::vector2di(-120 * 2, -30);
-	// Editbox column
-	auto rect_2 =  [&rect_1]() {
-		return rect_1 + core::vector2di(120, -5);
-	};
-
-	// Side button
-	auto rect_3 =  [&rect_1]() {
-		return rect_1 + core::vector2di(120 + 180, -5);
-	};
-
-	const core::vector2di VSPACING(0, 50);
+	u16 column = 0;
 
 	{
+		auto *i_text = gui->addStaticText(L"Username", norect, false, false);
+		i_text->setOverrideColor(Gui::COLOR_ON_BG);
+		auto *g_text = table_prompt->add<WRAP>(0, column, i_text);
 
-		gui->addButton(
-			rect_3(), nullptr, ID_BtnHost, L"Host");
-	}
+		auto *i_box = gui->addEditBox(
+			nickname.c_str(), norect, true, nullptr, ID_BoxNickname);
+		auto *g_box = table_prompt->add<WRAP>(1, column, i_box);
 
-	{
-		auto text_a = gui->addStaticText(L"Username", rect_1, false, false);
-		text_a->setOverrideColor(Gui::COLOR_ON_BG);
+		auto *i_btn = gui->addButton(norect, nullptr, ID_BtnHost, L"Host");
+		auto *g_btn = table_prompt->add<WRAP>(2, column, i_btn);
 
-		gui->addEditBox(
-			nickname.c_str(), rect_2(), true, nullptr, ID_BoxNickname);
+		set_text_props(g_text);
+		set_field_props(g_box);
+		set_field_props(g_btn);
 
-		rect_1 += VSPACING;
+		column++;
 	}
 
 	{
-		auto text_a = gui->addStaticText(L"Password", rect_1, false, false);
-		text_a->setOverrideColor(Gui::COLOR_ON_BG);
+		auto i_text = gui->addStaticText(L"Password", norect, false, false);
+		i_text->setOverrideColor(Gui::COLOR_ON_BG);
+		auto *g_text = table_prompt->add<WRAP>(0, column, i_text);
 
-		auto e = gui->addEditBox(
-			password.c_str(), rect_2(), true, nullptr, ID_BoxPassword);
-		e->setPasswordBox(true);
+		auto *i_box = gui->addEditBox(
+			password.c_str(), norect, true, nullptr, ID_BoxPassword);
+		i_box->setPasswordBox(true);
+		auto *g_box = table_prompt->add<WRAP>(1, column, i_box);
 
-		rect_1 += VSPACING;
+		set_text_props(g_text);
+		set_field_props(g_box);
+
+		column++;
 	}
 
 	{
-		auto text_a = gui->addStaticText(L"Address", rect_1, false, false);
-		text_a->setOverrideColor(Gui::COLOR_ON_BG);
+		auto i_text = gui->addStaticText(L"Address", norect, false, false);
+		i_text->setOverrideColor(Gui::COLOR_ON_BG);
+		auto *g_text = table_prompt->add<WRAP>(0, column, i_text);
 
 		core::stringw str;
 
-		gui->addEditBox(
-			address.c_str(), rect_2(), true, nullptr, ID_BoxAddress);
+		auto *i_box = gui->addEditBox(
+			address.c_str(), norect, true, nullptr, ID_BoxAddress);
+		auto *g_box = table_prompt->add<WRAP>(1, column, i_box);
 
-		gui->addButton(
-			rect_3(), nullptr, ID_BtnConnect, L"Connect");
+		auto *i_btn = gui->addButton(norect, nullptr, ID_BtnConnect, L"Connect");
+		auto *g_btn = table_prompt->add<WRAP>(2, column, i_btn);
 
-		rect_1 += VSPACING;
+		set_text_props(g_text);
+		set_field_props(g_box);
+		set_field_props(g_btn);
+
+		column++;
 	}
 
+	root.row(3)->weight = 2;
+	FlexBox *box_srv = root.add<FlexBox>(1, 3);
+	box_srv->box_axis = Element::SIZE_X;
+	box_srv->allow_wrap = false; // V center
+
 	{
+		FlexBox *box_left = box_srv->add<FlexBox>();
+		box_left->box_axis = Element::SIZE_Y;
+		box_left->allow_wrap = false; // H center
+
 		// Server selector dropdown
-		auto text_a = gui->addStaticText(L"Servers", rect_1, false, false);
-		text_a->setOverrideColor(Gui::COLOR_ON_BG);
+		auto i_text = gui->addStaticText(L"Servers", norect, false, false);
+		i_text->setOverrideColor(Gui::COLOR_ON_BG);
+		auto *g_text = box_left->add<WRAP>(i_text);
 
-		auto rect = rect_2();
-		auto rect_3_tmp = rect_3();
-		rect.addInternalPoint(rect_3_tmp.LowerRightCorner + core::vector2di(0, 80));
+		auto *i_btn = gui->addButton(norect, nullptr, ID_BtnDelServer, L"Remove");
+		auto *g_btn = box_left->add<WRAP>(i_btn);
 
-		gui->addListBox(rect, nullptr, ID_ListServers, true);
+		set_text_props(g_text);
+		g_btn->expand = { 2, 1 };
+		g_btn->margin = { 10, 1, 0, 0 };
+		g_btn->min_size = { 100, BUTTON_H };
+
+		auto *i_list = gui->addListBox(norect, nullptr, ID_ListServers, true);
+		auto *g_list = box_srv->add<WRAP>(i_list);
+		g_list->expand = { 10, 10 };
+		g_list->margin = { 1, 1, 1, 5 };
+		g_list->min_size = { 2 * 100, 40 };
 
 		updateServers();
 
-		// Button to remove an entry
-		rect_1 += core::vector2di(0, 75);
-		rect = core::recti(
-			rect_1.UpperLeftCorner,
-			core::dimension2di(100, rect_1.getHeight())
-		);
+		set_text_props(g_text);
+	}
 
-		gui->addButton(
-			rect, nullptr, ID_BtnDelServer, L"Remove");
+	{
+		auto wsize = m_gui->window_size;
+		root.start({0, 0}, {(u16)wsize.Width, (u16)wsize.Height});
 	}
 }
 
 void SceneConnect::step(float dtime)
 {
+	using namespace guilayout;
+
+	if (0) {
+		// For debugging
+		layout_root.doRecursive([this] (Element *e) -> bool {
+			using Dir = guilayout::Element::Direction;
+			if (!e)
+				return true;
+
+			this->m_gui->driver->draw2DLine(
+				core::vector2di(e->pos[Dir::DIR_LEFT], e->pos[Dir::DIR_UP]),
+				core::vector2di(e->pos[Dir::DIR_RIGHT], e->pos[Dir::DIR_DOWN]),
+				0xFFFF0000
+			);
+			return true;
+		});
+	}
 }
 
 bool SceneConnect::OnEvent(const SEvent &e)

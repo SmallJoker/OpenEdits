@@ -87,9 +87,7 @@ struct Table : public Element {
 	template <typename T, typename ... Args>
 	T *add(u16 x, u16 y, Args &&... args)
 	{
-		ASSERT_FORCED(x < m_cellinfo[0].size(), "X out of range");
-		ASSERT_FORCED(y < m_cellinfo[1].size(), "Y out of range");
-
+		checkDimensions(x, y);
 		auto &idx = m_children[y * m_cellinfo[0].size() + x];
 		// Perfect forwarding
 		idx = std::make_unique<T>(std::forward<Args>(args)...);
@@ -98,20 +96,19 @@ struct Table : public Element {
 
 	Element *at(u16 x, u16 y) const
 	{
-		ASSERT_FORCED(x < m_cellinfo[0].size(), "X out of range");
-		ASSERT_FORCED(y < m_cellinfo[1].size(), "Y out of range");
+		checkDimensions(x, y);
 		return m_children[y * m_cellinfo[0].size() + x].get();
 	}
 
 	CellInfo *col(u16 x)
 	{
-		ASSERT_FORCED(x < m_cellinfo[0].size(), "X out of range");
+		checkDimensions(x, 0);
 		return &m_cellinfo[0][x];
 	}
 
 	CellInfo *row(u16 y)
 	{
-		ASSERT_FORCED(y < m_cellinfo[1].size(), "Y out of range");
+		checkDimensions(0, y);
 		return &m_cellinfo[1][y];
 	}
 
@@ -120,6 +117,12 @@ struct Table : public Element {
 	void updatePosition() override;
 
 private:
+	void checkDimensions(u16 x, u16 y) const
+	{
+		ASSERT_FORCED(x < m_cellinfo[0].size(), "X out of range");
+		ASSERT_FORCED(y < m_cellinfo[1].size(), "Y out of range");
+	}
+
 	void getMinSize(bool shrink_x, bool shrink_y) override;
 	void spreadTable(Size dim, u16 total_space);
 	void spreadCell(Element *prim, u16 num, Size dim);

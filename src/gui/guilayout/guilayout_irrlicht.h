@@ -17,7 +17,7 @@ struct IGUIElementWrapper : public Element {
 	IGUIElementWrapper(gui::IGUIElement *elem = nullptr);
 	virtual ~IGUIElementWrapper();
 
-	void setElement(gui::IGUIElement *elem) { m_element = elem; }
+	void setElement(gui::IGUIElement *elem);
 	gui::IGUIElement *getElement() const {return m_element; }
 
 	void updatePosition() override;
@@ -33,7 +33,7 @@ struct IGUIElementWrapper : public Element {
 	}
 
 protected:
-	gui::IGUIElement *m_element;
+	gui::IGUIElement *m_element = nullptr;
 	std::vector<std::unique_ptr<Element>> m_children; // e.g. tabs
 };
 
