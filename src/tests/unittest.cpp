@@ -43,7 +43,7 @@ void unittest()
 #endif
 	{
 		unittest_script();
-		unittest_gui_layout(1);
+		unittest_gui_layout(3);
 
 		unittest_auth();
 		unittest_chatcommand();

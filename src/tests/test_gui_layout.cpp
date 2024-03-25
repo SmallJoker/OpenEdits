@@ -71,9 +71,9 @@ static Element *setup_table_demo()
 {
 	static Table root;
 	root.setSize(5, 4);
-	root.col(4)->weight = 4;
+	root.col(4)->weight = 40;
 	root.row(0)->weight = 0;
-	root.row(3)->weight = 10;
+	root.row(3)->weight = 100;
 	root.margin = {10, 1, 10, 1};
 
 	for (u16 xp = 0; xp < 4; ++xp) {
@@ -144,7 +144,7 @@ static Element *setup_box_demo()
 		//hbox->force_wrap = true;
 
 		auto label = hbox->add<TestButton>();
-		label->margin = {1,0,1,1};
+		label->margin = {10,0,10,10};
 		label->setSize({100, 30});
 
 		auto input = hbox->add<TestButton>();
@@ -153,7 +153,7 @@ static Element *setup_box_demo()
 		input->setSize({200, 30});
 
 		auto btn = hbox->add<TestButton>();
-		btn->margin = {1,1,0,0};
+		btn->margin = {10,10,0,0};
 	}
 	return &root;
 }
@@ -196,10 +196,79 @@ static Element *setup_tabcontrol()
 	return &main;
 }
 
+// -------------- Basic calculation test --------------
+
+class NopElement : public Element {
+public:
+	void updatePosition() override
+	{
+		// nop
+	}
+};
+
+static void test_layout_table_calc()
+{
+	const u16
+		WIDTH = 120,
+		HEIGHT = 60;
+
+	Table main;
+	main.setSize(3, 2);
+
+	// fill the space to extract the positions
+	NopElement *e00 = main.add<NopElement>(0, 0);
+	NopElement *e11 = main.add<NopElement>(1, 1);
+	NopElement *e21 = main.add<NopElement>(2, 1);
+
+
+	// ----> X axis checks
+
+	main.col(0)->weight = 1;
+	main.col(1)->weight = 3;
+	main.col(2)->weight = 2;
+
+	const u16 weight_width = WIDTH / (6 /* weight sum */);
+	main.start({0, 0}, {WIDTH, HEIGHT});
+
+	u16 v = 0;
+	CHECK(e00->pos[Element::DIR_LEFT]  == v + 0);
+	// 1px overlap for elements
+	CHECK(e00->pos[Element::DIR_RIGHT] == v + 1 * weight_width);
+	v += 1 * weight_width;
+	CHECK(e11->pos[Element::DIR_LEFT]  == v + 0);
+	CHECK(e11->pos[Element::DIR_RIGHT] == v + 3 * weight_width);
+	v += 3 * weight_width;
+	CHECK(e21->pos[Element::DIR_LEFT]  == v + 0);
+	CHECK(e21->pos[Element::DIR_RIGHT] == v + 2 * weight_width);
+
+	// v---- Y axis checks
+
+	main.row(0)->weight = 2;
+	main.row(1)->weight = 1;
+
+	const u16 weight_height = HEIGHT / (3 /* weight sum */);
+	main.start({0, 0}, {WIDTH, HEIGHT});
+
+	v = 0;
+	CHECK(e00->pos[Element::DIR_UP]   == v + 0);
+	CHECK(e00->pos[Element::DIR_DOWN] == v + 2 * weight_height);
+	v += 2 * weight_width;
+	CHECK(e21->pos[Element::DIR_UP]   == v + 0);
+	CHECK(e21->pos[Element::DIR_DOWN] == v + 1 * weight_height);
+}
+
+static void test_layout_flexbox_calc()
+{
+	fprintf(stderr, "TODO: test_layout_flexbox_calc\n");
+}
+
 // ---------------- Main test function ----------------
 
 void unittest_gui_layout(int which)
 {
+	test_layout_table_calc();
+	test_layout_flexbox_calc();
+
 	printf("Starting layout test %i\n", which);
 
 	UnittestEventReceiver rcv;

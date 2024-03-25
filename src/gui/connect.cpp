@@ -83,9 +83,9 @@ static void set_text_props(guilayout::IGUIElementWrapper *w)
 
 static void set_field_props(guilayout::IGUIElementWrapper *w)
 {
-	w->expand = { 2, 1 };
+	w->expand = { 5, 1 };
 	w->margin = { 1, 1, 1, 1 };
-	w->min_size = { 150, (u16)(BUTTON_H * 1.5) }; // for Y center
+	w->min_size = { 100, (u16)(BUTTON_H * 1.5) }; // for Y center
 }
 
 void SceneConnect::draw()
@@ -96,9 +96,9 @@ void SceneConnect::draw()
 	Table &root = layout_root;
 	root.clear();
 	root.setSize(3, 5);
-	root.col(0)->weight = 3;
-	root.col(2)->weight = 3;
-	root.row(4)->weight = 3;
+	root.col(0)->weight = 20;
+	root.col(2)->weight = 20;
+	root.row(4)->weight = 20;
 
 	auto gui = m_gui->guienv;
 	core::recti norect;
@@ -119,6 +119,8 @@ void SceneConnect::draw()
 
 	Table *table_prompt = root.add<Table>(1, 2);
 	table_prompt->setSize(3, 3);
+	table_prompt->col(1)->weight = 40;
+	table_prompt->col(2)->weight = 20;
 
 	u16 column = 0;
 
@@ -178,13 +180,14 @@ void SceneConnect::draw()
 		column++;
 	}
 
-	root.row(3)->weight = 2;
-	FlexBox *box_srv = root.add<FlexBox>(1, 3);
-	box_srv->box_axis = Element::SIZE_X;
-	box_srv->allow_wrap = false; // V center
+	root.row(3)->weight = 20;
+	Table *table_srv = root.add<Table>(1, 3);
+	table_srv->setSize(2, 1);
+	table_srv->col(1)->weight = 40 + 20; // editbox + button
+	table_srv->margin = { 1, 0, 1, 0 };
 
 	{
-		FlexBox *box_left = box_srv->add<FlexBox>();
+		FlexBox *box_left = table_srv->add<FlexBox>(0, 0);
 		box_left->box_axis = Element::SIZE_Y;
 		box_left->allow_wrap = false; // H center
 
@@ -196,20 +199,18 @@ void SceneConnect::draw()
 		auto *i_btn = gui->addButton(norect, nullptr, ID_BtnDelServer, L"Remove");
 		auto *g_btn = box_left->add<WRAP>(i_btn);
 
+		auto *i_list = gui->addListBox(norect, nullptr, ID_ListServers, true);
+		auto *g_list = table_srv->add<WRAP>(1, 0, i_list);
+
 		set_text_props(g_text);
 		g_btn->expand = { 2, 1 };
-		g_btn->margin = { 10, 1, 0, 0 };
-		g_btn->min_size = { 100, BUTTON_H };
+		g_btn->margin = { 10, 1, 1, 0 };
+		g_btn->min_size = { 50, BUTTON_H };
 
-		auto *i_list = gui->addListBox(norect, nullptr, ID_ListServers, true);
-		auto *g_list = box_srv->add<WRAP>(i_list);
-		g_list->expand = { 10, 10 };
-		g_list->margin = { 1, 1, 1, 5 };
-		g_list->min_size = { 2 * 100, 40 };
+		g_list->margin = { 1, 1, 1, 1 };
+		g_list->min_size = { 200, 40 };
 
 		updateServers();
-
-		set_text_props(g_text);
 	}
 
 	{

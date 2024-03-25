@@ -56,8 +56,8 @@ void IGUIElementWrapper::updatePosition()
 	core::recti rect {
 		pos[DIR_LEFT],
 		pos[DIR_UP],
-		pos[DIR_RIGHT],
-		pos[DIR_DOWN]
+		pos[DIR_RIGHT] - 1,
+		pos[DIR_DOWN] - 1
 	};
 
 #if 0

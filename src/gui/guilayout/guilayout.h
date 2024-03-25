@@ -34,11 +34,11 @@ struct Element {
 	virtual void doRecursive(std::function<bool(Element *)> callback) {}
 
 	u16_x4 margin {}; //< outer springs to dock/space elements (U,R,D,L)
-	u16_x2 expand {1, 1}; //< inner springs to enlarge elements (x,y) = padding
+	u16_x2 expand {10, 10}; //< inner springs to enlarge elements (x,y) = padding / 2
 
 	/// modify min_size && return true to skip box calcs
 	virtual void getMinSize(bool shrink_x, bool shrink_y) {}
-	u16_x2 min_size {};
+	u16_x2 min_size {}; //< dynamic size (margin, expand) is added atop if available
 
 	/// For the root container: initiates the positioning mechanism
 	virtual void start(u16_x2 pos, u16_x2 size) {}
@@ -47,7 +47,7 @@ struct Element {
 	/// Callback executed after the positions were calculated
 	virtual void updatePosition() = 0;
 	// Populated after tryFitElements()
-	u16_x4 pos {};
+	u16_x4 pos {}; //< Minimal and maximal position (1 px overlap with neighbours)
 
 protected:
 	friend struct FlexBox; // to access m_wrapped_pos
@@ -55,12 +55,12 @@ protected:
 	Element() = default;
 
 	// Populated after tryFitElements()
-	u16 m_wrapped_pos = 0;
+	u16 m_wrapped_pos = 0; //< for FlexBox: next line position (X or Y)
 };
 
 struct Table : public Element {
 	struct CellInfo {
-		u16 weight = 1;
+		u16 weight = 10; //< column or row weight for table spreading
 
 	private:
 		friend struct Table;
