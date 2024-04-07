@@ -246,51 +246,94 @@ io::IFileSystem *Gui::getFileSystem()
 	return m_device->getFileSystem();
 }
 
+void Gui::setSceneFromClientState()
+{
+	ClientState state = ClientState::None;
+	if (m_client)
+		state = m_client->getState();
+
+	switch (state) {
+	case ClientState::None:
+		setNextScene(SceneHandlerType::Connect);
+		break;
+	case ClientState::Register:
+		setNextScene(SceneHandlerType::Register);
+		break;
+	case ClientState::LobbyIdle:
+		setNextScene(SceneHandlerType::Lobby);
+		break;
+	case ClientState::WorldPlay:
+		setNextScene(SceneHandlerType::Gameplay);
+		break;
+	case ClientState::Connected:
+	case ClientState::WorldJoin:
+		return; // in-between states. not mapped.
+	case ClientState::Invalid:
+		assert(false);
+		break;
+	}
+
+	if (m_scenetype_next == m_scenetype)
+		setNextScene(SceneHandlerType::CTRL_RENEW);
+}
+
+
 void Gui::connect(SceneConnect *sc)
+{
+	ClientStartData init;
+
+	if (!sc->start_localhost)
+		wide_to_utf8(init.address, sc->address.c_str());
+	wide_to_utf8(init.nickname, sc->nickname.c_str());
+	wide_to_utf8(init.password, sc->password.c_str());
+
+	connect(init);
+}
+
+bool Gui::connect(ClientStartData &init)
 {
 	if (m_server || m_client) {
 		showPopupText("Already initialized");
-		return;
+		return false;
 	}
 
-	ClientStartData init;
-
-	if (sc->start_localhost) {
+	if (init.address.empty()) {
 		m_server = new Server(&m_pending_disconnect);
 		init.address = "127.0.0.1";
 	}
 
-	wide_to_utf8(init.address, sc->address.c_str());
-	wide_to_utf8(init.nickname, sc->nickname.c_str());
-	wide_to_utf8(init.password, sc->password.c_str());
-
 	g_blockmanager->setDriver(driver);
-	g_blockmanager->doPackRegistration();
+	g_blockmanager->doPackRegistration(); // TODO: replace with server-sent script
 
 	m_client = new Client(init);
 	m_client->setEventHandler(this);
 
 	ClientState state;
+	bool is_logged_in = false;
 	for (int i = 0; i < 10; ++i) {
 		state = m_client->getState();
-		if (state == ClientState::LobbyIdle || state == ClientState::Register)
+		is_logged_in = (int)state > (int)ClientState::Connected;
+		if (is_logged_in)
 			break;
 
 		sleep_ms(200);
 	}
 
-	if (state == ClientState::Register) {
+	SceneConnect *sc = (SceneConnect *)getHandler(SceneHandlerType::Connect);
+
+	if (is_logged_in && sc)
 		sc->record_login = true;
-		setNextScene(SceneHandlerType::Register);
-	} else if (state == ClientState::LobbyIdle) {
-		sc->record_login = true;
-		setNextScene(SceneHandlerType::Lobby);
-	} else {
+
+	if (!is_logged_in) {
 		if (m_popup_text.empty())
 			showPopupText("Connection timed out: Server is not reachable.");
 		m_pending_disconnect = true;
 	}
+
+	setSceneFromClientState();
+	return is_logged_in;
 }
+
 
 void Gui::disconnect()
 {
@@ -301,12 +344,17 @@ void Gui::disconnect()
 
 void Gui::joinWorld(SceneLobby *sc)
 {
+	joinWorld(sc->world_id);
+}
+
+void Gui::joinWorld(const std::string &world_id)
+{
 	// Similar to the "Connect" scene. More fields might be added to create and delete worlds
-	if (sc->world_id.empty())
+	if (world_id.empty())
 		return;
 
 	GameEvent e(GameEvent::G2C_JOIN);
-	e.text = new std::string(sc->world_id);
+	e.text = new std::string(world_id);
 	sendNewEvent(e);
 }
 
@@ -425,15 +473,22 @@ void Gui::showPopupText(const std::string &str)
 	std::wstring wstr;
 	utf8_to_wide(wstr, str.c_str());
 
+	bool do_log = true;
+
 	m_popup_timer = std::min<float>(10, m_popup_timer + 7);
 	if (m_popup_text.empty()) {
 		m_popup_text = wstr.c_str();
 	} else if (wstr != m_popup_text_last) {
 		m_popup_text += L"\n";
 		m_popup_text += wstr.c_str();
+	} else {
+		do_log = false;
 	}
+
 	// To avoid duplicates
 	m_popup_text_last = wstr;
+	if (do_log)
+		fprintf(stderr, "Gui popup: %s\n", str.c_str());
 }
 
 

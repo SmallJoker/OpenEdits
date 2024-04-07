@@ -67,10 +67,14 @@ public:
 	io::IFileSystem *getFileSystem();
 
 	// Actions to perform
+	void setSceneFromClientState();
 	void connect(SceneConnect *sc);
+	bool connect(ClientStartData &init);
 	void disconnect();
 	void joinWorld(SceneLobby *sc);
+	void joinWorld(const std::string &world_id);
 	void leaveWorld();
+	// Requires the client to already be logged in
 	void setSceneLoggedIn(SceneHandlerType type);
 
 	// GUI utility functions

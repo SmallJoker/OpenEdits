@@ -19,12 +19,12 @@ static const float POSITION_SEND_INTERVAL = 5.0f;
 
 Client::Client(ClientStartData &init) :
 	Environment(g_blockmanager),
-	m_start_data(init)
+	m_start_data(std::move(init)) // eaten
 {
 	puts("Client: startup");
 
 	m_con = new Connection(Connection::TYPE_CLIENT, "Client");
-	m_con->connect(init.address.c_str());
+	m_con->connect(m_start_data.address.c_str());
 	m_con->listenAsync(*this);
 
 	{

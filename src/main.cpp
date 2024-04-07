@@ -1,12 +1,16 @@
 #include "core/blockmanager.h"
-#if BUILD_CLIENT
-	#include "gui/gui.h"
-	static Gui *my_gui = nullptr;
-#endif
 #include "server/database_auth.h" // AuthAccount
 #include "server/server.h"
 #include <string.h> // strcmp
 #include "version.h"
+
+#if BUILD_CLIENT
+	#include "client/client.h" // ClientStartData
+	#include "gui/gui.h"
+	static Gui *my_gui = nullptr;
+	static ClientStartData start_data;
+	static std::string start_world_id;
+#endif
 
 #ifdef __unix__
 	#include <signal.h>
@@ -34,7 +38,7 @@ static void sigint_handler(int signal)
 	exit_cleanup();
 }
 
-static int run_client()
+static int run_client(bool use_start_data)
 {
 	if (!BUILD_CLIENT) {
 		puts("-!- Client is not available on this build.");
@@ -44,6 +48,9 @@ static int run_client()
 #if BUILD_CLIENT
 	Gui gui;
 	my_gui = &gui;
+	bool logged_in = !use_start_data || gui.connect(start_data);
+	if (logged_in && use_start_data && !start_world_id.empty())
+		gui.joinWorld(start_world_id);
 	gui.run();
 	my_gui = nullptr;
 #endif
@@ -117,7 +124,9 @@ static int server_setrole(char *username, char *role)
 static int parse_args(int argc, char *argv[])
 {
 	if (argc < 2)
-		return BUILD_CLIENT ? run_client() : run_server();
+		return BUILD_CLIENT ? run_client(false) : run_server();
+
+	const char *MISSING_ARGS = "-!- Incorrect number of arguments. Expected: ";
 
 	if (strcmp(argv[1], "--version") == 0) {
 		puts(VERSION_STRING);
@@ -134,10 +143,27 @@ static int parse_args(int argc, char *argv[])
 	}
 	if (strcmp(argv[1], "--setrole") == 0) {
 		if (argc != 4) {
-			puts("-!- Missing arguments: --setrole USERNAME ROLE");
+			fprintf(stderr, "%s--setrole USERNAME ROLE\n", MISSING_ARGS);
 			return EXIT_FAILURE;
 		}
 		return server_setrole(argv[2], argv[3]);
+	}
+
+	if (strcmp(argv[1], "--go") == 0) {
+#if BUILD_CLIENT
+		if (argc != 4 && argc != 5) {
+			fprintf(stderr, "%s--go USERNAME PASSWORD [WORLD_ID]\n", MISSING_ARGS);
+			return EXIT_FAILURE;
+		}
+		start_data.nickname = argv[2];
+		start_data.password = argv[3];
+		if (argc > 4)
+			start_world_id = argv[4];
+		// else: empty
+#endif
+
+		// Login to server
+		return run_client(true);
 	}
 
 	puts("-!- Unknown command line option.");

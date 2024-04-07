@@ -105,7 +105,8 @@ if (MSVC)
 else()
 	# -fsanitize=address,undefined
 	# -O3 is default for release
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -gdwarf-4")
+	# -g instead of -gdwarf-4 saves about 20% of the binary size
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -g")
 
 	# Debugging symbols
 	set(CMAKE_CXX_FLAGS_DEBUG "-g -O1")
