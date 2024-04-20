@@ -242,8 +242,8 @@ bool Client::OnEvent(GameEvent &e)
 			return true;
 		case E::G2C_LEAVE:
 			if (!getWorld().get()) {
-				// Cannot leave
-				return false;
+				// Already left the world
+				return true;
 			}
 
 			{

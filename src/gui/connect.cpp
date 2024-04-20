@@ -24,52 +24,15 @@ enum ElementId : int {
 SceneConnect::SceneConnect() :
 	SceneHandler(L"Connect")
 {
-
+	int num = (rand() % 899) + 100;
+	m_login.nickname = L"Guest" + std::to_wstring(num);
+	m_login.address = L"127.0.0.1";
 }
 
 // -------------- Public members -------------
 
-static guilayout::Table layout_root;
 void SceneConnect::OnClose()
 {
-	layout_root.clear();
-	if (record_login) {
-		record_login = false;
-
-		bool contains = false;
-
-		std::string address_a, nickname_a;
-		wide_to_utf8(address_a, address.c_str());
-		wide_to_utf8(nickname_a, nickname.c_str());
-
-		for (char &c : address_a)
-			c = tolower(c);
-		for (char &c : nickname_a)
-			c = toupper(c);
-
-		if (nickname_a.rfind("GUEST", 0) == 0)
-			goto end;
-
-		std::ifstream is("client_servers.txt");
-		std::string line;
-		while (std::getline(is, line)) {
-			LoginInfo info;
-			std::string address_f = get_next_part(line);
-			std::string nickname_f =  get_next_part(line);
-			if (address_f == address_a && nickname_f == nickname_a)
-				goto end;
-		}
-		is.close();
-
-		if (!contains) {
-			std::ofstream os("client_servers.txt", std::ios_base::app);
-			os << address_a << " " << nickname_a << std::endl;
-			os.close();
-		}
-	}
-
-end:
-	return;
 }
 
 static u16 BUTTON_H = 20;
@@ -93,7 +56,7 @@ void SceneConnect::draw()
 	using namespace guilayout;
 	using WRAP = guilayout::IGUIElementWrapper;
 
-	Table &root = layout_root;
+	Table &root = *m_gui->layout;
 	root.clear();
 	root.setSize(3, 5);
 	root.col(0)->weight = 20;
@@ -130,7 +93,7 @@ void SceneConnect::draw()
 		auto *g_text = table_prompt->add<WRAP>(0, column, i_text);
 
 		auto *i_box = gui->addEditBox(
-			nickname.c_str(), norect, true, nullptr, ID_BoxNickname);
+			m_login.nickname.c_str(), norect, true, nullptr, ID_BoxNickname);
 		auto *g_box = table_prompt->add<WRAP>(1, column, i_box);
 
 		auto *i_btn = gui->addButton(norect, nullptr, ID_BtnHost, L"Host");
@@ -149,7 +112,7 @@ void SceneConnect::draw()
 		auto *g_text = table_prompt->add<WRAP>(0, column, i_text);
 
 		auto *i_box = gui->addEditBox(
-			password.c_str(), norect, true, nullptr, ID_BoxPassword);
+			m_login.password.c_str(), norect, true, nullptr, ID_BoxPassword);
 		i_box->setPasswordBox(true);
 		auto *g_box = table_prompt->add<WRAP>(1, column, i_box);
 
@@ -167,7 +130,7 @@ void SceneConnect::draw()
 		core::stringw str;
 
 		auto *i_box = gui->addEditBox(
-			address.c_str(), norect, true, nullptr, ID_BoxAddress);
+			m_login.address.c_str(), norect, true, nullptr, ID_BoxAddress);
 		auto *g_box = table_prompt->add<WRAP>(1, column, i_box);
 
 		auto *i_btn = gui->addButton(norect, nullptr, ID_BtnConnect, L"Connect");
@@ -212,11 +175,6 @@ void SceneConnect::draw()
 
 		updateServers();
 	}
-
-	{
-		auto wsize = m_gui->window_size;
-		root.start({0, 0}, {(u16)wsize.Width, (u16)wsize.Height});
-	}
 }
 
 void SceneConnect::step(float dtime)
@@ -225,7 +183,7 @@ void SceneConnect::step(float dtime)
 
 	if (0) {
 		// For debugging
-		layout_root.doRecursive([this] (Element *e) -> bool {
+		m_gui->layout->doRecursive([this] (Element *e) -> bool {
 			using Dir = guilayout::Element::Direction;
 			if (!e)
 				return true;
@@ -279,8 +237,8 @@ bool SceneConnect::OnEvent(const SEvent &e)
 
 					try {
 						auto info = m_index_to_address.at(listbox->getSelected());
-						address = info.address.c_str();
-						nickname = info.nickname.c_str();
+						m_login.address = info.address;
+						m_login.nickname = info.nickname;
 
 						m_gui->requestRenew();
 					} catch (std::exception &) {
@@ -299,18 +257,56 @@ bool SceneConnect::OnEvent(GameEvent &e)
 	return false;
 }
 
+void SceneConnect::recordLogin(ClientStartData data)
+{
+	for (char &c : data.address)
+		c = tolower(c);
+	for (char &c : data.nickname)
+		c = toupper(c);
+
+	if (data.nickname.rfind("GUEST", 0) == 0)
+		return;
+
+	std::ifstream is("client_servers.txt");
+	std::string line;
+	while (std::getline(is, line)) {
+		LoginInfo info;
+		std::string address_f = get_next_part(line);
+		std::string nickname_f =  get_next_part(line);
+		if (address_f == data.address && nickname_f == data.nickname)
+			return;
+	}
+	is.close();
+
+	// Append to the end of the list
+	{
+		std::ofstream os("client_servers.txt", std::ios_base::app);
+		os << data.address << " " << data.nickname << std::endl;
+		os.close();
+	}
+}
+
 
 void SceneConnect::onSubmit(int elementid)
 {
 	auto root = m_gui->guienv->getRootGUIElement();
 
-	nickname = root->getElementFromId(ID_BoxNickname)->getText();
-	password = root->getElementFromId(ID_BoxPassword)->getText();
-	address = root->getElementFromId(ID_BoxAddress)->getText();
+	// To restore the input boxes on failure
+	m_login.nickname = root->getElementFromId(ID_BoxNickname)->getText();
+	m_login.password = root->getElementFromId(ID_BoxPassword)->getText();
+	m_login.address = root->getElementFromId(ID_BoxAddress)->getText();
 
-	start_localhost = (elementid == ID_BtnHost);
+	// Send connection request
+	ClientStartData start_data;
 
-	m_gui->connect(this);
+	wide_to_utf8(start_data.nickname, m_login.nickname.c_str());
+	wide_to_utf8(start_data.password, m_login.password.c_str());
+	if (elementid != ID_BtnHost)
+		wide_to_utf8(start_data.address, m_login.address.c_str());
+	else
+		; // empty address == host local server
+
+	m_gui->connect(start_data);
 }
 
 static const std::string SERVERS_FILE = "client_servers.txt";
@@ -377,7 +373,7 @@ void SceneConnect::updateServers()
 
 		auto i = listbox->addItem(label.c_str());
 		// TODO: "Invalid read of size 32" while doing string compare. Why?
-		if (info.address == address.c_str() && info.nickname == nickname.c_str())
+		if (info.address == m_login.address.c_str() && info.nickname == m_login.nickname.c_str())
 			listbox->setSelected(i);
 	}
 }

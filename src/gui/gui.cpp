@@ -3,11 +3,13 @@
 #include "server/server.h"
 #include "core/blockmanager.h"
 #include "core/macros.h"
+#include "guilayout/guilayout.h"
 #include <irrlicht.h>
 #include <chrono>
 // Scene handlers
 #include "connect.h"
 #include "register.h"
+#include "loading.h"
 #include "lobby.h"
 #include "gameplay/gameplay.h"
 #include "version.h"
@@ -32,6 +34,7 @@ Gui::Gui()
 	scenemgr = m_device->getSceneManager();
 	guienv = m_device->getGUIEnvironment();
 	driver = m_device->getVideoDriver();
+	layout = new guilayout::Table();
 
 	{
 		// Styling
@@ -56,6 +59,7 @@ Gui::Gui()
 	{
 		// Scene handler registration
 		registerHandler(SceneHandlerType::Connect, new SceneConnect());
+		registerHandler(SceneHandlerType::Loading, new SceneLoading());
 		registerHandler(SceneHandlerType::Register, new SceneRegister());
 		registerHandler(SceneHandlerType::Lobby, new SceneLobby());
 		registerHandler(SceneHandlerType::Gameplay, new SceneGameplay());
@@ -78,6 +82,7 @@ Gui::~Gui()
 
 	delete m_client;
 	delete m_server;
+	delete layout;
 
 	for (auto it : m_handlers)
 		delete it.second;
@@ -133,6 +138,7 @@ void Gui::run()
 			// Clear GUI elements
 			scenemgr->clear();
 			guienv->clear();
+			layout->clear();
 		}
 
 		if (m_scenetype_next == SceneHandlerType::CTRL_RENEW) {
@@ -149,8 +155,10 @@ void Gui::run()
 
 		auto handler = getHandler(m_scenetype);
 
-		if (is_new_screen)
+		if (is_new_screen) {
 			handler->draw();
+			layout->start({0, 0}, {(u16)window_size.Width, (u16)window_size.Height});
+		}
 
 		handler->step(dtime);
 		scenemgr->drawAll();
@@ -223,7 +231,7 @@ void Gui::registerHandler(SceneHandlerType type, SceneHandler *handler)
 
 SceneHandler *Gui::getHandler(SceneHandlerType type)
 {
-	auto it = m_handlers.find(m_scenetype);
+	auto it = m_handlers.find(type);
 	ASSERT_FORCED(it != m_handlers.end(), "Unknown handler");
 	return it->second;
 }
@@ -254,7 +262,6 @@ void Gui::setSceneFromClientState()
 
 	switch (state) {
 	case ClientState::None:
-		setNextScene(SceneHandlerType::Connect);
 		break;
 	case ClientState::Register:
 		setNextScene(SceneHandlerType::Register);
@@ -272,23 +279,8 @@ void Gui::setSceneFromClientState()
 		assert(false);
 		break;
 	}
-
-	if (m_scenetype_next == m_scenetype)
-		setNextScene(SceneHandlerType::CTRL_RENEW);
 }
 
-
-void Gui::connect(SceneConnect *sc)
-{
-	ClientStartData init;
-
-	if (!sc->start_localhost)
-		wide_to_utf8(init.address, sc->address.c_str());
-	wide_to_utf8(init.nickname, sc->nickname.c_str());
-	wide_to_utf8(init.password, sc->password.c_str());
-
-	connect(init);
-}
 
 bool Gui::connect(ClientStartData &init)
 {
@@ -308,30 +300,11 @@ bool Gui::connect(ClientStartData &init)
 	m_client = new Client(init);
 	m_client->setEventHandler(this);
 
-	ClientState state;
-	bool is_logged_in = false;
-	for (int i = 0; i < 10; ++i) {
-		state = m_client->getState();
-		is_logged_in = (int)state > (int)ClientState::Connected;
-		if (is_logged_in)
-			break;
-
-		sleep_ms(200);
-	}
-
-	SceneConnect *sc = (SceneConnect *)getHandler(SceneHandlerType::Connect);
-
-	if (is_logged_in && sc)
-		sc->record_login = true;
-
-	if (!is_logged_in) {
-		if (m_popup_text.empty())
-			showPopupText("Connection timed out: Server is not reachable.");
-		m_pending_disconnect = true;
-	}
-
-	setSceneFromClientState();
-	return is_logged_in;
+	setNextScene(SceneHandlerType::Loading);
+	SceneLoading *sc = (SceneLoading *)getHandler(SceneHandlerType::Loading);
+	if (sc)
+		sc->loading_type = SceneLoading::Type::ConnectServer;
+	return true;
 }
 
 

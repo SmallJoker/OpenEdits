@@ -33,6 +33,7 @@ struct ClientStartData {
 // Abstract for inheritance
 class Client : public Environment, public GameEventHandler {
 public:
+	/// "init" is invalid afterwards!
 	Client(ClientStartData &init);
 	~Client();
 
@@ -43,6 +44,7 @@ public:
 
 	/// Main purpose: client-sided information display
 	std::string getDebugInfo();
+	const ClientStartData &getStartData() { return m_start_data; }
 
 	PtrLock<LocalPlayer> getMyPlayer();
 	peer_t getMyPeerId() { return m_my_peer_id; }

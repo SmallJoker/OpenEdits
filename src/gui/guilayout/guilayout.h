@@ -73,6 +73,8 @@ struct Table : public Element {
 	void clear() override
 	{
 		m_children.clear();
+		m_cellinfo[0].clear();
+		m_cellinfo[1].clear();
 	}
 
 	void doRecursive(std::function<bool(Element *)> callback) override;

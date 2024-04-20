@@ -25,6 +25,10 @@ namespace irr {
 	}
 }
 
+namespace guilayout {
+	class Table;
+}
+
 using namespace irr;
 
 class Client;
@@ -38,6 +42,7 @@ class SceneGameplay;
 
 enum class SceneHandlerType {
 	Connect,
+	Loading,
 	Register,
 	Lobby,
 	Gameplay,
@@ -68,7 +73,7 @@ public:
 
 	// Actions to perform
 	void setSceneFromClientState();
-	void connect(SceneConnect *sc);
+	/// Empty address indicates "host local server"
 	bool connect(ClientStartData &init);
 	void disconnect();
 	void joinWorld(SceneLobby *sc);
@@ -83,6 +88,7 @@ public:
 
 	// For use in SceneHandler
 	scene::ISceneManager *scenemgr = nullptr;
+	guilayout::Table *layout = nullptr;
 	gui::IGUIEnvironment *guienv = nullptr;
 	gui::IGUIFont *font = nullptr;
 	video::IVideoDriver *driver = nullptr; // 2D images
@@ -139,6 +145,8 @@ protected:
 
 	SceneHandler(const wchar_t *scene_name) :
 		m_scene_name(scene_name) {}
+	void setName(const wchar_t *scene_name)
+	{ m_scene_name = scene_name; }
 
 	Gui *m_gui = nullptr;
 	const wchar_t *m_scene_name;
