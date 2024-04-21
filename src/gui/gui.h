@@ -26,7 +26,7 @@ namespace irr {
 }
 
 namespace guilayout {
-	class Table;
+	struct Table;
 }
 
 using namespace irr;

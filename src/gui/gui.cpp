@@ -3,7 +3,7 @@
 #include "server/server.h"
 #include "core/blockmanager.h"
 #include "core/macros.h"
-#include "guilayout/guilayout.h"
+#include "guilayout/guilayout_irrlicht.h"
 #include <irrlicht.h>
 #include <chrono>
 // Scene handlers
@@ -163,6 +163,9 @@ void Gui::run()
 		handler->step(dtime);
 		scenemgr->drawAll();
 		guienv->drawAll();
+
+		if (m_show_debug)
+			guilayout::IGUIElementWrapper::debugFillArea(layout, driver, 0xFFFF0000);
 
 		drawFPS();
 		drawPopup(dtime);

@@ -23,7 +23,7 @@ struct IGUIElementWrapper : public Element {
 	void updatePosition() override;
 	void doRecursive(std::function<bool(Element *)> callback) override;
 
-	void debugFillArea(video::IVideoDriver *driver, uint32_t color);
+	static void debugFillArea(Element *e, video::IVideoDriver *driver, uint32_t color);
 
 	template <typename T, typename ... Args>
 	T *add(Args &&... args)
@@ -35,6 +35,9 @@ struct IGUIElementWrapper : public Element {
 protected:
 	gui::IGUIElement *m_element = nullptr;
 	std::vector<std::unique_ptr<Element>> m_children; // e.g. tabs
+
+private:
+	void setTextlike(bool use_get_text);
 };
 
 }

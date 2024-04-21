@@ -35,22 +35,6 @@ void SceneConnect::OnClose()
 {
 }
 
-static u16 BUTTON_H = 20;
-
-static void set_text_props(guilayout::IGUIElementWrapper *w)
-{
-	w->expand = { 0, 0 };
-	w->margin = { 1, 1, 1, 0 };
-	w->min_size = { 100, BUTTON_H }; // for Y center
-}
-
-static void set_field_props(guilayout::IGUIElementWrapper *w)
-{
-	w->expand = { 5, 1 };
-	w->margin = { 1, 1, 1, 1 };
-	w->min_size = { 100, (u16)(BUTTON_H * 1.5) }; // for Y center
-}
-
 void SceneConnect::draw()
 {
 	using namespace guilayout;
@@ -59,9 +43,9 @@ void SceneConnect::draw()
 	Table &root = *m_gui->layout;
 	root.clear();
 	root.setSize(3, 5);
-	root.col(0)->weight = 20;
-	root.col(2)->weight = 20;
-	root.row(4)->weight = 20;
+	root.col(0)->weight = 20; // left
+	root.col(2)->weight = 20; // right
+	root.row(4)->weight = 20; // bottom
 
 	auto gui = m_gui->guienv;
 	core::recti norect;
@@ -75,7 +59,6 @@ void SceneConnect::draw()
 		auto *i_img = gui->addImage(texture, nopos, false, 0, -1, L"test test");
 		auto *g_img = root.add<WRAP>(1, 1, i_img);
 		g_img->expand = { 0, 0 };
-		g_img->margin = { 1, 1, 1, 1 };
 		g_img->min_size = { (u16)dim.Width, (u16)dim.Height };
 		//ge->fixed_aspect_ratio = true;
 	}
@@ -90,18 +73,14 @@ void SceneConnect::draw()
 	{
 		auto *i_text = gui->addStaticText(L"Username", norect, false, false);
 		i_text->setOverrideColor(Gui::COLOR_ON_BG);
-		auto *g_text = table_prompt->add<WRAP>(0, column, i_text);
+		table_prompt->add<WRAP>(0, column, i_text);
 
 		auto *i_box = gui->addEditBox(
 			m_login.nickname.c_str(), norect, true, nullptr, ID_BoxNickname);
-		auto *g_box = table_prompt->add<WRAP>(1, column, i_box);
+		table_prompt->add<WRAP>(1, column, i_box);
 
 		auto *i_btn = gui->addButton(norect, nullptr, ID_BtnHost, L"Host");
-		auto *g_btn = table_prompt->add<WRAP>(2, column, i_btn);
-
-		set_text_props(g_text);
-		set_field_props(g_box);
-		set_field_props(g_btn);
+		table_prompt->add<WRAP>(2, column, i_btn);
 
 		column++;
 	}
@@ -109,15 +88,12 @@ void SceneConnect::draw()
 	{
 		auto i_text = gui->addStaticText(L"Password", norect, false, false);
 		i_text->setOverrideColor(Gui::COLOR_ON_BG);
-		auto *g_text = table_prompt->add<WRAP>(0, column, i_text);
+		table_prompt->add<WRAP>(0, column, i_text);
 
 		auto *i_box = gui->addEditBox(
 			m_login.password.c_str(), norect, true, nullptr, ID_BoxPassword);
 		i_box->setPasswordBox(true);
-		auto *g_box = table_prompt->add<WRAP>(1, column, i_box);
-
-		set_text_props(g_text);
-		set_field_props(g_box);
+		table_prompt->add<WRAP>(1, column, i_box);
 
 		column++;
 	}
@@ -125,29 +101,25 @@ void SceneConnect::draw()
 	{
 		auto i_text = gui->addStaticText(L"Address", norect, false, false);
 		i_text->setOverrideColor(Gui::COLOR_ON_BG);
-		auto *g_text = table_prompt->add<WRAP>(0, column, i_text);
+		table_prompt->add<WRAP>(0, column, i_text);
 
 		core::stringw str;
 
 		auto *i_box = gui->addEditBox(
 			m_login.address.c_str(), norect, true, nullptr, ID_BoxAddress);
-		auto *g_box = table_prompt->add<WRAP>(1, column, i_box);
+		table_prompt->add<WRAP>(1, column, i_box);
 
 		auto *i_btn = gui->addButton(norect, nullptr, ID_BtnConnect, L"Connect");
-		auto *g_btn = table_prompt->add<WRAP>(2, column, i_btn);
-
-		set_text_props(g_text);
-		set_field_props(g_box);
-		set_field_props(g_btn);
+		table_prompt->add<WRAP>(2, column, i_btn);
 
 		column++;
 	}
 
+	// Server selector
 	root.row(3)->weight = 20;
 	Table *table_srv = root.add<Table>(1, 3);
 	table_srv->setSize(2, 1);
-	table_srv->col(1)->weight = 40 + 20; // editbox + button
-	table_srv->margin = { 1, 0, 1, 0 };
+	table_srv->col(1)->weight = 30; // listbox
 
 	{
 		FlexBox *box_left = table_srv->add<FlexBox>(0, 0);
@@ -157,21 +129,18 @@ void SceneConnect::draw()
 		// Server selector dropdown
 		auto i_text = gui->addStaticText(L"Servers", norect, false, false);
 		i_text->setOverrideColor(Gui::COLOR_ON_BG);
-		auto *g_text = box_left->add<WRAP>(i_text);
+		box_left->add<WRAP>(i_text);
 
 		auto *i_btn = gui->addButton(norect, nullptr, ID_BtnDelServer, L"Remove");
 		auto *g_btn = box_left->add<WRAP>(i_btn);
 
+
 		auto *i_list = gui->addListBox(norect, nullptr, ID_ListServers, true);
 		auto *g_list = table_srv->add<WRAP>(1, 0, i_list);
 
-		set_text_props(g_text);
-		g_btn->expand = { 2, 1 };
 		g_btn->margin = { 10, 1, 1, 0 };
-		g_btn->min_size = { 50, BUTTON_H };
-
 		g_list->margin = { 1, 1, 1, 1 };
-		g_list->min_size = { 200, 40 };
+		g_list->min_size = { 300, 100 };
 
 		updateServers();
 	}

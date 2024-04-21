@@ -103,12 +103,7 @@ void Table::updatePosition()
 void Table::getMinSize(bool shrink_x, bool shrink_y)
 {
 	for (size_t dim = 0; dim < 2; ++dim) {
-		Direction dir_L = (dim == SIZE_X) ? DIR_LEFT : DIR_UP;
-		Direction dir_R = (dim == SIZE_X) ? DIR_RIGHT : DIR_DOWN;
-
-		int weight =
-			+ margin[dir_L]
-			+ margin[dir_R];
+		u16 weight = 0;
 
 		for (CellInfo &ci : m_cellinfo[dim]) {
 			ci.min_size = 0;
@@ -156,7 +151,7 @@ void Table::spreadTable(Size dim, u16 total_space)
 	u16 fixed_offset =
 		+ pos[dir_L]
 		- m_scroll_offset[dim];
-	u16 weight_sum = margin[dir_L];
+	u16 weight_sum = 0;
 	u16 total_springs = m_total_weight_cell[dim];
 	int dynamic_space = total_space;
 

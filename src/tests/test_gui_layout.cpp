@@ -333,8 +333,7 @@ void unittest_gui_layout(int which)
 
 		if (which == 3) {
 			// red rectangle to highlight area
-			auto wrap = ((IGUIElementWrapper *)((FlexBox *)root)->at(0));
-			wrap->debugFillArea(device->getVideoDriver(), 0xFFFF0000);
+			IGUIElementWrapper::debugFillArea(root, device->getVideoDriver(), 0xFFFF0000);
 		}
 
 		driver->endScene();

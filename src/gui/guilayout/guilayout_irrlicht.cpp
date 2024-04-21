@@ -1,5 +1,6 @@
 #include "guilayout_irrlicht.h"
 #include <IGUIElement.h>
+#include <IGUIStaticText.h>
 #include <IGUITabControl.h>
 #include <IVideoDriver.h>
 
@@ -49,6 +50,27 @@ void IGUIElementWrapper::setElement(gui::IGUIElement *elem)
 
 	elem->grab();
 	m_element = elem;
+
+	gui::EGUI_ELEMENT_TYPE type = m_element->getType();
+
+	switch (type) {
+		case gui::EGUIET_BUTTON:
+		case gui::EGUIET_EDIT_BOX:
+			margin = { 1, 1, 1, 1 };
+			expand = { 5, 1 };
+			setTextlike(type == gui::EGUIET_BUTTON);
+			break;
+		case gui::EGUIET_STATIC_TEXT:
+			margin = { 1, 1, 1, 0 }; // left align
+			expand = { 0, 0 }; // no benefit from larger container
+			setTextlike(true);
+			{
+				gui::IGUIStaticText *e = (gui::IGUIStaticText *)m_element;
+				e->setTextAlignment(gui::EGUIA_UPPERLEFT, gui::EGUIA_CENTER);
+			}
+			break;
+		default: break;
+	}
 }
 
 void IGUIElementWrapper::updatePosition()
@@ -104,37 +126,50 @@ void IGUIElementWrapper::doRecursive(std::function<bool(Element *)> callback)
 	}
 }
 
-void IGUIElementWrapper::debugFillArea(irr::video::IVideoDriver *driver, uint32_t color)
+void IGUIElementWrapper::debugFillArea(Element *e, video::IVideoDriver *driver, uint32_t color)
 {
 	color &= 0x00FFFFFF;
-
-	if (m_element) {
-		core::recti rect = m_element->getAbsoluteClippingRect();
-		driver->draw2DLine(
-			rect.UpperLeftCorner, rect.LowerRightCorner,
-			0xFF000000 | color
-		);
-	}
 
 	auto drawfunc = [driver, &color] (Element *e) -> bool {
 		auto ptr = dynamic_cast<IGUIElementWrapper *>(e);
 		if (!ptr || !ptr->m_element)
-			return true;
+			return true; // maybe a child element is drawable ...?
 		if (!ptr->m_element->isTrulyVisible())
 			return false;
 
-		color = 0xFF000000 | (color << 4) | (color >> 16);
+		// semi-transparent
+		color = (color & 0x00FFFFFF) | 0x55000000;
 		core::recti rect = ptr->m_element->getAbsoluteClippingRect();
-		driver->draw2DLine(
-			rect.UpperLeftCorner, rect.LowerRightCorner,
-			0xFF000000 | color
+		driver->draw2DRectangle(color, rect);
+
+		// Show minimal rect
+		core::vector2di center = (rect.UpperLeftCorner + rect.LowerRightCorner) / 2;
+		core::recti minr(
+			center.X - e->min_size[SIZE_X] / 2,
+			center.Y - e->min_size[SIZE_Y] / 2,
+			center.X + e->min_size[SIZE_X] / 2,
+			center.Y + e->min_size[SIZE_Y] / 2
 		);
+		driver->draw2DRectangle(color + 0x22000000, minr);
+
+		// randomize for next element
+		color = ((color >> 1) ^ 0x13579B) + 0xB97531;
 		return true;
 	};
 
-	for (auto &e : m_children) {
-		e->doRecursive(drawfunc);
-	}
+	e->doRecursive(drawfunc);
+}
+
+void IGUIElementWrapper::setTextlike(bool use_get_text)
+{
+	// TODO: getSkin()->getFont()->getDimension() for a more accurate number
+	constexpr u16 TEXT_HEIGHT = 20;
+
+	u16 len = 40;
+	if (use_get_text)
+		len = std::max<u16>(len, wcslen(m_element->getText()) * TEXT_HEIGHT * 0.6f);
+
+	min_size = { len, TEXT_HEIGHT + 4 };
 }
 
 }

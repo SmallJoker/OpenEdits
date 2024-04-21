@@ -33,7 +33,7 @@ struct Element {
 	virtual void clear() {} // for containers only: drop and clear m_children
 	virtual void doRecursive(std::function<bool(Element *)> callback) {}
 
-	u16_x4 margin {}; //< outer springs to dock/space elements (U,R,D,L)
+	u16_x4 margin {}; //< outer springs to space/dock elements (U,R,D,L)
 	u16_x2 expand {10, 10}; //< inner springs to enlarge elements (x,y) = padding / 2
 
 	/// modify min_size && return true to skip box calcs
