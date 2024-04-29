@@ -230,8 +230,7 @@ void SceneConnect::recordLogin(ClientStartData data)
 {
 	for (char &c : data.address)
 		c = tolower(c);
-	for (char &c : data.nickname)
-		c = toupper(c);
+	to_player_name(data.nickname);
 
 	if (data.nickname.rfind("GUEST", 0) == 0)
 		return;

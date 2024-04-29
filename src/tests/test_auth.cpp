@@ -33,6 +33,7 @@ static void auth_friends_test(DatabaseAuth &db)
 		std::vector<AuthFriend> friends;
 		CHECK(db.listFriends("Terry", &friends));
 		CHECK(friends.size() == 1);
+		CHECK(friends[0].p1.name == "Terry");
 	}
 
 	{

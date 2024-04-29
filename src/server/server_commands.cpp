@@ -95,8 +95,7 @@ void Server::systemChatSend(Player *player, const std::string &msg, bool broadca
 
 Player *Server::findPlayer(const World *world, std::string name)
 {
-	for (char &c : name)
-		c = toupper(c);
+	to_player_name(name);
 
 	for (auto p : m_players) {
 		if (p.second->getWorld().get() != world)
@@ -202,8 +201,7 @@ CHATCMD_FUNC(Server::chat_SetPass)
 	std::string newpass(get_next_part(msg));
 	std::string confirm(get_next_part(msg));
 
-	for (char &c : who)
-		c = toupper(c);
+	to_player_name(who);
 
 	if (!m_auth_db) {
 		systemChatSend(player, "Auth database is dead.");
@@ -405,8 +403,7 @@ CHATCMD_FUNC(Server::chat_Flags)
 	if (who.empty())
 		who = player->name;
 	else
-		for (char &c : who)
-			c = toupper(c);
+		to_player_name(who);
 
 	std::string ret;
 	ret.append("Flags of player ");
@@ -471,8 +468,7 @@ bool Server::changePlayerFlags(Player *player, std::string msg, bool do_add)
 	auto &meta = world->getMeta();
 
 	std::string playername(get_next_part(msg));
-	for (char &c : playername)
-		c = toupper(c);
+	to_player_name(playername);
 
 	// Search for existing records
 	Player *target_player = findPlayer(world.get(), playername);

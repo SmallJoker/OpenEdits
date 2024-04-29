@@ -116,5 +116,6 @@ enum class Packet2Server : uint16_t {
 	OnTouchBlock, // key/kill ?
 	GodMode,
 	Smiley,
+	FriendAction,
 	MAX_END
 };

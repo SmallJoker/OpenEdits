@@ -152,12 +152,14 @@ void SceneLobby::step(float dtime)
 bool SceneLobby::OnEvent(const SEvent &e)
 {
 	if (e.EventType == EET_GUI_EVENT) {
+		auto root = m_gui->guienv->getRootGUIElement();
+		auto caller = e.GUIEvent.Caller;
+		const s32 caller_id = caller ? caller->getID() : -1;
 		switch (e.GUIEvent.EventType) {
 			case gui::EGET_BUTTON_CLICKED:
 			case gui::EGET_EDITBOX_ENTER:
-				if (e.GUIEvent.Caller->getID() == ID_BtnJoin
-						|| e.GUIEvent.Caller->getID() == ID_BoxWorldID) {
-					auto root = m_gui->guienv->getRootGUIElement();
+				if (caller_id == ID_BtnJoin
+						|| caller_id == ID_BoxWorldID) {
 					auto editbox = root->getElementFromId(ID_BoxWorldID);
 
 					if (!editbox->getText()[0])
@@ -167,8 +169,7 @@ bool SceneLobby::OnEvent(const SEvent &e)
 					m_gui->joinWorld(this);
 					return true;
 				}
-				if (e.GUIEvent.Caller->getID() == ID_BtnCreate) {
-					auto root = m_gui->guienv->getRootGUIElement();
+				if (caller_id == ID_BtnCreate) {
 					auto b_title = root->getElementFromId(ID_BoxTitle);
 					auto b_code = root->getElementFromId(ID_BoxCode);
 					auto s_mode = (gui::IGUIComboBox *)root->getElementFromId(ID_SelMode);
@@ -186,26 +187,36 @@ bool SceneLobby::OnEvent(const SEvent &e)
 					m_gui->sendNewEvent(e);
 					return true;
 				}
-				if (e.GUIEvent.Caller->getID() == ID_BtnRefresh) {
-					e.GUIEvent.Caller->setEnabled(false);
+				if (caller_id == ID_BtnRefresh) {
+					caller->setEnabled(false);
 					GameEvent e(GameEvent::G2C_LOBBY_REQUEST);
 					m_gui->sendNewEvent(e);
 					return true;
 				}
-				if (e.GUIEvent.Caller->getID() == ID_BtnDisconnect) {
+				if (caller_id == ID_BtnDisconnect) {
 					m_gui->disconnect();
 					return true;
 				}
-				if (e.GUIEvent.Caller->getID() == ID_BtnChangePass) {
-					e.GUIEvent.Caller->setEnabled(false);
+				if (caller_id == ID_BtnChangePass) {
+					caller->setEnabled(false);
 					m_gui->setSceneLoggedIn(SceneHandlerType::Register);
+					return true;
+				}
+				if (caller_id == ID_BtnFriendExecute) {
+					auto *b_name = root->getElementFromId(ID_BoxFriendName, true);
+					auto *s_action = (gui::IGUIComboBox *)root->getElementFromId(ID_SelFriendAction, true);
+
+					GameEvent e(GameEvent::G2C_FRIEND_ACTION);
+					e.friend_action = new GameEvent::FriendAction();
+					e.friend_action->action = s_action->getItemData(s_action->getSelected());
+					wide_to_utf8(e.friend_action->player_name, b_name->getText());
+					m_gui->sendNewEvent(e);
 					return true;
 				}
 				break;
 			case gui::EGET_LISTBOX_CHANGED:
 				{
-					auto caller = e.GUIEvent.Caller;
-					if (caller->getID() == ID_ListFriends) {
+					if (caller_id == ID_ListFriends) {
 						auto *list = (gui::IGUIListBox *)caller;
 						LobbyFriend *f = nullptr;
 						try {
@@ -214,7 +225,6 @@ bool SceneLobby::OnEvent(const SEvent &e)
 							break;
 						}
 
-						auto root = m_gui->guienv->getRootGUIElement();
 						{
 							auto *box  = (gui::IGUIEditBox *)root->getElementFromId(ID_BoxFriendName, true);
 							std::wstring wstr;
@@ -232,8 +242,7 @@ bool SceneLobby::OnEvent(const SEvent &e)
 			case gui::EGET_LISTBOX_SELECTED_AGAIN:
 				{
 					std::vector<std::string> *lookup = nullptr;
-					auto caller = e.GUIEvent.Caller;
-					switch (caller->getID()) {
+					switch (caller_id) {
 						case ID_ListPublic:  lookup = &m_public_index_to_worldid; break;
 						case ID_ListMine:    lookup = &m_my_index_to_worldid;     break;
 						case ID_ListImport:  lookup = &m_import_index_to_worldid; break;
@@ -251,7 +260,7 @@ bool SceneLobby::OnEvent(const SEvent &e)
 						break;
 					}
 
-					if (caller->getID() == ID_ListFriends) {
+					if (caller_id == ID_ListFriends) {
 						auto *list = (gui::IGUIListBox *)caller;
 
 						try {
@@ -266,24 +275,21 @@ bool SceneLobby::OnEvent(const SEvent &e)
 				}
 				break;
 			case gui::EGET_TAB_CHANGED:
-				{
-					auto caller = e.GUIEvent.Caller;
-					if (caller->getID() == ID_TabsMain) {
-						auto root = m_gui->guienv->getRootGUIElement();
-						static const ElementId IDS_TO_CHECK[] = {
-							ID_ListPublic,
-							ID_ListMine,
-							ID_ListImport,
-							ID_ListFriends
-						};
-						for (ElementId id : IDS_TO_CHECK) {
-							auto list = (gui::IGUIListBox *)root->getElementFromId(id, true);
-							if (list && list->isTrulyVisible()) {
-								m_gui->guienv->setFocus(list);
-								break;
-							}
+				if (caller_id == ID_TabsMain) {
+					static const ElementId IDS_TO_CHECK[] = {
+						ID_ListPublic,
+						ID_ListMine,
+						ID_ListImport,
+						ID_ListFriends
+					};
+					for (ElementId id : IDS_TO_CHECK) {
+						auto list = (gui::IGUIListBox *)root->getElementFromId(id, true);
+						if (list && list->isTrulyVisible()) {
+							m_gui->guienv->setFocus(list);
+							break;
 						}
 					}
+					return true;
 				}
 				break;
 			default: break;
@@ -373,7 +379,7 @@ void SceneLobby::addFriendsTab(gui::IGUITabControl *tc)
 		auto cb = gui->addComboBox(rect, tab, ID_SelFriendAction);
 		cb->addItem(L"(select action)", (u32)LobbyFriend::Type::None);
 		cb->addItem(L"Remove / reject", (u32)LobbyFriend::Type::Rejected);
-		cb->addItem(L"Send or accept",  (u32)LobbyFriend::Type::RequestOutgoing);
+		cb->addItem(L"Send or accept",  (u32)LobbyFriend::Type::Accepted);
 
 		rect += core::vector2di(rect.getWidth() + 10, 0);
 		gui->addButton(rect, tab, ID_BtnFriendExecute, L"Execute");
@@ -465,6 +471,14 @@ void SceneLobby::updateFriendsList()
 		char buf[255];
 		video::SColor color = 0xFFFFFFFF;
 		switch (f.type) {
+			case LobbyFriend::Type::Pending:
+				color = 0xFF0000DD; // blue
+				snprintf(buf, sizeof(buf), "[Accept?] %s", f.name.c_str());
+				break;
+			case LobbyFriend::Type::Accepted: // unknown online status
+				color = 0xFF555566; // grey
+				snprintf(buf, sizeof(buf), "[Pending] %s", f.name.c_str());
+				break;
 			case LobbyFriend::Type::FriendOnline:
 				color = 0xFF008800; // green
 				if (f.world_id.empty()) {
@@ -476,14 +490,6 @@ void SceneLobby::updateFriendsList()
 			case LobbyFriend::Type::FriendOffline:
 				color = 0xFF224422; // ugly green
 				snprintf(buf, sizeof(buf), "[Offline] %s", f.name.c_str());
-				break;
-			case LobbyFriend::Type::RequestIncoming:
-				color = 0xFF0000DD; // blue
-				snprintf(buf, sizeof(buf), "[Accept?] %s", f.name.c_str());
-				break;
-			case LobbyFriend::Type::RequestOutgoing:
-				color = 0xFF555566; // grey
-				snprintf(buf, sizeof(buf), "[Pending] %s", f.name.c_str());
 				break;
 			default:
 				continue;

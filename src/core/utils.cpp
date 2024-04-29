@@ -84,6 +84,13 @@ std::vector<std::string> strsplit(const std::string &input, char delim)
 	return parts;
 }
 
+void to_player_name(std::string &input)
+{
+	input = strtrim(input);
+	for (char &c : input)
+		c = toupper(c);
+}
+
 
 #ifndef _WIN32
 

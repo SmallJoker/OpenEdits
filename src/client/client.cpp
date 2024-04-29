@@ -5,6 +5,7 @@
 #include "core/connection.h"
 #include "core/packet.h"
 #include "core/script.h"
+#include "core/utils.h" // to_player_name
 
 #if 0
 	#define DEBUGLOG(...) printf(__VA_ARGS__)
@@ -183,6 +184,16 @@ bool Client::OnEvent(GameEvent &e)
 			{
 				Packet pkt;
 				pkt.write(Packet2Server::GetLobby);
+				m_con->send(0, 0, pkt);
+			}
+			return true;
+		case E::G2C_FRIEND_ACTION:
+			{
+				Packet pkt;
+				pkt.write(Packet2Server::FriendAction);
+				pkt.write<uint8_t>(e.friend_action->action);
+				to_player_name(e.friend_action->player_name);
+				pkt.writeStr16(e.friend_action->player_name);
 				m_con->send(0, 0, pkt);
 			}
 			return true;

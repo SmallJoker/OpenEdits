@@ -18,6 +18,7 @@ struct GameEvent {
 		G2C_INVALID,
 		G2C_REGISTER,
 		G2C_LOBBY_REQUEST,
+		G2C_FRIEND_ACTION,
 		G2C_SET_PASSWORD,
 		G2C_JOIN,
 		G2C_CREATE_WORLD,
@@ -51,6 +52,11 @@ struct GameEvent {
 	GameEvent(C2G_Enum v) : type_c2g(v) {}
 	~GameEvent();
 
+	struct FriendAction {
+		int action;
+		std::string player_name;
+	};
+
 	struct PlayerChat {
 		Player *player;
 		std::string message;
@@ -74,6 +80,7 @@ struct GameEvent {
 	union {
 		std::string *text;
 		Player *player;
+		FriendAction *friend_action;
 		PlayerChat *player_chat;
 		WorldCreationData *wc_data;
 		BlockData *block;

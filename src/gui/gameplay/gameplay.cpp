@@ -751,8 +751,7 @@ bool SceneGameplay::handleChatInput(const SEvent &e)
 
 		std::string last_word;
 		wide_to_utf8(last_word, &text[word_start]);
-		for (char &c : last_word)
-			c = toupper(c);
+		to_player_name(last_word);
 
 		auto players = m_gui->getClient()->getPlayerList();
 		std::string playername;

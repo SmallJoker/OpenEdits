@@ -7,6 +7,10 @@
 
 To-do:
 
+ * Transaction IDs for packets
+    * `status_t Server::pkt_*(peer_t, Packet &pkt)`
+    * The return value is sent in an ACK-like packet when `pkt[1] != 0`
+    * Useful for chat commands, bot programming and saner client communication
  * Private worlds
  * Animated coins (rotating mesh?)
  * Singleplayer mode (also with CLI args)

@@ -78,7 +78,7 @@ static int run_server()
 	return EXIT_SUCCESS;
 }
 
-static int server_setrole(char *username, char *role)
+static int server_setrole(char *username_raw, char *role)
 {
 	AuthAccount::AccountLevel newlevel = AuthAccount::AL_INVALID;
 
@@ -95,11 +95,8 @@ static int server_setrole(char *username, char *role)
 		return EXIT_FAILURE;
 	}
 
-	char *ptr = username;
-	while (*ptr) {
-		*ptr = toupper(*ptr);
-		ptr++;
-	}
+	std::string username = username_raw;
+	to_player_name(username);
 
 	DatabaseAuth auth_db;
 	if (!auth_db.tryOpen("server_auth.sqlite"))

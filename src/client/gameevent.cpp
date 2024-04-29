@@ -41,6 +41,9 @@ GameEvent::~GameEvent()
 		case G::G2C_CREATE_WORLD:
 			delete wc_data;
 			break;
+		case G::G2C_FRIEND_ACTION:
+			delete friend_action;
+			break;
 		case G::G2C_SET_PASSWORD:
 			delete password;
 			break;

@@ -11,6 +11,8 @@ std::string strtrim(const std::string &str);
 std::string get_next_part(std::string &input);
 std::vector<std::string> strsplit(const std::string &input, char delim);
 
+void to_player_name(std::string &input);
+
 bool wide_to_utf8(std::string &dst, const wchar_t *str);
 bool utf8_to_wide(std::wstring &dst, const char *str);
 

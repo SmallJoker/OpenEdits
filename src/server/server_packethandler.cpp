@@ -30,6 +30,7 @@ const ServerPacketHandler Server::packet_actions[] = {
 	{ RemotePlayerState::WorldPlay, &Server::pkt_TriggerBlocks },
 	{ RemotePlayerState::WorldPlay, &Server::pkt_GodMode }, // 10
 	{ RemotePlayerState::WorldPlay, &Server::pkt_Smiley },
+	{ RemotePlayerState::Idle,      &Server::pkt_FriendAction },
 	{ RemotePlayerState::Invalid, 0 }
 };
 
@@ -56,11 +57,9 @@ void Server::pkt_Hello(peer_t peer_id, Packet &pkt)
 	}
 
 	std::string name(pkt.readStr16());
-	name = strtrim(name);
+	to_player_name(name);
 
 	bool ok = name.size() <= 16 && name.size() >= 3 && isalnum_nolocale(name);
-	for (char &c : name)
-		c = toupper(c);
 
 	if (!ok) {
 		sendMsg(peer_id, "Invalid nickname (must be [A-z0-9]{3,16})");
@@ -823,6 +822,107 @@ void Server::pkt_Smiley(peer_t peer_id, Packet &pkt)
 	out.write<u8>(player->smiley_id);
 
 	broadcastInWorld(player, 1, out);
+}
+
+void Server::pkt_FriendAction(peer_t peer_id, Packet &pkt)
+{
+	if (!m_auth_db) {
+		sendMsg(peer_id, "Service unavailable");
+		return;
+	}
+
+	RemotePlayer *player = getPlayerNoLock(peer_id);
+	const uint8_t action = pkt.read<uint8_t>();
+
+	if (action == (int)LobbyFriend::Type::None)
+		return;
+
+	if (player->auth.status == Auth::Status::Guest) {
+		sendMsg(peer_id, "Cannot perform friend actions for guests.");
+		return;
+	}
+
+
+	auto try_find_friend = [this] (AuthFriend *af) -> bool {
+		std::vector<AuthFriend> friends;
+		m_auth_db->listFriends(af->p1.name, &friends);
+		for (auto &f : friends) {
+			if (f.p2.name == af->p2.name) {
+				*af = std::move(f);
+				return true;
+			}
+		}
+		return false;
+	};
+
+	AuthFriend af;
+	af.p1.name = player->name;
+
+	if (action == (int)LobbyFriend::Type::Accepted) {
+		af.p2.name = pkt.readStr16();
+		if (af.p2.name == player->name)
+			return;
+
+		bool exists = try_find_friend(&af);
+
+		if (!exists) {
+			AuthBanEntry ban;
+			ban.affected = player->name;
+			ban.context = "friend.send";
+			if (m_auth_db->getBanRecord(ban.affected, ban.context, nullptr)) {
+				sendMsg(peer_id, "Coolcown triggered. Please wait before adding someone else.");
+				return;
+			}
+			// Add a new friend if possible
+			AuthAccount auth;
+			if (!m_auth_db->load(af.p2.name, &auth)) {
+				sendMsg(peer_id, "The specified player was not found.");
+				return;
+			}
+			af.p1.status = (int)LobbyFriend::Type::Accepted;
+			af.p2.status = (int)LobbyFriend::Type::Pending;
+			if (m_auth_db->setFriend(af)) {
+				ban.expiry = time(nullptr) + 120;
+				m_auth_db->ban(ban);
+				sendMsg(peer_id, "Success!");
+			} else {
+				sendMsg(peer_id, "Failed to add friend.");
+			}
+			return;
+		}
+
+		// Update record
+		if (af.p1.status == (int)LobbyFriend::Type::Pending) {
+			af.p1.status = (int)LobbyFriend::Type::Accepted;
+			if (m_auth_db->setFriend(af)) {
+				sendMsg(peer_id, "Success!");
+			} else {
+				sendMsg(peer_id, "Failed to accept.");
+			}
+		} else {
+			sendMsg(peer_id, "You already accepted.");
+		}
+		return;
+	}
+
+	if (action == (int)LobbyFriend::Type::Rejected) {
+		af.p2.name = pkt.readStr16();
+		bool exists = try_find_friend(&af);
+
+		if (!exists) {
+			sendMsg(peer_id, "No such friend.");
+			return;
+		}
+
+		if (m_auth_db->removeFriend(af.p1.name, af.p2.name)) {
+			sendMsg(peer_id, "Success!");
+		} else {
+			sendMsg(peer_id, "Failed to remove.");
+		}
+		return;
+	}
+
+	sendMsg(peer_id, "Unknown friend action: " + std::to_string(action));
 }
 
 void Server::pkt_Deprecated(peer_t peer_id, Packet &pkt)

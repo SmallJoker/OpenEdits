@@ -5,12 +5,12 @@
 
 
 struct LobbyFriend {
-	// Fixed by protocol
+	// Fixed by protocol and database
 	enum class Type : uint8_t {
 		None = 0,
+		Accepted,
+		Pending,
 		Rejected,
-		RequestOutgoing, // waiting other player
-		RequestIncoming, // waiting current player
 		FriendOffline,
 		FriendOnline,
 		MAX_INVALID
