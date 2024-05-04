@@ -5,6 +5,7 @@
 #include "core/utils.h" // text conversion
 #include <IEventReceiver.h>
 #include <rect.h>
+#include <list>
 #include <map>
 
 namespace irr {
@@ -121,9 +122,11 @@ private:
 	bool m_show_debug = false;
 
 	void drawPopup(float dtime);
-	float m_popup_timer = 0;
-	core::stringw m_popup_text;
-	std::wstring m_popup_text_last;
+	struct PopupEntry {
+		float expiry = 0;
+		std::wstring text;
+	};
+	std::list<PopupEntry> m_popup_entries;
 };
 
 class SceneHandler {

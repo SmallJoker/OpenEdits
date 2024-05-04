@@ -25,7 +25,7 @@ struct AuthFriend {
 	// sorted alphabetically for the database
 	struct Entry {
 		std::string name;
-		int status = 0;
+		int status = 0; // LobbyFriend::Type
 	} p1, p2;
 
 	// void *metadata;

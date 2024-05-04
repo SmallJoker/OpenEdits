@@ -93,12 +93,12 @@ void Server::systemChatSend(Player *player, const std::string &msg, bool broadca
 	m_con->send(player->peer_id, 0, pkt);
 }
 
-Player *Server::findPlayer(const World *world, std::string name)
+Player *Server::findPlayer(const World *world, std::string name, bool any_world)
 {
 	to_player_name(name);
 
 	for (auto p : m_players) {
-		if (p.second->getWorld().get() != world)
+		if (!any_world && p.second->getWorld().get() != world)
 			continue;
 		if (p.second->name != name)
 			continue;

@@ -8,9 +8,12 @@ struct LobbyFriend {
 	// Fixed by protocol and database
 	enum class Type : uint8_t {
 		None = 0,
+		// Main database values (static):
 		Accepted,
 		Pending,
 		Rejected,
+		// For client use (dynamic):
+		PendingIncoming,
 		FriendOffline,
 		FriendOnline,
 		MAX_INVALID

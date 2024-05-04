@@ -378,8 +378,8 @@ void SceneLobby::addFriendsTab(gui::IGUITabControl *tc)
 		// Action for the specified player
 		auto cb = gui->addComboBox(rect, tab, ID_SelFriendAction);
 		cb->addItem(L"(select action)", (u32)LobbyFriend::Type::None);
-		cb->addItem(L"Remove / reject", (u32)LobbyFriend::Type::Rejected);
 		cb->addItem(L"Send or accept",  (u32)LobbyFriend::Type::Accepted);
+		cb->addItem(L"Remove / reject", (u32)LobbyFriend::Type::Rejected);
 
 		rect += core::vector2di(rect.getWidth() + 10, 0);
 		gui->addButton(rect, tab, ID_BtnFriendExecute, L"Execute");
@@ -420,7 +420,7 @@ void SceneLobby::updateWorldList()
 			os << "(Untitled)";
 
 		os << " (id=" << it.id;
-		os << ", " << size.X << "x" << size.Y << " )";
+		os << ", " << size.X << "x" << size.Y << ")";
 		if (is_mine)
 			os << (it.is_public ? " - public" : " - private");
 		else if (!it.owner.empty())
@@ -454,7 +454,6 @@ void SceneLobby::updateFriendsList()
 	m_friends.list->clear();
 	m_friends.index_LUT.clear();
 
-	auto player = m_gui->getClient()->getMyPlayer();
 	auto &friends = m_gui->getClient()->friend_list;
 	std::sort(friends.begin(), friends.end(), [] (const LobbyFriend &a, const LobbyFriend &b) -> bool {
 		// true -> "a" comes before "b"
@@ -471,18 +470,18 @@ void SceneLobby::updateFriendsList()
 		char buf[255];
 		video::SColor color = 0xFFFFFFFF;
 		switch (f.type) {
-			case LobbyFriend::Type::Pending:
+			case LobbyFriend::Type::PendingIncoming:
 				color = 0xFF0000DD; // blue
 				snprintf(buf, sizeof(buf), "[Accept?] %s", f.name.c_str());
 				break;
-			case LobbyFriend::Type::Accepted: // unknown online status
+			case LobbyFriend::Type::Pending: // unknown online status
 				color = 0xFF555566; // grey
 				snprintf(buf, sizeof(buf), "[Pending] %s", f.name.c_str());
 				break;
 			case LobbyFriend::Type::FriendOnline:
 				color = 0xFF008800; // green
 				if (f.world_id.empty()) {
-					snprintf(buf, sizeof(buf), "[Online] %s - no world", f.name.c_str());
+					snprintf(buf, sizeof(buf), "[Online] %s (lobby)", f.name.c_str());
 				} else {
 					snprintf(buf, sizeof(buf), "[Online] %s - world: %s", f.name.c_str(), f.world_id.c_str());
 				}
@@ -492,6 +491,7 @@ void SceneLobby::updateFriendsList()
 				snprintf(buf, sizeof(buf), "[Offline] %s", f.name.c_str());
 				break;
 			default:
+				snprintf(buf, sizeof(buf), "[unknown %d] %s", (int)f.type, f.name.c_str());
 				continue;
 		}
 

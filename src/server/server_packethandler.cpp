@@ -323,7 +323,7 @@ void Server::pkt_GetLobby(peer_t peer_id, Packet &)
 
 	// This player's worlds
 	if (m_world_db) {
-		auto player = getPlayerNoLock(peer_id);
+		RemotePlayer *player = getPlayerNoLock(peer_id);
 		auto found = m_world_db->getByPlayer(player->name);
 		for (const auto &meta : found) {
 			out.write<u8>(true); // continue!
@@ -357,8 +357,36 @@ void Server::pkt_GetLobby(peer_t peer_id, Packet &)
 	if (m_auth_db) {
 		RemotePlayer *player = getPlayerNoLock(peer_id);
 
-		// TODO: Pull the data from somewhere
+		std::vector<AuthFriend> friends;
+		m_auth_db->listFriends(player->name, &friends);
+		for (const AuthFriend &f : friends) {
+			Player *other = findPlayer(nullptr, f.p2.name, true);
+			RefCnt<World> world;
+			int status = f.p2.status;
 
+			if (f.p1.status == (int)LobbyFriend::Type::Pending)
+				status = (int)LobbyFriend::Type::PendingIncoming;
+			// NO ELSE-IF! Do not leak the world ID for incoming requests
+			if (status == (int)LobbyFriend::Type::Accepted) {
+				if (other)
+					world = other->getWorld();
+
+				status = other
+					? (int)LobbyFriend::Type::FriendOnline
+					: (int)LobbyFriend::Type::FriendOffline;
+			}
+
+			out.write<u8>(true); // (1) next item
+			out.write<u8>(status);
+			out.writeStr16(f.p2.name);
+
+			if (world)
+				out.writeStr16(world->getMeta().id);
+			else
+				out.writeStr16("");
+		}
+
+		// Examples for client test
 		for (u8 type = 0; type < (u8)LobbyFriend::Type::MAX_INVALID; ++type) {
 			out.write<u8>(true);
 			out.write(type);
@@ -870,7 +898,7 @@ void Server::pkt_FriendAction(peer_t peer_id, Packet &pkt)
 			ban.affected = player->name;
 			ban.context = "friend.send";
 			if (m_auth_db->getBanRecord(ban.affected, ban.context, nullptr)) {
-				sendMsg(peer_id, "Coolcown triggered. Please wait before adding someone else.");
+				sendMsg(peer_id, "Cooldown triggered. Please wait before adding someone else.");
 				return;
 			}
 			// Add a new friend if possible

@@ -446,50 +446,66 @@ void Gui::drawFPS()
 
 void Gui::showPopupText(const std::string &str)
 {
-	std::wstring wstr;
-	utf8_to_wide(wstr, str.c_str());
+	PopupEntry e;
+	utf8_to_wide(e.text, str.c_str());
 
-	bool do_log = true;
+	bool found = false;
+	for (auto it = m_popup_entries.begin(); it != m_popup_entries.end(); ++it) {
+		if (it->text != e.text)
+			continue;
 
-	m_popup_timer = std::min<float>(10, m_popup_timer + 7);
-	if (m_popup_text.empty()) {
-		m_popup_text = wstr.c_str();
-	} else if (wstr != m_popup_text_last) {
-		m_popup_text += L"\n";
-		m_popup_text += wstr.c_str();
-	} else {
-		do_log = false;
+		// Found match
+		found = true;
+		m_popup_entries.erase(it);
+		break;
 	}
 
-	// To avoid duplicates
-	m_popup_text_last = wstr;
-	if (do_log)
+	e.expiry = 7;
+	m_popup_entries.emplace_back(std::move(e));
+
+	if (!found)
 		fprintf(stderr, "Gui popup: %s\n", str.c_str());
 }
 
 
 void Gui::drawPopup(float dtime)
 {
-	if (m_popup_timer <= 0) {
-		m_popup_text.clear();
-		m_popup_text_last.clear();
+	if (m_popup_entries.empty())
 		return;
+
+	std::wstring all_text;
+	all_text.reserve(255);
+	float max_time = 0;
+
+	for (auto it = m_popup_entries.begin(); it != m_popup_entries.end();) {
+		it->expiry -= dtime;
+		if (it->expiry <= 0) {
+			it = m_popup_entries.erase(it);
+			continue;
+		}
+
+		if (!all_text.empty())
+			all_text.append(L"\n");
+		all_text.append(it->text);
+		max_time = std::max<float>(max_time, it->expiry);
+		it++;
 	}
 
-	auto dim = font->getDimension(m_popup_text.c_str());
+	if (all_text.empty())
+		return;
+
+	auto dim = font->getDimension(all_text.c_str());
 	core::recti rect = getRect({50, 80}, {5, 5});
 	rect.UpperLeftCorner -= core::vector2di(dim.Width, dim.Height) / 2;
 	rect.LowerRightCorner += core::vector2di(dim.Width, dim.Height) / 2;
 
 	video::SColor color(0xFFFFFF00);
 	video::SColor color_frame(0xFF444444);
-	if (m_popup_timer < 1.0f) {
-		color.setAlpha(255 * m_popup_timer);
-		color_frame.setAlpha(255 * m_popup_timer);
+	if (max_time < 1.0f) {
+		color.setAlpha(255 * max_time);
+		color_frame.setAlpha(255 * max_time);
 	}
 
 	guienv->getSkin()->draw2DRectangle(nullptr, color_frame, rect);
-	font->draw(m_popup_text, rect, color, true, true);
-
-	m_popup_timer -= dtime;
+	font->draw(all_text.c_str(), rect, color, true, true);
 }
