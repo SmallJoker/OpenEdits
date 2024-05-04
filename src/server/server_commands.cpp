@@ -22,6 +22,8 @@ void Server::registerChatCommands()
 	m_chatcmd.add("/respawn", CHATCMD_REGISTER(chat_Respawn));
 	m_chatcmd.add("/teleport", CHATCMD_REGISTER(chat_Teleport));
 
+	m_chatcmd.add("/dev", CHATCMD_REGISTER(chat_Dev));
+
 	// Admin
 	m_chatcmd.add("/shutdown", CHATCMD_REGISTER(chat_Shutdown));
 
@@ -295,47 +297,6 @@ CHATCMD_FUNC(Server::chat_SetCode)
 	}
 }
 
-CHATCMD_FUNC(Server::chat_Code)
-{
-	auto &meta = player->getWorld()->getMeta();
-	if (meta.edit_code.empty()) {
-		systemChatSend(player, "There is no code specified.");
-		return;
-	}
-
-	std::string code(strtrim(msg));
-	if (code != meta.edit_code) {
-		systemChatSend(player, "Incorrect code.");
-		return;
-	}
-
-	playerflags_t flags;
-	switch (meta.type) {
-		case WorldMeta::Type::TmpSimple:
-			flags = PlayerFlags::PF_EDIT;
-			break;
-		case WorldMeta::Type::TmpDraw:
-			flags = PlayerFlags::PF_EDIT_DRAW;
-			break;
-		case WorldMeta::Type::Persistent:
-			flags = PlayerFlags::PF_EDIT_DRAW
-				| PlayerFlags::PF_GODMODE;
-			break;
-		default:
-			systemChatSend(player, "Internal error: invalid world type");
-			return;
-	}
-
-	meta.changePlayerFlags(player->name, flags, 0);
-
-	{
-		Packet out;
-		out.write(Packet2Client::PlayerFlags);
-		player->writeFlags(out, flags);
-		m_con->send(player->peer_id, 1, out);
-	}
-}
-
 CHATCMD_FUNC(Server::chat_Ban)
 {
 	const PlayerFlags myflags = player->getFlags();
@@ -395,6 +356,73 @@ CHATCMD_FUNC(Server::chat_Ban)
 
 	Packet dummy;
 	pkt_Leave(target->peer_id, dummy);
+}
+
+CHATCMD_FUNC(Server::chat_Code)
+{
+	auto &meta = player->getWorld()->getMeta();
+	if (meta.edit_code.empty()) {
+		systemChatSend(player, "There is no code specified.");
+		return;
+	}
+
+	std::string code(strtrim(msg));
+	if (code != meta.edit_code) {
+		systemChatSend(player, "Incorrect code.");
+		return;
+	}
+
+	playerflags_t flags;
+	switch (meta.type) {
+		case WorldMeta::Type::TmpSimple:
+			flags = PlayerFlags::PF_EDIT;
+			break;
+		case WorldMeta::Type::TmpDraw:
+			flags = PlayerFlags::PF_EDIT_DRAW;
+			break;
+		case WorldMeta::Type::Persistent:
+			flags = PlayerFlags::PF_EDIT_DRAW
+				| PlayerFlags::PF_GODMODE;
+			break;
+		default:
+			systemChatSend(player, "Internal error: invalid world type");
+			return;
+	}
+
+	meta.changePlayerFlags(player->name, flags, 0);
+
+	{
+		Packet out;
+		out.write(Packet2Client::PlayerFlags);
+		player->writeFlags(out, flags);
+		m_con->send(player->peer_id, 1, out);
+	}
+}
+
+CHATCMD_FUNC(Server::chat_Dev)
+{
+	std::string option(get_next_part(msg));
+	RemotePlayer *rplayer = (RemotePlayer *)player; // shadow
+
+	int value = -1;
+	// Anticheat enable
+	if (option == "ace") {
+		std::string action(get_next_part(msg));
+
+		rplayer->cheat_probability = rplayer->cheat_probability >= 0
+			? -1 : 0;
+
+		value = rplayer->cheat_probability >= 0; // on=1 / off=0
+	}
+	// Anticheat get
+	if (option == "acg") {
+		value = rplayer->cheat_probability + 0.5f;
+	}
+
+	systemChatSend(player, value > 0
+		? "OK " + std::to_string(value)
+		: "Unknown option."
+	);
 }
 
 CHATCMD_FUNC(Server::chat_Flags)
@@ -835,6 +863,7 @@ CHATCMD_FUNC(Server::chat_Load)
 			it.second->setWorld(world);
 	}
 
+	// TODO: The client does not receive the correct world data!
 	broadcastInWorld(player, RemotePlayerState::WorldJoin, 0, SERVER_PKT_CB {
 		writeWorldData(out, *world.get(), false);
 	});

@@ -113,6 +113,7 @@ void Server::step(float dtime)
 		RemotePlayer *player = (RemotePlayer *)p.second;
 		player->rl_blocks.step(dtime);
 		player->rl_chat.step(dtime);
+		player->time_since_move_pkt += dtime;
 
 		worlds.emplace(world);
 

@@ -58,6 +58,7 @@ void SceneConnect::draw()
 
 		auto *i_img = gui->addImage(texture, nopos, false, 0, -1, L"test test");
 		auto *g_img = root.add<WRAP>(1, 1, i_img);
+		g_img->margin = { 1, 1, 1, 1 };
 		g_img->expand = { 0, 0 };
 		g_img->min_size = { (u16)dim.Width, (u16)dim.Height };
 		//ge->fixed_aspect_ratio = true;
@@ -138,7 +139,7 @@ void SceneConnect::draw()
 		auto *i_list = gui->addListBox(norect, nullptr, ID_ListServers, true);
 		auto *g_list = table_srv->add<WRAP>(1, 0, i_list);
 
-		g_btn->margin = { 10, 1, 1, 0 };
+		g_btn->margin = { 20, 1, 1, 0 };
 		g_list->margin = { 1, 1, 1, 1 };
 		g_list->min_size = { 300, 100 };
 

@@ -165,11 +165,11 @@ void IGUIElementWrapper::setTextlike(bool use_get_text)
 	// TODO: getSkin()->getFont()->getDimension() for a more accurate number
 	constexpr u16 TEXT_HEIGHT = 20;
 
-	u16 len = 40;
+	float len = 6;
 	if (use_get_text)
-		len = std::max<u16>(len, wcslen(m_element->getText()) * TEXT_HEIGHT * 0.6f);
+		len = std::max<u16>(len, wcslen(m_element->getText()));
 
-	min_size = { len, TEXT_HEIGHT + 4 };
+	min_size = { (u16)(len * TEXT_HEIGHT * 0.6f), TEXT_HEIGHT + 4 };
 }
 
 }

@@ -101,6 +101,7 @@ private:
 	CHATCMD_FUNC(chat_SetPass);
 	CHATCMD_FUNC(chat_SetCode);
 	CHATCMD_FUNC(chat_Code);
+	CHATCMD_FUNC(chat_Dev);
 	CHATCMD_FUNC(chat_Ban);
 	CHATCMD_FUNC(chat_Flags);
 	CHATCMD_FUNC(chat_FFilter);

@@ -254,7 +254,7 @@ void Player::stepInternal(float dtime)
 	}
 
 	// Evaluate center position
-	blockpos_t bp(pos.X + 0.5f, pos.Y + 0.5f);
+	blockpos_t bp = getCurrentBlockPos();
 	const BlockProperties *props;
 	{
 		Block block;
@@ -274,7 +274,7 @@ void Player::stepInternal(float dtime)
 			return; // fail!
 
 		// Position changes (e.g. portal)
-		bp = blockpos_t(pos.X + 0.5f, pos.Y + 0.5f);
+		bp = getCurrentBlockPos();
 	}
 
 	last_pos = bp;
@@ -340,7 +340,7 @@ void Player::stepInternal(float dtime)
 
 bool Player::stepCollisions(float dtime)
 {
-	blockpos_t bp(pos.X + 0.5f, pos.Y + 0.5f);
+	blockpos_t bp = getCurrentBlockPos();
 	Block block;
 	bool ok = m_world->getBlock(bp, &block);
 	if (!ok) {
@@ -362,7 +362,7 @@ bool Player::stepCollisions(float dtime)
 	}
 	if (handled) {
 		// Position changes (e.g. portal)
-		blockpos_t bp2(pos.X + 0.5f, pos.Y + 0.5f);
+		blockpos_t bp2 = getCurrentBlockPos();
 		if (bp != bp2)
 			did_jerk = true;
 		bp = bp2;

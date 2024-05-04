@@ -24,4 +24,9 @@ public:
 	// Rate limits
 	RateLimit rl_blocks;
 	RateLimit rl_chat;
+
+	void runAnticheat(float dtime);
+	// TODO: Reset when joining a world
+	float time_since_move_pkt = 0;
+	float cheat_probability = -1;
 };

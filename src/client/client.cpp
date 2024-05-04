@@ -395,6 +395,7 @@ void Client::sendPlayerMove()
 		return;
 
 	Packet pkt = createPacket(Packet2Server::Move);
+	player->step(0.0001f); // update controls
 	player->writePhysics(pkt);
 	m_con->send(0, 1 | Connection::FLAG_UNRELIABLE, pkt);
 

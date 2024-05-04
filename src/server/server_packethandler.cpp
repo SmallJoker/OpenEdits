@@ -654,6 +654,8 @@ void Server::pkt_Move(peer_t peer_id, Packet &pkt)
 
 	player->readPhysics(pkt);
 	player->dtime_delay = m_con->getPeerRTT(peer_id) / 2.0f;
+	player->runAnticheat(player->time_since_move_pkt);
+	player->time_since_move_pkt = 0;
 
 	// broadcast to connected players
 	broadcastInWorld(player, RemotePlayerState::WorldPlay, 1 | Connection::FLAG_UNRELIABLE,
