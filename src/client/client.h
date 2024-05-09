@@ -6,6 +6,7 @@
 #include "gameevent.h"
 #include <string>
 
+class ClientMedia;
 class Connection;
 class LocalPlayer;
 class Script;
@@ -80,6 +81,8 @@ private:
 	void pkt_Hello(Packet &pkt);
 	void pkt_Message(Packet &pkt);
 	void pkt_Auth(Packet &pkt);
+	void pkt_MediaList(Packet &pkt);
+	void pkt_MediaReceive(Packet &pkt);
 	void pkt_Lobby(Packet &pkt);
 	void pkt_WorldData(Packet &pkt);
 	void pkt_Join(Packet &pkt);
@@ -87,13 +90,13 @@ private:
 	void pkt_SetPosition(Packet &pkt);
 	void pkt_Move(Packet &pkt);
 	void pkt_Chat(Packet &pkt);
+	void pkt_ChatReplay(Packet &pkt);
 	void pkt_PlaceBlock(Packet &pkt);
 	void pkt_Key(Packet &pkt);
 	void pkt_GodMode(Packet &pkt);
 	void pkt_Smiley(Packet &pkt);
 	void pkt_PlayerFlags(Packet &pkt);
 	void pkt_WorldMeta(Packet &pkt);
-	void pkt_ChatReplay(Packet &pkt);
 	void pkt_Deprecated(Packet &pkt);
 
 	static const ClientPacketHandler packet_actions[];
@@ -112,6 +115,7 @@ private:
 	peer_t m_my_peer_id = 0;
 
 	Auth m_auth;
+	ClientMedia *m_clientmedia = nullptr;
 	Script *m_script = nullptr;
 };
 

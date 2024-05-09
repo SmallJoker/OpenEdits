@@ -31,6 +31,7 @@ const ServerPacketHandler Server::packet_actions[] = {
 	{ RemotePlayerState::WorldPlay, &Server::pkt_GodMode }, // 10
 	{ RemotePlayerState::WorldPlay, &Server::pkt_Smiley },
 	{ RemotePlayerState::Idle,      &Server::pkt_FriendAction },
+	{ RemotePlayerState::Idle,      &Server::pkt_MediaRequest },
 	{ RemotePlayerState::Invalid, 0 }
 };
 
@@ -292,6 +293,11 @@ void Server::pkt_Auth(peer_t peer_id, Packet &pkt)
 	}
 
 	sendMsg(peer_id, "Unknown auth action: " + action);
+}
+
+void Server::pkt_MediaRequest(peer_t peer_id, Packet &pkt)
+{
+	// TODO
 }
 
 void Server::pkt_GetLobby(peer_t peer_id, Packet &)

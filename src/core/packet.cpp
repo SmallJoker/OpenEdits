@@ -135,8 +135,18 @@ void Packet::write(T v)
 	m_write_offset += sizeof(T);
 }
 
+void Packet::readRaw(uint8_t *dst, size_t nbytes)
+{
+	checkLength(nbytes);
+	memcpy(dst, &m_data->data[m_read_offset], nbytes);
+	m_read_offset += nbytes;
+}
+
 void Packet::writeRaw(const uint8_t *data, size_t nbytes)
 {
+	if (nbytes == 0)
+		return;
+
 	ensureCapacity(nbytes);
 
 	memcpy(&m_data->data[m_write_offset], data, nbytes);

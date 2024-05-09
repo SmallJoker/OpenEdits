@@ -4,6 +4,7 @@
 #include "blockmanager.h"
 #include "connection.h" // protocol version
 #include "player.h"
+#include <fstream>
 #include <memory> // unique_ptr
 
 extern "C" {
@@ -20,6 +21,14 @@ extern "C" {
 
 static const lua_Integer SCRIPT_API_VERSION = 1;
 static const lua_Integer CUSTOM_RIDX_SCRIPT = 1;
+
+/*
+	Sandbox theory: http://lua-users.org/wiki/SandBoxes
+
+	Creating a secure Lua sandbox: https://stackoverflow.com/a/34388499
+		Use: setfenv
+		Blacklist: getfenv, getmetatable, debug.*
+*/
 
 // -------------- Static Lua functions -------------
 
@@ -253,6 +262,17 @@ void Script::close()
 
 bool Script::loadFromFile(const std::string &filename)
 {
+	int first_char = 0;
+	{
+		std::ifstream file(filename, std::ios_base::binary);
+		first_char = file.get();
+	}
+
+	if (first_char == 27) {
+		ERRORLOG("Lua: loading bytecode is not allowed\n");
+		return false;
+	}
+
 	if (luaL_dofile(m_lua, filename.c_str()) == 0) {
 		return true; // good
 	}

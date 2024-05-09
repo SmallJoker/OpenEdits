@@ -1,4 +1,5 @@
 #include "client.h"
+#include "clientmedia.h"
 #include "localplayer.h"
 #include "core/auth.h"
 #include "core/blockmanager.h"
@@ -10,6 +11,7 @@
 	#define DEBUGLOG(...) /* SILENCE */
 #endif
 
+// In sync with Packet2Client
 const ClientPacketHandler Client::packet_actions[] = {
 	{ ClientState::None,      &Client::pkt_Quack }, // 0
 	{ ClientState::None,      &Client::pkt_Hello },
@@ -29,6 +31,8 @@ const ClientPacketHandler Client::packet_actions[] = {
 	{ ClientState::WorldPlay, &Client::pkt_PlayerFlags }, // 15
 	{ ClientState::WorldPlay, &Client::pkt_WorldMeta },
 	{ ClientState::WorldPlay, &Client::pkt_ChatReplay },
+	{ ClientState::Connected, &Client::pkt_MediaList },
+	{ ClientState::Connected, &Client::pkt_MediaReceive },
 	{ ClientState::Invalid, 0 }
 };
 
@@ -110,6 +114,23 @@ void Client::pkt_Auth(Packet &pkt)
 	}
 
 	printf("Client: Unknown auth action: %s\n", action.c_str());
+}
+
+void Client::pkt_MediaList(Packet &pkt)
+{
+	if (m_clientmedia) {
+		m_clientmedia->readMediaList(pkt);
+		return;
+	}
+	// Send event: media loading done (none required).
+}
+
+void Client::pkt_MediaReceive(Packet &pkt)
+{
+	if (m_clientmedia) {
+		m_clientmedia->readMediaData(pkt);
+		return;
+	}
 }
 
 void Client::pkt_Lobby(Packet &pkt)
@@ -380,6 +401,28 @@ void Client::pkt_Chat(Packet &pkt)
 	sendNewEvent(e);
 }
 
+void Client::pkt_ChatReplay(Packet &pkt)
+{
+	auto player = getMyPlayer();
+	if (!player)
+		return;
+
+	auto &meta = player->getWorld()->getMeta();
+	while (pkt.getRemainingBytes() > 0) {
+		WorldMeta::ChatHistory entry;
+		entry.timestamp = pkt.read<u64>();
+		if (!entry.timestamp)
+			break;
+
+		entry.name = pkt.readStr16();
+		entry.message = pkt.readStr16();
+		meta.chat_history.push_back(std::move(entry));
+	}
+
+	GameEvent e(GameEvent::C2G_CHAT_HISTORY);
+	sendNewEvent(e);
+}
+
 void Client::pkt_PlaceBlock(Packet &pkt)
 {
 	auto world = getWorld();
@@ -549,28 +592,6 @@ void Client::pkt_WorldMeta(Packet &pkt)
 	meta.readCommon(pkt);
 
 	GameEvent e(GameEvent::C2G_META_UPDATE);
-	sendNewEvent(e);
-}
-
-void Client::pkt_ChatReplay(Packet &pkt)
-{
-	auto player = getMyPlayer();
-	if (!player)
-		return;
-
-	auto &meta = player->getWorld()->getMeta();
-	while (pkt.getRemainingBytes() > 0) {
-		WorldMeta::ChatHistory entry;
-		entry.timestamp = pkt.read<u64>();
-		if (!entry.timestamp)
-			break;
-
-		entry.name = pkt.readStr16();
-		entry.message = pkt.readStr16();
-		meta.chat_history.push_back(std::move(entry));
-	}
-
-	GameEvent e(GameEvent::C2G_CHAT_HISTORY);
 	sendNewEvent(e);
 }
 

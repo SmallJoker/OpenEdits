@@ -55,6 +55,9 @@ public:
 	// Preallocated additional bytes for large data writes
 	void ensureCapacity(size_t nbytes);
 
+	// For data blobs
+	void readRaw(uint8_t *dst, size_t nbytes);
+
 	// For data (de)compression
 	void writeRaw(const uint8_t *data, size_t nbytes);
 
@@ -99,6 +102,8 @@ enum class Packet2Client : uint16_t {
 	PlayerFlags,
 	WorldMeta,
 	ChatReplay,
+	MediaList,
+	MediaReceive,
 	MAX_END
 };
 
@@ -117,5 +122,6 @@ enum class Packet2Server : uint16_t {
 	GodMode,
 	Smiley,
 	FriendAction,
+	MediaRequest,
 	MAX_END
 };

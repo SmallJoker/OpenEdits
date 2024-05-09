@@ -15,6 +15,8 @@ public:
 
 	bool init();
 	void close();
+
+	/// returns true on success
 	bool loadFromFile(const std::string &filename);
 
 	bool loadDefinition(bid_t block_id);

@@ -3,6 +3,7 @@
 #include "core/auth.h"
 #include "core/player.h"
 #include "core/timer.h"
+#include <unordered_set>
 
 enum class RemotePlayerState {
 	Invalid,
@@ -20,6 +21,8 @@ public:
 
 	Auth auth;
 	RemotePlayerState state = RemotePlayerState::Invalid;
+
+	std::unordered_set<std::string> pending_media;
 
 	// Rate limits
 	RateLimit rl_blocks;

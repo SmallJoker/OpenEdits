@@ -1,4 +1,5 @@
 #include "core/blockmanager.h"
+#include "core/utils.h" // to_player_name
 #include "server/database_auth.h" // AuthAccount
 #include "server/server.h"
 #include <string.h> // strcmp

@@ -1,4 +1,5 @@
 #include "client.h"
+#include "clientmedia.h"
 #include "localplayer.h"
 #include "core/auth.h"
 #include "core/blockmanager.h"
@@ -54,6 +55,11 @@ Client::Client(ClientStartData &init) :
 	}
 
 	m_pos_send_timer.set(POSITION_SEND_INTERVAL);
+
+	{
+		m_clientmedia = new ClientMedia();
+		//m_clientmedia->removeOldCache();
+	}
 }
 
 Client::~Client()
@@ -80,6 +86,10 @@ Client::~Client()
 		g_blockmanager = new BlockManager();
 	}
 
+	if (m_clientmedia) {
+		delete m_clientmedia;
+		m_clientmedia = nullptr;
+	}
 	delete m_con;
 }
 
