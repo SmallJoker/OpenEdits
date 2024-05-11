@@ -1,10 +1,12 @@
 #include "servermedia.h"
 #include "remoteplayer.h"
+#include "core/filesystem.h"
 #include "core/packet.h"
 extern "C" {
 #include "core/sha3.h"
 }
 #include <filesystem>
+#include <fstream>
 
 extern size_t CONNECTION_MTU;
 
@@ -31,7 +33,7 @@ void ServerMedia::indexAssets()
 			continue;
 
 		auto ext = entry.path().extension();
-		if (ext != "png" && ext != "lua" && ext != "mp3")
+		if (ext != ".png" && ext != ".lua" && ext != ".mp3")
 			continue;
 
 		printf("indexAssets: '%s'\n",
@@ -42,19 +44,30 @@ void ServerMedia::indexAssets()
 	}
 }
 
-void ServerMedia::requireMedia(const char *name)
+bool ServerMedia::requireMedia(const char *name)
 {
 	if (name[0] == '\0')
-		return; // Not allowed
+		return false; // Not allowed
 
 	std::string name_s = name;
+
+	auto rit = m_required.find(name_s);
+	if (rit != m_required.end())
+		return true; // already recorded
+
 	auto it = m_media_available.find(name_s);
 	if (it == m_media_available.end())
-		return;
+		return false;
 
 	ServerMediaFile file;
-	// TODO: open file and populate hash
+	file.file_path = it->second;
+	bool ok = read_binary_file(file.file_path.c_str(), &file.data);
+	if (ok)
+		file.computeHash();
+
+	printf("ServerMedia: require '%s', size=%ld\n", name, file.data.size());
 	m_required.insert({ name_s, std::move(file) });
+	return ok;
 }
 
 void ServerMedia::writeMediaList(Packet &pkt)
@@ -74,15 +87,22 @@ void ServerMedia::readMediaRequest(RemotePlayer *player, Packet &pkt)
 		if (filename.empty())
 			break;
 
-		player->pending_media.insert(filename);
+		player->requested_media.insert(filename);
 	}
 }
 
 void ServerMedia::writeMediaData(RemotePlayer *player, Packet &pkt)
 {
-	// name, size, binary
+	// name, size, [bytes ...]
+	if (player->total_sent_media >= m_required.size()) {
+		// Avoid request bombs. In theory we sent all media, thus stop.
+		pkt.writeStr16(""); // terminate
+		return;
+	}
 
-	auto &list = player->pending_media;
+	const time_t time_now = time(nullptr);
+
+	auto &list = player->requested_media;
 	auto it = list.begin();
 	for (; it != list.end(); ++it) {
 		// Spread across multiple packets
@@ -90,18 +110,47 @@ void ServerMedia::writeMediaData(RemotePlayer *player, Packet &pkt)
 			break;
 
 		pkt.writeStr16(*it); // name
-		size_t arrlen = 0;
-		const u8 *data = nullptr;
 
 		auto file_it = m_required.find(*it);
-		if (file_it != m_required.end()) {
-			arrlen = file_it->second.data.size();
-			data = file_it->second.data.data();
+		if (file_it == m_required.end()) {
+			pkt.write<u32>(0);
+			// no data
+			continue;
 		}
 
-		pkt.write<u32>(arrlen); // size
-		pkt.writeRaw(data, arrlen); // binary
+		ServerMediaFile &file = file_it->second;
+
+		if (file.file_size > 0 && file.data.empty()) {
+			// do cache again (after uncacheMedia())
+			bool ok = read_binary_file(file.file_path.c_str(), &file.data);
+			if (!ok) {
+				// file got removed
+				file.file_size = 0;
+			} else if (file.file_size != file.data.size()) {
+				// file contents were changed
+				file.computeHash();
+			}
+		}
+
+		file.cache_last_hit = time_now;
+
+		pkt.write<u32>(file.data.size()); // size
+		pkt.writeRaw(file.data.data(), file.data.size()); // binary
+
+		player->total_sent_media++;
 	}
 
 	list.erase(list.begin(), it);
+}
+
+void ServerMedia::uncacheMedia()
+{
+	const time_t time_now = time(nullptr);
+
+	for (auto &kv : m_required) {
+		if (time_now - kv.second.cache_last_hit > 30 * 60) {
+			// expired. free data.
+			std::vector<uint8_t>().swap(kv.second.data);
+		}
+	}
 }

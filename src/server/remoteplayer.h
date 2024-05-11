@@ -22,7 +22,8 @@ public:
 	Auth auth;
 	RemotePlayerState state = RemotePlayerState::Invalid;
 
-	std::unordered_set<std::string> pending_media;
+	u32 total_sent_media = 0; // sort of a rate limit
+	std::unordered_set<std::string> requested_media;
 
 	// Rate limits
 	RateLimit rl_blocks;

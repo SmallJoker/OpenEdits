@@ -1,4 +1,5 @@
 #include "sound.h"
+#include "core/filesystem.h"
 #include <stdio.h>
 
 const core::vector2df SoundSpec::POS_NONE(INFINITY, INFINITY);
@@ -143,6 +144,9 @@ void SoundPlayer::play(const SoundSpec &spec)
 
 const SoundFile *SoundPlayer::getOrLoad(const char *name)
 {
+	if (name[0] == '\0')
+		return nullptr;
+
 	auto it = loaded_sounds.find(name);
 	if (it != loaded_sounds.end())
 		return &it->second;
@@ -157,7 +161,6 @@ const SoundFile *SoundPlayer::getOrLoad(const char *name)
 		".mp3"
 	};
 
-	std::ifstream is;
 	unsigned file_format;
 	std::string file_path_1 = "assets/sounds/";
 	file_path_1.append(name);
@@ -165,35 +168,26 @@ const SoundFile *SoundPlayer::getOrLoad(const char *name)
 
 	for (file_format = 0; file_format < FF_INVALID; ++file_format) {
 		file_path = file_path_1 + EXTENSIONS[file_format];
-		is = std::ifstream(file_path, std::ios_base::binary);
-		if (is.good())
+		if (get_file_stat(file_path.c_str(), nullptr))
 			break;
 	}
 
 	ALuint al_format = AL_FORMAT_MONO16;
 	ALuint al_samplerate = 44100;
-	std::vector<char> data;
+	std::vector<uint8_t> data;
 	size_t data_size = 0;
 
 	switch ((FileFormat)file_format) {
 	case FF_RAW_MONO_S16:
 		{
 			// 44100 Hz, mono, int16_t, little endian
-
-			is.seekg(std::ios_base::end);
-			data.resize((size_t)is.tellg()); // ::ate
-			is.seekg(0);
-
-			is.read(&data[0], data.size());
-			data_size = is.gcount();
-			if (data_size != data.size())
-				fprintf(stderr, "SoundPlayer: Read mismatch\n");
+			if (!read_binary_file(file_path.c_str(), &data))
+				return nullptr;
+			data_size = data.size();
 		}
 		break;
 	case FF_MP3:
 		{
-			is.close();
-
 			int status;
 			mp3dec_ex_t dec;
 			const size_t MIN_SIZE = MINIMP3_MAX_SAMPLES_PER_FRAME * sizeof(mp3d_sample_t);

@@ -53,14 +53,15 @@ void ClientMedia::readMediaList(Packet &pkt)
 {
 	time_t time_now = time(nullptr);
 
+	// name, size, data hash
 	while (pkt.getRemainingBytes()) {
 		std::string name = pkt.readStr16();
 		if (name.empty())
 			break;
 
-		size_t size = pkt.read<size_t>();
+		size_t size = pkt.read<u32>();
 		MediaFile file;
-		pkt.read(file.data_hash);
+		pkt.read<u64>(file.data_hash);
 
 		std::string cachename = file.getDiskFileName();
 		if (fs::exists(cachename) && fs::file_size(cachename) == size) {
@@ -70,6 +71,8 @@ void ClientMedia::readMediaList(Packet &pkt)
 			bytes_done += size;
 			continue;
 		}
+
+		// TODO: also check the local files to avoid caching them again
 
 		m_to_request.insert(name);
 		bytes_missing += size;
@@ -97,6 +100,8 @@ void ClientMedia::readMediaData(Packet &pkt)
 	if (!fs::is_directory(CACHE_DIR))
 		fs::create_directory(CACHE_DIR);
 
+	// name, size, [bytes ...]
+
 	while (pkt.getRemainingBytes()) {
 		std::string name = pkt.readStr16();
 		if (name.empty())
@@ -115,6 +120,7 @@ void ClientMedia::readMediaData(Packet &pkt)
 		if (!file.data.empty()) {
 			std::ofstream os(cachename, std::ios_base::binary | std::ios_base::trunc);
 			os.write((const char *)file.data.data(), file.data.size());
+			printf("ClientMedia: cache file '%s', size=%ld\n", name.c_str(), file.data.size());
 		}
 
 		m_media.insert({ name, cachename });

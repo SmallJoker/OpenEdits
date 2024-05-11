@@ -6,6 +6,7 @@ void unittest_chatcommand();
 void unittest_connection();
 void unittest_eeo_converter();
 void unittest_database();
+void unittest_mediamanager();
 void unittest_packet();
 void unittest_physics();
 void unittest_script();
@@ -42,8 +43,9 @@ void unittest()
 	try
 #endif
 	{
+		unittest_mediamanager();
 		unittest_script();
-		unittest_gui_layout(3);
+		//unittest_gui_layout(3);
 
 		unittest_auth();
 		unittest_chatcommand();

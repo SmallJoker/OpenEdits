@@ -13,7 +13,7 @@ public:
 	// List of required media files (header information only)
 	void readMediaList(Packet &pkt);
 
-	bool haveMissingMedia() const { return !m_to_request.empty(); }
+	bool haveMediaForRequest() const { return !m_to_request.empty(); }
 	// Name list of the missing files. Packet to server.
 	void writeMediaRequest(Packet &pkt);
 
