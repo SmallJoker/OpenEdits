@@ -240,7 +240,7 @@ void World::createEmpty(blockpos_t size)
 	if (size.X == 0 || size.Y == 0)
 		throw std::length_error("Invalid size");
 	if (m_data)
-		throw std::runtime_error("Already created");
+		delete[] m_data;
 
 	m_size = size;
 
