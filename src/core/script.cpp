@@ -12,7 +12,7 @@ extern "C" {
 	#include <lualib.h>
 }
 
-#if 0
+#if 1
 	#define DEBUGLOG(...) printf(__VA_ARGS__)
 #else
 	#define DEBUGLOG(...) /* SILENCE */
@@ -20,7 +20,10 @@ extern "C" {
 #define ERRORLOG(...) fprintf(stderr, __VA_ARGS__)
 
 static const lua_Integer SCRIPT_API_VERSION = 1;
-static const lua_Integer CUSTOM_RIDX_SCRIPT = 1;
+enum RIDX_Indices : lua_Integer {
+	CUSTOM_RIDX_SCRIPT = 1,
+	CUSTOM_RIDX_TRACEBACK,
+};
 
 /*
 	Sandbox theory: http://lua-users.org/wiki/SandBoxes
@@ -111,6 +114,17 @@ static lua_Integer check_field_int(lua_State *L, int idx, const char *field)
 	return ret;
 }
 
+/// true on success
+static bool function_to_ref(lua_State *L, int &ref)
+{
+	luaL_checktype(L, -1, LUA_TFUNCTION);
+	if (ref >= 0)
+		luaL_unref(L, LUA_REGISTRYINDEX, ref);
+
+	ref = luaL_ref(L, LUA_REGISTRYINDEX); // pops value
+	return ref >= 0;
+}
+
 // -------------- Script class functions -------------
 
 Script::Script(BlockManager *bmgr) :
@@ -178,6 +192,13 @@ bool Script::init()
 
 	lua_State *L = m_lua;
 	luaopen_base(L);
+	{
+		luaopen_debug(L); // debug.traceback (invalidated later)
+		lua_getglobal(L, "debug");
+		lua_getfield(L, -1, "traceback");
+		lua_remove(L, -2); // debug
+		lua_rawseti(L, LUA_REGISTRYINDEX, CUSTOM_RIDX_TRACEBACK);
+	}
 
 	// Remove functions that we probably don't need
 	process_api_whitelist(L);
@@ -209,7 +230,7 @@ bool Script::init()
 		lua_pushinteger(L, SCRIPT_API_VERSION);
 		lua_setfield(L, -2, "API_VERSION");
 		FIELD_SET_FUNC(/**/, register_pack);
-		FIELD_SET_FUNC(/**/, register_block);
+		FIELD_SET_FUNC(/**/, change_block);
 		/*
 			Not populated variables:
 				PROTO_VER
@@ -259,6 +280,7 @@ void Script::close()
 	m_lua = nullptr;
 }
 
+static const char *SEPARATOR = "----------------\n";
 
 bool Script::loadFromFile(const std::string &filename)
 {
@@ -273,16 +295,30 @@ bool Script::loadFromFile(const std::string &filename)
 		return false;
 	}
 
-	if (luaL_dofile(m_lua, filename.c_str()) == 0) {
-		return true; // good
+	DEBUGLOG("Lua: loading script '%s'\n", filename.c_str());
+	lua_rawgeti(m_lua, LUA_REGISTRYINDEX, CUSTOM_RIDX_TRACEBACK);
+	luaL_checktype(m_lua, -1, LUA_TFUNCTION);
+	int errorhandler = lua_gettop(m_lua);
+
+	int status = luaL_loadfile(m_lua, filename.c_str());
+	if (status == 0)
+		status = lua_pcall(m_lua, 0, LUA_MULTRET, errorhandler);
+
+	if (status != 0) {
+		const char *err = lua_tostring(m_lua, -1);
+		ERRORLOG("Lua: failed to load script '%s' (ret=%d):\n%s%s\n%s",
+			filename.c_str(),
+			status,
+			SEPARATOR,
+			err ? err : "(no error message)",
+			SEPARATOR
+		);
+
+		lua_pop(m_lua, 1); // error message
 	}
+	lua_pop(m_lua, 1); // error handler
 
-	const char *err = lua_tostring(m_lua, -1);
-	ERRORLOG("Lua: failed to load script: %s\n",
-		err ? err : "(no error message)");
-	lua_pop(m_lua, 1); // error message
-
-	return false;
+	return status == 0;
 }
 
 bool Script::loadDefinition(bid_t block_id)
@@ -419,12 +455,44 @@ int Script::onCollide(CollisionInfo ci)
 
 // -------------- Static Script class functions -------------
 
+static char tmp_errorlog[100];
+static void cpp_exception_handler(lua_State *L)
+{
+	int n = -1;
+	try {
+		std::rethrow_exception(std::current_exception());
+	} catch (std::runtime_error &e) {
+		n = snprintf(tmp_errorlog, sizeof(tmp_errorlog), "std::runtime_error(\"%s\")", e.what());
+	} catch (std::exception &e) {
+		n = snprintf(tmp_errorlog, sizeof(tmp_errorlog), "std::exception(\"%s\")", e.what());
+	} catch (...) {
+		n = snprintf(tmp_errorlog, sizeof(tmp_errorlog), "C++ error");
+	}
+
+	if (n > 0) {
+		luaL_error(L, tmp_errorlog);
+	} else {
+		ERRORLOG("Lua: C++ exception handler failed\n");
+		lua_error(L);
+	}
+}
+
+#define MESSY_CPP_EXCEPTIONS(my_code) \
+	try { \
+		DEBUGLOG("-> Lua: call %s\n", __func__); \
+		my_code \
+	} catch (...) { \
+		cpp_exception_handler(L); \
+		return 0; \
+	}
+
 // yet unused!
 int Script::l_register_pack(lua_State *L)
-{
+{MESSY_CPP_EXCEPTIONS(
 	Script *script = get_script(L);
 
 	const char *name = check_field_string(L, -1, "name");
+
 	auto pack = std::make_unique<BlockPack>(name);
 
 	lua_getfield(L, -1, "blocks");
@@ -433,7 +501,16 @@ int Script::l_register_pack(lua_State *L)
 		lua_pushnil(L);
 		while (lua_next(L, table)){
 			// key @ -2, value @ -1
-			int id = check_field_int(L, -1, "id");
+			luaL_checkint(L, -2);
+
+			int id = -1;
+			if (lua_isnumber(L, -1)) {
+				id = lua_tonumber(L, -1);
+			} else {
+				// table
+				id = check_field_int(L, -1, "id");
+			}
+
 			pack->block_ids.push_back(id);
 			lua_pop(L, 1); // value
 		}
@@ -441,23 +518,13 @@ int Script::l_register_pack(lua_State *L)
 	lua_pop(L, 1); // table
 
 	DEBUGLOG("register pack: %s\n", pack->name.c_str());
-	//script->m_bmgr->registerPack(pack.release());
+	script->m_bmgr->registerPack(pack.release());
 	return 0;
-}
+)}
 
-/// true on success
-static bool function_to_ref(lua_State *L, int &ref)
-{
-	luaL_checktype(L, -1, LUA_TFUNCTION);
-	if (ref >= 0)
-		luaL_unref(L, LUA_REGISTRYINDEX, ref);
-
-	ref = luaL_ref(L, LUA_REGISTRYINDEX); // pops value
-	return ref >= 0;
-}
-
-int Script::l_register_block(lua_State *L)
-{
+int Script::l_change_block(lua_State *L)
+{MESSY_CPP_EXCEPTIONS(
+	DEBUGLOG("-> Lua: call %s\n", __func__);
 	Script *script = get_script(L);
 
 	lua_getfield(L, -1, "id");
@@ -488,9 +555,9 @@ int Script::l_register_block(lua_State *L)
 		lua_pop(L, 1);
 	}
 
-	DEBUGLOG("Lua registered block_id=%i\n", block_id);
+	DEBUGLOG("Lua changed block_id=%i\n", block_id);
 	return 0;
-}
+ )}
 
 static void push_v2f(lua_State *L, core::vector2df vec)
 {

@@ -6,9 +6,17 @@ env.API_VERSION = 1
 env.test_mode = string/nil (used by unittest)
 env.register_block(def)
 ]]
+
+-- BlockProperties::CollisionType
 env.COLLISION_TYPE_POSITION = 0
 env.COLLISION_TYPE_VELOCITY = 1
 env.COLLISION_TYPE_NONE = 2
+
+-- blockmanager BlockDrawType
+env.DRAW_TYPE_SOLID = 0
+env.DRAW_TYPE_ACTION = 1
+env.DRAW_TYPE_DECORATION = 2
+env.DRAW_TYPE_BACKGROUND = 3
 
 -------------- Client & server script
 
@@ -17,14 +25,26 @@ local JUMP_SPEED =  30.0 -- m/s  for use in callbacks
 
 local dbgprint = env.test_mode and print or function() end
 
-env.register_block({
+env.register_pack({
+	name = "action",
+	default_type = env.DRAW_TYPE_ACTION,
+	blocks = { 0, 1, 2, 3, 4 }
+})
+
+env.register_pack({
+	name = "basic",
+	default_type = env.DRAW_TYPE_SOLID,
+	blocks = { 9, 10, 11, 12, 13, 14, 15 }
+})
+
+env.change_block({
 	id = 0,
 	on_intersect = function()
 		env.player.set_acc(0, GRAVITY)
 	end,
 })
 
-env.register_block({
+env.change_block({
 	id = 2,
 	-- name = "boost:up"
 	-- texture_start_index = 3,

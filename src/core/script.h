@@ -41,9 +41,8 @@ public:
 	bool do_load_string_n_table = false;
 
 private:
-
 	static int l_register_pack(lua_State *L);
-	static int l_register_block(lua_State *L);
+	static int l_change_block(lua_State *L);
 
 	// Player API
 	static int l_player_get_pos(lua_State *L);

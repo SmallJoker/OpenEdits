@@ -12,7 +12,6 @@
 void unittest_script()
 {
 	BlockManager bmgr;
-	bmgr.doPackRegistration();
 
 	Script script(&bmgr);
 	script.do_load_string_n_table = true;

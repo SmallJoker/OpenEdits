@@ -45,13 +45,8 @@ Client::Client(ClientStartData &init) :
 	if (0)
 #endif
 	{
-		m_script = new Script(m_bmgr);
-		m_script->init();
-		// TODO: receive from server
-		if (!m_script->loadFromFile("assets/scripts/main.lua")) {
-			delete m_script;
-			m_script = nullptr;
-		}
+		m_script = nullptr;
+		// TODO: receive script asset from server
 	}
 
 	m_pos_send_timer.set(POSITION_SEND_INTERVAL);

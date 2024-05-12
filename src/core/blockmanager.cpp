@@ -229,6 +229,7 @@ void BlockManager::populateTextures()
 	int count = 0;
 
 	for (auto pack : m_packs) {
+		// TODO: use MediaManager. requireAsset, getAssetPath
 		if (pack->imagepath.empty())
 			pack->imagepath = "assets/textures/pack_" + pack->name + ".png";
 

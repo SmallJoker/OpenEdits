@@ -1,53 +1,30 @@
 #include "clientmedia.h"
 #include "core/filesystem.h"
 #include "core/packet.h"
-extern "C" {
-#include "core/sha3.h"
-}
 #include <filesystem>
 #include <fstream>
 #include <string.h> // memcpy
-#include <irrTypes.h>
-using namespace irr;
 
 extern size_t CONNECTION_MTU;
 
 namespace fs = std::filesystem;
-constexpr int SHA3_VARIANT = 256;
 const std::string CACHE_DIR = "cache";
 
 
-namespace {
+// Requires "computeHash" to be run first, or set "data_hash" manually
+std::string MediaManager::File::getDiskFileName()
+{
+	std::string ret;
+	ret.append(CACHE_DIR);
 
-struct MediaFile {
-	std::vector<u8> data;
-	u64 data_hash = 0;
+	char buf[8 * 2 + 1 + 1];
+	snprintf(buf, sizeof(buf), "/%0lx", this->data_hash);
+	ret.append(buf);
 
-	void computeHash()
-	{
-		data_hash = 0;
-		sha3_HashBuffer(SHA3_VARIANT, SHA3_FLAGS_KECCAK,
-			data.data(), data.size(),
-			&data_hash, sizeof(data_hash)
-		);
-	}
+	return ret;
+}
 
-	// Requires "computeHash" to be run first, or set "data_hash" manually
-	std::string getDiskFileName()
-	{
-		std::string ret;
-		ret.append(CACHE_DIR);
-
-		char buf[8 * 2 + 1 + 1];
-		snprintf(buf, sizeof(buf), "/%0lx", this->data_hash);
-		ret.append(buf);
-
-		return ret;
-	}
-};
-
-};
-
+// -------------- ClientMedia --------------
 
 void ClientMedia::readMediaList(Packet &pkt)
 {
@@ -59,15 +36,15 @@ void ClientMedia::readMediaList(Packet &pkt)
 		if (name.empty())
 			break;
 
-		size_t size = pkt.read<u32>();
-		MediaFile file;
-		pkt.read<u64>(file.data_hash);
+		size_t size = pkt.read<uint32_t>();
+		File file;
+		pkt.read<uint64_t>(file.data_hash);
 
 		std::string cachename = file.getDiskFileName();
 		if (fs::exists(cachename) && fs::file_size(cachename) == size) {
 			// File in cache matches
 			set_file_mtime(cachename.c_str(), time_now);
-			m_media.insert({ name, cachename });
+			m_media_available.insert({ name, cachename });
 			bytes_done += size;
 			continue;
 		}
@@ -107,9 +84,9 @@ void ClientMedia::readMediaData(Packet &pkt)
 		if (name.empty())
 			break; // Terminator
 
-		MediaFile file;
+		File file;
 		{
-			size_t arrlen = pkt.read<u32>();
+			size_t arrlen = pkt.read<uint32_t>();
 			file.data.resize(arrlen);
 			pkt.readRaw(file.data.data(), arrlen);
 
@@ -123,7 +100,7 @@ void ClientMedia::readMediaData(Packet &pkt)
 			printf("ClientMedia: cache file '%s', size=%ld\n", name.c_str(), file.data.size());
 		}
 
-		m_media.insert({ name, cachename });
+		m_media_available.insert({ name, cachename });
 		bytes_done    += file.data.size();
 		bytes_missing -= file.data.size();
 		m_pending.erase(name);
@@ -158,10 +135,10 @@ void ClientMedia::removeOldCache()
 	}
 }
 
-const char *ClientMedia::getMediaPath(const std::string &filename)
+const char *ClientMedia::getAssetPath(const std::string &filename)
 {
-	auto it = m_media.find(filename);
-	if (it == m_media.end())
+	auto it = m_media_available.find(filename);
+	if (it == m_media_available.end())
 		return nullptr;
 	return it->first.c_str();
 }

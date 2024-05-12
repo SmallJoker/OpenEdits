@@ -1,14 +1,12 @@
 #pragma once
 
-#include <map>
-#include <string>
+#include "core/mediamanager.h"
 #include <unordered_set>
-#include <vector>
 
 class Client;
 class Packet;
 
-class ClientMedia {
+class ClientMedia : public MediaManager {
 public:
 	// List of required media files (header information only)
 	void readMediaList(Packet &pkt);
@@ -20,17 +18,15 @@ public:
 	// Received data to save to disk
 	void readMediaData(Packet &pkt);
 
+	/// Removes old cache files from the disk
 	void removeOldCache();
-	const char *getMediaPath(const std::string &filename);
+	const char *getAssetPath(const std::string &filename);
 
-	size_t countDone() const { return m_media.size(); }
+	size_t countDone() const { return m_media_available.size(); }
 	size_t countMissing() const { return m_to_request.size() + m_pending.size(); }
 	size_t bytes_done = 0,
 		bytes_missing = 0;
 
 private:
 	std::unordered_set<std::string> m_to_request, m_pending;
-
-	// key: filename, value: full path to the file on disk
-	std::map<std::string, std::string> m_media;
 };

@@ -7,12 +7,12 @@
 #include "server/servermedia.h"
 
 
-void unittest_mediamanager()
+static void test_server_client()
 {
 	ServerMedia srv;
 
 	srv.indexAssets();
-	CHECK(srv.requireMedia("missing_texture.png"));
+	CHECK(srv.requireAsset("missing_texture.png"));
 
 	RemotePlayer player(420, UINT16_MAX);
 	ClientMedia cli;
@@ -47,8 +47,27 @@ void unittest_mediamanager()
 		}
 	}
 	printf("Client: have all %ld files\n", cli.countDone());
+}
+
+#include "core/blockmanager.h"
+#include "core/script.h"
+static void test_with_script()
+{
+	BlockManager bmgr;
+	Script script(&bmgr);
+
+	script.init();
+	script.setTestMode("media");
+	CHECK(script.loadFromFile("assets/scripts/main.lua"));
+
+}
 
 
+void unittest_mediamanager()
+{
+	test_server_client();
+	test_with_script();
+	puts("---- MediaManager done");
 }
 
 #else

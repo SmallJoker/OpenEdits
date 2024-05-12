@@ -2,49 +2,15 @@
 #include "remoteplayer.h"
 #include "core/filesystem.h"
 #include "core/packet.h"
-extern "C" {
-#include "core/sha3.h"
-}
 #include <filesystem>
-#include <fstream>
 
 extern size_t CONNECTION_MTU;
 
 namespace fs = std::filesystem;
-constexpr int SHA3_VARIANT = 256;
-const std::string ASSETS_DIR = "assets";
 
+// -------------- ServerMedia --------------
 
-void ServerMediaFile::computeHash()
-{
-	data_hash = 0;
-	file_size = data.size();
-	sha3_HashBuffer(SHA3_VARIANT, SHA3_FLAGS_KECCAK,
-		data.data(), data.size(),
-		&data_hash, sizeof(data_hash)
-	);
-}
-
-
-void ServerMedia::indexAssets()
-{
-	for (const auto &entry : fs::recursive_directory_iterator(ASSETS_DIR)) {
-		if (!entry.is_regular_file())
-			continue;
-
-		auto ext = entry.path().extension();
-		if (ext != ".png" && ext != ".lua" && ext != ".mp3")
-			continue;
-
-		printf("indexAssets: '%s'\n",
-			entry.path().c_str()
-		);
-
-		m_media_available.insert({ entry.path().filename(), entry.path() });
-	}
-}
-
-bool ServerMedia::requireMedia(const char *name)
+bool ServerMedia::requireAsset(const char *name)
 {
 	if (name[0] == '\0')
 		return false; // Not allowed
@@ -59,11 +25,10 @@ bool ServerMedia::requireMedia(const char *name)
 	if (it == m_media_available.end())
 		return false;
 
-	ServerMediaFile file;
+	File file;
 	file.file_path = it->second;
-	bool ok = read_binary_file(file.file_path.c_str(), &file.data);
-	if (ok)
-		file.computeHash();
+	file.file_size = SIZE_MAX; // non-zero
+	bool ok = file.cacheToRAM();
 
 	printf("ServerMedia: require '%s', size=%ld\n", name, file.data.size());
 	m_required.insert({ name_s, std::move(file) });
@@ -118,20 +83,9 @@ void ServerMedia::writeMediaData(RemotePlayer *player, Packet &pkt)
 			continue;
 		}
 
-		ServerMediaFile &file = file_it->second;
+		File &file = file_it->second;
 
-		if (file.file_size > 0 && file.data.empty()) {
-			// do cache again (after uncacheMedia())
-			bool ok = read_binary_file(file.file_path.c_str(), &file.data);
-			if (!ok) {
-				// file got removed
-				file.file_size = 0;
-			} else if (file.file_size != file.data.size()) {
-				// file contents were changed
-				file.computeHash();
-			}
-		}
-
+		file.cacheToRAM();
 		file.cache_last_hit = time_now;
 
 		pkt.write<u32>(file.data.size()); // size
@@ -145,12 +99,9 @@ void ServerMedia::writeMediaData(RemotePlayer *player, Packet &pkt)
 
 void ServerMedia::uncacheMedia()
 {
-	const time_t time_now = time(nullptr);
+	const time_t time_old = time(nullptr) - (30 * 60);
 
 	for (auto &kv : m_required) {
-		if (time_now - kv.second.cache_last_hit > 30 * 60) {
-			// expired. free data.
-			std::vector<uint8_t>().swap(kv.second.data);
-		}
+		kv.second.uncacheRAMif(time_old);
 	}
 }
