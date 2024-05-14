@@ -1,12 +1,12 @@
 #include "server.h"
 #include "core/auth.h"
+#include "core/eeo_converter.h"
 #include "core/packet.h"
 #include "core/player.h"
 #include "core/utils.h" // get_next_part
 #include "core/world.h"
 #include "server/database_auth.h"
 #include "server/database_world.h"
-#include "server/eeo_converter.h"
 #include "server/remoteplayer.h" // RemotePlayerState
 #include "version.h"
 

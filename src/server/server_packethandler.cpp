@@ -1,13 +1,13 @@
 #include "server.h"
 #include "remoteplayer.h"
 #include "core/blockmanager.h"
+#include "core/eeo_converter.h"
 #include "core/friends.h"
 #include "core/packet.h"
 #include "core/utils.h"
 #include "core/world.h"
 #include "server/database_auth.h"
 #include "server/database_world.h"
-#include "server/eeo_converter.h"
 #include <set>
 
 #if 0

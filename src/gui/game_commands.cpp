@@ -1,7 +1,7 @@
 #include "gui/game_commands.h"
 #include "client/client.h"
 #include "client/localplayer.h"
-#include "server/eeo_converter.h" // TODO:move the file to 'core'
+#include "core/eeo_converter.h"
 #include "core/packet.h"
 #include "core/player.h"
 #include "core/utils.h"
