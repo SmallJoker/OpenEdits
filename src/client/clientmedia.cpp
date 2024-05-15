@@ -134,12 +134,3 @@ void ClientMedia::removeOldCache()
 		);
 	}
 }
-
-const char *ClientMedia::getAssetPath(const std::string &filename)
-{
-	auto it = m_media_available.find(filename);
-	if (it == m_media_available.end())
-		return nullptr;
-	return it->first.c_str();
-}
-

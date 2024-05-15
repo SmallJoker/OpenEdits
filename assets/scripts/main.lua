@@ -25,23 +25,64 @@ local JUMP_SPEED =  30.0 -- m/s  for use in callbacks
 
 local dbgprint = env.test_mode and print or function() end
 
+local function table_to_pack_blocks(block_defs)
+	local t = {}
+	for k, v in pairs(block_defs) do
+		v.id = k
+		t[#t + 1] = v.id
+	end
+	return t
+end
+
+local function change_blocks(block_defs)
+	for _, v in pairs(block_defs) do
+		assert(v. id)
+		env.change_block(v)
+	end
+end
+
+local blocks_action = {
+	[0] = {
+		on_intersect = function()
+			env.player.set_acc(0, GRAVITY)
+		end,
+	},
+	[1] = {
+		minimap_color = 0xFFFF0000,  -- AARRGGBB
+		on_intersect = function()
+			env.player.set_acc(-GRAVITY, 0)
+		end,
+	},
+	[2] = {
+		on_intersect = function()
+			env.player.set_acc(0, -GRAVITY)
+		end,
+	},
+	[3] = {
+		on_intersect = function()
+			env.player.set_acc(GRAVITY, 0)
+		end,
+	},
+	[4] = {
+		viscosity = 0.1,
+		on_intersect = function()
+			-- nop
+		end,
+	}
+}
+
 env.register_pack({
 	name = "action",
 	default_type = env.DRAW_TYPE_ACTION,
-	blocks = { 0, 1, 2, 3, 4 }
+	blocks = table_to_pack_blocks(blocks_action)
 })
+
+change_blocks(blocks_action)
 
 env.register_pack({
 	name = "basic",
 	default_type = env.DRAW_TYPE_SOLID,
 	blocks = { 9, 10, 11, 12, 13, 14, 15 }
-})
-
-env.change_block({
-	id = 0,
-	on_intersect = function()
-		env.player.set_acc(0, GRAVITY)
-	end,
 })
 
 env.change_block({

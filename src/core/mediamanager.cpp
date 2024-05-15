@@ -66,3 +66,14 @@ void MediaManager::indexAssets()
 	}
 	printf("MediaManager: %lu media files indexed\n", m_media_available.size());
 }
+
+bool MediaManager::getAssetPath(const char *name, std::string *out)
+{
+	auto it = m_media_available.find(name);
+	if (it == m_media_available.end())
+		return false;
+
+	if (out)
+		out->assign(it->second);
+	return true;
+}

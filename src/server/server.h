@@ -11,6 +11,7 @@ enum class RemotePlayerState;
 class DatabaseAuth;
 class DatabaseWorld;
 class RemotePlayer;
+class ServerMedia;
 struct ServerPacketHandler;
 struct LobbyWorld;
 
@@ -60,6 +61,10 @@ private:
 
 	static const ServerPacketHandler packet_actions[];
 
+	void stepSendMedia(RemotePlayer *player);
+	void stepSendBlockUpdates(World *world);
+	void stepWorldTick(World *world, float dtime);
+
 	bool loadWorldNoLock(World *world);
 	void writeWorldData(Packet &out, World &world, bool is_clear);
 	void setDefaultPlayerFlags(Player *player);
@@ -74,6 +79,7 @@ private:
 	// ----------- Other members -----------
 	DatabaseAuth *m_auth_db = nullptr;
 	DatabaseWorld *m_world_db = nullptr;
+	ServerMedia *m_media = nullptr;
 	bool m_is_first_step = true;
 
 	std::map<peer_t, Timer> m_deaths;

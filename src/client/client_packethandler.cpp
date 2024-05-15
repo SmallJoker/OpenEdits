@@ -3,6 +3,7 @@
 #include "localplayer.h"
 #include "core/auth.h"
 #include "core/blockmanager.h"
+#include "core/logger.h"
 #include "core/packet.h"
 
 #if 0
@@ -10,6 +11,8 @@
 #else
 	#define DEBUGLOG(...) /* SILENCE */
 #endif
+
+static Logger logger("ClientPkt", LL_DEBUG);
 
 // In sync with Packet2Client
 const ClientPacketHandler Client::packet_actions[] = {
@@ -38,7 +41,7 @@ const ClientPacketHandler Client::packet_actions[] = {
 
 void Client::pkt_Quack(Packet &pkt)
 {
-	printf("Client: Got packet %s\n", pkt.dump().c_str());
+	logger(LL_PRINT, "Quack! %s\n", pkt.dump().c_str());
 }
 
 void Client::pkt_Hello(Packet &pkt)
@@ -57,13 +60,13 @@ void Client::pkt_Hello(Packet &pkt)
 
 	m_auth = Auth();
 
-	printf("Client: got HELLO. my peer_id=%u\n", m_my_peer_id);
+	logger(LL_DEBUG, "Hello. my peer_id=%u\n", m_my_peer_id);
 }
 
 void Client::pkt_Message(Packet &pkt)
 {
 	std::string str(pkt.readStr16());
-	printf("Client received message: %s\n", str.c_str());
+	logger(LL_DEBUG, "message=%s\n", str.c_str());
 
 	GameEvent e(GameEvent::C2G_DIALOG);
 	e.text = new std::string(str);
@@ -118,19 +121,36 @@ void Client::pkt_Auth(Packet &pkt)
 
 void Client::pkt_MediaList(Packet &pkt)
 {
-	if (m_clientmedia) {
-		m_clientmedia->readMediaList(pkt);
+	if (!m_media) {
+		logger(LL_WARN, "Missing ClientMedia for %s\n", __func__);
 		return;
 	}
-	// Send event: media loading done (none required).
+
+	m_media->readMediaList(pkt);
+
+	if (m_media->countMissing() > 0) {
+		Packet out = createPacket(Packet2Server::MediaRequest);
+		m_media->writeMediaRequest(out);
+		m_con->send(0, 0, out);
+	}
 }
 
 void Client::pkt_MediaReceive(Packet &pkt)
 {
-	if (m_clientmedia) {
-		m_clientmedia->readMediaData(pkt);
+	if (!m_media) {
+		logger(LL_WARN, "Missing ClientMedia for %s\n", __func__);
 		return;
 	}
+
+	m_media->readMediaData(pkt);
+
+	size_t count_done = m_media->countDone(),
+		bytes_done = m_media->bytes_done;
+	logger(LL_DEBUG, "%s: have %lu/%lu (%lu/%lu bytes)\n",
+		__func__,
+		count_done, count_done + m_media->countMissing(),
+		bytes_done, bytes_done + m_media->bytes_missing
+	);
 }
 
 void Client::pkt_Lobby(Packet &pkt)

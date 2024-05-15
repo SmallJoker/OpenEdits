@@ -33,10 +33,15 @@ public:
 #endif
 	};
 
+	virtual ~MediaManager() = default;
+
 	/// Indexes `ASSETS_DIR` to list all media in `m_media_available`
 	void indexAssets();
 
 	virtual bool requireAsset(const char *name) { return false; }
+
+	/// @return true on success. "out" contains the file path (if non-NULL)
+	virtual bool getAssetPath(const char *name, std::string *out);
 
 	static const std::string ASSETS_DIR;
 

@@ -39,22 +39,9 @@ Client::Client(ClientStartData &init) :
 		ASSERT_FORCED(PACKET_ACTIONS_MAX == (int)Packet2Client::MAX_END, "Packet handler mismatch");
 	}
 
-#ifdef HAVE_LUA
-	if (1)
-#else
-	if (0)
-#endif
-	{
-		m_script = nullptr;
-		// TODO: receive script asset from server
-	}
-
 	m_pos_send_timer.set(POSITION_SEND_INTERVAL);
 
-	{
-		m_clientmedia = new ClientMedia();
-		//m_clientmedia->removeOldCache();
-	}
+	m_media = new ClientMedia();
 }
 
 Client::~Client()
@@ -81,9 +68,9 @@ Client::~Client()
 		g_blockmanager = new BlockManager();
 	}
 
-	if (m_clientmedia) {
-		delete m_clientmedia;
-		m_clientmedia = nullptr;
+	if (m_media) {
+		delete m_media;
+		m_media = nullptr;
 	}
 	delete m_con;
 }

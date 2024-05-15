@@ -1,10 +1,11 @@
 #include "server.h"
+#include "database_auth.h"
+#include "database_world.h"
 #include "remoteplayer.h"
+#include "servermedia.h"
 #include "core/blockmanager.h"
 #include "core/packet.h"
 #include "core/world.h"
-#include "server/database_auth.h"
-#include "server/database_world.h"
 #include "version.h"
 
 #if 0
@@ -58,6 +59,8 @@ Server::Server(bool *shutdown_requested) :
 		}
 	}
 
+	m_media = new ServerMedia();
+
 	registerChatCommands();
 
 	{
@@ -84,6 +87,11 @@ Server::~Server()
 		m_players.clear();
 	}
 
+	if (m_media) {
+		delete m_media;
+		m_media = nullptr;
+	}
+
 	delete m_con;
 	delete m_auth_db;
 	delete m_world_db;
@@ -100,75 +108,27 @@ void Server::step(float dtime)
 		m_is_first_step = false;
 	}
 
-	// maybe run player physics?
-
 	// always player lock first, world lock after.
 	SimpleLock players_lock(m_players_lock);
 	std::set<RefCnt<World>> worlds;
 	for (auto p : m_players) {
-		auto world = p.second->getWorld();
-		if (!world)
-			continue;
-
 		RemotePlayer *player = (RemotePlayer *)p.second;
-		player->rl_blocks.step(dtime);
-		player->rl_chat.step(dtime);
-		player->time_since_move_pkt += dtime;
+		auto world = p.second->getWorld();
+		if (world) {
+			player->rl_blocks.step(dtime);
+			player->rl_chat.step(dtime);
+			player->time_since_move_pkt += dtime;
 
-		worlds.emplace(world);
+			worlds.emplace(world);
 
-		// Process block placement queue of this world for broacast
-		auto &queue = world->proc_queue;
-		if (queue.empty())
-			continue;
-
-		SimpleLock world_lock(world->mutex);
-
-		Packet out;
-		out.write(Packet2Client::PlaceBlock);
-
-		for (auto it = queue.cbegin(); it != queue.cend();) {
-			// Distribute valid changes to players
-
-			out.write(it->peer_id); // continue
-			// Write BlockUpdate
-			it->write(out);
-
-			DEBUGLOG("Server: sending block x=%d,y=%d,id=%d\n",
-				it->pos.X, it->pos.Y, it->getId());
-
-			it = queue.erase(it);
-
-			// Fit everything into an MTU
-			if (out.size() > CONNECTION_MTU)
-				break;
+			stepSendBlockUpdates(world.get());
 		}
-		broadcastInWorld(world.get(), 0, out);
 
+		stepSendMedia(player);
 	}
 
 	for (auto &world : worlds) {
-		auto &meta = world->getMeta();
-
-		for (auto &kdata : meta.keys) {
-			if (kdata.step(dtime)) {
-				// Disable keys
-
-				kdata.stop();
-				bid_t block_id = (&kdata - meta.keys) + Block::ID_KEY_R;
-				Packet out;
-				out.write(Packet2Client::Key);
-				out.write(block_id);
-				out.write<u8>(false);
-
-				for (auto it : m_players) {
-					if (it.second->getWorld() != world)
-						continue;
-
-					m_con->send(it.first, 0, out);
-				}
-			}
-		}
+		stepWorldTick(world.get(), dtime);
 	}
 
 	auto respawn_killed = [this] (Player *player) {
@@ -361,6 +321,73 @@ void Server::processPacket(peer_t peer_id, Packet &pkt)
 			player ? player->name.c_str() : "(null)",
 			e.what()
 		);
+	}
+}
+
+void Server::stepSendMedia(RemotePlayer *player)
+{
+	if (player->requested_media.empty() || !m_media)
+		return;
+
+	Packet out = player->createPacket(Packet2Client::MediaReceive);
+	m_media->writeMediaData(player, out);
+	m_con->send(player->peer_id, 0, out);
+}
+
+void Server::stepSendBlockUpdates(World *world)
+{
+	// Process block placement queue of this world for broacast
+	auto &queue = world->proc_queue;
+	if (queue.empty())
+		return;
+
+	SimpleLock world_lock(world->mutex);
+
+	Packet out;
+	out.write(Packet2Client::PlaceBlock);
+
+	auto it = queue.cbegin();
+	for (; it != queue.cend(); ++it) {
+		// Fit everything into an MTU
+		if (out.size() > CONNECTION_MTU)
+			break;
+
+		// Distribute valid changes to players
+
+		out.write(it->peer_id); // continue
+		// Write BlockUpdate
+		it->write(out);
+
+		DEBUGLOG("Server: sending block x=%d,y=%d,id=%d\n",
+			it->pos.X, it->pos.Y, it->getId());
+	}
+
+	queue.erase(queue.cbegin(), it); // "it" is not removed.
+	broadcastInWorld(world, 0, out);
+}
+
+void Server::stepWorldTick(World *world, float dtime)
+{
+	auto &meta = world->getMeta();
+
+	for (auto &kdata : meta.keys) {
+		if (kdata.step(dtime)) {
+			// Disable keys
+
+			kdata.stop();
+			bid_t block_id = (&kdata - meta.keys) + Block::ID_KEY_R;
+			Packet out;
+			out.write(Packet2Client::Key);
+			out.write(block_id);
+			out.write<u8>(false);
+
+			for (auto it : m_players) {
+				if (it.second->getWorld().get() != world)
+					continue;
+
+				m_con->send(it.first, 0, out);
+			}
+		}
 	}
 }
 

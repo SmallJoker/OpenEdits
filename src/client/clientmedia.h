@@ -20,7 +20,6 @@ public:
 
 	/// Removes old cache files from the disk
 	void removeOldCache();
-	const char *getAssetPath(const std::string &filename);
 
 	size_t countDone() const { return m_media_available.size(); }
 	size_t countMissing() const { return m_to_request.size() + m_pending.size(); }

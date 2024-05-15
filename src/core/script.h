@@ -19,6 +19,7 @@ public:
 	/// returns true on success
 	bool loadFromFile(const std::string &filename);
 
+	uint16_t protocol_version = 0;
 	bool loadDefinition(bid_t block_id);
 
 	void setPlayer(Player *player) { m_player = player; }
@@ -41,6 +42,8 @@ public:
 	bool do_load_string_n_table = false;
 
 private:
+	// Include another script file (asset from cache or disk)
+	//static int l_include(lua_State *L);
 	static int l_register_pack(lua_State *L);
 	static int l_change_block(lua_State *L);
 

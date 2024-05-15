@@ -1,13 +1,14 @@
 #include "server.h"
+#include "database_auth.h"
+#include "database_world.h"
 #include "remoteplayer.h"
+#include "servermedia.h"
 #include "core/blockmanager.h"
 #include "core/eeo_converter.h"
 #include "core/friends.h"
 #include "core/packet.h"
 #include "core/utils.h"
 #include "core/world.h"
-#include "server/database_auth.h"
-#include "server/database_world.h"
 #include <set>
 
 #if 0
@@ -151,10 +152,18 @@ void Server::signInPlayer(RemotePlayer *player)
 {
 	player->state = RemotePlayerState::Idle;
 
-	Packet out;
-	out.write(Packet2Client::Auth);
-	out.writeStr16("signed_in");
-	m_con->send(player->peer_id, 0, out);
+	{
+		Packet out;
+		out.write(Packet2Client::Auth);
+		out.writeStr16("signed_in");
+		m_con->send(player->peer_id, 0, out);
+	}
+
+	if (m_media) {
+		Packet out = player->createPacket(Packet2Client::MediaList);
+		m_media->writeMediaList(out);
+		m_con->send(player->peer_id, 0, out);
+	}
 }
 
 
@@ -297,7 +306,14 @@ void Server::pkt_Auth(peer_t peer_id, Packet &pkt)
 
 void Server::pkt_MediaRequest(peer_t peer_id, Packet &pkt)
 {
-	// TODO
+	if (!m_media) {
+		return;
+	}
+
+	RemotePlayer *player = getPlayerNoLock(peer_id);
+	m_media->readMediaRequest(player, pkt);
+
+	// data is sent in step()
 }
 
 void Server::pkt_GetLobby(peer_t peer_id, Packet &)

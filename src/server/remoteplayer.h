@@ -5,6 +5,8 @@
 #include "core/timer.h"
 #include <unordered_set>
 
+enum class Packet2Client : uint16_t;
+
 enum class RemotePlayerState {
 	Invalid,
 	Login,
@@ -16,6 +18,8 @@ enum class RemotePlayerState {
 class RemotePlayer : public Player {
 public:
 	RemotePlayer(peer_t peer_id, uint16_t protocol_version);
+
+	Packet createPacket(Packet2Client type) const;
 
 	const uint16_t protocol_version;
 

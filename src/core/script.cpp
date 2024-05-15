@@ -3,6 +3,7 @@
 #include "script.h"
 #include "blockmanager.h"
 #include "connection.h" // protocol version
+#include "logger.h"
 #include "player.h"
 #include <fstream>
 #include <memory> // unique_ptr
@@ -12,12 +13,7 @@ extern "C" {
 	#include <lualib.h>
 }
 
-#if 1
-	#define DEBUGLOG(...) printf(__VA_ARGS__)
-#else
-	#define DEBUGLOG(...) /* SILENCE */
-#endif
-#define ERRORLOG(...) fprintf(stderr, __VA_ARGS__)
+static Logger logger("Script");
 
 static const lua_Integer SCRIPT_API_VERSION = 1;
 enum RIDX_Indices : lua_Integer {
@@ -70,7 +66,7 @@ static void dump_args(lua_State *L, FILE *file, bool details = false)
 
 static int l_print(lua_State *L)
 {
-	fprintf(stdout, "Lua print:");
+	logger(LL_PRINT, "%s: ", __func__);
 	dump_args(L, stdout);
 	fflush(stdout);
 	return 0;
@@ -78,7 +74,7 @@ static int l_print(lua_State *L)
 
 static int l_error(lua_State *L)
 {
-	fprintf(stderr, "Lua error: ");
+	logger(LL_ERROR, "%s: ", __func__);
 	dump_args(L, stderr, true);
 	fflush(stderr);
 	return 0;
@@ -86,7 +82,7 @@ static int l_error(lua_State *L)
 
 static int l_panic(lua_State *L)
 {
-	ERRORLOG("Lua panic! unprotected error in %s\n", lua_tostring(L, -1));
+	logger(LL_ERROR, "Panic! %s\n", lua_tostring(L, -1));
 	return 0;
 }
 
@@ -131,6 +127,8 @@ Script::Script(BlockManager *bmgr) :
 	m_bmgr(bmgr)
 {
 	ASSERT_FORCED(m_bmgr, "Missing BlockManager");
+
+	protocol_version = PROTOCOL_VERSION_MAX;
 }
 
 
@@ -291,11 +289,11 @@ bool Script::loadFromFile(const std::string &filename)
 	}
 
 	if (first_char == 27) {
-		ERRORLOG("Lua: loading bytecode is not allowed\n");
+		logger(LL_ERROR, "Loading bytecode is not allowed\n");
 		return false;
 	}
 
-	DEBUGLOG("Lua: loading script '%s'\n", filename.c_str());
+	logger(LL_DEBUG, "Loading file: '%s'\n", filename.c_str());
 	lua_rawgeti(m_lua, LUA_REGISTRYINDEX, CUSTOM_RIDX_TRACEBACK);
 	luaL_checktype(m_lua, -1, LUA_TFUNCTION);
 	int errorhandler = lua_gettop(m_lua);
@@ -306,7 +304,7 @@ bool Script::loadFromFile(const std::string &filename)
 
 	if (status != 0) {
 		const char *err = lua_tostring(m_lua, -1);
-		ERRORLOG("Lua: failed to load script '%s' (ret=%d):\n%s%s\n%s",
+		logger(LL_ERROR, "Failed to load script '%s' (ret=%d):\n%s%s\n%s",
 			filename.c_str(),
 			status,
 			SEPARATOR,
@@ -331,12 +329,12 @@ bool Script::loadDefinition(bid_t block_id)
 	lua_getfield(L, -1, "get_definition");
 	luaL_checktype(L, -1, LUA_TFUNCTION);
 	lua_pushinteger(L, block_id);             // #1
-	lua_pushinteger(L, PROTOCOL_VERSION_MAX); // #2
+	lua_pushinteger(L, protocol_version); // #2
 
 	// Execute!
 	const int nresults = 1; // table
 	if (lua_pcall(L, 2, nresults, 0)) {
-		ERRORLOG("Lua: def for block_id=%d failed: %s\n",
+		logger(LL_ERROR, ": def for block_id=%d failed: %s\n",
 			block_id,
 			lua_tostring(L, -1)
 		);
@@ -385,7 +383,7 @@ void Script::onIntersect(const BlockProperties *props)
 	luaL_checktype(L, -1, LUA_TFUNCTION);
 	// Execute!
 	if (lua_pcall(L, 0, 0, 0)) {
-		ERRORLOG("Lua: on_intersect pack='%s' failed: %s\n",
+		logger(LL_ERROR, "on_intersect pack='%s' failed: %s\n",
 			props->pack->name.c_str(),
 			lua_tostring(L, -1)
 		);
@@ -419,7 +417,7 @@ int Script::onCollide(CollisionInfo ci)
 	lua_pushboolean(L, ci.is_x);
 	// Execute!
 	if (lua_pcall(L, 3, 1, 0)) {
-		ERRORLOG("Script: on_collide pack='%s' failed: %s\n",
+		logger(LL_ERROR, "on_collide pack='%s' failed: %s\n",
 			ci.props->pack->name.c_str(),
 			lua_tostring(L, -1)
 		);
@@ -437,13 +435,13 @@ int Script::onCollide(CollisionInfo ci)
 		case (int)CT::Velocity:
 		case (int)CT::Position:
 			// good
-			DEBUGLOG("Script: collision_type=%i, pos=(%i,%i), dir=%s\n",
+			logger(LL_DEBUG, "collision_type=%i, pos=(%i,%i), dir=%s\n",
 				collision_type, ci.pos.X, ci.pos.Y, ci.is_x ? "X" : "Y"
 			);
 			break;
 		default:
 			collision_type = 0;
-			ERRORLOG("Script: invalid collision in pack='%s'\n",
+			logger(LL_ERROR, "invalid collision in pack='%s'\n",
 				ci.props->pack->name.c_str()
 			);
 			break;
@@ -472,21 +470,20 @@ static void cpp_exception_handler(lua_State *L)
 	if (n > 0) {
 		luaL_error(L, tmp_errorlog);
 	} else {
-		ERRORLOG("Lua: C++ exception handler failed\n");
+		logger(LL_ERROR, "C++ exception handler failed\n");
 		lua_error(L);
 	}
 }
 
 #define MESSY_CPP_EXCEPTIONS(my_code) \
 	try { \
-		DEBUGLOG("-> Lua: call %s\n", __func__); \
+		logger(LL_DEBUG, "-> call %s\n", __func__); \
 		my_code \
 	} catch (...) { \
 		cpp_exception_handler(L); \
 		return 0; \
 	}
 
-// yet unused!
 int Script::l_register_pack(lua_State *L)
 {MESSY_CPP_EXCEPTIONS(
 	Script *script = get_script(L);
@@ -517,14 +514,13 @@ int Script::l_register_pack(lua_State *L)
 	}
 	lua_pop(L, 1); // table
 
-	DEBUGLOG("register pack: %s\n", pack->name.c_str());
+	logger(LL_DEBUG, "register pack: %s\n", pack->name.c_str());
 	script->m_bmgr->registerPack(pack.release());
 	return 0;
 )}
 
 int Script::l_change_block(lua_State *L)
 {MESSY_CPP_EXCEPTIONS(
-	DEBUGLOG("-> Lua: call %s\n", __func__);
 	Script *script = get_script(L);
 
 	lua_getfield(L, -1, "id");
@@ -539,7 +535,7 @@ int Script::l_change_block(lua_State *L)
 	if (!lua_isnil(L, -1)) {
 		bool ok = function_to_ref(L, props->ref_on_intersect);
 		if (!ok) {
-			ERRORLOG("Lua %s ref failed: block_id= %i\n", lua_tostring(L, -2), block_id);
+			logger(LL_ERROR, "%s ref failed: block_id= %i\n", lua_tostring(L, -2), block_id);
 		}
 	} else {
 		lua_pop(L, 1);
@@ -549,13 +545,27 @@ int Script::l_change_block(lua_State *L)
 	if (!lua_isnil(L, -1)) {
 		bool ok = function_to_ref(L, props->ref_on_collide);
 		if (!ok) {
-			ERRORLOG("Lua %s ref failed: block_id= %i\n", lua_tostring(L, -2), block_id);
+			logger(LL_ERROR, "%s ref failed: block_id= %i\n", lua_tostring(L, -2), block_id);
 		}
 	} else {
 		lua_pop(L, 1);
 	}
 
-	DEBUGLOG("Lua changed block_id=%i\n", block_id);
+	lua_getfield(L, -1, "minimap_color");
+	if (!lua_isnil(L, -1)) {
+		lua_Integer minimap_color = luaL_checkinteger(L, -1);
+		props->color = minimap_color;
+	}
+	lua_pop(L, 1);
+
+	lua_getfield(L, -1, "viscosity");
+	if (!lua_isnil(L, -1)) {
+		lua_Number viscosity = luaL_checknumber(L, -1);
+		props->viscosity = viscosity;
+	}
+	lua_pop(L, 1);
+
+	logger(LL_DEBUG, "Changed block_id=%i\n", block_id);
 	return 0;
  )}
 
