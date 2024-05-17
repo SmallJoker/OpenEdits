@@ -55,8 +55,14 @@ void Client::pkt_Hello(Packet &pkt)
 	m_start_data.nickname = player->name = pkt.readStr16();
 	m_players.emplace(m_my_peer_id, player.release());
 
-	// Load the server's block properties
-	m_bmgr->read(pkt);
+	bool bmgr_by_script = false;
+	if (m_protocol_version >= 7)
+		bmgr_by_script = pkt.read<u8>() & 1;
+
+	if (!bmgr_by_script) {
+		// Load the server's block properties
+		m_bmgr->read(pkt);
+	}
 
 	m_auth = Auth();
 
@@ -116,7 +122,7 @@ void Client::pkt_Auth(Packet &pkt)
 		return;
 	}
 
-	printf("Client: Unknown auth action: %s\n", action.c_str());
+	logger(LL_ERROR, "Unknown auth action '%s'\n", action.c_str());
 }
 
 void Client::pkt_MediaList(Packet &pkt)

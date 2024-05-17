@@ -4,7 +4,9 @@
 #include "remoteplayer.h"
 #include "servermedia.h"
 #include "core/blockmanager.h"
+#include "core/logger.h"
 #include "core/packet.h"
+#include "core/script.h"
 #include "core/world.h"
 #include "version.h"
 
@@ -14,34 +16,31 @@
 	#define DEBUGLOG(...) /* SILENCE */
 #endif
 
+static Logger logger("Server", LL_WARN);
+
 static uint16_t PACKET_ACTIONS_MAX; // initialized in ctor
 
 Server::Server(bool *shutdown_requested) :
 	Environment(new BlockManager()),
 	m_shutdown_requested(shutdown_requested)
 {
-	puts("Server: startup");
+	logger(LL_PRINT, "Startup ...\n");
 	m_stdout_flush_timer.set(1);
 	m_ban_cleanup_timer.set(2);
 
-	m_bmgr->doPackRegistration();
-
 	m_con = new Connection(Connection::TYPE_SERVER, "Server");
 	if (!m_con->listenAsync(*this)) {
-		if (shutdown_requested)
-			*shutdown_requested = true;
-		return;
+		goto error;
 	}
 
 	{
 		// Initialize persistent world storage
 		m_world_db = new DatabaseWorld();
 		if (!m_world_db->tryOpen("server_worlddata.sqlite")) {
-			fprintf(stderr, "Failed to open world database!\n");
+			logger(LL_ERROR, "Failed to open world database!\n");
 			delete m_world_db;
 			m_world_db = nullptr;
-			if (shutdown_requested)
-				*shutdown_requested = true;
+			goto error;
 		}
 	}
 
@@ -49,17 +48,43 @@ Server::Server(bool *shutdown_requested) :
 		// Initialize auth
 		m_auth_db = new DatabaseAuth();
 		if (m_auth_db->tryOpen("server_auth.sqlite")) {
+			// allow access from CLI
 			m_auth_db->enableWAL();
 		} else {
-			fprintf(stderr, "Failed to open auth database!\n");
+			logger(LL_ERROR, "Failed to open auth database!\n");
 			delete m_auth_db;
 			m_auth_db = nullptr;
-			if (shutdown_requested)
-				*shutdown_requested = true;
+			goto error;
 		}
 	}
 
+	m_script = new Script(m_bmgr);
+	if (!m_script->init()) {
+		logger(LL_ERROR, "Failed to initialize Lua\n");
+		goto error;
+	}
+
 	m_media = new ServerMedia();
+
+
+	// Initialize Script + Assets needed for the clients
+	{
+		m_media->indexAssets();
+
+		const char *asset_name = "main.lua";
+		const char *real_path = m_media->getAssetPath(asset_name);
+		if (!real_path) {
+			logger(LL_ERROR, "No future without main script\n");
+			goto error;
+		}
+
+		m_media->requireAsset(asset_name); // for clients
+		if (!m_script->loadFromFile(real_path))
+			goto error;
+
+		m_bmgr->setMediaMgr(m_media);
+		m_bmgr->requireAllTextures();
+	}
 
 	registerChatCommands();
 
@@ -72,11 +97,15 @@ Server::Server(bool *shutdown_requested) :
 		PACKET_ACTIONS_MAX = handler - packet_actions;
 		ASSERT_FORCED(PACKET_ACTIONS_MAX == (int)Packet2Server::MAX_END, "Packet handler mismatch");
 	}
+
+	return; // OK
+error:
+	shutdown();
 }
 
 Server::~Server()
 {
-	puts("Server: stopping...");
+	logger(LL_PRINT, "Stopping ...\n");
 
 	{
 		// In case a packet is being processed
@@ -104,7 +133,7 @@ Server::~Server()
 void Server::step(float dtime)
 {
 	if (m_is_first_step) {
-		puts("Server: Up and runnning.");
+		logger(LL_PRINT, "Up and runnning.");
 		m_is_first_step = false;
 	}
 
@@ -263,7 +292,7 @@ void Server::onPeerDisconnected(peer_t peer_id)
 	if (!player)
 		return;
 
-	printf("Server: Player %s disconnected\n", player->name.c_str());
+	logger(LL_DEBUG, "Player %s disconnected\n", player->name.c_str());
 
 	{
 		Packet pkt;
@@ -283,7 +312,7 @@ void Server::processPacket(peer_t peer_id, Packet &pkt)
 	// one server instance, multiple worlds
 	int action = (int)pkt.read<Packet2Server>();
 	if (action >= PACKET_ACTIONS_MAX) {
-		printf("Server: Packet action %u out of range\n", action);
+		logger(LL_ERROR, "Packet action %u out of range (peer_id=%d)\n", action, peer_id);
 		return;
 	}
 
@@ -294,11 +323,11 @@ void Server::processPacket(peer_t peer_id, Packet &pkt)
 	if (handler.min_player_state != RemotePlayerState::Invalid) {
 		RemotePlayer *player = getPlayerNoLock(peer_id);
 		if (!player) {
-			printf("Server: Player peer_id=%u not found.\n", peer_id);
+			logger(LL_ERROR, "Player peer_id=%u not found.\n", peer_id);
 			return;
 		}
 		if ((int)handler.min_player_state > (int)player->state) {
-			printf("Server: peer_id=%u is not ready for action=%d.\n", peer_id, action);
+			logger(LL_ERROR, "peer_id=%u is not ready for action=%d.\n", peer_id, action);
 			return;
 		}
 
@@ -309,14 +338,14 @@ void Server::processPacket(peer_t peer_id, Packet &pkt)
 		(this->*handler.func)(peer_id, pkt);
 	} catch (std::out_of_range &e) {
 		Player *player = getPlayerNoLock(peer_id);
-		fprintf(stderr, "Server: Packet out_of_range. action=%d, player=%s, msg=%s\n",
+		logger(LL_ERROR, "Packet out_of_range. action=%d, player=%s, msg=%s\n",
 			action,
 			player ? player->name.c_str() : "(null)",
 			e.what()
 		);
 	} catch (std::exception &e) {
 		Player *player = getPlayerNoLock(peer_id);
-		fprintf(stderr, "Server: Packet exception. action=%d, player=%s, msg=%s\n",
+		logger(LL_ERROR, "Packet exception. action=%d, player=%s, msg=%s\n",
 			action,
 			player ? player->name.c_str() : "(null)",
 			e.what()
@@ -328,6 +357,8 @@ void Server::stepSendMedia(RemotePlayer *player)
 {
 	if (player->requested_media.empty() || !m_media)
 		return;
+	if (m_con->getPeerBytesInTransit(player->peer_id) > 5 * CONNECTION_MTU)
+		return; // wait a bit
 
 	Packet out = player->createPacket(Packet2Client::MediaReceive);
 	m_media->writeMediaData(player, out);
@@ -484,3 +515,11 @@ void Server::respawnPlayer(Player *player, bool send_packet, bool reset_progress
 	else
 		player->setPosition(player->pos, reset_progress);
 }
+
+void Server::shutdown()
+{
+	ASSERT_FORCED(m_shutdown_requested, "Cannot request shutdown.");
+	*m_shutdown_requested = true;
+}
+
+

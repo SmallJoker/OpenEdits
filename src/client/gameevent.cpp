@@ -1,4 +1,7 @@
 #include "gameevent.h"
+#include "core/logger.h"
+
+static Logger logger("GameEvent", LL_DEBUG);
 
 GameEvent::~GameEvent()
 {
@@ -84,7 +87,7 @@ bool GameEventHandler::sendNewEvent(GameEvent &e)
 				e.type_c2g != GameEvent::C2G_ON_TOUCH_BLOCK && // coin spam
 				e.type_c2g != GameEvent::C2G_MAP_UPDATE // (timed) gates spam
 			) {
-			printf("Processing GameEvent c2g=%d, g2c=%d\n", (int)e.type_c2g, (int)e.type_g2c);
+			logger(LL_DEBUG, "c2g=%d, g2c=%d\n", (int)e.type_c2g, (int)e.type_g2c);
 		}
 		handled = m_eventhandler->OnEvent(e);
 	}

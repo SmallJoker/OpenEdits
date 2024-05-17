@@ -1,4 +1,5 @@
 #include "connection.h"
+#include "logger.h"
 #include "packet.h"
 
 #include <enet/enet.h>
@@ -7,23 +8,20 @@
 #include <sstream>
 #include <thread>
 
-#if 0
-	#define DEBUGLOG(...) printf(__VA_ARGS__)
-#else
-	#define DEBUGLOG(...) /* SILENCE */
-#endif
-#define ERRORLOG(...) fprintf(stderr, __VA_ARGS__)
+static Logger logger("ENet", LL_WARN);
 
 const uint16_t CON_PORT = 0xC014;
 const size_t CON_CLIENTS = 32; // server only
 const size_t CON_CHANNELS = 2;
 
 // Globally accessible values
-const uint16_t PROTOCOL_VERSION_MAX = 6;
+const uint16_t PROTOCOL_VERSION_MAX = 7;
 const uint16_t PROTOCOL_VERSION_MIN = 5;
+// Note: ENet already splits up packets into fragments, thus manual splitting
+// for low data volumes should not be necessary.
 size_t CONNECTION_MTU;
 
-struct enet_init {
+static struct enet_init {
 	enet_init()
 	{
 		if (enet_initialize() != 0)
@@ -44,7 +42,7 @@ Connection::Connection(Connection::ConnectionType type, const char *name)
 		m_name = name;
 
 	if (type == TYPE_CLIENT) {
-		DEBUGLOG("--- ENet %s: Initializing client\n", m_name);
+		logger(LL_DEBUG, "%s: Initializing\n", m_name);
 		m_host = enet_host_create(
 			NULL,
 			1, // == server
@@ -59,7 +57,7 @@ Connection::Connection(Connection::ConnectionType type, const char *name)
 		address.host = ENET_HOST_ANY;
 		address.port = CON_PORT;
 
-		DEBUGLOG("--- ENet %s: Starting server on port %d\n", m_name, address.port);
+		logger(LL_PRINT, "%s: Starting server on port %d\n", m_name, address.port);
 		m_host = enet_host_create(
 			&address,
 			CON_CLIENTS,
@@ -70,7 +68,7 @@ Connection::Connection(Connection::ConnectionType type, const char *name)
 	}
 
 	if (!m_host) {
-		ERRORLOG("-!- ENet %s: Failed to initialize instance\n", m_name);
+		logger(LL_ERROR, "Failed to initialize instance\n");
 	}
 }
 
@@ -87,7 +85,6 @@ Connection::~Connection()
 	if (m_thread) {
 		m_thread->join();
 		delete m_thread;
-		//ERRORLOG("--- ENet %s: Failed to join thread status=%d\n", m_name, errno);
 	}
 
 	// Apply force if needed
@@ -95,7 +92,7 @@ Connection::~Connection()
 		enet_peer_reset(&m_host->peers[i]);
 
 	enet_host_destroy(m_host);
-	DEBUGLOG("--- ENet %s: Cleanup done\n", m_name);
+	logger(LL_DEBUG, "%s: Cleanup done\n", m_name);
 }
 
 // -------------- Public members -------------
@@ -108,13 +105,13 @@ bool Connection::connect(const char *hostname)
 
 	ENetPeer *peer = enet_host_connect(m_host, &address, 2, 0);
 	if (!peer) {
-		ERRORLOG("-!- ENet %s: No free peers\n", m_name);
+		logger(LL_ERROR, "%s: No free peers\n", m_name);
 		return false;
 	}
 
 	char name[100];
 	enet_address_get_host(&address, name, sizeof(name));
-	printf("--- ENet %s: Connected to %s:%u\n", m_name, name, address.port);
+	logger(LL_PRINT, "%s: Connected to %s:%u\n", m_name, name, address.port);
 	return true;
 }
 
@@ -149,13 +146,6 @@ bool Connection::listenAsync(PacketProcessor &proc)
 	m_processor = &proc;
 
 	m_thread = new std::thread(&recvAsync, this);
-
-	/*if (status != 0) {
-		m_running = false;
-		ERRORLOG("-!- ENet %s: Failed to start pthread: %s\n",
-			m_name, strerror(status));
-		return false;
-	}*/
 
 	return m_running;
 }
@@ -193,6 +183,15 @@ float Connection::getPeerRTT(peer_t peer_id)
 	return peer->roundTripTime * 0.001f; // ms -> s
 }
 
+uint32_t Connection::getPeerBytesInTransit(peer_t peer_id)
+{
+	auto peer = findPeer(peer_id);
+	if (!peer)
+		return 0;
+
+	return peer->reliableDataInTransit;
+}
+
 std::string Connection::getDebugInfo(peer_t peer_id) const
 {
 	auto peer = findPeer(peer_id);
@@ -218,7 +217,7 @@ std::string Connection::getDebugInfo(peer_t peer_id) const
 void Connection::send(peer_t peer_id, uint16_t flags, Packet &pkt)
 {
 	if (pkt.getReadPos() > 0) {
-		ERRORLOG("-!-Enet %s: Tried to send packet that is partially read back\n", m_name);
+		logger(LL_ERROR, "%s: Tried to send packet that is partially read back\n", m_name);
 		return;
 	}
 	uint8_t channel = flags & FLAG_MASK_CHANNEL;
@@ -243,7 +242,7 @@ void Connection::send(peer_t peer_id, uint16_t flags, Packet &pkt)
 		enet_peer_send(peer, channel, pkt.ptr());
 	}
 
-	DEBUGLOG("--- ENet %s: packet sent. peer_id=%u, channel=%d, dump=%s\n",
+	logger(LL_DEBUG, "%s: packet sent. peer_id=%u, channel=%d, dump=%s\n",
 		m_name, peer_id, (int)channel, pkt.dump().c_str());
 }
 
@@ -269,7 +268,7 @@ void Connection::recvAsyncInternal()
 	while (true) {
 		if (!m_running && shutdown_seen == 0) {
 			shutdown_seen++;
-			DEBUGLOG("--- ENet %s: Shutdown requested\n", m_name);
+			logger(LL_DEBUG, "%s: Shutdown requested\n", m_name);
 
 			// Lazy disconnect
 			for (size_t i = 0; i < m_host->peerCount; ++i)
@@ -278,7 +277,7 @@ void Connection::recvAsyncInternal()
 
 		int status = enet_host_service(m_host, &event, 100);
 		if (status < 0) {
-			ERRORLOG("--- ENet %s: Got host error code %d\n", m_name, status);
+			logger(LL_ERROR, "%s: Got host error code %d\n", m_name, status);
 		}
 		if (status <= 0) {
 			// Abort after 500 ms
@@ -310,7 +309,7 @@ void Connection::recvAsyncInternal()
 				{
 					peer_t peer_id = event.peer->connectID;
 					std::string address = getPeerAddress(peer_id);
-					DEBUGLOG("--- ENet %s: New peer ID %u from %s\n", m_name, peer_id, address.c_str());
+					logger(LL_DEBUG, "%s: New peer ID %u from %s\n", m_name, peer_id, address.c_str());
 					peer_id_list[event.peer - m_host->peers] = peer_id;
 					m_processor->onPeerConnected(peer_id);
 				}
@@ -318,7 +317,7 @@ void Connection::recvAsyncInternal()
 			case ENET_EVENT_TYPE_RECEIVE:
 				{
 					peer_t peer_id = event.peer->connectID;
-					DEBUGLOG("--- ENet %s: Got packet peer_id=%u, channel=%d, len=%zu\n",
+					logger(LL_DEBUG, "%s: Got packet peer_id=%u, channel=%d, len=%zu\n",
 						m_name, peer_id,
 						(int)event.channelID,
 						event.packet->dataLength
@@ -328,7 +327,7 @@ void Connection::recvAsyncInternal()
 					try {
 						m_processor->processPacket(peer_id, pkt);
 					} catch (std::exception &e) {
-						ERRORLOG("--- ENet %s: Unhandled exception while processing packet %s: %s\n",
+						logger(LL_ERROR, "%s: Unhandled exception while processing packet %s: %s\n",
 							m_name, pkt.dump().c_str(), e.what());
 					}
 				}
@@ -337,7 +336,7 @@ void Connection::recvAsyncInternal()
 				{
 					// event.peer->connectID is always 0. Need to cache it.
 					peer_t peer_id = peer_id_list.at(event.peer - m_host->peers);
-					DEBUGLOG("--- ENet %s: Peer %u disconnected\n", m_name, peer_id);
+					logger(LL_DEBUG, "%s: Peer %u disconnected\n", m_name, peer_id);
 					m_processor->onPeerDisconnected(peer_id);
 				}
 				break;

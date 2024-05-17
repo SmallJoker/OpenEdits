@@ -44,7 +44,8 @@ void ClientMedia::readMediaList(Packet &pkt)
 		if (fs::exists(cachename) && fs::file_size(cachename) == size) {
 			// File in cache matches
 			set_file_mtime(cachename.c_str(), time_now);
-			m_media_available.insert({ name, cachename });
+			// overwrite path of the indexed local files
+			m_media_available[name] = cachename;
 			bytes_done += size;
 			continue;
 		}
@@ -59,17 +60,11 @@ void ClientMedia::readMediaList(Packet &pkt)
 void ClientMedia::writeMediaRequest(Packet &pkt)
 {
 	// filename, filename, ....
-	auto it = m_to_request.begin();
-	for (; it != m_to_request.end(); ++it) {
-		// Spread across multiple packets
-		if (pkt.size() > CONNECTION_MTU * 5)
-			break;
-
-		pkt.writeStr16(*it);
-		m_pending.insert(*it);
+	for (const std::string &fn : m_to_request) {
+		pkt.writeStr16(fn);
+		m_pending.insert(fn);
 	}
-	// "it" is not removed!
-	m_to_request.erase(m_to_request.begin(), it);
+	m_to_request.clear();
 }
 
 void ClientMedia::readMediaData(Packet &pkt)

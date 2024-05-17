@@ -253,8 +253,7 @@ bool Script::init()
 		lua_setglobal(L, "_G");
 	}
 
-	puts("--> Lua start");
-
+	logger(LL_PRINT, "init done\n");
 	return true;
 }
 

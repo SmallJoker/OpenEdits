@@ -16,6 +16,7 @@ namespace irr {
 
 class Player;
 class BlockManager;
+class MediaManager;
 
 constexpr size_t TEXTURE_SIZE = 32;
 
@@ -109,6 +110,8 @@ public:
 
 	void registerPack(BlockPack *pack);
 	void setDriver(video::IVideoDriver *driver);
+	void setMediaMgr(MediaManager *media) { m_media = media; }
+	void requireAllTextures(); // for server use
 	void populateTextures();
 
 	// Blocks
@@ -133,6 +136,7 @@ private:
 	// This is probably a bad idea for headless servers
 	video::ITexture *m_missing_texture = nullptr;
 	video::IVideoDriver *m_driver = nullptr;
+	MediaManager *m_media = nullptr;
 
 	BlockProperties m_fallback;
 	std::vector<BlockProperties *> m_props;

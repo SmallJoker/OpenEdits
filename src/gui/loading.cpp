@@ -55,11 +55,20 @@ void SceneLoading::step(float dtime)
 			fprintf(stderr, "SceneLoading: invalid state!\n");
 			break;
 		case Type::ConnectServer:
-			if ((int)m_gui->getClient()->getState() >= (int)ClientState::Connected) {
-				// Connected!
-				SceneConnect::recordLogin(m_gui->getClient()->getStartData());
-				m_gui->setSceneFromClientState();
-				break;
+			{
+				auto client = m_gui->getClient();
+				if (!client) {
+					m_gui->showPopupText("Failed to initialize client.\nPlease check the terminal log output.");
+					cancel();
+					break;
+				}
+
+				if ((int)client->getState() >= (int)ClientState::Connected) {
+					// Connected!
+					SceneConnect::recordLogin(m_gui->getClient()->getStartData());
+					m_gui->setSceneFromClientState();
+					break;
+				}
 			}
 
 			if (m_timer.step(dtime)) {

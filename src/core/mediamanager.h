@@ -40,8 +40,8 @@ public:
 
 	virtual bool requireAsset(const char *name) { return false; }
 
-	/// @return true on success. "out" contains the file path (if non-NULL)
-	virtual bool getAssetPath(const char *name, std::string *out);
+	/// @return non-NULL on success
+	virtual const char *getAssetPath(const char *name);
 
 	static const std::string ASSETS_DIR;
 

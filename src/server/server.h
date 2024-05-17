@@ -11,6 +11,7 @@ enum class RemotePlayerState;
 class DatabaseAuth;
 class DatabaseWorld;
 class RemotePlayer;
+class Script;
 class ServerMedia;
 struct ServerPacketHandler;
 struct LobbyWorld;
@@ -73,12 +74,15 @@ private:
 
 	// ----------- Server checks -----------
 
+	void shutdown();
+
 	static bool checkSize(std::string &out, blockpos_t size);
 	static bool checkTitle(std::string &out, std::string &title);
 
 	// ----------- Other members -----------
 	DatabaseAuth *m_auth_db = nullptr;
 	DatabaseWorld *m_world_db = nullptr;
+	Script *m_script = nullptr;
 	ServerMedia *m_media = nullptr;
 	bool m_is_first_step = true;
 

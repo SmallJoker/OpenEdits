@@ -1,12 +1,16 @@
 #include "servermedia.h"
 #include "remoteplayer.h"
 #include "core/filesystem.h"
+#include "core/logger.h"
 #include "core/packet.h"
 #include <filesystem>
 
 extern size_t CONNECTION_MTU;
 
 namespace fs = std::filesystem;
+
+static Logger logger("ServerMedia", LL_DEBUG);
+
 
 // -------------- ServerMedia --------------
 
@@ -21,16 +25,16 @@ bool ServerMedia::requireAsset(const char *name)
 	if (rit != m_required.end())
 		return true; // already recorded
 
-	auto it = m_media_available.find(name_s);
-	if (it == m_media_available.end())
+	const char *real_path = getAssetPath(name);
+	if (!real_path)
 		return false;
 
 	File file;
-	file.file_path = it->second;
+	file.file_path = real_path;
 	file.file_size = SIZE_MAX; // non-zero
 	bool ok = file.cacheToRAM();
 
-	printf("ServerMedia: require '%s', size=%ld\n", name, file.data.size());
+	logger(LL_DEBUG, "Require '%s', size=%ld\n", name, file.data.size());
 	m_required.insert({ name_s, std::move(file) });
 	return ok;
 }
@@ -71,7 +75,7 @@ void ServerMedia::writeMediaData(RemotePlayer *player, Packet &pkt)
 	auto it = list.begin();
 	for (; it != list.end(); ++it) {
 		// Spread across multiple packets
-		if (pkt.size() > CONNECTION_MTU * 10)
+		if (pkt.size() > CONNECTION_MTU * 20)
 			break;
 
 		pkt.writeStr16(*it); // name

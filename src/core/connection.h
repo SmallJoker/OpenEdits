@@ -37,6 +37,7 @@ public:
 	void disconnect(peer_t peer_id);
 	std::string getPeerAddress(peer_t peer_id);
 	float getPeerRTT(peer_t peer_id);
+	uint32_t getPeerBytesInTransit(peer_t peer_id);
 
 	/// Main purpose: client-sided information display
 	std::string getDebugInfo(peer_t peer_id) const;

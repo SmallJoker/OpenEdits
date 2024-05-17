@@ -95,7 +95,7 @@ void Client::step(float dtime)
 		out.write(Packet2Server::PlaceBlock);
 
 		// Almost identical to the queue processing in Server::step()
-		for (auto it = queue.cbegin(); it != queue.cend();) {
+		for (auto it = queue.cbegin(); it != queue.cend(); ++it) {
 
 			out.write<u8>(true); // begin
 			// Write BlockUpdate
@@ -103,14 +103,9 @@ void Client::step(float dtime)
 
 			DEBUGLOG("Client: sending block x=%d,y=%d,id=%d\n",
 				it->pos.X, it->pos.Y, it->getId());
-
-			it = queue.erase(it);
-
-			// Fit everything into an MTU
-			if (out.size() > CONNECTION_MTU)
-				break;
 		}
 		out.write<u8>(false);
+		queue.clear();
 
 		m_con->send(0, 0, out);
 		break;

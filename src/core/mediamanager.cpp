@@ -1,5 +1,6 @@
 #include "mediamanager.h"
 #include "filesystem.h"
+#include "logger.h"
 extern "C" {
 #include "sha3.h"
 }
@@ -8,6 +9,8 @@ extern "C" {
 namespace fs = std::filesystem;
 constexpr int SHA3_VARIANT = 256;
 const std::string MediaManager::ASSETS_DIR = "assets";
+
+static Logger logger("MediaManager", LL_DEBUG);
 
 void MediaManager::File::computeHash()
 {
@@ -64,16 +67,16 @@ void MediaManager::indexAssets()
 
 		m_media_available.insert({ entry.path().filename(), entry.path() });
 	}
-	printf("MediaManager: %lu media files indexed\n", m_media_available.size());
+	logger(LL_DEBUG, "%lu media files indexed\n", m_media_available.size());
 }
 
-bool MediaManager::getAssetPath(const char *name, std::string *out)
+const char *MediaManager::getAssetPath(const char *name)
 {
 	auto it = m_media_available.find(name);
-	if (it == m_media_available.end())
-		return false;
+	if (it == m_media_available.end()) {
+		logger(LL_WARN, "Cannot find asset '%s'\n", name);
+		return nullptr;
+	}
 
-	if (out)
-		out->assign(it->second);
-	return true;
+	return it->second.c_str();
 }

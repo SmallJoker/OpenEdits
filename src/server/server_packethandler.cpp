@@ -77,14 +77,18 @@ void Server::pkt_Hello(peer_t peer_id, Packet &pkt)
 
 	{
 		// Confirm
-		Packet reply;
-		reply.data_version = player->protocol_version;
-		reply.write(Packet2Client::Hello);
+		Packet reply = player->createPacket(Packet2Client::Hello);
 		reply.write(player->protocol_version);
 		reply.write(player->peer_id);
 		reply.writeStr16(player->name);
 
-		m_bmgr->write(reply);
+		bool bmgr_by_script = (player->protocol_version >= 7) && m_media && m_script;
+
+		if (player->protocol_version >= 7)
+			reply.write<u8>(bmgr_by_script);
+
+		if (!bmgr_by_script)
+			m_bmgr->write(reply);
 
 		m_con->send(peer_id, 0, reply);
 	}

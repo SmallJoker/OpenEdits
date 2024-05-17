@@ -1,10 +1,14 @@
 #include "blockmanager.h"
+#include "logger.h"
+#include "mediamanager.h"
 #include "packet.h"
 #include <ITexture.h>
 #include <IVideoDriver.h>
 #include <stdexcept>
 
 BlockManager *g_blockmanager = nullptr;
+
+static Logger logger("BlockManager", LL_DEBUG);
 
 BlockProperties::BlockProperties(BlockDrawType type)
 {
@@ -201,7 +205,6 @@ void BlockManager::registerPack(BlockPack *pack)
 void BlockManager::setDriver(video::IVideoDriver *driver)
 {
 	m_driver = driver;
-	m_missing_texture = m_driver->getTexture("assets/textures/missing_texture.png");
 }
 
 static void split_texture(video::IVideoDriver *driver, BlockTile *tile, u8 texture_offset)
@@ -219,22 +222,40 @@ static void split_texture(video::IVideoDriver *driver, BlockTile *tile, u8 textu
 	img->drop();
 }
 
+void BlockManager::requireAllTextures()
+{
+	ASSERT_FORCED(m_media, "Missing MediaManager");
+
+	for (auto pack : m_packs) {
+		m_media->requireAsset(("pack_" + pack->name + ".png").c_str());
+	}
+}
+
 void BlockManager::populateTextures()
 {
 	if (m_populated)
 		return;
 
-	ASSERT_FORCED(m_driver && m_missing_texture, "Missing driver");
+	ASSERT_FORCED(m_driver, "Missing driver");
+	if (!m_media)
+		logger(LL_WARN, "No MediaManager available\n");
+
+	m_missing_texture = m_driver->getTexture("assets/textures/missing_texture.png");
 
 	int count = 0;
 
 	for (auto pack : m_packs) {
-		// TODO: use MediaManager. requireAsset, getAssetPath
 		if (pack->imagepath.empty())
-			pack->imagepath = "assets/textures/pack_" + pack->name + ".png";
+			pack->imagepath = "pack_" + pack->name + ".png";
+
+		std::string real_path;
+		if (m_media)
+			real_path = m_media->getAssetPath(pack->imagepath.c_str());
+		if (real_path.empty()) // fallback
+			real_path = "assets/textures/" + pack->imagepath;
 
 		// Assign texture ID and offset?
-		video::ITexture *texture = m_driver->getTexture(pack->imagepath.c_str());
+		video::ITexture *texture = m_driver->getTexture(real_path.c_str());
 
 		core::dimension2du dim;
 		int max_tiles = 0;
@@ -269,7 +290,7 @@ void BlockManager::populateTextures()
 				tile.texture = m_missing_texture;
 				if (prop->color == 0)
 					prop->color = 0xFFFF0000; // red
-				fprintf(stderr, "BlockManager: Out-of-range texture for block_id=%d\n", id);
+				logger(LL_ERROR, "Out-of-range texture for block_id=%d\n", id);
 			}
 
 			count++;
@@ -279,7 +300,7 @@ void BlockManager::populateTextures()
 	m_populated = true;
 
 	doPackPostprocess();
-	printf("BlockManager: Registered textures of %d blocks in %zu packs\n", count, m_packs.size());
+	logger(LL_PRINT, "Registered textures of %d blocks in %zu packs\n", count, m_packs.size());
 }
 
 const BlockProperties *BlockManager::getProps(bid_t block_id) const
