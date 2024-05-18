@@ -1,5 +1,6 @@
 #include "clientmedia.h"
 #include "core/filesystem.h"
+#include "core/logger.h"
 #include "core/packet.h"
 #include <filesystem>
 #include <fstream>
@@ -9,7 +10,7 @@ extern size_t CONNECTION_MTU;
 
 namespace fs = std::filesystem;
 const std::string CACHE_DIR = "cache";
-
+static Logger logger("ClientMedia", LL_DEBUG);
 
 // Requires "computeHash" to be run first, or set "data_hash" manually
 std::string MediaManager::File::getDiskFileName()
@@ -37,8 +38,11 @@ void ClientMedia::readMediaList(Packet &pkt)
 			break;
 
 		size_t size = pkt.read<uint32_t>();
+		uint64_t data_hash = pkt.read<uint64_t>();
+
 		File file;
-		pkt.read<uint64_t>(file.data_hash);
+		file.file_size = size;
+		file.data_hash = data_hash;
 
 		std::string cachename = file.getDiskFileName();
 		if (fs::exists(cachename) && fs::file_size(cachename) == size) {
@@ -50,7 +54,17 @@ void ClientMedia::readMediaList(Packet &pkt)
 			continue;
 		}
 
-		// TODO: also check the local files to avoid caching them again
+		// Check the local files to avoid unnecessary caching
+		auto it = m_media_available.find(name);
+		if (it != m_media_available.end()) {
+			file.file_path = it->second;
+			// Cache function oveerwrites the hash!
+			if (file.cacheToRAM() && file.data_hash == data_hash && file.file_size == size) {
+				// "m_media_available" is already OK and up-to-date
+				bytes_done += size;
+				continue;
+			}
+		}
 
 		m_to_request.insert(name);
 		bytes_missing += size;
@@ -92,10 +106,10 @@ void ClientMedia::readMediaData(Packet &pkt)
 		if (!file.data.empty()) {
 			std::ofstream os(cachename, std::ios_base::binary | std::ios_base::trunc);
 			os.write((const char *)file.data.data(), file.data.size());
-			printf("ClientMedia: cache file '%s', size=%ld\n", name.c_str(), file.data.size());
+			logger(LL_DEBUG, "cache file '%s', size=%ld", name.c_str(), file.data.size());
 		}
 
-		m_media_available.insert({ name, cachename });
+		m_media_available[name] = cachename; // overwrite in case when using local files
 		bytes_done    += file.data.size();
 		bytes_missing -= file.data.size();
 		m_pending.erase(name);
@@ -124,8 +138,8 @@ void ClientMedia::removeOldCache()
 			continue;
 
 		int status = std::remove(path_c);
-		printf("removeOldCache: '%s', age=%ldd, status=%d\n",
-			entry.path().filename().c_str(), age_days, status
+		logger(LL_DEBUG, "%s: '%s', age=%ldd, status=%d",
+			__func__, entry.path().filename().c_str(), age_days, status
 		);
 	}
 }

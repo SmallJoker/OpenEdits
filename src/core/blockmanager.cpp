@@ -59,7 +59,7 @@ BlockManager::~BlockManager()
 		delete p;
 	m_props.clear();
 
-	printf("BlockManager: Freed registered data\n");
+	logger(LL_PRINT, "Freed registered data");
 }
 
 void BlockManager::read(Packet &pkt)
@@ -256,6 +256,8 @@ void BlockManager::populateTextures()
 
 		// Assign texture ID and offset?
 		video::ITexture *texture = m_driver->getTexture(real_path.c_str());
+		if (!texture)
+			logger(LL_ERROR, "Failed to load texture '%s'", real_path.c_str());
 
 		core::dimension2du dim;
 		int max_tiles = 0;
@@ -268,6 +270,7 @@ void BlockManager::populateTextures()
 		int texture_offset = 0;
 		for (bid_t id : pack->block_ids) {
 			auto prop = m_props[id];
+
 			if (texture_offset < max_tiles) {
 				for (BlockTile &tile : prop->tiles) {
 					if (tile.type == BlockDrawType::Invalid)
@@ -314,7 +317,7 @@ const BlockProperties *BlockManager::getProps(bid_t block_id) const
 BlockProperties *BlockManager::getPropsForModification(bid_t block_id) const
 {
 	if (m_populated) {
-		fprintf(stderr, "BlockManager: Cannot modify blocks. Already in use.\n");
+		logger(LL_ERROR, "Cannot modify blocks. Already in use.");
 		return nullptr;
 	}
 
@@ -344,6 +347,9 @@ void BlockManager::ensurePropsSize(size_t n)
 
 u32 BlockManager::getBlockColor(const BlockTile tile) const
 {
+	if (!tile.texture)
+		return 0xFFFF0000; // red
+
 	auto dim = tile.texture->getOriginalSize();
 	auto texture = tile.texture;
 

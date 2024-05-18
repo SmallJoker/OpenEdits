@@ -25,24 +25,35 @@ bool ServerMedia::requireAsset(const char *name)
 	if (rit != m_required.end())
 		return true; // already recorded
 
-	const char *real_path = getAssetPath(name);
-	if (!real_path)
+	auto it = m_media_available.find(name);
+	if (it == m_media_available.end()) {
+		logger(LL_ERROR, "Asset '%s' not found\n", name);
 		return false;
+	}
 
 	File file;
-	file.file_path = real_path;
+	file.type = File::getTypeFromFileName(name_s); // for filtering
+	file.file_path = it->second;
 	file.file_size = SIZE_MAX; // non-zero
 	bool ok = file.cacheToRAM();
 
-	logger(LL_DEBUG, "Require '%s', size=%ld\n", name, file.data.size());
+	logger(LL_DEBUG, "Require '%s' ('%s'), size=%ld\n",
+		name, file.file_path.c_str(), file.data.size()
+	);
 	m_required.insert({ name_s, std::move(file) });
 	return ok;
 }
 
-void ServerMedia::writeMediaList(Packet &pkt)
+void ServerMedia::writeMediaList(RemotePlayer *player, Packet &pkt)
 {
 	// name, size, data hash
+	const bool audiovisuals = player->media.needs_audiovisuals;
+
 	for (const auto &[name, file] : m_required) {
+		// headless clients do not need textures or sounds
+		if (!audiovisuals && file.type != AssetType::Script)
+			continue;
+
 		pkt.writeStr16(name);
 		pkt.write<u32>(file.file_size);
 		pkt.write<u64>(file.data_hash);
@@ -56,14 +67,14 @@ void ServerMedia::readMediaRequest(RemotePlayer *player, Packet &pkt)
 		if (filename.empty())
 			break;
 
-		player->requested_media.insert(filename);
+		player->media.requested.insert(filename);
 	}
 }
 
 void ServerMedia::writeMediaData(RemotePlayer *player, Packet &pkt)
 {
 	// name, size, [bytes ...]
-	if (player->total_sent_media >= m_required.size()) {
+	if (player->media.total_sent >= m_required.size()) {
 		// Avoid request bombs. In theory we sent all media, thus stop.
 		pkt.writeStr16(""); // terminate
 		return;
@@ -71,7 +82,7 @@ void ServerMedia::writeMediaData(RemotePlayer *player, Packet &pkt)
 
 	const time_t time_now = time(nullptr);
 
-	auto &list = player->requested_media;
+	auto &list = player->media.requested;
 	auto it = list.begin();
 	for (; it != list.end(); ++it) {
 		// Spread across multiple packets
@@ -95,7 +106,7 @@ void ServerMedia::writeMediaData(RemotePlayer *player, Packet &pkt)
 		pkt.write<u32>(file.data.size()); // size
 		pkt.writeRaw(file.data.data(), file.data.size()); // binary
 
-		player->total_sent_media++;
+		player->media.total_sent++;
 	}
 
 	list.erase(list.begin(), it);

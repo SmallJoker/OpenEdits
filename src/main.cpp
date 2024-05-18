@@ -132,6 +132,7 @@ static int parse_args(int argc, char *argv[])
 	}
 	if (strcmp(argv[1], "--unittest") == 0) {
 		// Depends on BlockManager and ENet
+		g_blockmanager->doPackRegistration();
 		unittest();
 		return EXIT_SUCCESS;
 	}
@@ -183,7 +184,6 @@ int main(int argc, char *argv[])
 
 	// Used by Gui, Client and Unittests but not Server.
 	g_blockmanager = new BlockManager();
-	g_blockmanager->doPackRegistration();
 
 	int status = parse_args(argc, argv);
 

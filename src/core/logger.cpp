@@ -69,9 +69,14 @@ void Logger::operator()(LogLevel ll, const char *fmt, ...)
 		// Actual log message
 		va_list argp;
 		va_start(argp, fmt);
-		int n = vsnprintf(buf, sizeof(buf), fmt, argp);
+		int n = vsnprintf(buf, sizeof(buf) - 1, fmt, argp);
 		va_end(argp);
-		if (n > 0)
+		if (n > 0) {
+			if (buf[n - 1] != '\n') {
+				buf[n] = '\n';
+				buf[n + 1] = '\0';
+			}
 			fputs(buf, stream);
+		}
 	}
 }

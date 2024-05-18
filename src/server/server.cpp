@@ -24,7 +24,7 @@ Server::Server(bool *shutdown_requested) :
 	Environment(new BlockManager()),
 	m_shutdown_requested(shutdown_requested)
 {
-	logger(LL_PRINT, "Startup ...\n");
+	logger(LL_PRINT, "Startup ...");
 	m_stdout_flush_timer.set(1);
 	m_ban_cleanup_timer.set(2);
 
@@ -37,7 +37,7 @@ Server::Server(bool *shutdown_requested) :
 		// Initialize persistent world storage
 		m_world_db = new DatabaseWorld();
 		if (!m_world_db->tryOpen("server_worlddata.sqlite")) {
-			logger(LL_ERROR, "Failed to open world database!\n");
+			logger(LL_ERROR, "Failed to open world database!");
 			delete m_world_db;
 			m_world_db = nullptr;
 			goto error;
@@ -51,7 +51,7 @@ Server::Server(bool *shutdown_requested) :
 			// allow access from CLI
 			m_auth_db->enableWAL();
 		} else {
-			logger(LL_ERROR, "Failed to open auth database!\n");
+			logger(LL_ERROR, "Failed to open auth database!");
 			delete m_auth_db;
 			m_auth_db = nullptr;
 			goto error;
@@ -60,7 +60,7 @@ Server::Server(bool *shutdown_requested) :
 
 	m_script = new Script(m_bmgr);
 	if (!m_script->init()) {
-		logger(LL_ERROR, "Failed to initialize Lua\n");
+		logger(LL_ERROR, "Failed to initialize Lua");
 		goto error;
 	}
 
@@ -74,7 +74,7 @@ Server::Server(bool *shutdown_requested) :
 		const char *asset_name = "main.lua";
 		const char *real_path = m_media->getAssetPath(asset_name);
 		if (!real_path) {
-			logger(LL_ERROR, "No future without main script\n");
+			logger(LL_ERROR, "No future without main script");
 			goto error;
 		}
 
@@ -105,7 +105,7 @@ error:
 
 Server::~Server()
 {
-	logger(LL_PRINT, "Stopping ...\n");
+	logger(LL_PRINT, "Stopping ...");
 
 	{
 		// In case a packet is being processed
@@ -355,7 +355,9 @@ void Server::processPacket(peer_t peer_id, Packet &pkt)
 
 void Server::stepSendMedia(RemotePlayer *player)
 {
-	if (player->requested_media.empty() || !m_media)
+	ASSERT_FORCED(m_media, "Missing ServerMedia");
+
+	if (player->media.requested.empty())
 		return;
 	if (m_con->getPeerBytesInTransit(player->peer_id) > 5 * CONNECTION_MTU)
 		return; // wait a bit

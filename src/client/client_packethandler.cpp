@@ -41,7 +41,7 @@ const ClientPacketHandler Client::packet_actions[] = {
 
 void Client::pkt_Quack(Packet &pkt)
 {
-	logger(LL_PRINT, "Quack! %s\n", pkt.dump().c_str());
+	logger(LL_PRINT, "Quack! %s", pkt.dump().c_str());
 }
 
 void Client::pkt_Hello(Packet &pkt)
@@ -55,24 +55,19 @@ void Client::pkt_Hello(Packet &pkt)
 	m_start_data.nickname = player->name = pkt.readStr16();
 	m_players.emplace(m_my_peer_id, player.release());
 
-	bool bmgr_by_script = false;
-	if (m_protocol_version >= 7)
-		bmgr_by_script = pkt.read<u8>() & 1;
-
-	if (!bmgr_by_script) {
-		// Load the server's block properties
+	if (m_protocol_version < 7)
 		m_bmgr->read(pkt);
-	}
+	// else: sent after login
 
 	m_auth = Auth();
 
-	logger(LL_DEBUG, "Hello. my peer_id=%u\n", m_my_peer_id);
+	logger(LL_DEBUG, "Hello. my peer_id=%u", m_my_peer_id);
 }
 
 void Client::pkt_Message(Packet &pkt)
 {
 	std::string str(pkt.readStr16());
-	logger(LL_DEBUG, "message=%s\n", str.c_str());
+	logger(LL_DEBUG, "message=%s", str.c_str());
 
 	GameEvent e(GameEvent::C2G_DIALOG);
 	e.text = new std::string(str);
@@ -112,7 +107,7 @@ void Client::pkt_Auth(Packet &pkt)
 	}
 
 	if (action == "signed_in") {
-		m_state = ClientState::LobbyIdle;
+		m_state = ClientState::MediaDownload;
 		return;
 	}
 
@@ -122,19 +117,21 @@ void Client::pkt_Auth(Packet &pkt)
 		return;
 	}
 
-	logger(LL_ERROR, "Unknown auth action '%s'\n", action.c_str());
+	logger(LL_ERROR, "Unknown auth action '%s'", action.c_str());
 }
 
 void Client::pkt_MediaList(Packet &pkt)
 {
-	if (!m_media) {
-		logger(LL_WARN, "Missing ClientMedia for %s\n", __func__);
-		return;
-	}
+	ASSERT_FORCED(m_media, "Missing ClientMedia");
 
 	m_media->readMediaList(pkt);
 
+	logger(LL_DEBUG, "%s: missing=%lu, done=%lu",
+		__func__, m_media->countMissing(), m_media->countDone()
+	);
+
 	if (m_media->countMissing() > 0) {
+		// Request the files for caching
 		Packet out = createPacket(Packet2Server::MediaRequest);
 		m_media->writeMediaRequest(out);
 		m_con->send(0, 0, out);
@@ -143,16 +140,13 @@ void Client::pkt_MediaList(Packet &pkt)
 
 void Client::pkt_MediaReceive(Packet &pkt)
 {
-	if (!m_media) {
-		logger(LL_WARN, "Missing ClientMedia for %s\n", __func__);
-		return;
-	}
+	ASSERT_FORCED(m_media, "Missing ClientMedia");
 
 	m_media->readMediaData(pkt);
 
 	size_t count_done = m_media->countDone(),
 		bytes_done = m_media->bytes_done;
-	logger(LL_DEBUG, "%s: have %lu/%lu (%lu/%lu bytes)\n",
+	logger(LL_DEBUG, "%s: have %lu/%lu (%lu/%lu bytes)",
 		__func__,
 		count_done, count_done + m_media->countMissing(),
 		bytes_done, bytes_done + m_media->bytes_missing
@@ -601,7 +595,9 @@ void Client::pkt_PlayerFlags(Packet &pkt)
 		if (player == &dummy)
 			continue;
 
-		DEBUGLOG("pkt_PlayerFlags: player=%s, flags=%08X\n", player->name.c_str(), player->getFlags().flags);
+		logger(LL_DEBUG, "pkt_PlayerFlags: player=%s, flags=%08X",
+			player->name.c_str(), player->getFlags().flags
+		);
 		GameEvent e(GameEvent::C2G_PLAYERFLAGS);
 		e.player = player;
 		sendNewEvent(e);
@@ -623,5 +619,5 @@ void Client::pkt_WorldMeta(Packet &pkt)
 
 void Client::pkt_Deprecated(Packet &pkt)
 {
-	printf("Ignoring deprecated packet %s\n", pkt.dump().c_str());
+	logger(LL_WARN, "Ignoring deprecated packet %s", pkt.dump().c_str());
 }

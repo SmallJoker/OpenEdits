@@ -276,6 +276,7 @@ void Gui::setSceneFromClientState()
 		setNextScene(SceneHandlerType::Gameplay);
 		break;
 	case ClientState::Connected:
+	case ClientState::MediaDownload:
 	case ClientState::WorldJoin:
 		return; // in-between states. not mapped.
 	case ClientState::Invalid:
@@ -298,10 +299,11 @@ bool Gui::connect(ClientStartData &init)
 	}
 
 	g_blockmanager->setDriver(driver);
-	g_blockmanager->doPackRegistration(); // TODO: replace with server-sent script
 
 	m_client = new Client(init);
 	m_client->setEventHandler(this);
+	m_client->setupMedia(true);
+	m_client->connect();
 
 	setNextScene(SceneHandlerType::Loading);
 	SceneLoading *sc = (SceneLoading *)getHandler(SceneHandlerType::Loading);

@@ -9,7 +9,18 @@
 
 class MediaManager {
 public:
+	/// Is not serialized anywhere. Order may be changed.
+	enum class AssetType {
+		Invalid,
+		Script,
+		Sound,
+		Texture
+	};
+
 	struct File {
+		AssetType type = AssetType::Invalid;
+		static AssetType getTypeFromFileName(const std::string &str);
+
 		size_t file_size = 0;
 		uint64_t data_hash = 0;
 		std::string file_path;

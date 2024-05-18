@@ -10,7 +10,22 @@ namespace fs = std::filesystem;
 constexpr int SHA3_VARIANT = 256;
 const std::string MediaManager::ASSETS_DIR = "assets";
 
-static Logger logger("MediaManager", LL_DEBUG);
+static Logger logger("MediaManager", LL_WARN);
+
+MediaManager::AssetType MediaManager::File::getTypeFromFileName(const std::string &str)
+{
+	size_t sep = str.find_last_of(".");
+	std::string ext = str.substr(sep);
+
+	if (ext == ".png")
+		return AssetType::Texture;
+	if (ext == ".mp3")
+		return AssetType::Sound;
+	if (ext == ".lua")
+		return AssetType::Script;
+
+	return AssetType::Invalid;
+}
 
 void MediaManager::File::computeHash()
 {
@@ -57,24 +72,28 @@ void MediaManager::indexAssets()
 		if (!entry.is_regular_file())
 			continue;
 
-		auto ext = entry.path().extension();
-		if (ext != ".png" && ext != ".lua" && ext != ".mp3")
+		auto filename = entry.path().filename();
+		AssetType type = File::getTypeFromFileName(filename);
+		if (type == AssetType::Invalid)
 			continue;
 
-		/*printf("indexAssets: '%s'\n",
-			entry.path().c_str()
-		);*/
-
-		m_media_available.insert({ entry.path().filename(), entry.path() });
+		auto [it, unique] = m_media_available.insert({ filename, entry.path() });
+		if (unique) {
+			logger(LL_DEBUG, "Found '%s', type=%d",
+				filename.c_str(), (int)type
+			);
+		} else {
+			logger(LL_ERROR, "Found duplicate/ambiguous asset: %s", filename.c_str());
+		}
 	}
-	logger(LL_DEBUG, "%lu media files indexed\n", m_media_available.size());
+	logger(LL_PRINT, "%lu media files indexed", m_media_available.size());
 }
 
 const char *MediaManager::getAssetPath(const char *name)
 {
 	auto it = m_media_available.find(name);
 	if (it == m_media_available.end()) {
-		logger(LL_WARN, "Cannot find asset '%s'\n", name);
+		logger(LL_WARN, "Cannot find asset '%s'", name);
 		return nullptr;
 	}
 

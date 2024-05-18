@@ -1,6 +1,7 @@
 # Development directories
 build/
 bin/
+cache/
 experimental/
 src/version.cpp
 worlds/imports/

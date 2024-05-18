@@ -6,6 +6,7 @@
 #include "core/blockmanager.h"
 #include "core/eeo_converter.h"
 #include "core/friends.h"
+#include "core/logger.h"
 #include "core/packet.h"
 #include "core/utils.h"
 #include "core/world.h"
@@ -16,6 +17,7 @@
 #else
 	#define DEBUGLOG(...) /* SILENCE */
 #endif
+static Logger logger("ServerPkt", LL_DEBUG);
 
 // in sync with core/packet.h
 const ServerPacketHandler Server::packet_actions[] = {
@@ -38,7 +40,7 @@ const ServerPacketHandler Server::packet_actions[] = {
 
 void Server::pkt_Quack(peer_t peer_id, Packet &pkt)
 {
-	printf("Server: Got %zu bytes from peer_id=%u\n", pkt.size(), peer_id);
+	logger(LL_PRINT, "Quack! %zu bytes from peer_id=%u\n", pkt.size(), peer_id);
 }
 
 void Server::pkt_Hello(peer_t peer_id, Packet &pkt)
@@ -52,7 +54,7 @@ void Server::pkt_Hello(peer_t peer_id, Packet &pkt)
 		snprintf(buf, sizeof(buf), "server=[%d,%d], client=[%d,%d]",
 			protocol_min, protocol_max, PROTOCOL_VERSION_MIN, PROTOCOL_VERSION_MAX);
 
-		printf("Protocol mismatch. peer_id=%u tried to connect: %s\n", peer_id, buf);
+		logger(LL_PRINT, "Protocol mismatch. peer_id=%u tried to connect: %s\n", peer_id, buf);
 		sendMsg(peer_id, std::string("Incompatible protocol versions. ") + buf);
 		m_con->disconnect(peer_id);
 		return;
@@ -74,6 +76,8 @@ void Server::pkt_Hello(peer_t peer_id, Packet &pkt)
 
 	player->name = name;
 	player->state = RemotePlayerState::Login;
+	if (protocol_ver >= 7)
+		player->media.needs_audiovisuals = pkt.read<u8>() & 1;
 
 	{
 		// Confirm
@@ -82,18 +86,14 @@ void Server::pkt_Hello(peer_t peer_id, Packet &pkt)
 		reply.write(player->peer_id);
 		reply.writeStr16(player->name);
 
-		bool bmgr_by_script = (player->protocol_version >= 7) && m_media && m_script;
-
-		if (player->protocol_version >= 7)
-			reply.write<u8>(bmgr_by_script);
-
-		if (!bmgr_by_script)
+		if (player->protocol_version < 7)
 			m_bmgr->write(reply);
+		// else: sent after login
 
 		m_con->send(peer_id, 0, reply);
 	}
 
-	printf("Server: Hello from %s, proto_ver=%d\n", player->name.c_str(), player->protocol_version);
+	logger(LL_PRINT, "Hello from %s, proto_ver=%d\n", player->name.c_str(), player->protocol_version);
 
 	{
 		// Auth
@@ -155,6 +155,7 @@ void Server::pkt_Hello(peer_t peer_id, Packet &pkt)
 void Server::signInPlayer(RemotePlayer *player)
 {
 	player->state = RemotePlayerState::Idle;
+	logger(LL_PRINT, "Player %s logged in\n", player->name.c_str());
 
 	{
 		Packet out;
@@ -163,9 +164,11 @@ void Server::signInPlayer(RemotePlayer *player)
 		m_con->send(player->peer_id, 0, out);
 	}
 
-	if (m_media) {
+	ASSERT_FORCED(m_media, "Missing ServerMedia");
+
+	if (player->protocol_version >= 7) {
 		Packet out = player->createPacket(Packet2Client::MediaList);
-		m_media->writeMediaList(out);
+		m_media->writeMediaList(player, out);
 		m_con->send(player->peer_id, 0, out);
 	}
 }
@@ -310,9 +313,7 @@ void Server::pkt_Auth(peer_t peer_id, Packet &pkt)
 
 void Server::pkt_MediaRequest(peer_t peer_id, Packet &pkt)
 {
-	if (!m_media) {
-		return;
-	}
+	ASSERT_FORCED(m_media, "Missing ServerMedia");
 
 	RemotePlayer *player = getPlayerNoLock(peer_id);
 	m_media->readMediaRequest(player, pkt);

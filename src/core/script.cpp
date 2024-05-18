@@ -13,7 +13,7 @@ extern "C" {
 	#include <lualib.h>
 }
 
-static Logger logger("Script");
+static Logger logger("Script", LL_WARN);
 
 static const lua_Integer SCRIPT_API_VERSION = 1;
 enum RIDX_Indices : lua_Integer {
@@ -262,7 +262,7 @@ void Script::close()
 	if (!m_lua)
 		return;
 
-	puts("<-- Lua stop");
+	logger(LL_PRINT, "closing ...");
 
 	auto &list = m_bmgr->getPropsForModification();
 	// Unregister any callbacks. `lua_close` will clean up the references
@@ -513,7 +513,18 @@ int Script::l_register_pack(lua_State *L)
 	}
 	lua_pop(L, 1); // table
 
-	logger(LL_DEBUG, "register pack: %s\n", pack->name.c_str());
+
+	lua_getfield(L, -1, "default_type");
+	{
+		int type = luaL_checkint(L, -1);
+		if (type < 0 || type >= (int)BlockDrawType::Invalid)
+			luaL_error(L, "Unknown default_type value");
+
+		pack->default_type = (BlockDrawType)type;
+	}
+	lua_pop(L, 1); // table
+
+	logger(LL_PRINT, "register pack: %s\n", pack->name.c_str());
 	script->m_bmgr->registerPack(pack.release());
 	return 0;
 )}

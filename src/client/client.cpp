@@ -4,6 +4,7 @@
 #include "core/auth.h"
 #include "core/blockmanager.h"
 #include "core/connection.h"
+#include "core/logger.h"
 #include "core/packet.h"
 #include "core/script.h"
 #include "core/utils.h" // to_player_name
@@ -14,6 +15,8 @@
 	#define DEBUGLOG(...) /* SILENCE */
 #endif
 
+static Logger logger("Client", LL_DEBUG);
+
 static uint16_t PACKET_ACTIONS_MAX; // initialized in ctor
 extern BlockManager *g_blockmanager; // for client-only use
 
@@ -23,11 +26,7 @@ Client::Client(ClientStartData &init) :
 	Environment(g_blockmanager),
 	m_start_data(std::move(init)) // eaten
 {
-	puts("Client: startup");
-
-	m_con = new Connection(Connection::TYPE_CLIENT, "Client");
-	m_con->connect(m_start_data.address.c_str());
-	m_con->listenAsync(*this);
+	logger(LL_PRINT, "Startup ...");
 
 	{
 		PACKET_ACTIONS_MAX = 0;
@@ -40,13 +39,11 @@ Client::Client(ClientStartData &init) :
 	}
 
 	m_pos_send_timer.set(POSITION_SEND_INTERVAL);
-
-	m_media = new ClientMedia();
 }
 
 Client::~Client()
 {
-	puts("Client: stopping...");
+	logger(LL_PRINT, "Stopping ...");
 
 	{
 		// In case a packet is being processed
@@ -77,10 +74,46 @@ Client::~Client()
 
 // -------------- Public members -------------
 
+void Client::setupMedia(bool need_audiovisuals)
+{
+	ASSERT_FORCED(!m_media && !m_script, "m_media or m_script double-init");
+
+	// "Who calls who?" A little diagram.
+	//
+	//      .---- Script ----.
+	//      v                v
+	// BlockManager ---> ClientMedia
+	//      ^
+	//      |
+	//     GUI
+
+	m_media = new ClientMedia();
+	m_media->download_audiovisuals = need_audiovisuals;
+	m_media->indexAssets();
+
+	m_bmgr->setMediaMgr(m_media);
+
+	m_script = new Script(m_bmgr);
+	ASSERT_FORCED(m_script->init(), "No future.");
+}
+
+void Client::connect()
+{
+	ASSERT_FORCED(!m_con, "m_con double-init");
+
+	m_con = new Connection(Connection::TYPE_CLIENT, "Client");
+	m_con->connect(m_start_data.address.c_str());
+	m_con->listenAsync(*this);
+}
+
 void Client::step(float dtime)
 {
 	m_time_prev = m_time;
 	m_time = getTimeNowDIV();
+
+	if (m_state == ClientState::MediaDownload) {
+		initScript();
+	}
 
 	auto world = getWorld();
 
@@ -391,21 +424,24 @@ void Client::sendPlayerMove()
 }
 
 
-void Client::onPeerConnected(peer_t peer_id)
+void Client::onPeerConnected(peer_t)
 {
 	m_state = ClientState::Connected;
-	puts("Client: hello server!");
+	logger(LL_PRINT, "Connected to server");
+
+	ASSERT_FORCED(m_media, "Missing ClientMedia");
 
 	Packet pkt;
 	pkt.write(Packet2Server::Hello);
 	pkt.write(PROTOCOL_VERSION_MAX);
 	pkt.write(PROTOCOL_VERSION_MIN);
 	pkt.writeStr16(m_start_data.nickname);
+	pkt.write<u8>(m_media->download_audiovisuals); // proto_ver >= 7
 
 	m_con->send(0, 0, pkt);
 }
 
-void Client::onPeerDisconnected(peer_t peer_id)
+void Client::onPeerDisconnected(peer_t)
 {
 	m_state = ClientState::None;
 
@@ -414,7 +450,7 @@ void Client::onPeerDisconnected(peer_t peer_id)
 		GameEvent e2(GameEvent::C2G_DISCONNECT);
 		sendNewEvent(e2);
 	}
-	printf("Client: Disconnected from the server\n");
+	logger(LL_PRINT, "Disconnected from the server");
 }
 
 void Client::processPacket(peer_t peer_id, Packet &pkt)
@@ -422,13 +458,13 @@ void Client::processPacket(peer_t peer_id, Packet &pkt)
 	// one server instance, multiple worlds
 	int action = (int)pkt.read<Packet2Client>();
 	if (action >= PACKET_ACTIONS_MAX) {
-		printf("Client: Packet action %u out of range: %s\n", action, pkt.dump(20).c_str());
+		logger(LL_ERROR, "Packet action %u out of range: %s", action, pkt.dump(20).c_str());
 		return;
 	}
 
 	const ClientPacketHandler &handler = packet_actions[action];
 	if ((int)handler.min_player_state > (int)m_state) {
-		printf("Client: not ready for action=%d.\n", action);
+		logger(LL_ERROR, "not ready for action=%d", action);
 		return;
 	}
 
@@ -437,14 +473,14 @@ void Client::processPacket(peer_t peer_id, Packet &pkt)
 		(this->*handler.func)(pkt);
 	} catch (std::out_of_range &e) {
 		Player *player = getPlayerNoLock(peer_id);
-		fprintf(stderr, "Client: Packet out_of_range. action=%d, player=%s, msg=%s\n",
+		logger(LL_ERROR, "Packet out_of_range. action=%d, player=%s, msg=%s",
 			action,
 			player ? player->name.c_str() : "(null)",
 			e.what()
 		);
 	} catch (std::exception &e) {
 		Player *player = getPlayerNoLock(peer_id);
-		fprintf(stderr, "Client: Packet exception. action=%d, player=%s, msg=%s\n",
+		logger(LL_ERROR, "Packet exception. action=%d, player=%s, msg=%s",
 			action,
 			player ? player->name.c_str() : "(null)",
 			e.what()
@@ -570,6 +606,32 @@ void Client::stepPhysics(float dtime)
 		sendNewEvent(e);
 	}
 }
+
+void Client::initScript()
+{
+	ASSERT_FORCED(m_media && m_script, "Missing media or script");
+
+	if (m_media->countDone() == 0 || m_media->countMissing() > 0)
+		return; // not yet
+
+	const char *file_path = m_media->getAssetPath("main.lua");
+	if (!file_path)
+		goto error;
+
+	if (!m_script->loadFromFile(file_path))
+		goto error;
+
+	m_state = ClientState::LobbyIdle;
+	// maybe generate an event?
+
+	return; // OK
+
+error:
+	logger(LL_ERROR, "Failed to initialize script. Falling back to hardcoded.");
+	m_bmgr->doPackRegistration();
+	m_state = ClientState::LobbyIdle;
+}
+
 
 uint8_t Client::getBlockTile(const Player *player, const Block *b) const
 {

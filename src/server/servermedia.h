@@ -12,7 +12,7 @@ public:
 	/// @return true if found
 	bool requireAsset(const char *name) override;
 
-	void writeMediaList(Packet &pkt);
+	void writeMediaList(RemotePlayer *player, Packet &pkt);
 	void readMediaRequest(RemotePlayer *player, Packet &pkt);
 	void writeMediaData(RemotePlayer *player, Packet &pkt);
 

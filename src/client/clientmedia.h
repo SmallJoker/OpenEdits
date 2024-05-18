@@ -8,6 +8,8 @@ class Packet;
 
 class ClientMedia : public MediaManager {
 public:
+	bool download_audiovisuals = true; //< false for headless clients (e.g. bots)
+
 	// List of required media files (header information only)
 	void readMediaList(Packet &pkt);
 

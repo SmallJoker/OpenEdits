@@ -19,7 +19,7 @@ static void test_server_client()
 
 	{
 		Packet pkt;
-		srv.writeMediaList(pkt);
+		srv.writeMediaList(&player, pkt);
 		cli.readMediaList(pkt);
 	}
 
@@ -34,7 +34,7 @@ static void test_server_client()
 			Packet pkt;
 			cli.writeMediaRequest(pkt);
 			srv.readMediaRequest(&player, pkt);
-			CHECK(player.requested_media.size() > 0);
+			CHECK(player.media.requested.size() > 0);
 			CHECK(pkt.getRemainingBytes() == 0);
 		}
 
@@ -42,7 +42,7 @@ static void test_server_client()
 			Packet pkt;
 			srv.writeMediaData(&player, pkt);
 			cli.readMediaData(pkt);
-			CHECK(player.total_sent_media > 0);
+			CHECK(player.media.total_sent > 0);
 			CHECK(pkt.getRemainingBytes() == 0);
 		}
 	}

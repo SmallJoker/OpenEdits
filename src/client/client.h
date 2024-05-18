@@ -20,6 +20,7 @@ enum class ClientState {
 	None,
 	Connected,
 	Register,
+	MediaDownload,
 	LobbyIdle,
 	WorldJoin,
 	WorldPlay
@@ -37,6 +38,9 @@ public:
 	/// "init" is invalid afterwards!
 	Client(ClientStartData &init);
 	~Client();
+
+	void setupMedia(bool need_audiovisuals);
+	void connect();
 
 	void step(float dtime) override;
 	bool OnEvent(GameEvent &e) override;
@@ -71,6 +75,8 @@ public:
 
 private:
 	void stepPhysics(float dtime);
+
+	void initScript();
 
 	uint8_t getBlockTile(const Player *player, const Block *b) const;
 
