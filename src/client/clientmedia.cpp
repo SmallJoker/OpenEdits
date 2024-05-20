@@ -42,14 +42,14 @@ void ClientMedia::readMediaList(Packet &pkt)
 
 		File file;
 		file.file_size = size;
-		file.data_hash = data_hash;
 
-		std::string cachename = file.getDiskFileName();
-		if (fs::exists(cachename) && fs::file_size(cachename) == size) {
-			// File in cache matches
-			set_file_mtime(cachename.c_str(), time_now);
+		// Check file in cache
+		file.file_path = file.getDiskFileName();
+		if (file.cacheToRAM() && file.data_hash == data_hash && file.file_size == size) {
+			// Delay file deletion
+			set_file_mtime(file.file_path.c_str(), time_now);
 			// overwrite path of the indexed local files
-			m_media_available[name] = cachename;
+			m_media_available[name] = file.file_path;
 			bytes_done += size;
 			continue;
 		}
@@ -57,6 +57,7 @@ void ClientMedia::readMediaList(Packet &pkt)
 		// Check the local files to avoid unnecessary caching
 		auto it = m_media_available.find(name);
 		if (it != m_media_available.end()) {
+			file.file_size = size;
 			file.file_path = it->second;
 			// Cache function oveerwrites the hash!
 			if (file.cacheToRAM() && file.data_hash == data_hash && file.file_size == size) {
@@ -138,8 +139,8 @@ void ClientMedia::removeOldCache()
 			continue;
 
 		int status = std::remove(path_c);
-		logger(LL_DEBUG, "%s: '%s', age=%ldd, status=%d",
-			__func__, entry.path().filename().c_str(), age_days, status
+		logger(LL_DEBUG, "remove cached file: '%s', age=%ldd, status=%d",
+			entry.path().filename().c_str(), age_days, status
 		);
 	}
 }

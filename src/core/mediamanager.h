@@ -49,7 +49,7 @@ public:
 	/// Indexes `ASSETS_DIR` to list all media in `m_media_available`
 	void indexAssets();
 
-	virtual bool requireAsset(const char *name) { return false; }
+	virtual bool requireAsset(const char *name);
 
 	/// @return non-NULL on success
 	virtual const char *getAssetPath(const char *name);

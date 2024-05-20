@@ -30,9 +30,10 @@ struct {
 	const char *text;
 	const char *term_fmt;
 } LL_LUT[LL_Invalid] = {
-	{ " --- ", ""},
+	{ " --- ", "" },
 	{ "ERROR", "\e[0;31m" }, // red
 	{ " warn", "\e[1;33m" }, // yellow
+	{ " info", "\e[1;30m" }, // grey
 	{ "debug", "\e[1;30m" }  // grey
 };
 
@@ -42,7 +43,12 @@ void Logger::operator()(LogLevel ll, const char *fmt, ...)
 	if (ll_i > (unsigned char)m_level)
 		return;
 
-	FILE *stream = (ll == LL_ERROR) ? stderr : stdout;
+	FILE *stream = stdout;
+	if (ll == LL_ERROR) {
+		stream = stderr;
+		if (m_error_count < 0x7FFF)
+			m_error_count++;
+	}
 
 	char buf[1024];
 
@@ -79,4 +85,11 @@ void Logger::operator()(LogLevel ll, const char *fmt, ...)
 			fputs(buf, stream);
 		}
 	}
+}
+
+int Logger::popErrorCount()
+{
+	int cnt = m_error_count;
+	m_error_count = 0;
+	return cnt;
 }

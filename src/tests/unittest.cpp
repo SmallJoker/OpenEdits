@@ -16,7 +16,7 @@ void unittest_world();
 void unittest_gui_layout(int which);
 void unittest_gui_gameplay();
 
-static auto time_start = std::chrono::steady_clock::now();
+static std::chrono::steady_clock::time_point time_start;
 void unittest_tic()
 {
 	time_start = std::chrono::steady_clock::now();

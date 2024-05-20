@@ -1,9 +1,8 @@
-#ifdef HAVE_LUA
-
 #include "script.h"
 #include "blockmanager.h"
 #include "connection.h" // protocol version
 #include "logger.h"
+#include "mediamanager.h"
 #include "player.h"
 #include <fstream>
 #include <memory> // unique_ptr
@@ -13,7 +12,7 @@ extern "C" {
 	#include <lualib.h>
 }
 
-static Logger logger("Script", LL_WARN);
+static Logger logger("Script", LL_INFO);
 
 static const lua_Integer SCRIPT_API_VERSION = 1;
 enum RIDX_Indices : lua_Integer {
@@ -227,6 +226,7 @@ bool Script::init()
 	{
 		lua_pushinteger(L, SCRIPT_API_VERSION);
 		lua_setfield(L, -2, "API_VERSION");
+		FIELD_SET_FUNC(/**/, include);
 		FIELD_SET_FUNC(/**/, register_pack);
 		FIELD_SET_FUNC(/**/, change_block);
 		/*
@@ -277,6 +277,25 @@ void Script::close()
 	m_lua = nullptr;
 }
 
+bool Script::loadFromAsset(const std::string &asset_name)
+{
+	ASSERT_FORCED(m_media, "Missing MediaManager");
+
+	const char *real_path = m_media->getAssetPath(asset_name.c_str());
+	if (!real_path)
+		return false;
+
+	if (asset_name.find_first_of(":/\\") != std::string::npos) {
+		logger(LL_ERROR, "Invalid asset name '%s'", asset_name.c_str());
+		return false;
+	}
+
+	if (!loadFromFile(real_path))
+		return false;
+
+	return m_media->requireAsset(asset_name.c_str());
+}
+
 static const char *SEPARATOR = "----------------\n";
 
 bool Script::loadFromFile(const std::string &filename)
@@ -292,7 +311,7 @@ bool Script::loadFromFile(const std::string &filename)
 		return false;
 	}
 
-	logger(LL_DEBUG, "Loading file: '%s'\n", filename.c_str());
+	logger(LL_INFO, "Loading file: '%s'\n", filename.c_str());
 	lua_rawgeti(m_lua, LUA_REGISTRYINDEX, CUSTOM_RIDX_TRACEBACK);
 	luaL_checktype(m_lua, -1, LUA_TFUNCTION);
 	int errorhandler = lua_gettop(m_lua);
@@ -360,6 +379,13 @@ void Script::setTestMode(const std::string &value)
 	lua_pop(L, 1); // env
 }
 
+int Script::popErrorCount()
+{
+	return logger.popErrorCount();
+}
+
+
+// -------------- Callback functions -------------
 
 bool Script::haveOnIntersect(const BlockProperties *props) const
 {
@@ -403,10 +429,12 @@ int Script::onCollide(CollisionInfo ci)
 {
 	lua_State *L = m_lua;
 	using CT = BlockProperties::CollisionType;
-	int collision_type = (int)CT::None;
 
-	if (!haveOnCollide(ci.props))
-		return collision_type; // should not be returned: incorrect on solids
+	if (!haveOnCollide(ci.props)) {
+		ASSERT_FORCED(ci.props->tiles[0].type != BlockDrawType::Solid,
+			"Should not be called.");
+		return (int)CT::None; // should not be returned: incorrect on solids
+	}
 
 	int top = lua_gettop(L);
 	lua_rawgeti(L, LUA_REGISTRYINDEX, ci.props->ref_on_collide);
@@ -421,9 +449,10 @@ int Script::onCollide(CollisionInfo ci)
 			lua_tostring(L, -1)
 		);
 		lua_settop(L, top);
-		return collision_type;
+		return (int)CT::None;
 	}
 
+	int collision_type = (int)CT::None;
 	if (lua_isnumber(L, -1))
 		collision_type = lua_tonumber(L, -1);
 	else
@@ -457,14 +486,13 @@ static void cpp_exception_handler(lua_State *L)
 {
 	int n = -1;
 	try {
-		std::rethrow_exception(std::current_exception());
+		throw;
 	} catch (std::runtime_error &e) {
 		n = snprintf(tmp_errorlog, sizeof(tmp_errorlog), "std::runtime_error(\"%s\")", e.what());
 	} catch (std::exception &e) {
 		n = snprintf(tmp_errorlog, sizeof(tmp_errorlog), "std::exception(\"%s\")", e.what());
-	} catch (...) {
-		n = snprintf(tmp_errorlog, sizeof(tmp_errorlog), "C++ error");
 	}
+	// Cannot catch lua_longjmp: incomplete type. RAII might not work.
 
 	if (n > 0) {
 		luaL_error(L, tmp_errorlog);
@@ -483,15 +511,52 @@ static void cpp_exception_handler(lua_State *L)
 		return 0; \
 	}
 
+int Script::l_include(lua_State *L)
+{MESSY_CPP_EXCEPTIONS(
+
+	Script *script = get_script(L);
+	std::string asset_name = luaL_checkstring(L, 1);
+
+	if (!script->loadFromAsset(asset_name))
+		lua_error(L);
+
+	return 0;
+)}
+
+namespace {
+	struct BlockID {
+		bid_t id;
+		//const char *name;
+	};
+};
+
+static BlockID pull_blockid(lua_State *L, int idx)
+{
+	int id = -1;
+	if (lua_isnumber(L, idx)) {
+		id = lua_tonumber(L, idx);
+	} else {
+		// maybe add string indices later?
+		id = check_field_int(L, -1, "id");
+	}
+	if (id < 0 || id >= Block::ID_INVALID)
+		luaL_error(L, "Invalid block ID %d", id);
+
+	BlockID ret;
+	ret.id = id;
+	return ret;
+}
+
 int Script::l_register_pack(lua_State *L)
 {MESSY_CPP_EXCEPTIONS(
 	Script *script = get_script(L);
 
-	const char *name = check_field_string(L, -1, "name");
+	luaL_checktype(L, 1, LUA_TTABLE);
+	const char *name = check_field_string(L, 1, "name");
 
 	auto pack = std::make_unique<BlockPack>(name);
 
-	lua_getfield(L, -1, "blocks");
+	lua_getfield(L, 1, "blocks");
 	{
 		int table = lua_gettop(L);
 		lua_pushnil(L);
@@ -499,22 +564,17 @@ int Script::l_register_pack(lua_State *L)
 			// key @ -2, value @ -1
 			luaL_checkint(L, -2);
 
-			int id = -1;
-			if (lua_isnumber(L, -1)) {
-				id = lua_tonumber(L, -1);
-			} else {
-				// table
-				id = check_field_int(L, -1, "id");
-			}
+			BlockID id = pull_blockid(L, -1);
+			// maybe add string indices later?
 
-			pack->block_ids.push_back(id);
+			pack->block_ids.push_back(id.id);
 			lua_pop(L, 1); // value
 		}
 	}
 	lua_pop(L, 1); // table
 
 
-	lua_getfield(L, -1, "default_type");
+	lua_getfield(L, 1, "default_type");
 	{
 		int type = luaL_checkint(L, -1);
 		if (type < 0 || type >= (int)BlockDrawType::Invalid)
@@ -524,7 +584,7 @@ int Script::l_register_pack(lua_State *L)
 	}
 	lua_pop(L, 1); // table
 
-	logger(LL_PRINT, "register pack: %s\n", pack->name.c_str());
+	logger(LL_INFO, "register pack: %s\n", pack->name.c_str());
 	script->m_bmgr->registerPack(pack.release());
 	return 0;
 )}
@@ -533,15 +593,16 @@ int Script::l_change_block(lua_State *L)
 {MESSY_CPP_EXCEPTIONS(
 	Script *script = get_script(L);
 
-	lua_getfield(L, -1, "id");
-	bid_t block_id = luaL_checkinteger(L, -1);
-	lua_pop(L, 1);
+	const BlockID id = pull_blockid(L, 1);
+	luaL_checktype(L, 2, LUA_TTABLE);
+
+	const bid_t block_id = id.id;
 
 	BlockProperties *props = script->m_bmgr->getPropsForModification(block_id);
 	if (!props)
 		return luaL_error(L, "block_id=%i not found", block_id);
 
-	lua_getfield(L, -1, "on_intersect");
+	lua_getfield(L, 2, "on_intersect");
 	if (!lua_isnil(L, -1)) {
 		bool ok = function_to_ref(L, props->ref_on_intersect);
 		if (!ok) {
@@ -551,7 +612,7 @@ int Script::l_change_block(lua_State *L)
 		lua_pop(L, 1);
 	}
 
-	lua_getfield(L, -1, "on_collide");
+	lua_getfield(L, 2, "on_collide");
 	if (!lua_isnil(L, -1)) {
 		bool ok = function_to_ref(L, props->ref_on_collide);
 		if (!ok) {
@@ -561,14 +622,14 @@ int Script::l_change_block(lua_State *L)
 		lua_pop(L, 1);
 	}
 
-	lua_getfield(L, -1, "minimap_color");
+	lua_getfield(L, 2, "minimap_color");
 	if (!lua_isnil(L, -1)) {
 		lua_Integer minimap_color = luaL_checkinteger(L, -1);
 		props->color = minimap_color;
 	}
 	lua_pop(L, 1);
 
-	lua_getfield(L, -1, "viscosity");
+	lua_getfield(L, 2, "viscosity");
 	if (!lua_isnil(L, -1)) {
 		lua_Number viscosity = luaL_checknumber(L, -1);
 		props->viscosity = viscosity;
@@ -577,7 +638,7 @@ int Script::l_change_block(lua_State *L)
 
 	logger(LL_DEBUG, "Changed block_id=%i\n", block_id);
 	return 0;
- )}
+)}
 
 static void push_v2f(lua_State *L, core::vector2df vec)
 {
@@ -628,5 +689,3 @@ int Script::l_player_set_acc(lua_State *L)
 		pull_v2f(L, 1, player->acc);
 	return 0;
 }
-
-#endif

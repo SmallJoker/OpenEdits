@@ -1,8 +1,5 @@
 #include "unittest_internal.h"
 
-
-#ifdef HAVE_LUA
-
 #include "core/blockmanager.h"
 #include "core/connection.h" // PROTOCOL_VERSION_*
 #include "core/script.h"
@@ -18,6 +15,7 @@ void unittest_script()
 	CHECK(script.init());
 	script.setTestMode("init");
 	CHECK(script.loadFromFile("assets/scripts/main.lua"));
+	CHECK(script.loadFromFile("assets/scripts/unittest.lua"));
 
 	RemotePlayer p(12345, PROTOCOL_VERSION_MAX);
 	script.setPlayer(&p);
@@ -27,6 +25,7 @@ void unittest_script()
 		p.pos.Y = y;
 		script.setTestMode("set_pos");
 		script.onIntersect(bmgr.getProps(2));
+		CHECK(script.popErrorCount() == 0);
 		CHECK(std::fabs(p.pos.Y - (y + 1)) < 0.001f);
 	}
 
@@ -44,19 +43,9 @@ void unittest_script()
 			ci.pos.Y - 0.9
 		);
 		p.vel = core::vector2df(0, 20);
-		script.onCollide(ci);
+		CHECK(script.onCollide(ci) == (int)BlockProperties::CollisionType::Velocity);
+		CHECK(script.popErrorCount() == 0);
 	}
 
 	script.close();
 }
-
-
-#else
-
-void unittest_script()
-{
-	puts("Script not available");
-}
-
-#endif
-

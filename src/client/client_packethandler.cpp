@@ -53,6 +53,7 @@ void Client::pkt_Hello(Packet &pkt)
 
 	auto player = std::make_unique<LocalPlayer>(m_my_peer_id);
 	m_start_data.nickname = player->name = pkt.readStr16();
+	player->setScript(m_script);
 	m_players.emplace(m_my_peer_id, player.release());
 
 	if (m_protocol_version < 7)
@@ -205,10 +206,7 @@ void Client::pkt_WorldData(Packet &pkt)
 
 	SimpleLock lock(m_players_lock);
 	Player *player = getPlayerNoLock(m_my_peer_id);
-	if (!player) {
-		auto ret = m_players.emplace(m_my_peer_id, new LocalPlayer(m_my_peer_id));
-		player = ret.first->second;
-	}
+	ASSERT_FORCED(player, "LocalPlayer not initialized");
 	auto world_old = player->getWorld();
 
 	RefCnt<World> world;

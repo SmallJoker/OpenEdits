@@ -50,8 +50,8 @@ bool MediaManager::File::cacheToRAM()
 {
 	if (file_size == 0)
 		return false; // not found
-	if (!data.empty())
-		return true; // already one
+	if (data.size() == file_size)
+		return true; // already done
 
 	// do cache again (after uncacheRAMif())
 	bool ok = read_binary_file(file_path.c_str(), &data);
@@ -59,8 +59,8 @@ bool MediaManager::File::cacheToRAM()
 		// file got removed
 		file_size = 0;
 		uncacheRAMif(0); // always
-	} else if (file_size != data.size()) {
-		// file contents were changed
+	} else {
+		// file contents might have changed
 		computeHash();
 	}
 	return ok;
@@ -87,6 +87,11 @@ void MediaManager::indexAssets()
 		}
 	}
 	logger(LL_PRINT, "%lu media files indexed", m_media_available.size());
+}
+
+bool MediaManager::requireAsset(const char *name)
+{
+	return getAssetPath(name) != nullptr;
 }
 
 const char *MediaManager::getAssetPath(const char *name)

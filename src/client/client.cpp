@@ -89,11 +89,14 @@ void Client::setupMedia(bool need_audiovisuals)
 
 	m_media = new ClientMedia();
 	m_media->download_audiovisuals = need_audiovisuals;
+	if (need_audiovisuals)
+		m_media->removeOldCache();
 	m_media->indexAssets();
 
 	m_bmgr->setMediaMgr(m_media);
 
 	m_script = new Script(m_bmgr);
+	m_script->setMediaMgr(m_media);
 	ASSERT_FORCED(m_script->init(), "No future.");
 }
 
@@ -614,11 +617,7 @@ void Client::initScript()
 	if (m_media->countDone() == 0 || m_media->countMissing() > 0)
 		return; // not yet
 
-	const char *file_path = m_media->getAssetPath("main.lua");
-	if (!file_path)
-		goto error;
-
-	if (!m_script->loadFromFile(file_path))
+	if (!m_script->loadFromAsset("main.lua"))
 		goto error;
 
 	m_state = ClientState::LobbyIdle;

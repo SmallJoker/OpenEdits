@@ -23,12 +23,9 @@ env.DRAW_TYPE_BACKGROUND = 3
 local GRAVITY    = 100.0 -- m/s² for use in callbacks
 local JUMP_SPEED =  30.0 -- m/s  for use in callbacks
 
-local dbgprint = env.test_mode and print or function() end
-
 local function table_to_pack_blocks(block_defs)
 	local t = {}
-	for k, v in pairs(block_defs) do
-		v.id = k
+	for _, v in pairs(block_defs) do
 		t[#t + 1] = v.id
 	end
 	return t
@@ -36,34 +33,58 @@ end
 
 local function change_blocks(block_defs)
 	for _, v in pairs(block_defs) do
-		assert(v. id)
-		env.change_block(v)
+		env.change_block(v.id, v)
 	end
 end
 
+
+---------- Blocks tab
+
+
+env.register_pack({
+	name = "basic",
+	default_type = env.DRAW_TYPE_SOLID,
+	blocks = { 9, 10, 11, 12, 13, 14, 15 }
+})
+
+env.change_block(10, {
+	-- blue block
+	minimap_color = 0xFFFFFFFF,  -- AARRGGBB, white
+})
+
+
+---------- Action tab
+
+
+local player = env.player
 local blocks_action = {
-	[0] = {
+	-- Cannot use indices: unordered `pairs` iteration.
+	{
+		id = 0,
 		on_intersect = function()
-			env.player.set_acc(0, GRAVITY)
+			player.set_acc(0, GRAVITY)
 		end,
 	},
-	[1] = {
-		minimap_color = 0xFFFF0000,  -- AARRGGBB
+	{
+		id = 1,
 		on_intersect = function()
-			env.player.set_acc(-GRAVITY, 0)
+			player.set_acc(-GRAVITY, 0)
 		end,
 	},
-	[2] = {
+	{
+		id = 2,
 		on_intersect = function()
-			env.player.set_acc(0, -GRAVITY)
+			player.set_acc(0, -GRAVITY)
 		end,
 	},
-	[3] = {
+	{
+		id = 3,
 		on_intersect = function()
-			env.player.set_acc(GRAVITY, 0)
+			player.set_acc(GRAVITY, 0)
 		end,
 	},
-	[4] = {
+	{
+		id = 4,
 		viscosity = 0.1,
 		on_intersect = function()
 			-- nop
@@ -79,62 +100,22 @@ env.register_pack({
 
 change_blocks(blocks_action)
 
+
+---------- Decoration tab
+
+
 env.register_pack({
-	name = "basic",
-	default_type = env.DRAW_TYPE_SOLID,
-	blocks = { 9, 10, 11, 12, 13, 14, 15 }
-})
-
-env.change_block({
-	id = 2,
-	-- name = "boost:up"
-	-- texture_start_index = 3,
-	-- params (types)
-	-- tiles (0 .. 7)
-	on_intersect = function()
-		local px, py = env.player.get_pos()
-		if env.test_mode == "set_pos" then
-			px = px + 12345
-			py = py + 1
-			env.player.set_pos(nil, py)
-
-			px, py = env.player.get_pos()
-			print(px, py)
-		end
-		if not env.test_mode then
-			env.player.set_acc(0, -GRAVITY)
-		end
-	end,
-	on_collide = function(bx, by, is_x)
-		dbgprint("on_colllide block_id=2")
-		return env.test_mode
-			and env.COLLISION_TYPE_VELOCITY
-			or env.COLLISION_TYPE_NONE
-	end,
+	name = "spring",
+	default_type = env.DRAW_TYPE_DECORATION,
+	blocks = { 233, 234, 235, 236, 237, 238, 239, 240 }
 })
 
 
--- Only necessary functions
-local function dump(what, depth, seen)
-	depth = depth or 0
-	seen = seen or {}
-	if type(what) ~= "table" then
-		return tostring(what)
-	end
-	if seen[what] then
-		return "<circular ref>"
-	end
-	seen[what] = true
+---------- Backgrounds tab
 
-	local out = {}
-	local indent = string.rep("\t", depth)
-	out[#out + 1] = "{"
-	for k, v in pairs(what) do
-		out[#out + 1] = indent .. "\t[" .. dump(k, 0, seen) .. "] = "
-			.. dump(v, depth + 1, seen)
-	end
-	out[#out + 1] = indent .. "}"
-	return table.concat(out, "\n")
-end
 
---print(dump(_G))
+env.register_pack({
+	name = "simple",
+	default_type = env.DRAW_TYPE_BACKGROUND,
+	blocks = { 500, 501, 502, 503, 504, 505, 506 }
+})

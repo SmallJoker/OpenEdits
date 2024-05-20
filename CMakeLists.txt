@@ -81,7 +81,7 @@ else()
 endif()
 
 if(NOT HAVE_LUA)
-	message(WARNING "Lua not found. Will be required soon.")
+	message(FATAL_ERROR "Lua not found but is required.")
 endif()
 
 
@@ -185,7 +185,6 @@ if(OPENAL_FOUND)
 endif()
 
 if(HAVE_LUA)
-	add_compile_definitions(HAVE_LUA)
 	include_directories(${LUA_INCLUDE_DIR})
 	target_link_libraries(${PROJECT_NAME}
 		${LUA_LIBRARIES} # FindLua51

@@ -70,17 +70,12 @@ Server::Server(bool *shutdown_requested) :
 	// Initialize Script + Assets needed for the clients
 	{
 		m_media->indexAssets();
+		m_script->setMediaMgr(m_media);
 
-		const char *asset_name = "main.lua";
-		const char *real_path = m_media->getAssetPath(asset_name);
-		if (!real_path) {
+		if (!m_script->loadFromAsset("main.lua")) {
 			logger(LL_ERROR, "No future without main script");
 			goto error;
 		}
-
-		m_media->requireAsset(asset_name); // for clients
-		if (!m_script->loadFromFile(real_path))
-			goto error;
 
 		m_bmgr->setMediaMgr(m_media);
 		m_bmgr->requireAllTextures();

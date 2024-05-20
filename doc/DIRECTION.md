@@ -12,15 +12,21 @@ To-do:
     * The return value is sent in an ACK-like packet when `pkt[1] != 0`
     * Useful for chat commands, bot programming and saner client communication
  * Private worlds
- * Animated coins (rotating mesh?)
- * Singleplayer mode (also with CLI args)
+ * Achievements: death counter, timer
+ * Modding:
+    * `on_trigger` server-side callbacks
+    * Ensure correct client-side prediction
+    * Preserve unknown blocks + data
+    * Movable objects, e.g. for mobs.
  * Moderator tools in the main menu
     * Event logger + "Inbox"
     * IP/user bans or mutes
  * Chat commands
     * `/pm`
     * `/ignore` (server-wide)
- * More sounds: on collide, jump (also of other players)
+ * Audiovisuals
+    * Animated coins (rotating mesh?)
+    * More sounds: on collide, jump (also of other players)
  * Anti-Cheat
     * Opt-in by chat commands
     * Confirmation by server-side physics simulation
@@ -28,7 +34,6 @@ To-do:
 
 Maybe:
 
- * Friends features, including a listing in the lobby to join their world
  * Group/crew system for easier per-world permission management
 
 
