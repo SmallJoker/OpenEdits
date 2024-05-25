@@ -5,6 +5,7 @@
 #include "servermedia.h"
 #include "core/blockmanager.h"
 #include "core/logger.h"
+#include "core/network_enums.h"
 #include "core/packet.h"
 #include "core/script.h"
 #include "core/world.h"

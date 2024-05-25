@@ -7,6 +7,7 @@
 #include "core/eeo_converter.h"
 #include "core/friends.h"
 #include "core/logger.h"
+#include "core/network_enums.h"
 #include "core/packet.h"
 #include "core/utils.h"
 #include "core/world.h"
@@ -819,7 +820,7 @@ void Server::pkt_TriggerBlocks(peer_t peer_id, Packet &pkt)
 					auto &kdata = meta.keys[key_id];
 					if (kdata.set(5.0f)) {
 						Packet out;
-						out.write(Packet2Client::Key);
+						out.write(Packet2Client::SetTile);
 						out.write(b.id);
 						out.write<u8>(kdata.isActive());
 						broadcastInWorld(player, 1, out);

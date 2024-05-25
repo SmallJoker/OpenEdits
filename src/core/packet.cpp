@@ -1,4 +1,5 @@
 #include "packet.h"
+#include "network_enums.h"
 
 #include <enet/enet.h>
 #include <stdexcept>

@@ -4,6 +4,7 @@
 #include "core/auth.h"
 #include "core/blockmanager.h"
 #include "core/logger.h"
+#include "core/network_enums.h"
 #include "core/packet.h"
 
 #if 0
@@ -28,7 +29,7 @@ const ClientPacketHandler Client::packet_actions[] = {
 	{ ClientState::WorldPlay, &Client::pkt_Move },
 	{ ClientState::WorldPlay, &Client::pkt_Chat }, // 10
 	{ ClientState::WorldPlay, &Client::pkt_PlaceBlock },
-	{ ClientState::WorldPlay, &Client::pkt_Key },
+	{ ClientState::WorldPlay, &Client::pkt_Key }, // superseded by pkt_SetTile
 	{ ClientState::WorldPlay, &Client::pkt_GodMode },
 	{ ClientState::WorldPlay, &Client::pkt_Smiley },
 	{ ClientState::WorldPlay, &Client::pkt_PlayerFlags }, // 15
@@ -36,6 +37,7 @@ const ClientPacketHandler Client::packet_actions[] = {
 	{ ClientState::WorldPlay, &Client::pkt_ChatReplay },
 	{ ClientState::Connected, &Client::pkt_MediaList },
 	{ ClientState::Connected, &Client::pkt_MediaReceive },
+	{ ClientState::WorldPlay, &Client::pkt_SetTile }, // 20
 	{ ClientState::Invalid, 0 }
 };
 
@@ -445,7 +447,7 @@ void Client::pkt_PlaceBlock(Packet &pkt)
 {
 	auto world = getWorld();
 	if (!world)
-		throw std::runtime_error("Got block but the world is not ready");
+		throw std::runtime_error("pkt_PlaceBlock: world not ready");
 
 	auto player = getMyPlayer();
 	SimpleLock lock(world->mutex);
@@ -473,6 +475,84 @@ void Client::pkt_PlaceBlock(Packet &pkt)
 	GameEvent e(GameEvent::C2G_MAP_UPDATE);
 	sendNewEvent(e);
 }
+
+void Client::pkt_SetTile(Packet &pkt)
+{
+	auto world = getWorld();
+	if (!world)
+		throw std::runtime_error("pkt_SetTile: world not ready");
+
+	SimpleLock lock(world->mutex);
+	bool map_dirty = false;
+
+	while (pkt.getRemainingBytes()) {
+		bid_t block_id = pkt.read<bid_t>();
+		if (block_id == Block::ID_INVALID)
+			break; // terminator
+
+		auto props = m_bmgr->getProps(block_id);
+		if (!props)
+			return; // error
+
+		EPktSetTile mode = (EPktSetTile)pkt.read<u8>();
+		u8 to_tile = pkt.read<u8>();
+		switch (mode) {
+			case EPktSetTile::All:
+				for (Block *b = world->begin(); b != world->end(); ++b) {
+					if (b->id == block_id) {
+						b->tile = to_tile;
+						map_dirty = true;
+					}
+				}
+				break;
+			case EPktSetTile::AreaMinMax: {
+				blockpos_t minp, maxp;
+				pkt.read(minp.X);
+				pkt.read(minp.Y);
+				pkt.read(maxp.X); // outside by (1, 1) of the area
+				pkt.read(maxp.Y);
+				if (!world->getBlockPtr(minp))
+					return;
+				if (!world->getBlockPtr(maxp - blockpos_t(1, 1)))
+					return;
+
+				blockpos_t pos;
+				for (pos.Y = minp.Y; pos.Y < maxp.Y; ++pos.Y)
+				for (pos.X = minp.X; pos.X < maxp.X; ++pos.X) {
+					Block *b = world->getBlockPtr(pos);
+					if (b->id == block_id) {
+						b->tile = to_tile;
+						map_dirty = true;
+					}
+				}
+			} break;
+			case EPktSetTile::PosList: {
+				blockpos_t pos;
+				while (true) {
+					pkt.read(pos.X);
+					if (pos.X == BLOCKPOS_INVALID)
+						break; // terminator
+
+					pkt.read(pos.Y);
+
+					Block *b = world->getBlockPtr(pos);
+					if (b && b->id == block_id) {
+						b->tile = to_tile;
+						map_dirty = true;
+					}
+				}
+			} break;
+			default:
+				return; // unknown
+		}
+	}
+
+	if (map_dirty) {
+		GameEvent e(GameEvent::C2G_MAP_UPDATE);
+		sendNewEvent(e);
+	}
+}
+
 
 void Client::pkt_Key(Packet &pkt)
 {

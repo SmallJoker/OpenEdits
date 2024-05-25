@@ -441,6 +441,14 @@ void World::writePlain(Packet &pkt_out) const
 	}
 }
 
+Block *World::getBlockPtr(blockpos_t pos) const
+{
+	if (pos.X >= m_size.X || pos.Y >= m_size.Y)
+		return nullptr;
+
+	return &getBlockRefNoCheck(pos);
+}
+
 bool World::getBlock(blockpos_t pos, Block *block) const
 {
 	if (pos.X >= m_size.X || pos.Y >= m_size.Y)

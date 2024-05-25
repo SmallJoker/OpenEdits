@@ -1,6 +1,7 @@
 #include "server.h"
 #include "core/auth.h"
 #include "core/eeo_converter.h"
+#include "core/network_enums.h"
 #include "core/packet.h"
 #include "core/player.h"
 #include "core/utils.h" // get_next_part

@@ -165,6 +165,7 @@ public:
 			&& y >= 0 && y < m_size.Y;
 	}
 
+	Block *getBlockPtr(blockpos_t pos) const;
 	bool getBlock(blockpos_t pos, Block *block) const;
 	bool setBlock(blockpos_t pos, const Block block);
 	blockpos_t getBlockPos(const Block *b) const;
