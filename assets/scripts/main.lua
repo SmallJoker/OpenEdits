@@ -20,8 +20,36 @@ env.DRAW_TYPE_BACKGROUND = 3
 
 -------------- Client & server script
 
+-- TODO: not implemented
 local GRAVITY    = 100.0 -- m/s² for use in callbacks
 local JUMP_SPEED =  30.0 -- m/s  for use in callbacks
+
+--[[
+To implement:
+env.callbacks.on_join(function()
+	player.set_physics({
+		default_acceleration = num,       -- when no "on_collide" is defined
+		acceleration_multiplicator = num, -- should affect the final acceleration
+		control_acceleration = num,
+		jump_speed = num
+	})
+end)
+
+
+env.change_block(99, {
+	events = {
+		-- Triggered by client-sent "on touch" or similar
+		testevent = function()
+			world.set_tile(ID_DOOR, "all", 1)
+		end
+	},
+	on_intersect_once = function()
+		env.send_event("testevent")
+	end
+})
+]]
+
+assert(env.API_VERSION >= 2, "Script implementation is too old.")
 
 local function table_to_pack_blocks(block_defs)
 	local t = {}
@@ -99,6 +127,62 @@ env.register_pack({
 })
 
 change_blocks(blocks_action)
+
+local function make_oneway_block(id)
+	return {
+		id = id,
+		tiles = { { type = env.DRAW_TYPE_DECORATION, alpha = true } },
+		on_collide = function(bx, by, is_x)
+			if is_x then
+				-- Sideway gate
+				local _, py = player.get_pos()
+				local ctrl_jump = true -- TODO get player controls
+				if py == by and not ctrl_jump then
+					return env.COLLISION_TYPE_POSITION
+				end
+			else -- y
+				local _, py = player.get_pos()
+				local _, vy = player.get_vel()
+				-- normal step-up
+				if vy >= 0 and py + 0.55 < by then
+					return env.COLLISION_TYPE_POSITION
+				end
+			end
+			return env.COLLISION_TYPE_NONE
+		end
+	}
+end
+
+local blocks_candy = {
+	{
+		id = 60,
+		tiles = { { alpha = true } }
+	},
+	make_oneway_block(61),
+	make_oneway_block(62),
+	make_oneway_block(63),
+	make_oneway_block(64),
+	{
+		id = 65,
+		tiles = { { alpha = true } }
+	},
+	{
+		id = 66,
+		tiles = { { alpha = true } }
+	},
+	{
+		id = 67,
+		tiles = { { alpha = true } }
+	},
+}
+
+env.register_pack({
+	name = "candy",
+	default_type = env.DRAW_TYPE_SOLID,
+	blocks = table_to_pack_blocks(blocks_candy)
+})
+
+change_blocks(blocks_candy)
 
 
 ---------- Decoration tab

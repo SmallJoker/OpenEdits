@@ -14,7 +14,7 @@ extern "C" {
 
 static Logger logger("Script", LL_INFO);
 
-static const lua_Integer SCRIPT_API_VERSION = 1;
+static const lua_Integer SCRIPT_API_VERSION = 2;
 enum RIDX_Indices : lua_Integer {
 	CUSTOM_RIDX_SCRIPT = 1,
 	CUSTOM_RIDX_TRACEBACK,
@@ -240,6 +240,8 @@ bool Script::init()
 		{
 			FIELD_SET_FUNC(player_, get_pos);
 			FIELD_SET_FUNC(player_, set_pos);
+			FIELD_SET_FUNC(player_, get_vel);
+			FIELD_SET_FUNC(player_, set_vel);
 			FIELD_SET_FUNC(player_, get_acc);
 			FIELD_SET_FUNC(player_, set_acc);
 		}
@@ -311,7 +313,9 @@ bool Script::loadFromFile(const std::string &filename)
 		return false;
 	}
 
+	m_last_block_id = Block::ID_INVALID;
 	logger(LL_INFO, "Loading file: '%s'\n", filename.c_str());
+
 	lua_rawgeti(m_lua, LUA_REGISTRYINDEX, CUSTOM_RIDX_TRACEBACK);
 	luaL_checktype(m_lua, -1, LUA_TFUNCTION);
 	int errorhandler = lua_gettop(m_lua);
@@ -322,8 +326,14 @@ bool Script::loadFromFile(const std::string &filename)
 
 	if (status != 0) {
 		const char *err = lua_tostring(m_lua, -1);
-		logger(LL_ERROR, "Failed to load script '%s' (ret=%d):\n%s%s\n%s",
+		char buf[100];
+		buf[0] = '\0';
+		if (m_last_block_id != Block::ID_INVALID)
+			snprintf(buf, sizeof(buf), "related to block_id=%d ", m_last_block_id);
+
+		logger(LL_ERROR, "Failed to load script '%s' %s(ret=%d):\n%s%s\n%s",
 			filename.c_str(),
+			buf,
 			status,
 			SEPARATOR,
 			err ? err : "(no error message)",
@@ -395,6 +405,7 @@ bool Script::haveOnIntersect(const BlockProperties *props) const
 void Script::onIntersect(const BlockProperties *props)
 {
 	lua_State *L = m_lua;
+	m_last_block_id = props->id;
 
 	if (!haveOnIntersect(props)) {
 		// no callback registered: fall-back to air
@@ -428,6 +439,7 @@ bool Script::haveOnCollide(const BlockProperties *props) const
 int Script::onCollide(CollisionInfo ci)
 {
 	lua_State *L = m_lua;
+	m_last_block_id = ci.props->id;
 	using CT = BlockProperties::CollisionType;
 
 	if (!haveOnCollide(ci.props)) {
@@ -444,8 +456,8 @@ int Script::onCollide(CollisionInfo ci)
 	lua_pushboolean(L, ci.is_x);
 	// Execute!
 	if (lua_pcall(L, 3, 1, 0)) {
-		logger(LL_ERROR, "on_collide pack='%s' failed: %s\n",
-			ci.props->pack->name.c_str(),
+		logger(LL_ERROR, "on_collide block=%d failed: %s\n",
+			m_last_block_id,
 			lua_tostring(L, -1)
 		);
 		lua_settop(L, top);
@@ -469,8 +481,8 @@ int Script::onCollide(CollisionInfo ci)
 			break;
 		default:
 			collision_type = 0;
-			logger(LL_ERROR, "invalid collision in pack='%s'\n",
-				ci.props->pack->name.c_str()
+			logger(LL_ERROR, "invalid collision in block=%d\n",
+				m_last_block_id
 			);
 			break;
 	}
@@ -481,7 +493,7 @@ int Script::onCollide(CollisionInfo ci)
 
 // -------------- Static Script class functions -------------
 
-static char tmp_errorlog[100];
+static char tmp_errorlog[100]; // assume that only one thread faults at a time
 static void cpp_exception_handler(lua_State *L)
 {
 	int n = -1;
@@ -502,26 +514,30 @@ static void cpp_exception_handler(lua_State *L)
 	}
 }
 
-#define MESSY_CPP_EXCEPTIONS(my_code) \
+// Must be split to properly show the executed line number in gdb
+#define MESSY_CPP_EXCEPTIONS_START \
 	try { \
-		logger(LL_DEBUG, "-> call %s\n", __func__); \
-		my_code \
+		logger(LL_DEBUG, "-> call %s\n", __func__);
+
+#define MESSY_CPP_EXCEPTIONS_END \
 	} catch (...) { \
 		cpp_exception_handler(L); \
 		return 0; \
 	}
 
 int Script::l_include(lua_State *L)
-{MESSY_CPP_EXCEPTIONS(
-
+{
+	MESSY_CPP_EXCEPTIONS_START
 	Script *script = get_script(L);
+
 	std::string asset_name = luaL_checkstring(L, 1);
 
 	if (!script->loadFromAsset(asset_name))
 		lua_error(L);
 
+	MESSY_CPP_EXCEPTIONS_END
 	return 0;
-)}
+}
 
 namespace {
 	struct BlockID {
@@ -547,9 +563,19 @@ static BlockID pull_blockid(lua_State *L, int idx)
 	return ret;
 }
 
+static int read_block_drawtype(lua_State *L, int idx)
+{
+	int type = luaL_checkint(L, idx);
+	if (type < 0 || type >= (int)BlockDrawType::Invalid)
+		luaL_error(L, "Invalid BlockDrawType value");
+	return type;
+}
+
 int Script::l_register_pack(lua_State *L)
-{MESSY_CPP_EXCEPTIONS(
+{
+	MESSY_CPP_EXCEPTIONS_START
 	Script *script = get_script(L);
+	script->m_last_block_id = Block::ID_INVALID;
 
 	luaL_checktype(L, 1, LUA_TTABLE);
 	const char *name = check_field_string(L, 1, "name");
@@ -575,38 +601,38 @@ int Script::l_register_pack(lua_State *L)
 
 
 	lua_getfield(L, 1, "default_type");
-	{
-		int type = luaL_checkint(L, -1);
-		if (type < 0 || type >= (int)BlockDrawType::Invalid)
-			luaL_error(L, "Unknown default_type value");
-
-		pack->default_type = (BlockDrawType)type;
-	}
+	pack->default_type = (BlockDrawType)read_block_drawtype(L, -1);
 	lua_pop(L, 1); // table
 
 	logger(LL_INFO, "register pack: %s\n", pack->name.c_str());
 	script->m_bmgr->registerPack(pack.release());
+
+	MESSY_CPP_EXCEPTIONS_END
 	return 0;
-)}
+}
 
 int Script::l_change_block(lua_State *L)
-{MESSY_CPP_EXCEPTIONS(
+{
+	MESSY_CPP_EXCEPTIONS_START
 	Script *script = get_script(L);
 
 	const BlockID id = pull_blockid(L, 1);
 	luaL_checktype(L, 2, LUA_TTABLE);
 
 	const bid_t block_id = id.id;
+	script->m_last_block_id = block_id;
 
 	BlockProperties *props = script->m_bmgr->getPropsForModification(block_id);
 	if (!props)
 		return luaL_error(L, "block_id=%i not found", block_id);
 
+	// ---------- Physics
+
 	lua_getfield(L, 2, "on_intersect");
 	if (!lua_isnil(L, -1)) {
 		bool ok = function_to_ref(L, props->ref_on_intersect);
 		if (!ok) {
-			logger(LL_ERROR, "%s ref failed: block_id= %i\n", lua_tostring(L, -2), block_id);
+			logger(LL_ERROR, "%s ref failed\n", lua_tostring(L, -2));
 		}
 	} else {
 		lua_pop(L, 1);
@@ -616,18 +642,11 @@ int Script::l_change_block(lua_State *L)
 	if (!lua_isnil(L, -1)) {
 		bool ok = function_to_ref(L, props->ref_on_collide);
 		if (!ok) {
-			logger(LL_ERROR, "%s ref failed: block_id= %i\n", lua_tostring(L, -2), block_id);
+			logger(LL_ERROR, "%s ref failed\n", lua_tostring(L, -2));
 		}
 	} else {
 		lua_pop(L, 1);
 	}
-
-	lua_getfield(L, 2, "minimap_color");
-	if (!lua_isnil(L, -1)) {
-		lua_Integer minimap_color = luaL_checkinteger(L, -1);
-		props->color = minimap_color;
-	}
-	lua_pop(L, 1);
 
 	lua_getfield(L, 2, "viscosity");
 	if (!lua_isnil(L, -1)) {
@@ -636,9 +655,57 @@ int Script::l_change_block(lua_State *L)
 	}
 	lua_pop(L, 1);
 
+	// ---------- Audiovisuals
+
+	lua_getfield(L, 2, "minimap_color");
+	if (!lua_isnil(L, -1)) {
+		lua_Integer minimap_color = luaL_checkinteger(L, -1);
+		props->color = minimap_color;
+	}
+	lua_pop(L, 1);
+
+	lua_getfield(L, 2, "tiles");
+	if (!lua_isnil(L, -1)) {
+		int table = lua_gettop(L);
+		luaL_checktype(L, table, LUA_TTABLE);
+		auto &tiles = props->tiles; // setTiles would overwrite everything :(
+
+		// Allow selective changes, e.g. [2] = { type = ..., alpha = ... }
+		lua_pushnil(L);
+		while (lua_next(L, table)) {
+			// key @ -2, value @ -1?
+			luaL_checktype(L, -1, LUA_TTABLE);
+			size_t i = luaL_checkint(L, -2) - 1;
+			if (i >= tiles.size())
+				tiles.resize(i + 1);
+			tiles.at(i).is_known_tile = true;
+
+			{
+				lua_getfield(L, -1, "type");
+				if (!lua_isnil(L, -1))
+					tiles[i].type = (BlockDrawType)read_block_drawtype(L, -1);
+				else if (tiles[i].type == BlockDrawType::Invalid)
+					tiles[i].type = props->pack->default_type;
+				lua_pop(L, 1); // type
+			}
+
+			{
+				lua_getfield(L, -1, "alpha");
+				if (!lua_isnil(L, -1))
+					tiles[i].have_alpha = lua_toboolean(L, -1);
+				lua_pop(L, 1); // alpha
+			}
+
+			lua_pop(L, 1); // value
+		}
+	} // else: 1 tile with default type
+	lua_pop(L, 1);
+
 	logger(LL_DEBUG, "Changed block_id=%i\n", block_id);
+
+	MESSY_CPP_EXCEPTIONS_END
 	return 0;
-)}
+}
 
 static void push_v2f(lua_State *L, core::vector2df vec)
 {
@@ -669,6 +736,24 @@ int Script::l_player_set_pos(lua_State *L)
 	Player *player = get_script(L)->m_player;
 	if (player)
 		pull_v2f(L, 1, player->pos);
+	return 0;
+}
+
+int Script::l_player_get_vel(lua_State *L)
+{
+	Player *player = get_script(L)->m_player;
+	if (!player)
+		return 0;
+
+	push_v2f(L, player->vel);
+	return 2;
+}
+
+int Script::l_player_set_vel(lua_State *L)
+{
+	Player *player = get_script(L)->m_player;
+	if (player)
+		pull_v2f(L, 1, player->vel);
 	return 0;
 }
 

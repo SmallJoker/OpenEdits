@@ -10,7 +10,8 @@ BlockManager *g_blockmanager = nullptr;
 
 static Logger logger("BlockManager", LL_DEBUG);
 
-BlockProperties::BlockProperties(BlockDrawType type)
+BlockProperties::BlockProperties(bid_t id, BlockDrawType type) :
+	id(id)
 {
 	setTiles({ type });
 }
@@ -43,8 +44,7 @@ BlockTile BlockProperties::getTile(const Block b) const
 
 // -------------- BlockManager public -------------
 
-BlockManager::BlockManager() :
-	m_fallback(BlockDrawType::Solid)
+BlockManager::BlockManager()
 {
 	m_props.resize(1100, nullptr);
 }
@@ -81,7 +81,7 @@ void BlockManager::read(Packet &pkt)
 
 		auto &props = m_props[block_id];
 		if (!props)
-			props = new BlockProperties(BlockDrawType::Invalid);
+			props = new BlockProperties(block_id, BlockDrawType::Invalid);
 
 		props->paramtypes = (BlockParams::Type)pkt.read<u8>();
 		props->viscosity = pkt.read<float>();
@@ -142,6 +142,7 @@ void BlockManager::read(Packet &pkt)
 
 void BlockManager::write(Packet &pkt) const
 {
+	// TODO: This read/write can be removed once the script approach works well enough
 	ASSERT_FORCED(pkt.data_version != 0, "invalid proto ver");
 
 	// Data of each block
@@ -185,20 +186,20 @@ void BlockManager::registerPack(BlockPack *pack)
 		throw std::runtime_error("Invalid pack information");
 
 	bid_t max_id = 0;
-	for (bid_t id : pack->block_ids) {
-		if (getProps(id))
-			throw std::runtime_error("Block is already registered");
+	for (bid_t id : pack->block_ids)
 		max_id = std::max(max_id, id);
-	}
 
 	m_packs.push_back(pack);
 
 	// Register properties
 	ensurePropsSize(max_id);
 	for (bid_t id : pack->block_ids) {
-		auto props = new BlockProperties(pack->default_type);
+		auto &props = m_props[id];
+		if (props)
+			throw std::runtime_error("Block is already registered");
+
+		props = new BlockProperties(id, pack->default_type);
 		props->pack = pack;
-		m_props[id] = props;
 	}
 }
 

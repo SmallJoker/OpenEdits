@@ -59,6 +59,8 @@ private:
 	// Player API
 	static int l_player_get_pos(lua_State *L);
 	static int l_player_set_pos(lua_State *L);
+	static int l_player_get_vel(lua_State *L);
+	static int l_player_set_vel(lua_State *L);
 	static int l_player_get_acc(lua_State *L);
 	static int l_player_set_acc(lua_State *L);
 
@@ -66,4 +68,6 @@ private:
 	BlockManager *m_bmgr = nullptr;
 	MediaManager *m_media = nullptr;
 	Player *m_player = nullptr;
+
+	bid_t m_last_block_id = Block::ID_INVALID;
 };

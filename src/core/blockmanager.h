@@ -54,10 +54,11 @@ struct BlockTile {
 
 /// Properties of a single block
 struct BlockProperties {
-	BlockProperties(BlockDrawType type);
+	BlockProperties(bid_t id, BlockDrawType type);
 	~BlockProperties();
 
 	BlockPack *pack = nullptr;
+	const bid_t id;
 	BlockParams::Type paramtypes = BlockParams::Type::None;
 
 	// whether to add the block position to the touched blocks list
@@ -138,7 +139,6 @@ private:
 	video::IVideoDriver *m_driver = nullptr;
 	MediaManager *m_media = nullptr;
 
-	BlockProperties m_fallback;
 	std::vector<BlockProperties *> m_props;
 	std::vector<BlockPack *> m_packs;
 	bool m_populated = false;

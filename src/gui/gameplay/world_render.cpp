@@ -585,7 +585,7 @@ void SceneWorldRender::updatePlayerPositions(float dtime)
 			auto nt_size = nt_texture->getOriginalSize();
 			auto nt = smgr->addBillboardSceneNode(nf,
 				core::dimension2d<f32>(nt_size.Width * 0.4f, nt_size.Height * 0.4f),
-				core::vector3df(0, -10, -0.08),
+				core::vector3df(0, -10, -5),
 				nf_id + 1
 			);
 			nt->forEachMaterial([](video::SMaterial &mat){
