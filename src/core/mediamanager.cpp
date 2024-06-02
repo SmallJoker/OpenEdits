@@ -72,12 +72,13 @@ void MediaManager::indexAssets()
 		if (!entry.is_regular_file())
 			continue;
 
-		auto filename = entry.path().filename();
+		// cannot use ".filename().c_str()" directly because Windows uses wchar_t internally.
+		auto filename = entry.path().filename().string();
 		AssetType type = File::getTypeFromFileName(filename);
 		if (type == AssetType::Invalid)
 			continue;
 
-		auto [it, unique] = m_media_available.insert({ filename, entry.path() });
+		auto [it, unique] = m_media_available.insert({ filename, entry.path().string() });
 		if (unique) {
 			logger(LL_DEBUG, "Found '%s', type=%d",
 				filename.c_str(), (int)type
@@ -86,7 +87,7 @@ void MediaManager::indexAssets()
 			logger(LL_ERROR, "Found duplicate/ambiguous asset: %s", filename.c_str());
 		}
 	}
-	logger(LL_PRINT, "%lu media files indexed", m_media_available.size());
+	logger(LL_PRINT, "%zu media files indexed", m_media_available.size());
 }
 
 bool MediaManager::requireAsset(const char *name)

@@ -129,7 +129,7 @@ void Client::pkt_MediaList(Packet &pkt)
 
 	m_media->readMediaList(pkt);
 
-	logger(LL_DEBUG, "%s: missing=%lu, done=%lu",
+	logger(LL_DEBUG, "%s: missing=%zu, done=%zu",
 		__func__, m_media->countMissing(), m_media->countDone()
 	);
 
@@ -149,7 +149,7 @@ void Client::pkt_MediaReceive(Packet &pkt)
 
 	size_t count_done = m_media->countDone(),
 		bytes_done = m_media->bytes_done;
-	logger(LL_DEBUG, "%s: have %lu/%lu (%lu/%lu bytes)",
+	logger(LL_DEBUG, "%s: have %zu/%zu (%zu/%zu bytes)",
 		__func__,
 		count_done, count_done + m_media->countMissing(),
 		bytes_done, bytes_done + m_media->bytes_missing

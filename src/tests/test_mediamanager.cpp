@@ -27,7 +27,7 @@ static void test_server_client()
 	CHECK((cli.countMissing() == 1) == cli.haveMediaForRequest());
 
 	while (cli.countMissing() > 0) {
-		printf("Client: missing %ld files\n", cli.countMissing());
+		printf("Client: missing %zu files\n", cli.countMissing());
 		// Missing file. Cache it.
 
 		if (cli.haveMediaForRequest()) {
@@ -46,7 +46,7 @@ static void test_server_client()
 			CHECK(pkt.getRemainingBytes() == 0);
 		}
 	}
-	printf("Client: have all %ld files\n", cli.countDone());
+	printf("Client: have all %zu files\n", cli.countDone());
 }
 
 #include "core/blockmanager.h"
@@ -72,8 +72,11 @@ void unittest_mediamanager()
 
 #else
 
+#include <stdio.h>
+
 void unittest_mediamanager()
 {
+	// We have no Client counterpart to test it
 	puts("MediaManager: test unavilable");
 }
 

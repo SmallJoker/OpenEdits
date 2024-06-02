@@ -82,8 +82,11 @@ private:
 	// ----------- Other members -----------
 	DatabaseAuth *m_auth_db = nullptr;
 	DatabaseWorld *m_world_db = nullptr;
+
 	Script *m_script = nullptr;
 	ServerMedia *m_media = nullptr;
+	Timer m_media_unload_timer;
+
 	bool m_is_first_step = true;
 
 	std::map<peer_t, Timer> m_deaths;

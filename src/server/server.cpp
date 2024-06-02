@@ -80,6 +80,7 @@ Server::Server(bool *shutdown_requested) :
 
 		m_bmgr->setMediaMgr(m_media);
 		m_bmgr->requireAllTextures();
+		m_media_unload_timer.set(4);
 	}
 
 	registerChatCommands();
@@ -187,6 +188,12 @@ void Server::step(float dtime)
 	}
 
 	// TODO: Run player physics to check whether they are cheating or not
+
+	if (m_media_unload_timer.step(dtime)) {
+		m_media_unload_timer.set(30);
+
+		m_media->uncacheMedia();
+	}
 
 	if (m_stdout_flush_timer.step(dtime)) {
 		/*

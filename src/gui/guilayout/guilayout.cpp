@@ -263,7 +263,7 @@ void FlexBox::tryFitElements()
 	if (m_scrollbars[SIZE_Y])
 		total_space[SIZE_X] -= SCROLLBAR_SIZE; // Y-axis needs X space
 
-	DBG_BALANCE("==> Balance of n=%lu, W % 3i, H % 3i\n",
+	DBG_BALANCE("==> Balance of n=%zu, W % 3i, H % 3i\n",
 		m_children.size(), total_space[0], total_space[1]);
 
 	auto it = m_children.begin();

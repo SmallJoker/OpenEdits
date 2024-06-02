@@ -19,7 +19,7 @@ std::string MediaManager::File::getDiskFileName()
 	ret.append(CACHE_DIR);
 
 	char buf[8 * 2 + 1 + 1];
-	snprintf(buf, sizeof(buf), "/%0lx", this->data_hash);
+	snprintf(buf, sizeof(buf), "/%0zx", this->data_hash);
 	ret.append(buf);
 
 	return ret;
@@ -107,7 +107,7 @@ void ClientMedia::readMediaData(Packet &pkt)
 		if (!file.data.empty()) {
 			std::ofstream os(cachename, std::ios_base::binary | std::ios_base::trunc);
 			os.write((const char *)file.data.data(), file.data.size());
-			logger(LL_DEBUG, "cache file '%s', size=%ld", name.c_str(), file.data.size());
+			logger(LL_DEBUG, "cache file '%s', size=%zu", name.c_str(), file.data.size());
 		}
 
 		m_media_available[name] = cachename; // overwrite in case when using local files
@@ -130,17 +130,17 @@ void ClientMedia::removeOldCache()
 			continue;
 
 		FileStatInfo info;
-		auto path_c = entry.path().c_str();
-		if (!get_file_stat(path_c, &info))
+		auto path_c = entry.path().string();
+		if (!get_file_stat(path_c.c_str(), &info))
 			continue;
 
-		time_t age_days = (time_now - info.mtime) / (3600 * 24);
+		long age_days = (time_now - info.mtime) / (3600 * 24);
 		if (age_days < 60)
 			continue;
 
-		int status = std::remove(path_c);
+		int status = std::remove(path_c.c_str());
 		logger(LL_DEBUG, "remove cached file: '%s', age=%ldd, status=%d",
-			entry.path().filename().c_str(), age_days, status
+			entry.path().filename().string().c_str(), age_days, status
 		);
 	}
 }

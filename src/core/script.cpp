@@ -588,7 +588,7 @@ int Script::l_register_pack(lua_State *L)
 		lua_pushnil(L);
 		while (lua_next(L, table)){
 			// key @ -2, value @ -1
-			luaL_checkint(L, -2);
+			(void)luaL_checkint(L, -2);
 
 			BlockID id = pull_blockid(L, -1);
 			// maybe add string indices later?

@@ -37,7 +37,7 @@ bool ServerMedia::requireAsset(const char *name)
 	file.file_size = SIZE_MAX; // non-zero
 	bool ok = file.cacheToRAM();
 
-	logger(LL_DEBUG, "Require '%s' ('%s'), size=%ld\n",
+	logger(LL_DEBUG, "Require '%s' ('%s'), size=%zu\n",
 		name, file.file_path.c_str(), file.data.size()
 	);
 	m_required.insert({ name_s, std::move(file) });
@@ -117,6 +117,7 @@ void ServerMedia::uncacheMedia()
 	const time_t time_old = time(nullptr) - (30 * 60);
 
 	for (auto &kv : m_required) {
-		kv.second.uncacheRAMif(time_old);
+		// Unload large files quicker
+		kv.second.uncacheRAMif(time_old - kv.second.file_size / 1024);
 	}
 }

@@ -83,7 +83,7 @@ Permission/player flag examples:
 ### Dependencies
 
  * CMake (cmake-gui recommended for desktops)
- * [Irrlicht-Mt](https://github.com/minetest/irrlicht) : GUI/rendering library
+ * [Irrlicht-Mt](https://github.com/SmallJoker/irrlicht-mt) : GUI/rendering library
  * [enet](http://enet.bespin.org/) : networking library
  * SQLite3 : auth & world saving
  * Threads (pthread?)
@@ -107,6 +107,10 @@ Dependency tree:
 Debian/Ubuntu:
 
 	sudo apt install libenet-dev libopenal-dev libsqlite3-dev zlib1g-dev
+
+Windows:
+
+* C99 standard library is required. msvcrt uses C89, thus MinGW or Clang are recommended over MSVC.
 
 Project compiling:
 

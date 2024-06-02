@@ -114,6 +114,10 @@ else()
 	set(CMAKE_SHARED_LINKER_FLAGS "-Wl,--no-undefined")
 endif()
 
+if (MINGW)
+	add_compile_definitions(__USE_MINGW_ANSI_STDIO=1)
+endif()
+
 
 ### Inline version information
 
@@ -223,8 +227,12 @@ install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE.txt" DESTINATION "${INSTALL_D
 
 if(WIN32)
 	# Copy DLL directly
-	install(FILES ${ENet_LIBRARY} DESTINATION ${INSTALL_DIR} RENAME ${ENET_DLL_NAME})
-	install(FILES ${ZLIB_LIBRARY} DESTINATION ${INSTALL_DIR} RENAME ${ZLIB_DLL_NAME})
+	install(FILES ${ENet_LIBRARY} DESTINATION ${INSTALL_DIR})
+	install(FILES ${ZLIB_LIBRARY} DESTINATION ${INSTALL_DIR})
+	install(FILES ${LUA_LIBRARY}  DESTINATION ${INSTALL_DIR})
+	if(OPENAL_FOUND)
+		install(FILES ${OPENAL_LIBRARY} DESTINATION ${INSTALL_DIR})
+	endif()
 else()
 	# Resolve symlink and perform hack
 	get_filename_component(ENET_DLL ${ENet_LIBRARY} REALPATH) # resolve symlink
