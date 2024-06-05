@@ -50,7 +50,7 @@ static void test_server_client()
 }
 
 #include "core/blockmanager.h"
-#include "core/script.h"
+#include "core/script/script.h"
 static void test_with_script()
 {
 	BlockManager bmgr;

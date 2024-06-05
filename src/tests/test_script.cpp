@@ -2,7 +2,7 @@
 
 #include "core/blockmanager.h"
 #include "core/connection.h" // PROTOCOL_VERSION_*
-#include "core/script.h"
+#include "core/script/script.h"
 #include "server/remoteplayer.h"
 
 

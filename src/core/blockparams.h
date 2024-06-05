@@ -18,10 +18,14 @@ enum Type : u16 {
 struct BlockParams {
 	// Order must not be changed: is saved to disk
 	enum class Type : uint8_t {
-		None,
-		Text,
-		U8,
-		Teleporter,
+		None = 0,
+		STR16 = 1,
+		Text = 1,
+
+		U8 = 2,
+
+		U8U8U8 = 3,
+		Teleporter = 3,
 		// New parameters need a new type
 		INVALID
 	};

@@ -7,7 +7,7 @@
 #include "core/logger.h"
 #include "core/network_enums.h"
 #include "core/packet.h"
-#include "core/script.h"
+#include "core/script/script.h"
 #include "core/utils.h" // to_player_name
 
 #if 0

@@ -3,6 +3,7 @@
 #include "core/macros.h"
 #include "core/playerflags.h"
 #include "core/types.h"
+#include <map>
 #include <set>
 #include <string>
 #include <vector2d.h>
@@ -68,6 +69,7 @@ public:
 	// Resetable progress
 	u8 coins = 0;
 	blockpos_t checkpoint;
+	//std::map<size_t, BlockParams> params;
 
 	u8 smiley_id = 0;
 

@@ -2,7 +2,7 @@
 #include "blockmanager.h"
 #include "macros.h" // ASSERT_FORCED
 #include "packet.h"
-#include "script.h"
+#include "script/script.h"
 #include "utils.h"
 #include "world.h"
 #include <rect.h>
