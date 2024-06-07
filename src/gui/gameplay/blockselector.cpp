@@ -60,6 +60,7 @@ void SceneBlockSelector::draw()
 	// Nice small gap
 	rect += core::vector2di(5, 0);
 	m_showmore = m_gui->addButton(rect, nullptr, ID_SHOWMORE);
+	m_showmore->setToolTipText(L"Toogle block selector");
 	drawBlockSelector();
 
 	m_highlight = m_gui->addImage(rect);
@@ -512,6 +513,9 @@ bool SceneBlockSelector::drawBlockButton(bid_t bid, const core::recti &rect, gui
 {
 	auto e = m_gui->addButton(rect, parent, id);
 
+	int tooltip_len = 0;
+	char tooltip[100];
+
 	auto props = g_blockmanager->getProps(bid);
 	if (props) {
 		BlockTile tile = props->tiles[0];
@@ -526,8 +530,23 @@ bool SceneBlockSelector::drawBlockButton(bid_t bid, const core::recti &rect, gui
 		e->setUseAlphaChannel(false);
 		e->setDrawBorder(false);
 		e->setPressedImage(make_pressed_image(m_gui->getVideoDriver(), tile.texture));
+
+		tooltip_len = snprintf(tooltip, sizeof(tooltip), "Pack: %s\nBlock ID: %i\nTile count: %zu\nCallbacks:%s%s",
+			props->pack->name.c_str(),
+			bid,
+			props->tiles.size(),
+			props->ref_on_collide   >= 0 ? " collide" : "",
+			props->ref_on_intersect >= 0 ? " intersect" : ""
+		);
 	} else {
+		tooltip_len = snprintf(tooltip, sizeof(tooltip), "UNKNOWN BLOCK\nBlock ID: %i", bid);
 		e->setText(L"E");
+	}
+
+	if (tooltip_len > 0) {
+		std::wstring tooltip_w;
+		utf8_to_wide(tooltip_w, tooltip);
+		e->setToolTipText(tooltip_w.c_str());
 	}
 	return !!props;
 }

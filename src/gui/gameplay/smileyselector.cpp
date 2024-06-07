@@ -41,6 +41,7 @@ void SceneSmileySelector::draw()
 	auto gui = m_gui->guienv;
 
 	m_button = gui->addButton(rect, nullptr, ID_BUTTON, L":)");
+	m_button->setToolTipText(L"Toogle smiley picker");
 
 	drawSelector();
 }

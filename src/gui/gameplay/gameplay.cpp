@@ -120,6 +120,7 @@ void SceneGameplay::draw()
 		eb->setImage(m_gui->driver->getTexture("assets/textures/icon_leave.png"));
 		eb->setScaleImage(true);
 		eb->setUseAlphaChannel(true);
+		eb->setToolTipText(L"Leave world");
 	}
 
 	x_pos += 60;
@@ -133,6 +134,7 @@ void SceneGameplay::draw()
 
 		auto e = gui->addButton(rect_3, nullptr, ID_BtnGodMode, L"G");
 		e->setEnabled(pflags.flags & PlayerFlags::PF_GODMODE);
+		e->setToolTipText(L"Toogle god mode (fly)");
 
 		x_pos += 40;
 	}
@@ -151,6 +153,7 @@ void SceneGameplay::draw()
 		eb->setImage(m_gui->driver->getTexture("assets/textures/icon_chat.png"));
 		eb->setScaleImage(true);
 		eb->setUseAlphaChannel(true);
+		eb->setToolTipText(L"Toggle chat input box");
 
 		x_pos += 55;
 
@@ -181,6 +184,7 @@ void SceneGameplay::draw()
 		eb->setImage(m_gui->driver->getTexture("assets/textures/icon_minimap.png"));
 		eb->setScaleImage(true);
 		eb->setUseAlphaChannel(true);
+		eb->setToolTipText(L"Toggle minimap");
 	}
 
 	{
