@@ -9,7 +9,7 @@ extern size_t CONNECTION_MTU;
 
 namespace fs = std::filesystem;
 
-static Logger logger("ServerMedia", LL_DEBUG);
+static Logger logger("ServerMedia", LL_INFO);
 
 
 // -------------- ServerMedia --------------
@@ -56,7 +56,7 @@ void ServerMedia::writeMediaList(RemotePlayer *player, Packet &pkt)
 
 		pkt.writeStr16(name);
 		pkt.write<u32>(file.file_size);
-		pkt.write<u64>(file.data_hash);
+		pkt.write<u32>(file.data_hash);
 	}
 }
 

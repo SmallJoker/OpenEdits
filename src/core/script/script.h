@@ -58,7 +58,11 @@ public:
 
 	// -------- Player API
 public:
-	void setPlayer(Player *player) { m_player = player; }
+	void setPlayer(Player *player)
+	{
+		m_player = player;
+		m_player_controls_cached = false;
+	}
 
 private:
 	static int l_player_get_pos(lua_State *L);
@@ -67,9 +71,10 @@ private:
 	static int l_player_set_vel(lua_State *L);
 	static int l_player_get_acc(lua_State *L);
 	static int l_player_set_acc(lua_State *L);
+	static int l_player_get_controls(lua_State *L);
 
 	Player *m_player = nullptr;
-
+	bool m_player_controls_cached = false;
 
 
 	// -------- Members

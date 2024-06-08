@@ -142,6 +142,10 @@ bool Script::init()
 	lua_pushlightuserdata(L, this);
 	lua_rawseti(L, LUA_REGISTRYINDEX, CUSTOM_RIDX_SCRIPT);
 
+	// `lua_ref` uses LUA_REGISTRYINDEX too, so we must reserve slots beforehand.
+	lua_newtable(L);
+	lua_rawseti(L, LUA_REGISTRYINDEX, CUSTOM_RIDX_PLAYER_CONTROLS);
+
 #define FIELD_SET_FUNC(prefix, name) \
 	field_set_function(L, #name, Script::l_ ## prefix ## name)
 
@@ -168,6 +172,7 @@ bool Script::init()
 			FIELD_SET_FUNC(player_, set_vel);
 			FIELD_SET_FUNC(player_, get_acc);
 			FIELD_SET_FUNC(player_, set_acc);
+			FIELD_SET_FUNC(player_, get_controls);
 		}
 		lua_setfield(L, -2, "player");
 	}

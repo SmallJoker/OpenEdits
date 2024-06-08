@@ -4,7 +4,6 @@
 env.player = <userdata>
 env.API_VERSION = 1
 env.test_mode = string/nil (used by unittest)
-env.register_block(def)
 ]]
 
 -- BlockProperties::CollisionType
@@ -65,6 +64,28 @@ local function change_blocks(block_defs)
 	end
 end
 
+---------- Parameters (TODO)
+
+--[[
+coins = env.new_parameter("coins", "player", env.PARAMTYPE_U32)
+-- In a callback:
+local val = coins.get()
+coins.set(325) -- sends updates, if the server assigned the std::set<id> *ptr; (in Player)
+coins.on_change(function()
+	env.hud.set("da da da. aha. " .. coins.get())
+end)
+
+
+change_block({
+	paramtype = env.PARAMTYPE_U8U8,
+	test = function(bx, by)
+		local num_u8_1, num_u8_2  = env.world.get_params(bx, by)
+		if num_u8_1 then
+			--env.world.set_params() server only
+		end
+	end
+})
+]]
 
 ---------- Blocks tab
 
@@ -136,7 +157,7 @@ local function make_oneway_block(id)
 			if is_x then
 				-- Sideway gate
 				local _, py = player.get_pos()
-				local ctrl_jump = true -- TODO get player controls
+				local ctrl_jump = player.get_controls().jump
 				if py == by and not ctrl_jump then
 					return env.COLLISION_TYPE_POSITION
 				end

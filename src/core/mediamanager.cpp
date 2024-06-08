@@ -1,13 +1,9 @@
 #include "mediamanager.h"
 #include "filesystem.h"
 #include "logger.h"
-extern "C" {
-#include "sha3.h"
-}
 #include <filesystem>
 
 namespace fs = std::filesystem;
-constexpr int SHA3_VARIANT = 256;
 const std::string MediaManager::ASSETS_DIR = "assets";
 
 static Logger logger("MediaManager", LL_WARN);
@@ -27,14 +23,15 @@ MediaManager::AssetType MediaManager::File::getTypeFromFileName(const std::strin
 	return AssetType::Invalid;
 }
 
+// Provided by zlib
+extern "C"
+unsigned long crc32_z(unsigned long adler, const unsigned char *buf, size_t len);
+
 void MediaManager::File::computeHash()
 {
 	data_hash = 0;
 	file_size = data.size();
-	sha3_HashBuffer(SHA3_VARIANT, SHA3_FLAGS_KECCAK,
-		data.data(), data.size(),
-		&data_hash, sizeof(data_hash)
-	);
+	data_hash = crc32_z(0, data.data(), data.size());
 }
 
 void MediaManager::File::uncacheRAMif(time_t olderthan)

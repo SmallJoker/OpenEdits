@@ -10,7 +10,6 @@
 	#include "gui/gui.h"
 	static Gui *my_gui = nullptr;
 	static ClientStartData start_data;
-	static std::string start_world_id;
 #endif
 
 #ifdef __unix__
@@ -39,7 +38,7 @@ static void sigint_handler(int signal)
 	exit_cleanup();
 }
 
-static int run_client(bool use_start_data)
+static int run_client()
 {
 	if (!BUILD_CLIENT) {
 		puts("-!- Client is not available on this build.");
@@ -49,9 +48,8 @@ static int run_client(bool use_start_data)
 #if BUILD_CLIENT
 	Gui gui;
 	my_gui = &gui;
-	bool logged_in = !use_start_data || gui.connect(start_data);
-	if (logged_in && use_start_data && !start_world_id.empty())
-		gui.joinWorld(start_world_id);
+	if (!start_data.nickname.empty())
+		gui.connect(start_data);
 	gui.run();
 	my_gui = nullptr;
 #endif
@@ -122,7 +120,7 @@ static int server_setrole(char *username_raw, char *role)
 static int parse_args(int argc, char *argv[])
 {
 	if (argc < 2)
-		return BUILD_CLIENT ? run_client(false) : run_server();
+		return BUILD_CLIENT ? run_client() : run_server();
 
 	const char *MISSING_ARGS = "-!- Incorrect number of arguments. Expected: ";
 
@@ -157,12 +155,14 @@ static int parse_args(int argc, char *argv[])
 		start_data.nickname = argv[2];
 		start_data.password = argv[3];
 		if (argc > 4)
-			start_world_id = argv[4];
+			start_data.world_id = argv[4];
 		// else: empty
 #endif
 
+		puts(start_data.nickname.c_str());
+		puts(start_data.world_id.c_str());
 		// Login to server
-		return run_client(true);
+		return run_client();
 	}
 
 	puts("-!- Unknown command line option.");

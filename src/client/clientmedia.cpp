@@ -19,7 +19,7 @@ std::string MediaManager::File::getDiskFileName()
 	ret.append(CACHE_DIR);
 
 	char buf[8 * 2 + 1 + 1];
-	snprintf(buf, sizeof(buf), "/%0zx", this->data_hash);
+	snprintf(buf, sizeof(buf), "/%0x", this->data_hash);
 	ret.append(buf);
 
 	return ret;
@@ -38,7 +38,7 @@ void ClientMedia::readMediaList(Packet &pkt)
 			break;
 
 		size_t size = pkt.read<uint32_t>();
-		uint64_t data_hash = pkt.read<uint64_t>();
+		uint32_t data_hash = pkt.read<uint32_t>();
 
 		File file;
 		file.file_size = size;

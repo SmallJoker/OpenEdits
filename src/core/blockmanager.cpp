@@ -8,7 +8,7 @@
 
 BlockManager *g_blockmanager = nullptr;
 
-static Logger logger("BlockManager", LL_DEBUG);
+static Logger logger("BlockManager", LL_INFO);
 
 BlockProperties::BlockProperties(bid_t id, BlockDrawType type) :
 	id(id)
@@ -51,6 +51,7 @@ BlockManager::BlockManager()
 
 BlockManager::~BlockManager()
 {
+	bool do_log = !m_packs.empty();
 	for (auto p : m_packs)
 		delete p;
 	m_packs.clear();
@@ -59,7 +60,7 @@ BlockManager::~BlockManager()
 		delete p;
 	m_props.clear();
 
-	logger(LL_PRINT, "Freed registered data");
+	logger(do_log ? LL_PRINT : LL_DEBUG, "Freed registered data");
 }
 
 void BlockManager::read(Packet &pkt)

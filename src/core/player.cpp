@@ -292,7 +292,15 @@ void Player::stepInternal(float dtime)
 
 	// Do NOT normalize "m_controls.dir" directly. It must represent the pressed keys.
 	core::vector2df dir_normal = m_controls.dir;
-	dir_normal.normalize();
+	{
+		float factor = dir_normal.getLength();
+		// Allow slower movement but not faster (analog joystick)
+		if (factor > 1)
+			factor = 1;
+
+		if (factor > 0)
+			dir_normal *= 1 / factor;
+	}
 
 	// Apply direction
 	if (controls_enabled) {

@@ -30,6 +30,7 @@ struct ClientStartData {
 	std::string address;
 	std::string nickname;
 	std::string password;
+	std::string world_id;
 };
 
 // Abstract for inheritance

@@ -28,6 +28,7 @@ namespace ScriptUtils {
 	enum RIDX_Indices : lua_Integer {
 		CUSTOM_RIDX_SCRIPT = 1,
 		CUSTOM_RIDX_TRACEBACK,
+		CUSTOM_RIDX_PLAYER_CONTROLS,
 	};
 
 	Script *get_script(lua_State *L);

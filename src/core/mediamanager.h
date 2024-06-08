@@ -22,14 +22,14 @@ public:
 		static AssetType getTypeFromFileName(const std::string &str);
 
 		size_t file_size = 0;
-		uint64_t data_hash = 0;
+		uint32_t data_hash = 0;
 		std::string file_path;
 
 		// For caching purposes
 		std::vector<uint8_t> data;
 		time_t cache_last_hit = 0;
 
-		/// Trimmed SHA256 hash based on the contents in "data"
+		/// Calculate hash based on the contents in "data"
 		void computeHash();
 
 		/// Clears the data when

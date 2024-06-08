@@ -115,8 +115,19 @@ void Client::step(float dtime)
 	m_time_prev = m_time;
 	m_time = getTimeNowDIV();
 
-	if (m_state == ClientState::MediaDownload) {
-		initScript();
+	switch (m_state) {
+		case ClientState::MediaDownload:
+			initScript();
+			break;
+		case ClientState::LobbyIdle:
+			if (!m_start_data.world_id.empty()) {
+				GameEvent e(GameEvent::G2C_JOIN);
+				e.text = new std::string();
+				std::swap(*e.text, m_start_data.world_id);
+				OnEvent(e);
+			}
+		default:
+			break;
 	}
 
 	auto world = getWorld();
