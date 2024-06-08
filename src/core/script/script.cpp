@@ -200,6 +200,7 @@ void Script::close()
 	for (BlockProperties *props : list) {
 		if (!props)
 			continue;
+		props->ref_intersect_once = LUA_REFNIL;
 		props->ref_on_intersect = LUA_REFNIL;
 		props->ref_on_collide = LUA_REFNIL;
 	}

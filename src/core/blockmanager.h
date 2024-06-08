@@ -94,6 +94,7 @@ struct BlockProperties {
 	BP_COLLIDE_CALLBACK(*onCollide) = nullptr;
 
 	// Lua callbacks. Make sure to update `Script::close` too.
+	int ref_intersect_once = -2; // LUA_NOREF
 	int ref_on_intersect = -2; // LUA_NOREF
 	int ref_on_collide = -2; // LUA_NOREF
 };

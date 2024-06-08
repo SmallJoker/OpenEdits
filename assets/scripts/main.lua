@@ -135,8 +135,12 @@ local blocks_action = {
 	{
 		id = 4,
 		viscosity = 0.1,
+		on_intersect_once = function()
+			local px, py = player.get_pos()
+			print("intersect", px, py)
+		end,
 		on_intersect = function()
-			-- nop
+			-- nop (overwrite block_id=0
 		end,
 	}
 }

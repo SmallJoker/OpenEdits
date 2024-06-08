@@ -263,10 +263,12 @@ void Player::stepInternal(float dtime)
 		props = m_world->getBlockMgr()->getProps(block.id);
 	}
 
-	if (on_touch_blocks && bp != last_pos) {
-		if (props && props->trigger_on_touch) {
+	if (props && bp != last_pos) {
+		if (m_script)
+			m_script->onIntersectOnce(props);
+
+		if (on_touch_blocks && props->trigger_on_touch)
 			on_touch_blocks->emplace(bp);
-		}
 	}
 
 	if (!godmode) {

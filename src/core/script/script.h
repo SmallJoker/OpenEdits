@@ -46,6 +46,9 @@ public:
 	bool haveOnIntersect(const BlockProperties *props) const;
 	void onIntersect(const BlockProperties *props);
 
+	bool haveOnIntersectOnce(const BlockProperties *props) const;
+	void onIntersectOnce(const BlockProperties *props);
+
 	struct CollisionInfo {
 		const BlockProperties *props = nullptr;
 		blockpos_t pos;

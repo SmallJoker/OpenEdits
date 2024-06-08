@@ -34,8 +34,38 @@ void Script::onIntersect(const BlockProperties *props)
 	luaL_checktype(L, -1, LUA_TFUNCTION);
 	// Execute!
 	if (lua_pcall(L, 0, 0, 0)) {
-		logger(LL_ERROR, "on_intersect pack='%s' failed: %s\n",
-			props->pack->name.c_str(),
+		logger(LL_ERROR, "on_intersect block=%d failed: %s\n",
+			props->id,
+			lua_tostring(L, -1)
+		);
+		lua_settop(L, top); // function + error msg
+		return;
+	}
+
+	lua_settop(L, top);
+}
+
+
+bool Script::haveOnIntersectOnce(const BlockProperties *props) const
+{
+	return props && props->ref_intersect_once >= 0;
+}
+
+void Script::onIntersectOnce(const BlockProperties *props)
+{
+	lua_State *L = m_lua;
+	m_last_block_id = props->id;
+
+	if (!haveOnIntersectOnce(props))
+		return; // NOP
+
+	int top = lua_gettop(L);
+	lua_rawgeti(L, LUA_REGISTRYINDEX, props->ref_intersect_once);
+	luaL_checktype(L, -1, LUA_TFUNCTION);
+	// Execute!
+	if (lua_pcall(L, 0, 0, 0)) {
+		logger(LL_ERROR, "on_intersect_once block=%d failed: %s\n",
+			props->id,
 			lua_tostring(L, -1)
 		);
 		lua_settop(L, top); // function + error msg

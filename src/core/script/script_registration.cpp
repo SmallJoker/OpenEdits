@@ -19,6 +19,19 @@ static bool function_to_ref(lua_State *L, int &ref)
 	return ref >= 0;
 }
 
+static void function_ref_from_field(lua_State *L, int idx, const char *field, int &ref)
+{
+	lua_getfield(L, idx, field);
+	if (!lua_isnil(L, -1)) {
+		bool ok = function_to_ref(L, ref);
+		if (!ok) {
+			logger(LL_ERROR, "%s ref failed\n", lua_tostring(L, -2));
+		}
+	} else {
+		lua_pop(L, 1);
+	}
+}
+
 namespace {
 	struct BlockID {
 		bid_t id;
@@ -124,25 +137,9 @@ int Script::l_change_block(lua_State *L)
 
 	// ---------- Physics
 
-	lua_getfield(L, 2, "on_intersect");
-	if (!lua_isnil(L, -1)) {
-		bool ok = function_to_ref(L, props->ref_on_intersect);
-		if (!ok) {
-			logger(LL_ERROR, "%s ref failed\n", lua_tostring(L, -2));
-		}
-	} else {
-		lua_pop(L, 1);
-	}
-
-	lua_getfield(L, 2, "on_collide");
-	if (!lua_isnil(L, -1)) {
-		bool ok = function_to_ref(L, props->ref_on_collide);
-		if (!ok) {
-			logger(LL_ERROR, "%s ref failed\n", lua_tostring(L, -2));
-		}
-	} else {
-		lua_pop(L, 1);
-	}
+	function_ref_from_field(L, 2, "on_intersect_once", props->ref_intersect_once);
+	function_ref_from_field(L, 2, "on_intersect",      props->ref_on_intersect);
+	function_ref_from_field(L, 2, "on_collide",        props->ref_on_collide);
 
 	lua_getfield(L, 2, "viscosity");
 	if (!lua_isnil(L, -1)) {
