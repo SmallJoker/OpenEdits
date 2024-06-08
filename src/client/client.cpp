@@ -632,6 +632,7 @@ void Client::initScript()
 	if (!m_script->loadFromAsset("main.lua"))
 		goto error;
 
+	m_script->setMyPlayer(getPlayerNoLock(m_my_peer_id));
 	m_state = ClientState::LobbyIdle;
 	// maybe generate an event?
 

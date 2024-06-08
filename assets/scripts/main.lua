@@ -210,6 +210,27 @@ env.register_pack({
 change_blocks(blocks_candy)
 
 
+local blocks_coins = {
+	{
+		id = 100,
+		tiles = { { alpha = true }, { alpha = true } },
+		on_intersect_once = function(tile)
+			if tile == 0 then
+				-- TODO: play sound
+				env.world.set_tile(nil, nil, 1)
+			end
+		end
+	},
+}
+
+env.register_pack({
+	name = "coins",
+	default_type = env.DRAW_TYPE_ACTION,
+	blocks = table_to_pack_blocks(blocks_coins)
+})
+
+change_blocks(blocks_coins)
+
 ---------- Decoration tab
 
 

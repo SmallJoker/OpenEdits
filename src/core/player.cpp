@@ -264,8 +264,10 @@ void Player::stepInternal(float dtime)
 	}
 
 	if (props && bp != last_pos) {
-		if (m_script)
+		if (m_script) {
+			last_pos = bp;
 			m_script->onIntersectOnce(props);
+		}
 
 		if (on_touch_blocks && props->trigger_on_touch)
 			on_touch_blocks->emplace(bp);

@@ -187,6 +187,8 @@ public:
 	mutable std::mutex mutex; // used by Server/Client
 	std::unordered_set<BlockUpdate, BlockUpdateHash> proc_queue; // for networking
 
+	bool was_modified = false; //< used by clients to re-render the world
+
 protected:
 	inline Block &getBlockRefNoCheck(const blockpos_t pos) const
 	{

@@ -59,12 +59,23 @@ public:
 	int onCollide(CollisionInfo ci);
 
 
+	// -------- Environment
+private:
+	static int l_world_get_block(lua_State *L);
+	static int l_world_set_tile(lua_State *L);
+
+
 	// -------- Player API
 public:
 	void setPlayer(Player *player)
 	{
 		m_player = player;
 		m_player_controls_cached = false;
+	}
+	/// For client-use only
+	void setMyPlayer(Player *player)
+	{
+		m_my_player = player;
 	}
 
 private:
@@ -77,6 +88,7 @@ private:
 	static int l_player_get_controls(lua_State *L);
 
 	Player *m_player = nullptr;
+	const Player *m_my_player = nullptr;
 	bool m_player_controls_cached = false;
 
 

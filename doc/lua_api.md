@@ -25,7 +25,19 @@ Main entry point: `main.lua`
     * Includes detailed argument dumping
 
 
-### Player manipulations
+### Environment API
+
+Namespace: `env.world`. Associated to the world of the currently
+active player of the callback.
+
+ * `get_block(x, y)` -> `fg, tile, bg`
+    * `x, y` (optional): if set to `nil`, the current player position is used.
+ * `set_tile(x, y, tile)`
+    * Sets the block tile
+    * `x, y` (optional): if set to `nil`, the current player position is used.
+
+
+### Player API
 
 Namespace: `env.player`. Associated to the currently active player
 of the callback.
@@ -64,6 +76,7 @@ Block Definition - regular fields:
         * `alpha` (optional, boolean): whether to force-draw the alpha channel.
           By default, this is inherited from the draw type of the tile.
     * Tile limit: 8.
+    * Only foreground blocks (`type != env.DRAW_TYPE_BACKGROUND`) can have >= 1 tile.
  * `viscosity` (optional, number)
     * Higher values slow the player down more
     * Default: `1.0`
@@ -75,6 +88,7 @@ Block Definition - callbacks:
     * `is_x` (boolean): Indicates the direction of collision
  * `on_intersect()` <- `nil`
     * Called while the player's center position is within the block.
- * `on_intersect_once()` <- `nil`
+ * `on_intersect_once(tile)` <- `nil`
     * Called once when entering the block.
+    * `tile` (number): The tile index of the block
 

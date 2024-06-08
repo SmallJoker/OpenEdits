@@ -175,6 +175,13 @@ bool Script::init()
 			FIELD_SET_FUNC(player_, get_controls);
 		}
 		lua_setfield(L, -2, "player");
+
+		lua_newtable(L);
+		{
+			FIELD_SET_FUNC(world_, get_block);
+			FIELD_SET_FUNC(world_, set_tile);
+		}
+		lua_setfield(L, -2, "world");
 	}
 	lua_setglobal(L, "env");
 

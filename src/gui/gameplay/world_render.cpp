@@ -224,6 +224,12 @@ void SceneWorldRender::drawBlocksInView()
 	);
 
 	{
+		bool modified = world->was_modified;
+		world->was_modified = false;
+		m_dirty_worldmesh |= modified;
+	}
+
+	if (!m_dirty_worldmesh) {
 		// Figure out whether we need to redraw
 		core::recti required_area(
 			core::vector2di(x_center - x_extent, y_center - y_extent),
@@ -234,11 +240,10 @@ void SceneWorldRender::drawBlocksInView()
 		core::recti clipped = m_drawn_blocks;
 		clipped.clipAgainst(required_area); // overlapping area
 
-		if (!m_dirty_worldmesh && clipped.getArea() >= required_area.getArea())
+		if (clipped.getArea() >= required_area.getArea())
 			return;
-
-		m_dirty_worldmesh = false;
 	}
+	m_dirty_worldmesh = false;
 
 	m_blocks_node->removeAll();
 

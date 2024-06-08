@@ -1,7 +1,9 @@
 #include "script.h"
 #include "core/blockmanager.h"
 #include "core/logger.h"
-#include <core/macros.h>
+#include "core/macros.h"
+#include "core/player.h"
+#include "core/world.h"
 
 extern "C" {
 	#include <lauxlib.h>
@@ -59,11 +61,16 @@ void Script::onIntersectOnce(const BlockProperties *props)
 	if (!haveOnIntersectOnce(props))
 		return; // NOP
 
+	Block block;
+	m_player->getWorld()->getBlock(m_player->last_pos, &block);
+
 	int top = lua_gettop(L);
 	lua_rawgeti(L, LUA_REGISTRYINDEX, props->ref_intersect_once);
 	luaL_checktype(L, -1, LUA_TFUNCTION);
+	lua_pushnumber(L, block.tile);
+
 	// Execute!
-	if (lua_pcall(L, 0, 0, 0)) {
+	if (lua_pcall(L, 1, 0, 0)) {
 		logger(LL_ERROR, "on_intersect_once block=%d failed: %s\n",
 			props->id,
 			lua_tostring(L, -1)
