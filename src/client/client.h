@@ -9,7 +9,7 @@
 class ClientMedia;
 class Connection;
 class LocalPlayer;
-class Script;
+class ClientScript;
 
 struct ClientPacketHandler;
 enum class Packet2Server : uint16_t;
@@ -124,7 +124,7 @@ private:
 
 	Auth m_auth;
 	ClientMedia *m_media = nullptr;
-	Script *m_script = nullptr;
+	ClientScript *m_script = nullptr;
 };
 
 struct ClientPacketHandler {

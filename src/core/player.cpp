@@ -364,7 +364,7 @@ bool Player::stepCollisions(float dtime)
 	// single block effect
 	bool handled = false;
 	if (props) {
-		if (m_script && m_script->haveOnIntersect(props)) {
+		if (props->haveOnIntersect()) {
 			m_script->onIntersect(props);
 			handled = true;
 		} else if (props->step) {
@@ -417,7 +417,7 @@ void Player::collideWith(float dtime, int x, int y)
 	if (!props)
 		return;
 
-	bool have_on_collide_script = m_script && m_script->haveOnCollide(props);
+	bool have_on_collide_script = props->haveOnCollide();
 
 	if (props->getTile(b).type != BlockDrawType::Solid
 			&& !(props->onCollide || have_on_collide_script))

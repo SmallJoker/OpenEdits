@@ -12,10 +12,11 @@ class Player;
 class Script {
 public:
 	Script(BlockManager *bmgr);
-	~Script();
+	virtual ~Script();
 
 	bool init();
 	void close();
+	virtual void step(float dtime) {}
 
 	void setMediaMgr(MediaManager *media) { m_media = media; }
 	/// Safe file loader
@@ -43,10 +44,7 @@ private:
 
 	// -------- Callbacks
 public:
-	bool haveOnIntersect(const BlockProperties *props) const;
 	void onIntersect(const BlockProperties *props);
-
-	bool haveOnIntersectOnce(const BlockProperties *props) const;
 	void onIntersectOnce(const BlockProperties *props);
 
 	struct CollisionInfo {
@@ -54,12 +52,14 @@ public:
 		blockpos_t pos;
 		bool is_x = false;
 	};
-	bool haveOnCollide(const BlockProperties *props) const;
 	/// Returns a valid value of BlockProperties::CollisionType
 	int onCollide(CollisionInfo ci);
 
 
 	// -------- Environment
+protected:
+	virtual int implWorldSetTile(blockpos_t pos, int tile) = 0;
+
 private:
 	static int l_world_get_block(lua_State *L);
 	static int l_world_set_tile(lua_State *L);
@@ -72,11 +72,6 @@ public:
 		m_player = player;
 		m_player_controls_cached = false;
 	}
-	/// For client-use only
-	void setMyPlayer(Player *player)
-	{
-		m_my_player = player;
-	}
 
 private:
 	static int l_player_get_pos(lua_State *L);
@@ -86,14 +81,13 @@ private:
 	static int l_player_get_acc(lua_State *L);
 	static int l_player_set_acc(lua_State *L);
 	static int l_player_get_controls(lua_State *L);
-
+protected:
 	Player *m_player = nullptr;
-	const Player *m_my_player = nullptr;
 	bool m_player_controls_cached = false;
 
 
 	// -------- Members
-private:
+protected:
 	lua_State *m_lua = nullptr;
 	BlockManager *m_bmgr = nullptr;
 	MediaManager *m_media = nullptr;

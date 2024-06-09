@@ -3,11 +3,11 @@
 #include "database_world.h"
 #include "remoteplayer.h"
 #include "servermedia.h"
+#include "serverscript.h"
 #include "core/blockmanager.h"
 #include "core/logger.h"
 #include "core/network_enums.h"
 #include "core/packet.h"
-#include "core/script/script.h"
 #include "core/world.h"
 #include "version.h"
 
@@ -59,7 +59,7 @@ Server::Server(bool *shutdown_requested) :
 		}
 	}
 
-	m_script = new Script(m_bmgr);
+	m_script = new ServerScript(m_bmgr);
 	if (!m_script->init()) {
 		logger(LL_ERROR, "Failed to initialize Lua");
 		goto error;
@@ -79,7 +79,7 @@ Server::Server(bool *shutdown_requested) :
 		}
 
 		m_bmgr->setMediaMgr(m_media);
-		m_bmgr->requireAllTextures();
+		m_bmgr->sanityCheck();
 		m_media_unload_timer.set(4);
 	}
 

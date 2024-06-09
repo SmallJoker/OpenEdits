@@ -2,15 +2,15 @@
 
 #include "core/blockmanager.h"
 #include "core/connection.h" // PROTOCOL_VERSION_*
-#include "core/script/script.h"
 #include "server/remoteplayer.h"
+#include "server/serverscript.h"
 
 
 void unittest_script()
 {
 	BlockManager bmgr;
 
-	Script script(&bmgr);
+	ServerScript script(&bmgr);
 	script.do_load_string_n_table = true;
 	CHECK(script.init());
 	script.setTestMode("init");

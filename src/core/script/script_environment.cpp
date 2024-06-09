@@ -36,9 +36,6 @@ int Script::l_world_set_tile(lua_State *L)
 	Script *script = get_script(L);
 	Player *player = script->m_player;
 
-	if (player != script->m_my_player)
-		return 0;
-
 	blockpos_t pos = player->last_pos;
 	if (!lua_isnil(L, 1)) {
 		// automatic floor
@@ -47,17 +44,6 @@ int Script::l_world_set_tile(lua_State *L)
 	}
 	int tile = luaL_checkinteger(L, 3);
 
-	World *world = player->getWorld().get();
-	if (!world)
-		luaL_error(L, "no world");
-
-	Block *b = world->getBlockPtr(pos);
-	if (!b)
-		luaL_error(L, "invalid position");
-
-	SimpleLock lock(world->mutex);
-	b->tile = tile;
-	world->was_modified = true;
-	return 0;
+	return script->implWorldSetTile(pos, tile);
 }
 

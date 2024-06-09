@@ -224,13 +224,30 @@ static void split_texture(video::IVideoDriver *driver, BlockTile *tile, u8 textu
 	img->drop();
 }
 
-void BlockManager::requireAllTextures()
+void BlockManager::sanityCheck()
 {
-	ASSERT_FORCED(m_media, "Missing MediaManager");
-
 	for (auto pack : m_packs) {
-		m_media->requireAsset(("pack_" + pack->name + ".png").c_str());
+		for (bid_t id : pack->block_ids) {
+			auto prop = m_props[id];
+
+			if (m_media)
+				m_media->requireAsset(("pack_" + pack->name + ".png").c_str());
+
+			if (prop->tile_dependent_physics == -1) {
+				// Help to make sure that the clients' prediction is always correct
+				prop->tile_dependent_physics = 0;
+				bool first_solid = (prop->tiles[0].type == BlockDrawType::Solid);
+				for (const BlockTile &tile : prop->tiles) {
+					bool is_solid = (tile.type == BlockDrawType::Solid);
+					if (first_solid != is_solid) {
+						prop->tile_dependent_physics = 1;
+						break;
+					}
+				}
+			}
+		}
 	}
+
 }
 
 void BlockManager::populateTextures()
@@ -241,6 +258,8 @@ void BlockManager::populateTextures()
 	ASSERT_FORCED(m_driver, "Missing driver");
 	if (!m_media)
 		logger(LL_WARN, "No MediaManager available\n");
+
+	sanityCheck();
 
 	m_missing_texture = m_driver->getTexture("assets/textures/missing_texture.png");
 

@@ -75,6 +75,12 @@ struct BlockProperties {
 
 	// -------------- Physics -------------
 
+	/// Whether the physics depend on the tile index
+	/// This means, any tile change must be broadcast to all players in the world
+	/// to ensure proper physics predictions.
+	/// -1: not specified. 0: not dependent, 1: is dependent
+	int8_t tile_dependent_physics = -1;
+
 	float viscosity = 1;
 
 	enum class CollisionType {
@@ -97,6 +103,9 @@ struct BlockProperties {
 	int ref_intersect_once = -2; // LUA_NOREF
 	int ref_on_intersect = -2; // LUA_NOREF
 	int ref_on_collide = -2; // LUA_NOREF
+	inline bool haveOnIntersectOnce() const { return ref_intersect_once >= 0; }
+	inline bool haveOnIntersect()     const { return ref_on_intersect >= 0; }
+	inline bool haveOnCollide()       const { return ref_on_collide >= 0; }
 };
 
 class BlockManager {
@@ -113,7 +122,7 @@ public:
 	void registerPack(BlockPack *pack);
 	void setDriver(video::IVideoDriver *driver);
 	void setMediaMgr(MediaManager *media) { m_media = media; }
-	void requireAllTextures(); // for server use
+	void sanityCheck(); // to run after everything is initialized
 	void populateTextures();
 
 	// Blocks

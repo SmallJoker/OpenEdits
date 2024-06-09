@@ -14,17 +14,12 @@ extern Logger script_logger;
 static Logger &logger = script_logger;
 
 
-bool Script::haveOnIntersect(const BlockProperties *props) const
-{
-	return props && props->ref_on_intersect >= 0;
-}
-
 void Script::onIntersect(const BlockProperties *props)
 {
 	lua_State *L = m_lua;
 	m_last_block_id = props->id;
 
-	if (!haveOnIntersect(props)) {
+	if (!props || !props->haveOnIntersect()) {
 		// no callback registered: fall-back to air
 		props = m_bmgr->getProps(0);
 	}
@@ -47,18 +42,12 @@ void Script::onIntersect(const BlockProperties *props)
 	lua_settop(L, top);
 }
 
-
-bool Script::haveOnIntersectOnce(const BlockProperties *props) const
-{
-	return props && props->ref_intersect_once >= 0;
-}
-
 void Script::onIntersectOnce(const BlockProperties *props)
 {
 	lua_State *L = m_lua;
 	m_last_block_id = props->id;
 
-	if (!haveOnIntersectOnce(props))
+	if (!props || !props->haveOnIntersectOnce())
 		return; // NOP
 
 	Block block;
@@ -82,12 +71,6 @@ void Script::onIntersectOnce(const BlockProperties *props)
 	lua_settop(L, top);
 }
 
-
-bool Script::haveOnCollide(const BlockProperties *props) const
-{
-	return props && props->ref_on_collide >= 0;
-}
-
 int Script::onCollide(CollisionInfo ci)
 {
 	/*
@@ -104,18 +87,22 @@ int Script::onCollide(CollisionInfo ci)
 		-> This is perfectly fine.
 	*/
 
-	lua_State *L = m_lua;
-	m_last_block_id = ci.props->id;
+	const BlockProperties *props = ci.props;
 	using CT = BlockProperties::CollisionType;
+	if (!props)
+		return (int)CT::None;
 
-	if (!haveOnCollide(ci.props)) {
-		ASSERT_FORCED(ci.props->tiles[0].type != BlockDrawType::Solid,
-			"Should not be called.");
+	m_last_block_id = props->id;
+
+	if (!props->haveOnCollide()) {
+		ASSERT_FORCED(props->tiles[0].type != BlockDrawType::Solid,
+			"onCollide called on solid");
 		return (int)CT::None; // should not be returned: incorrect on solids
 	}
 
+	lua_State *L = m_lua;
 	int top = lua_gettop(L);
-	lua_rawgeti(L, LUA_REGISTRYINDEX, ci.props->ref_on_collide);
+	lua_rawgeti(L, LUA_REGISTRYINDEX,props->ref_on_collide);
 	luaL_checktype(L, -1, LUA_TFUNCTION);
 	lua_pushinteger(L, ci.pos.X);
 	lua_pushinteger(L, ci.pos.Y);

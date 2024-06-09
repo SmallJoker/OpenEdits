@@ -50,16 +50,15 @@ static void test_server_client()
 }
 
 #include "core/blockmanager.h"
-#include "core/script/script.h"
+#include "client/clientscript.h"
 static void test_with_script()
 {
 	BlockManager bmgr;
-	Script script(&bmgr);
+	ClientScript script(&bmgr);
 
 	script.init();
 	script.setTestMode("media");
 	CHECK(script.loadFromFile("assets/scripts/main.lua"));
-
 }
 
 

@@ -1,5 +1,6 @@
 #include "client.h"
 #include "clientmedia.h"
+#include "clientscript.h"
 #include "localplayer.h"
 #include "core/auth.h"
 #include "core/blockmanager.h"
@@ -7,7 +8,6 @@
 #include "core/logger.h"
 #include "core/network_enums.h"
 #include "core/packet.h"
-#include "core/script/script.h"
 #include "core/utils.h" // to_player_name
 
 #if 0
@@ -96,7 +96,7 @@ void Client::setupMedia(bool need_audiovisuals)
 
 	m_bmgr->setMediaMgr(m_media);
 
-	m_script = new Script(m_bmgr);
+	m_script = new ClientScript(m_bmgr);
 	m_script->setMediaMgr(m_media);
 	ASSERT_FORCED(m_script->init(), "No future.");
 }

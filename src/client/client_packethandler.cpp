@@ -55,7 +55,7 @@ void Client::pkt_Hello(Packet &pkt)
 
 	auto player = std::make_unique<LocalPlayer>(m_my_peer_id);
 	m_start_data.nickname = player->name = pkt.readStr16();
-	player->setScript(m_script);
+	player->setScript((Script *)m_script);
 	m_players.emplace(m_my_peer_id, player.release());
 
 	if (m_protocol_version < 7)
@@ -264,7 +264,7 @@ void Client::pkt_Join(Packet &pkt)
 	}
 	player = getPlayerNoLock(peer_id);
 	player->setWorld(getWorld());
-	player->setScript(m_script);
+	player->setScript((Script *)m_script);
 
 	player->name = pkt.readStr16();
 	player->setGodMode(pkt.read<u8>());

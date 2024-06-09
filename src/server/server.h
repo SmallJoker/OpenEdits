@@ -11,7 +11,7 @@ enum class RemotePlayerState;
 class DatabaseAuth;
 class DatabaseWorld;
 class RemotePlayer;
-class Script;
+class ServerScript;
 class ServerMedia;
 struct ServerPacketHandler;
 struct LobbyWorld;
@@ -83,7 +83,7 @@ private:
 	DatabaseAuth *m_auth_db = nullptr;
 	DatabaseWorld *m_world_db = nullptr;
 
-	Script *m_script = nullptr;
+	ServerScript *m_script = nullptr;
 	ServerMedia *m_media = nullptr;
 	Timer m_media_unload_timer;
 
