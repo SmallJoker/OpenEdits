@@ -149,11 +149,28 @@ static int parse_args(int argc, char *argv[])
 	if (strcmp(argv[1], "--go") == 0) {
 #if BUILD_CLIENT
 		if (argc != 4 && argc != 5) {
-			fprintf(stderr, "%s--go USERNAME PASSWORD [WORLD_ID]\n", MISSING_ARGS);
+			fprintf(stderr, "%s--go USERNAME PASSWORD(FILE) [WORLD_ID]\n", MISSING_ARGS);
 			return EXIT_FAILURE;
 		}
 		start_data.nickname = argv[2];
-		start_data.password = argv[3];
+
+		// Try to find a matching file
+		bool from_file = false;
+		FILE *fh = fopen(argv[3], "r");
+		if (fh) {
+			char *line = nullptr;
+			size_t len;
+			from_file = getline(&line, &len, fh) >= 0;
+			if (from_file) {
+				start_data.password = strtrim(line);
+				puts("--- Using password provided by file");
+			}
+			fclose(fh);
+		}
+
+		if (!from_file)
+			start_data.password = argv[3];
+
 		if (argc > 4)
 			start_data.world_id = argv[4];
 		// else: empty
