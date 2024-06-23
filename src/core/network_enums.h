@@ -24,7 +24,7 @@ enum class Packet2Client : uint16_t {
 	ChatReplay,
 	MediaList,
 	MediaReceive,
-	SetTile,
+	placeholder,
 	MAX_END
 };
 
@@ -46,11 +46,3 @@ enum class Packet2Server : uint16_t {
 	MediaRequest,
 	MAX_END
 };
-
-enum class EPktSetTile : uint8_t {
-	All,
-	AreaMinMax, // "max position" is not included
-	PosList,
-	MAX_END
-};
-

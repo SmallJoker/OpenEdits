@@ -32,9 +32,9 @@ active player of the callback.
 
  * `get_block(x, y)` -> `fg, tile, bg`
     * `x, y` (optional): if set to `nil`, the current player position is used.
- * `set_tile(x, y, tile)`
+ * `set_tile(block_id, tile, PositionRange ...)`
     * Sets the block tile
-    * `x, y` (optional): if set to `nil`, the current player position is used.
+    * `PositionRange` (optional): defines which blocks that are affected
 
 
 ### Player API
@@ -49,11 +49,23 @@ of the callback.
  * `.set_vel(x, y)`
 
 
+### GUI API
+
+Namespace: `env.gui`. Only available for clients.
+
+ * `change_hud(id, HUD Definition)`
+
+HUD Definition: (table)
+
+ * `type` (string)
+ * `value` (any, tbd.)
+
+
 ### Packs
 
  * `env.register_pack(Pack Definition)`
 
-Pack Definition:
+Pack Definition: (table)
 
  * `name` (string): Internal name of the pack. A corresponding
    texture named `pack_{name}.png` is required.

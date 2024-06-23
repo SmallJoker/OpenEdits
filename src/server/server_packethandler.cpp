@@ -819,11 +819,7 @@ void Server::pkt_TriggerBlocks(peer_t peer_id, Packet &pkt)
 					int key_id = b.id - Block::ID_KEY_R;
 					auto &kdata = meta.keys[key_id];
 					if (kdata.set(5.0f)) {
-						Packet out;
-						out.write(Packet2Client::SetTile);
-						out.write(b.id);
-						out.write<u8>(kdata.isActive());
-						broadcastInWorld(player, 1, out);
+						// TODO: replace with events
 					}
 				}
 				break;

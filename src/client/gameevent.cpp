@@ -9,6 +9,7 @@ GameEvent::~GameEvent()
 	using C = GameEvent::C2G_Enum;
 	switch (type_c2g) {
 		case C::C2G_DIALOG:
+		case C::C2G_SOUND_PLAY:
 			delete text;
 			break;
 		case C::C2G_PLAYER_CHAT:
@@ -62,34 +63,32 @@ GameEvent::~GameEvent()
 
 GameEventHandler::~GameEventHandler()
 {
-	setEventHandler(nullptr);
+	setEventTarget(nullptr);
 }
 
-void GameEventHandler::setEventHandler(GameEventHandler *eh)
+void GameEventHandler::setEventTarget(GameEventHandler *eh)
 {
-	if (eh == m_eventhandler)
+	if (eh == m_target)
 		return;
 
-	GameEventHandler *old_eh = m_eventhandler;
-	m_eventhandler = eh;
+	GameEventHandler *old_eh = m_target;
+	m_target = eh;
 
-	if (old_eh)
-		old_eh->setEventHandler(nullptr);
-	if (eh)
-		eh->setEventHandler(this);
+	if (old_eh && old_eh->m_target == this)
+		old_eh->setEventTarget(nullptr);
 }
 
 bool GameEventHandler::sendNewEvent(GameEvent &e)
 {
 	bool handled = false;
-	if (m_eventhandler) {
+	if (m_target) {
 		if (
 				e.type_c2g != GameEvent::C2G_ON_TOUCH_BLOCK && // coin spam
 				e.type_c2g != GameEvent::C2G_MAP_UPDATE // (timed) gates spam
 			) {
 			logger(LL_DEBUG, "c2g=%d, g2c=%d\n", (int)e.type_c2g, (int)e.type_g2c);
 		}
-		handled = m_eventhandler->OnEvent(e);
+		handled = m_target->OnEvent(e);
 	}
 
 	return handled;

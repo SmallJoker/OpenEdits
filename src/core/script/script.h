@@ -22,6 +22,10 @@ public:
 	/// Safe file loader
 	bool loadFromAsset(const std::string &asset_name);
 
+protected:
+	virtual void initSpecifics() {}
+	virtual void closeSpecifics() {}
+
 	// -------- For unittests
 public:
 	/// Setter for `env.test_mode` (unittests)
@@ -38,6 +42,7 @@ public:
 private:
 	/// Includes another script file (asset from cache or disk)
 	static int l_include(lua_State *L);
+	static int l_require_asset(lua_State *L);
 	static int l_register_pack(lua_State *L);
 	static int l_change_block(lua_State *L);
 
@@ -58,7 +63,10 @@ public:
 
 	// -------- Environment
 protected:
-	virtual int implWorldSetTile(blockpos_t pos, int tile) = 0;
+	static void get_position_range(lua_State *L, int idx, PositionRange &range);
+
+	virtual int implWorldSetTile(PositionRange range, bid_t block_id, int tile) = 0;
+
 
 private:
 	static int l_world_get_block(lua_State *L);

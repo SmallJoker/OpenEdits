@@ -99,12 +99,6 @@ static void process_api_whitelist(lua_State *L)
 	lua_pop(L, 1);
 }
 
-static void field_set_function(lua_State *L, const char *name, lua_CFunction func)
-{
-	lua_pushcfunction(L, func);
-	lua_setfield(L, -2, name);
-}
-
 bool Script::init()
 {
 	m_lua = lua_open();
@@ -155,6 +149,7 @@ bool Script::init()
 		lua_pushinteger(L, SCRIPT_API_VERSION);
 		lua_setfield(L, -2, "API_VERSION");
 		FIELD_SET_FUNC(/**/, include);
+		FIELD_SET_FUNC(/**/, require_asset);
 		FIELD_SET_FUNC(/**/, register_pack);
 		FIELD_SET_FUNC(/**/, change_block);
 		/*
@@ -182,8 +177,11 @@ bool Script::init()
 			FIELD_SET_FUNC(world_, set_tile);
 		}
 		lua_setfield(L, -2, "world");
+
+		initSpecifics();
 	}
 	lua_setglobal(L, "env");
+
 
 #undef FIELD_SET_FUNC
 	if (!do_load_string_n_table) {
@@ -201,6 +199,8 @@ void Script::close()
 		return;
 
 	logger(LL_PRINT, "closing ...");
+
+	closeSpecifics();
 
 	auto &list = m_bmgr->getPropsForModification();
 	// Unregister any callbacks. `lua_close` will clean up the references
@@ -299,3 +299,13 @@ int Script::popErrorCount()
 	return logger.popErrorCount();
 }
 
+int Script::l_require_asset(lua_State *L)
+{
+	Script *script = get_script(L);
+	const char *asset_name = luaL_checkstring(L, 1);
+
+	if (!script->m_media->requireAsset(asset_name))
+		lua_error(L);
+
+	return 0;
+}

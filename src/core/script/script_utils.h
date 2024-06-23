@@ -35,6 +35,13 @@ namespace ScriptUtils {
 
 	void cpp_exception_handler(lua_State *L);
 
+	[[maybe_unused]]
+	static void field_set_function(lua_State *L, const char *name, lua_CFunction func)
+	{
+		lua_pushcfunction(L, func);
+		lua_setfield(L, -2, name);
+	}
+
 	const char *check_field_string(lua_State *L, int idx, const char *field);
 	lua_Integer check_field_int(lua_State *L, int idx, const char *field);
 

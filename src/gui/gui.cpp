@@ -82,7 +82,7 @@ Gui::Gui()
 Gui::~Gui()
 {
 	// Avoid double-frees caused by callback chains
-	setEventHandler(nullptr);
+	setEventTarget(nullptr);
 
 	delete m_client;
 	delete m_server;
@@ -305,7 +305,8 @@ bool Gui::connect(ClientStartData &init)
 	g_blockmanager->setDriver(driver);
 
 	m_client = new Client(init);
-	m_client->setEventHandler(this);
+	m_client->setEventTarget(this);
+	setEventTarget(m_client);
 	m_client->setupMedia(true);
 	m_client->connect();
 

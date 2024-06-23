@@ -169,8 +169,10 @@ public:
 	bool getBlock(blockpos_t pos, Block *block) const;
 	bool setBlock(blockpos_t pos, const Block block);
 	blockpos_t getBlockPos(const Block *b) const;
+
 	bool checkUpdateBlockNeeded(BlockUpdate &bu);
 	Block *updateBlock(BlockUpdate bu);
+	bool setBlockTiles(PositionRange range, bid_t block_id, u8 tile);
 	bool getParams(blockpos_t pos, BlockParams *params) const;
 
 	const BlockManager *getBlockMgr() const { return m_bmgr; }

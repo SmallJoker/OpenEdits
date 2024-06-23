@@ -49,3 +49,6 @@ inline float get_sign(float f)
 		return -1;
 	return 0;
 }
+
+/// Pseudo-random number generator
+uint32_t mulberry32_next(uint32_t *state);

@@ -330,3 +330,15 @@ double TimeTaker::stop()
 	return sc::duration_cast<sc::duration<double>>
 		(stop_time - *(timepoint_t *)m_start_time).count();
 }
+
+
+// ------------------ Numeric ------------------
+
+// mulberry32 PRNG (CC 0), (C) 2017, Tommy Ettinger
+// https://gist.github.com/tommyettinger/46a874533244883189143505d203312c
+uint32_t mulberry32_next(uint32_t *state) {
+	uint32_t z = (*state += 0x6D2B79F5UL);
+	z = (z ^ (z >> 15)) * (z | 1UL);
+	z ^= z + (z ^ (z >> 7)) * (z | 61UL);
+	return z ^ (z >> 14);
+}

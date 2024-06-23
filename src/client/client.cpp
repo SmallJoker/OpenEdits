@@ -98,6 +98,7 @@ void Client::setupMedia(bool need_audiovisuals)
 
 	m_script = new ClientScript(m_bmgr);
 	m_script->setMediaMgr(m_media);
+	m_script->setClient(this);
 	ASSERT_FORCED(m_script->init(), "No future.");
 }
 

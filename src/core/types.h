@@ -18,8 +18,21 @@ namespace irr {
 }
 
 typedef core::vector2d<u16> blockpos_t;
-typedef uint16_t bid_t;
 constexpr u16 BLOCKPOS_INVALID = UINT16_MAX;
+
+struct PositionRange {
+	enum Type : uint8_t {
+		T_CURRENT_POS  = 0x00, // pos
+		T_AREA         = 0x01, // minpos, maxpos
+		T_CIRCLE       = 0x02, // pos, radius
+		T_ENTIRE_WORLD = 0x03, // no args
+		T_MAX_INVALID  = 0x04
+	} type = T_MAX_INVALID;
+	blockpos_t minp, maxp;
+	float radius = 0;
+};
+
+typedef uint16_t bid_t;
 
 struct Block {
 	explicit Block() : Block(0) {}
@@ -51,6 +64,7 @@ struct Block {
 		ID_TEXT = 1000,
 		ID_INVALID = UINT16_MAX
 	};
+	static constexpr uint8_t TILES_MAX = (1 << 4) - 1;
 
 	// Apparently we cannot use "union" to write to both fields at once because MSVC is a bitch
 	bid_t id : 12;    // Foreground block ID (max. 4000)

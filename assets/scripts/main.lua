@@ -6,16 +6,35 @@ env.API_VERSION = 1
 env.test_mode = string/nil (used by unittest)
 ]]
 
--- BlockProperties::CollisionType
-env.COLLISION_TYPE_POSITION = 0
-env.COLLISION_TYPE_VELOCITY = 1
-env.COLLISION_TYPE_NONE = 2
+do
+	-- blockmanager.h / BlockProperties::CollisionType
+	env.COLLISION_TYPE_POSITION = 0
+	env.COLLISION_TYPE_VELOCITY = 1
+	env.COLLISION_TYPE_NONE = 2
+end
 
--- blockmanager BlockDrawType
-env.DRAW_TYPE_SOLID = 0
-env.DRAW_TYPE_ACTION = 1
-env.DRAW_TYPE_DECORATION = 2
-env.DRAW_TYPE_BACKGROUND = 3
+do
+	-- blockmanager.h / BlockDrawType
+	env.DRAW_TYPE_SOLID = 0
+	env.DRAW_TYPE_ACTION = 1
+	env.DRAW_TYPE_DECORATION = 2
+	env.DRAW_TYPE_BACKGROUND = 3
+end
+
+do
+	-- types.h / PositionRange::Type
+	local w = env.world
+	w.PRT_CURRENT_POS  = 0x00
+	w.PRT_AREA         = 0x01
+	w.PRT_CIRCLE       = 0x02
+	w.PRT_ENTIRE_WORLD = 0x03
+end
+
+if env.gui then
+	-- hudelement.h / HudElement::Type
+	local h = env.gui
+	h.HUDT_TEXT = 0
+end
 
 -------------- Client & server script
 
@@ -106,6 +125,7 @@ env.change_block(10, {
 
 
 local player = env.player
+local world = env.world
 local blocks_action = {
 	-- Cannot use indices: unordered `pairs` iteration.
 	{
@@ -209,16 +229,24 @@ env.register_pack({
 
 change_blocks(blocks_candy)
 
+env.require_asset("coin.mp3")
 
 local blocks_coins = {
 	{
 		id = 100,
 		tiles = { { alpha = true }, { alpha = true } },
+		on_event = function(event_id)
+			-- TODO: implement
+		end,
 		on_intersect_once = function(tile)
 			if tile == 0 then
 				-- TODO: play sound
-				env.world.set_tile(nil, nil, 1)
+				world.set_tile(100, 1, world.PRT_CURRENT_POS)
+				if env.gui then
+					env.gui.play_sound("coin.mp3")
+				end
 			end
+			-- env.world.event(42, can_predict)
 		end
 	},
 }

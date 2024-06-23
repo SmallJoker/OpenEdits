@@ -8,6 +8,6 @@ public:
 		Script(bmgr) {}
 
 protected:
-	int implWorldSetTile(blockpos_t pos, int tile) override;
+	int implWorldSetTile(PositionRange range, bid_t block_id, int tile) override;
 };
 

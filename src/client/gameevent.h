@@ -45,7 +45,8 @@ struct GameEvent {
 		C2G_PLAYER_CHAT,
 		C2G_CHAT_HISTORY,
 		C2G_PLAYERFLAGS,
-		C2G_LOCAL_CHAT
+		C2G_LOCAL_CHAT,
+		C2G_SOUND_PLAY
 	} type_c2g = C2G_INVALID;
 
 	GameEvent(G2C_Enum v) : type_g2c(v) {}
@@ -94,7 +95,7 @@ class GameEventHandler {
 public:
 	virtual ~GameEventHandler();
 
-	void setEventHandler(GameEventHandler *eh);
+	void setEventTarget(GameEventHandler *eh);
 	bool sendNewEvent(GameEvent &e); // for memory cleanup
 
 protected:
@@ -102,5 +103,5 @@ protected:
 	virtual bool OnEvent(GameEvent &e) = 0;
 
 private:
-	GameEventHandler *m_eventhandler = nullptr;
+	GameEventHandler *m_target = nullptr;
 };

@@ -653,6 +653,16 @@ bool SceneGameplay::OnEvent(GameEvent &e)
 			}
 			m_dirty_playerlist = true; // flag indicators
 			return true;
+		case E::C2G_SOUND_PLAY:
+			{
+				auto i = e.text->rfind('.');
+				if (i != std::string::npos)
+					(*e.text)[i] = '\0'; // HACK
+
+				SoundSpec spec(e.text->c_str());
+				m_soundplayer->play(spec);
+			}
+			return true;
 		default: break;
 	}
 	return false;
