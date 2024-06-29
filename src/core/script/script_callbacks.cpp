@@ -1,18 +1,23 @@
 #include "script.h"
+#include "script_utils.h"
 #include "core/blockmanager.h"
 #include "core/logger.h"
 #include "core/macros.h"
 #include "core/player.h"
 #include "core/world.h"
 
-extern "C" {
-	#include <lauxlib.h>
-	#include <lualib.h>
-}
+using namespace ScriptUtils;
 
-extern Logger script_logger;
 static Logger &logger = script_logger;
 
+void Script::onScriptsLoaded()
+{
+	lua_State *L = m_lua;
+
+	lua_getglobal(L, "env");
+	function_ref_from_field(L, -1, "event_handler", m_ref_event_handler);
+	lua_pop(L, 1); // env
+}
 
 void Script::onIntersect(const BlockProperties *props)
 {
@@ -102,7 +107,7 @@ int Script::onCollide(CollisionInfo ci)
 
 	lua_State *L = m_lua;
 	int top = lua_gettop(L);
-	lua_rawgeti(L, LUA_REGISTRYINDEX,props->ref_on_collide);
+	lua_rawgeti(L, LUA_REGISTRYINDEX, props->ref_on_collide);
 	luaL_checktype(L, -1, LUA_TFUNCTION);
 	lua_pushinteger(L, ci.pos.X);
 	lua_pushinteger(L, ci.pos.Y);

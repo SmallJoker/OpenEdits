@@ -49,6 +49,7 @@ private:
 
 	// -------- Callbacks
 public:
+	void onScriptsLoaded();
 	void onIntersect(const BlockProperties *props);
 	void onIntersectOnce(const BlockProperties *props);
 
@@ -62,6 +63,9 @@ public:
 
 
 	// -------- Environment
+public:
+	void onEvent(blockpos_t pos, bid_t block_id, uint32_t payload);
+
 protected:
 	static void get_position_range(lua_State *L, int idx, PositionRange &range);
 
@@ -69,7 +73,9 @@ protected:
 
 
 private:
+	static int l_world_event(lua_State *L);
 	static int l_world_get_block(lua_State *L);
+	static int l_world_get_params(lua_State *L);
 	static int l_world_set_tile(lua_State *L);
 
 
@@ -99,6 +105,8 @@ protected:
 	lua_State *m_lua = nullptr;
 	BlockManager *m_bmgr = nullptr;
 	MediaManager *m_media = nullptr;
+
+	int m_ref_event_handler = -2; // LUA_NOREF
 
 	bid_t m_last_block_id = Block::ID_INVALID;
 };

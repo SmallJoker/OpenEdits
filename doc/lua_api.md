@@ -30,8 +30,14 @@ Main entry point: `main.lua`
 Namespace: `env.world`. Associated to the world of the currently
 active player of the callback.
 
+ * **DRAFT** `event(block_id, payload, x, y)`
+    * `payload` (optional)
+    * `x, y` (optional): if not provided, the current player position is used.
  * `get_block(x, y)` -> `fg, tile, bg`
     * `x, y` (optional): if set to `nil`, the current player position is used.
+ * `get_params(x, y)` -> (variable)
+    * Retrieves the block parameters based on the type specified by the
+      `params` Block Definition field.
  * `set_tile(block_id, tile, PositionRange ...)`
     * Sets the block tile
     * `PositionRange` (optional): defines which blocks that are affected
@@ -81,6 +87,10 @@ Pack Definition: (table)
 
 Block Definition - regular fields:
 
+ * `params` (optional, number)
+    * Defines what kind of data can be saved for this block.
+    * Warning: Changing this type will truncate existing saved data.
+    * Default: `env.PARAMS_TYPE_NONE`
  * `tiles = { Tile Definition, ... }` (optional)
     * Tile Definition (table)
         * `type` (optional): one of `env.DRAW_TYPE_*`.

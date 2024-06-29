@@ -47,7 +47,7 @@ int ClientScript::implWorldSetTile(PositionRange range, bid_t block_id, int tile
 		// The server must broadcast this change to all players so they
 		// cannot get out of sync (prediction errors)
 		// TODO: maybe send a Packet to the server as request?
-		luaL_error(L, "not implemented");
+		luaL_error(L, "Block tile change must be initiated by server");
 		return 0;
 	}
 	// else: We may do it locally for smooth gameplay experience

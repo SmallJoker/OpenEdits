@@ -173,6 +173,9 @@ public:
 	bool checkUpdateBlockNeeded(BlockUpdate &bu);
 	Block *updateBlock(BlockUpdate bu);
 	bool setBlockTiles(PositionRange range, bid_t block_id, u8 tile);
+
+	// BlockParams must be changed with updateBlock to ensure correct types
+	const BlockParams *getParamsPtr(blockpos_t pos) const;
 	bool getParams(blockpos_t pos, BlockParams *params) const;
 
 	const BlockManager *getBlockMgr() const { return m_bmgr; }

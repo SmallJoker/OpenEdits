@@ -21,7 +21,7 @@ void BlockParams::set(BlockParams::Type type)
 		case Type::INVALID:
 		case Type::None:
 			break;
-		case Type::Text:
+		case Type::STR16:
 			text = new std::string();
 			break;
 		case Type::U8:
@@ -36,7 +36,7 @@ void BlockParams::reset()
 		case Type::INVALID:
 		case Type::None:
 			break;
-		case Type::Text:
+		case Type::STR16:
 			delete text;
 			break;
 		case Type::U8:
@@ -77,7 +77,7 @@ bool BlockParams::operator==(const BlockParams &other) const
 		case Type::INVALID:
 		case Type::None:
 			return true;
-		case Type::Text:
+		case Type::STR16:
 			return *text == *other.text;
 		case Type::U8:
 			return param_u8 == other.param_u8;

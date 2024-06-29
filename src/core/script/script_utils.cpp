@@ -34,6 +34,30 @@ void cpp_exception_handler(lua_State *L)
 	}
 }
 
+/// true on success
+static bool function_to_ref(lua_State *L, int &ref)
+{
+	luaL_checktype(L, -1, LUA_TFUNCTION);
+	if (ref >= 0)
+		luaL_unref(L, LUA_REGISTRYINDEX, ref);
+
+	ref = luaL_ref(L, LUA_REGISTRYINDEX); // pops value
+	return ref >= 0;
+}
+
+void function_ref_from_field(lua_State *L, int idx, const char *field, int &ref)
+{
+	lua_getfield(L, idx, field);
+	if (!lua_isnil(L, -1)) {
+		bool ok = function_to_ref(L, ref);
+		if (!ok) {
+			logger(LL_ERROR, "%s ref failed\n", lua_tostring(L, -2));
+		}
+	} else {
+		lua_pop(L, 1);
+	}
+}
+
 const char *check_field_string(lua_State *L, int idx, const char *field)
 {
 	lua_getfield(L, idx, field);

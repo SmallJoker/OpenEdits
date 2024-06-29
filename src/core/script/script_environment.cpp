@@ -5,6 +5,8 @@
 
 using namespace ScriptUtils;
 
+static Logger &logger = script_logger;
+
 void Script::get_position_range(lua_State *L, int idx, PositionRange &range)
 {
 	using PRT = PositionRange::Type;
@@ -48,6 +50,55 @@ void Script::get_position_range(lua_State *L, int idx, PositionRange &range)
 	}
 }
 
+int Script::l_world_event(lua_State *L)
+{
+	MESSY_CPP_EXCEPTIONS_START
+	Script *script = get_script(L);
+	Player *player = script->m_player;
+
+	Player::Event event;
+
+	event.block_id = luaL_checkinteger(L, 1);
+	if (!lua_isnoneornil(L, 2))
+		event.payload = luaL_checkinteger(L, 2);
+
+	if (lua_isnoneornil(L, 3)) {
+		event.pos = player->last_pos;
+	} else {
+		// automatic floor
+		event.pos.X = luaL_checknumber(L, 3) + 0.5f;
+		event.pos.Y = luaL_checknumber(L, 4) + 0.5f;
+	}
+
+	if (player->event_list) {
+		player->event_list->insert(event);
+	}
+	return 0;
+	MESSY_CPP_EXCEPTIONS_END
+}
+
+void Script::onEvent(blockpos_t pos, bid_t block_id, uint32_t payload)
+{
+	lua_State *L = m_lua;
+
+	int top = lua_gettop(L);
+	lua_rawgeti(L, LUA_REGISTRYINDEX, m_ref_event_handler);
+	luaL_checktype(L, -1, LUA_TFUNCTION);
+	lua_pushinteger(L, block_id);
+	lua_pushinteger(L, pos.X);
+	lua_pushinteger(L, pos.Y);
+	lua_pushinteger(L, payload);
+	if (lua_pcall(L, 4, 0, 0)) {
+		logger(LL_ERROR, "event_handler block=%d failed: %s\n",
+			block_id,
+			lua_tostring(L, -1)
+		);
+		lua_settop(L, top); // function + error msg
+		return;
+	}
+
+	lua_settop(L, top);
+}
 
 int Script::l_world_get_block(lua_State *L)
 {
@@ -75,6 +126,46 @@ int Script::l_world_get_block(lua_State *L)
 	return 3;
 }
 
+int Script::l_world_get_params(lua_State *L)
+{
+	Script *script = get_script(L);
+	Player *player = script->m_player;
+
+	blockpos_t pos;
+	pos.X = luaL_checknumber(L, 1) + 0.5f;
+	pos.Y = luaL_checknumber(L, 2) + 0.5f;
+
+	World *world = player->getWorld().get();
+	if (!world)
+		luaL_error(L, "no world");
+
+	const BlockParams *params = world->getParamsPtr(pos);
+	if (!params)
+		return 0;
+
+	using BT = BlockParams::Type;
+	switch (params->getType()) {
+		case BT::None:
+			return 0;
+		case BT::STR16:
+			lua_pushstring(L, params->text->c_str());
+			return 1;
+		case BT::U8:
+			lua_pushinteger(L, params->param_u8);
+			return 1;
+		case BT::U8U8U8:
+			lua_pushinteger(L, params->teleporter.rotation);
+			lua_pushinteger(L, params->teleporter.id);
+			lua_pushinteger(L, params->teleporter.dst_id);
+			return 3;
+		case BT::INVALID:
+			break;
+	}
+
+	luaL_error(L, "BlockParams INVALID");
+	return 0;
+}
+
 int Script::l_world_set_tile(lua_State *L)
 {
 	Script *script = get_script(L);
@@ -92,4 +183,3 @@ int Script::l_world_set_tile(lua_State *L)
 
 	return script->implWorldSetTile(range, block_id, tile);
 }
-

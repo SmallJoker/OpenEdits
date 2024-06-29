@@ -22,6 +22,14 @@ do
 end
 
 do
+	-- blockparams.h / BlockParams::Type
+	env.PARAMS_TYPE_NONE   = 0
+	env.PARAMS_TYPE_STR16  = 1
+	env.PARAMS_TYPE_U8     = 2
+	env.PARAMS_TYPE_U8U8U8 = 3
+end
+
+do
 	-- types.h / PositionRange::Type
 	local w = env.world
 	w.PRT_CURRENT_POS  = 0x00
@@ -41,6 +49,10 @@ end
 -- TODO: not implemented
 local GRAVITY    = 100.0 -- m/s² for use in callbacks
 local JUMP_SPEED =  30.0 -- m/s  for use in callbacks
+
+env.event_handler = function(...)
+	print("CALL", unpack({...}))
+end
 
 --[[
 To implement:
@@ -69,7 +81,9 @@ env.change_block(99, {
 
 assert(env.API_VERSION >= 2, "Script implementation is too old.")
 
-local function table_to_pack_blocks(block_defs)
+reg = {}
+
+function reg.table_to_pack_blocks(block_defs)
 	local t = {}
 	for _, v in pairs(block_defs) do
 		t[#t + 1] = v.id
@@ -77,11 +91,16 @@ local function table_to_pack_blocks(block_defs)
 	return t
 end
 
-local function change_blocks(block_defs)
+function reg.change_blocks(block_defs)
 	for _, v in pairs(block_defs) do
 		env.change_block(v.id, v)
 	end
 end
+
+local table_to_pack_blocks = reg.table_to_pack_blocks
+local change_blocks = reg.change_blocks
+
+env.include("keys_doors.lua")
 
 ---------- Parameters (TODO)
 
@@ -97,11 +116,13 @@ end)
 
 change_block({
 	paramtype = env.PARAMTYPE_U8U8,
-	test = function(bx, by)
+	get_tile = function(bx, by)
 		local num_u8_1, num_u8_2  = env.world.get_params(bx, by)
 		if num_u8_1 then
 			--env.world.set_params() server only
 		end
+		env.gui.append_text(-3, -5, "value")
+		return 1
 	end
 })
 ]]
@@ -119,6 +140,13 @@ env.change_block(10, {
 	-- blue block
 	minimap_color = 0xFFFFFFFF,  -- AARRGGBB, white
 })
+
+env.register_pack({
+	name = "doors",
+	default_type = env.DRAW_TYPE_SOLID,
+	blocks = table_to_pack_blocks(reg.blocks_doors)
+})
+change_blocks(reg.blocks_doors)
 
 
 ---------- Action tab
@@ -170,8 +198,16 @@ env.register_pack({
 	default_type = env.DRAW_TYPE_ACTION,
 	blocks = table_to_pack_blocks(blocks_action)
 })
-
 change_blocks(blocks_action)
+
+
+env.register_pack({
+	name = "keys",
+	default_type = env.DRAW_TYPE_ACTION,
+	blocks = table_to_pack_blocks(reg.blocks_keys)
+})
+change_blocks(reg.blocks_keys)
+
 
 local function make_oneway_block(id)
 	return {
@@ -229,35 +265,8 @@ env.register_pack({
 
 change_blocks(blocks_candy)
 
-env.require_asset("coin.mp3")
+env.include("coins.lua")
 
-local blocks_coins = {
-	{
-		id = 100,
-		tiles = { { alpha = true }, { alpha = true } },
-		on_event = function(event_id)
-			-- TODO: implement
-		end,
-		on_intersect_once = function(tile)
-			if tile == 0 then
-				-- TODO: play sound
-				world.set_tile(100, 1, world.PRT_CURRENT_POS)
-				if env.gui then
-					env.gui.play_sound("coin.mp3")
-				end
-			end
-			-- env.world.event(42, can_predict)
-		end
-	},
-}
-
-env.register_pack({
-	name = "coins",
-	default_type = env.DRAW_TYPE_ACTION,
-	blocks = table_to_pack_blocks(blocks_coins)
-})
-
-change_blocks(blocks_coins)
 
 ---------- Decoration tab
 

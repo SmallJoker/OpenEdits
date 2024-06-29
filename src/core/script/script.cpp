@@ -173,7 +173,9 @@ bool Script::init()
 
 		lua_newtable(L);
 		{
+			FIELD_SET_FUNC(world_, event);
 			FIELD_SET_FUNC(world_, get_block);
+			FIELD_SET_FUNC(world_, get_params);
 			FIELD_SET_FUNC(world_, set_tile);
 		}
 		lua_setfield(L, -2, "world");
@@ -211,6 +213,7 @@ void Script::close()
 		props->ref_on_intersect = LUA_REFNIL;
 		props->ref_on_collide = LUA_REFNIL;
 	}
+	m_ref_event_handler = LUA_REFNIL;
 
 	lua_close(m_lua);
 	m_lua = nullptr;

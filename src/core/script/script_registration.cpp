@@ -8,30 +8,6 @@ static Logger &logger = script_logger;
 
 // -------------- Static Lua functions -------------
 
-/// true on success
-static bool function_to_ref(lua_State *L, int &ref)
-{
-	luaL_checktype(L, -1, LUA_TFUNCTION);
-	if (ref >= 0)
-		luaL_unref(L, LUA_REGISTRYINDEX, ref);
-
-	ref = luaL_ref(L, LUA_REGISTRYINDEX); // pops value
-	return ref >= 0;
-}
-
-static void function_ref_from_field(lua_State *L, int idx, const char *field, int &ref)
-{
-	lua_getfield(L, idx, field);
-	if (!lua_isnil(L, -1)) {
-		bool ok = function_to_ref(L, ref);
-		if (!ok) {
-			logger(LL_ERROR, "%s ref failed\n", lua_tostring(L, -2));
-		}
-	} else {
-		lua_pop(L, 1);
-	}
-}
-
 namespace {
 	struct BlockID {
 		bid_t id;
@@ -201,6 +177,18 @@ int Script::l_change_block(lua_State *L)
 		}
 	} // else: 1 tile with default type
 	lua_pop(L, 1);
+
+	// ---------- Other
+
+	lua_getfield(L, 2, "params");
+	if (!lua_isnil(L, -1)) {
+		int value = luaL_checkinteger(L, -1);
+		if (value < 0 || value > (int)BlockParams::Type::INVALID)
+			luaL_error(L, "Invalid params type");
+		props->paramtypes = (BlockParams::Type)value;
+	}
+	lua_pop(L, 1);
+
 
 	logger(LL_DEBUG, "Changed block_id=%i\n", block_id);
 

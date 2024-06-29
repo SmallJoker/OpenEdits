@@ -176,8 +176,6 @@ static int parse_args(int argc, char *argv[])
 		// else: empty
 #endif
 
-		puts(start_data.nickname.c_str());
-		puts(start_data.world_id.c_str());
 		// Login to server
 		return run_client();
 	}

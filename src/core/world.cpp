@@ -597,6 +597,16 @@ bool World::setBlockTiles(PositionRange range, bid_t block_id, u8 tile)
 }
 
 
+const BlockParams *World::getParamsPtr(blockpos_t pos) const
+{
+	auto it = m_params.find(pos);
+	if (it == m_params.end())
+		return nullptr;
+
+	return &it->second;
+}
+
+
 bool World::getParams(blockpos_t pos, BlockParams *params) const
 {
 	auto it = m_params.find(pos);
