@@ -15,7 +15,7 @@ void Script::onScriptsLoaded()
 	lua_State *L = m_lua;
 
 	lua_getglobal(L, "env");
-	function_ref_from_field(L, -1, "event_handler", m_ref_event_handler);
+	function_ref_from_field(L, -1, "event_handler", m_ref_event_handler, true);
 	lua_pop(L, 1); // env
 }
 

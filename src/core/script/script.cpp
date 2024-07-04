@@ -168,6 +168,8 @@ bool Script::init()
 			FIELD_SET_FUNC(player_, get_acc);
 			FIELD_SET_FUNC(player_, set_acc);
 			FIELD_SET_FUNC(player_, get_controls);
+			FIELD_SET_FUNC(player_, get_name);
+			FIELD_SET_FUNC(player_, hash);
 		}
 		lua_setfield(L, -2, "player");
 

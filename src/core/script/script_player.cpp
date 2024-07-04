@@ -4,6 +4,8 @@
 
 using namespace ScriptUtils;
 
+static Logger &logger = script_logger;
+
 static void push_v2f(lua_State *L, core::vector2df vec)
 {
 	lua_pushnumber(L, vec.X);
@@ -113,3 +115,22 @@ int Script::l_player_get_controls(lua_State *L)
 	return 1;
 }
 
+int Script::l_player_get_name(lua_State *L)
+{
+	Player *player = get_script(L)->m_player;
+	if (!player)
+		return 0;
+
+	lua_pushstring(L, player->name.c_str());
+	return 1;
+}
+
+int Script::l_player_hash(lua_State *L)
+{
+	Player *player = get_script(L)->m_player;
+	if (!player)
+		return 0;
+
+	lua_pushinteger(L, player->peer_id);
+	return 1;
+}

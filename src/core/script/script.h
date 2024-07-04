@@ -49,7 +49,7 @@ private:
 
 	// -------- Callbacks
 public:
-	void onScriptsLoaded();
+	virtual void onScriptsLoaded();
 	void onIntersect(const BlockProperties *props);
 	void onIntersectOnce(const BlockProperties *props);
 
@@ -95,6 +95,8 @@ private:
 	static int l_player_get_acc(lua_State *L);
 	static int l_player_set_acc(lua_State *L);
 	static int l_player_get_controls(lua_State *L);
+	static int l_player_get_name(lua_State *L);
+	static int l_player_hash(lua_State *L);
 protected:
 	Player *m_player = nullptr;
 	bool m_player_controls_cached = false;

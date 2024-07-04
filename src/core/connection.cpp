@@ -8,6 +8,24 @@
 #include <sstream>
 #include <thread>
 
+/*
+	UDP channel number (CON_CHANNELS) and purpose
+	---------------------------------------------
+
+	0 - Default
+		Auth, lobby
+		World data
+		Block updates
+
+	1 - Player-related actions
+		Anything related to input/physics/player movement
+		Player appearance
+		Chat commands (to be adopted)
+
+	Exception: when channel 1 packets hard-depend on world data
+	(channel 0), the relevant packets should be sent on channel 0 as well.
+*/
+
 static Logger logger("ENet", LL_WARN);
 
 const uint16_t CON_PORT = 0xC014;

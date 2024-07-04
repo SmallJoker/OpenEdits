@@ -53,6 +53,17 @@ of the callback.
  * `.set_pos(x, y)`
  * `.get_vel()` -> `x, y`
  * `.set_vel(x, y)`
+ * `.get_name()` -> string
+ * `.hash()` -> (undefined)
+     * Unique identifier (per connection) for faster array access
+
+
+### Callbacks
+
+ * `env.world.on_player_join()`
+    * Only called on server-side
+ * `env.world.on_player_leave()`
+    * Only called on server-side
 
 
 ### GUI API

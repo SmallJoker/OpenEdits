@@ -79,6 +79,7 @@ Server::Server(bool *shutdown_requested) :
 		}
 
 		m_bmgr->setMediaMgr(m_media);
+		m_script->onScriptsLoaded();
 		m_bmgr->sanityCheck();
 		m_media_unload_timer.set(4);
 	}

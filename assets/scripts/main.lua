@@ -54,6 +54,14 @@ env.event_handler = function(...)
 	print("CALL", unpack({...}))
 end
 
+env.world.on_player_join = function()
+	print("JOIN", env.player.get_name())
+end
+
+env.world.on_player_leave = function()
+	print("LEAVE", env.player.get_name())
+end
+
 --[[
 To implement:
 env.callbacks.on_join(function()

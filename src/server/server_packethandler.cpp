@@ -3,6 +3,7 @@
 #include "database_world.h"
 #include "remoteplayer.h"
 #include "servermedia.h"
+#include "serverscript.h"
 #include "core/blockmanager.h"
 #include "core/eeo_converter.h"
 #include "core/friends.h"
@@ -573,6 +574,9 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 		player->state = RemotePlayerState::WorldPlay;
 	}
 
+	if (m_script)
+		m_script->onPlayerJoin(player);
+
 	// Notify about new player
 	auto make_join_packet = [](RemotePlayer *player, Packet &out) {
 		out.write(Packet2Client::Join);
@@ -654,6 +658,9 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 void Server::pkt_Leave(peer_t peer_id, Packet &pkt)
 {
 	RemotePlayer *player = getPlayerNoLock(peer_id);
+
+	if (m_script)
+		m_script->onPlayerLeave(player);
 
 	printf("Server: Player %s left world id=%s\n",
 		player->name.c_str(), player->getWorld()->getMeta().id.c_str()
