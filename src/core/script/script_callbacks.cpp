@@ -19,25 +19,22 @@ void Script::onScriptsLoaded()
 	lua_pop(L, 1); // env
 }
 
-void Script::onIntersect(const BlockProperties *props)
+void Script::runBlockCb_0(int ref, const char *dbg)
 {
-	lua_State *L = m_lua;
-	m_last_block_id = props->id;
+	if (ref <= LUA_NOREF)
+		return;
 
-	if (!props || !props->haveOnIntersect()) {
-		// no callback registered: fall-back to air
-		props = m_bmgr->getProps(0);
-	}
+	lua_State *L = m_lua;
 
 	int top = lua_gettop(L);
 	// Function call prepration
 	// This is faster than calling a getter function
-	lua_rawgeti(L, LUA_REGISTRYINDEX, props->ref_on_intersect);
+	lua_rawgeti(L, LUA_REGISTRYINDEX, ref);
 	luaL_checktype(L, -1, LUA_TFUNCTION);
 	// Execute!
 	if (lua_pcall(L, 0, 0, 0)) {
-		logger(LL_ERROR, "on_intersect block=%d failed: %s\n",
-			props->id,
+		logger(LL_ERROR, "%s block=%d failed: %s\n",
+			dbg, m_last_block_id,
 			lua_tostring(L, -1)
 		);
 		lua_settop(L, top); // function + error msg
@@ -45,6 +42,27 @@ void Script::onIntersect(const BlockProperties *props)
 	}
 
 	lua_settop(L, top);
+}
+
+void Script::onBlockPlaced(bid_t block_id)
+{
+	const BlockProperties *props = m_bmgr->getProps(block_id);
+	if (!props || !props->haveOnPlaced())
+		return;
+
+	m_last_block_id = block_id;
+	runBlockCb_0(props->ref_on_placed, "on_placed");
+}
+
+void Script::onIntersect(const BlockProperties *props)
+{
+	if (!props || !props->haveOnIntersect()) {
+		// no callback registered: fall-back to air
+		props = m_bmgr->getProps(0);
+	}
+
+	m_last_block_id = props->id;
+	runBlockCb_0(props->ref_on_intersect, "on_intersect");
 }
 
 void Script::onIntersectOnce(const BlockProperties *props)

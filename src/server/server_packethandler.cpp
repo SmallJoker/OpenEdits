@@ -790,7 +790,7 @@ void Server::pkt_PlaceBlock(peer_t peer_id, Packet &pkt)
 		bu.peer_id = peer_id;
 		bu.read(pkt);
 
-		bool ok = world->updateBlock(bu);
+		const Block *ok = world->updateBlock(bu);
 		if (!ok) {
 			// out of range?
 			continue;

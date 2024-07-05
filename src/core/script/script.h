@@ -8,6 +8,7 @@ struct lua_State;
 class BlockManager;
 class MediaManager;
 class Player;
+class World;
 
 class Script {
 public:
@@ -40,6 +41,7 @@ public:
 
 	// -------- Registration
 private:
+	static int l_load_hardcoded_packs(lua_State *L);
 	/// Includes another script file (asset from cache or disk)
 	static int l_include(lua_State *L);
 	static int l_require_asset(lua_State *L);
@@ -50,6 +52,10 @@ private:
 	// -------- Callbacks
 public:
 	virtual void onScriptsLoaded();
+
+	void onBlockPlaced(bid_t block_id);
+	//void onBlockErased(bid_t block_id);
+
 	void onIntersect(const BlockProperties *props);
 	void onIntersectOnce(const BlockProperties *props);
 
@@ -60,11 +66,13 @@ public:
 	};
 	/// Returns a valid value of BlockProperties::CollisionType
 	int onCollide(CollisionInfo ci);
+private:
+	void runBlockCb_0(int ref, const char *dbg);
 
 
 	// -------- Environment
 public:
-	void onEvent(blockpos_t pos, bid_t block_id, uint32_t payload);
+	void onEvent(blockpos_t pos, bid_t block_id, uint32_t payload); // TODO
 
 protected:
 	static void get_position_range(lua_State *L, int idx, PositionRange &range);
@@ -73,7 +81,7 @@ protected:
 
 
 private:
-	static int l_world_event(lua_State *L);
+	static int l_world_event(lua_State *L); // TODO
 	static int l_world_get_block(lua_State *L);
 	static int l_world_get_params(lua_State *L);
 	static int l_world_set_tile(lua_State *L);
@@ -81,10 +89,11 @@ private:
 
 	// -------- Player API
 public:
-	void setPlayer(Player *player)
+	void setPlayer(Player *player);
+	void setWorld(World *world)
 	{
-		m_player = player;
-		m_player_controls_cached = false;
+		m_player = nullptr;
+		m_world = world;
 	}
 
 private:
@@ -107,6 +116,7 @@ protected:
 	lua_State *m_lua = nullptr;
 	BlockManager *m_bmgr = nullptr;
 	MediaManager *m_media = nullptr;
+	World *m_world = nullptr;
 
 	int m_ref_event_handler = -2; // LUA_NOREF
 

@@ -20,6 +20,13 @@ static void pull_v2f(lua_State *L, int idx, core::vector2df &vec)
 		vec.Y = luaL_checknumber(L, idx + 1);
 }
 
+void Script::setPlayer(Player *player)
+{
+	m_player = player;
+	m_player_controls_cached = false;
+	m_world = player ? player->getWorld().get() : nullptr;
+}
+
 int Script::l_player_get_pos(lua_State *L)
 {
 	Player *player = get_script(L)->m_player;

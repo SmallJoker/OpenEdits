@@ -1,5 +1,6 @@
 #include "client.h"
 #include "clientmedia.h"
+#include "clientscript.h"
 #include "localplayer.h"
 #include "core/auth.h"
 #include "core/blockmanager.h"
@@ -443,14 +444,17 @@ void Client::pkt_ChatReplay(Packet &pkt)
 	sendNewEvent(e);
 }
 
+// Similar to Server::stepSendBlockUpdates
 void Client::pkt_PlaceBlock(Packet &pkt)
 {
 	auto world = getWorld();
 	if (!world)
 		throw std::runtime_error("pkt_PlaceBlock: world not ready");
 
+	std::set<bid_t> placed_block_ids;
+
 	auto player = getMyPlayer();
-	SimpleLock lock(world->mutex);
+	SimpleLock world_lock(world->mutex);
 
 	BlockUpdate bu(m_bmgr);
 	while (pkt.getRemainingBytes()) {
@@ -467,11 +471,21 @@ void Client::pkt_PlaceBlock(Packet &pkt)
 
 		if (!bu.isBackground())
 			b->tile = getBlockTile(player.ptr(), b);
+
+		placed_block_ids.insert(bu.getId());
 	}
 
-	player->updateCoinCount();
 
-	lock.unlock();
+	world_lock.unlock();
+
+	player->updateCoinCount();
+	if (m_script) {
+		m_script->setWorld(world.get());
+		for (bid_t id : placed_block_ids)
+			m_script->onBlockPlaced(id);
+		m_script->setWorld(nullptr);
+	}
+
 	GameEvent e(GameEvent::C2G_MAP_UPDATE);
 	sendNewEvent(e);
 }

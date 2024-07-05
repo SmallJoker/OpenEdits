@@ -150,6 +150,7 @@ bool Script::init()
 		lua_setfield(L, -2, "API_VERSION");
 		FIELD_SET_FUNC(/**/, include);
 		FIELD_SET_FUNC(/**/, require_asset);
+		FIELD_SET_FUNC(/**/, load_hardcoded_packs);
 		FIELD_SET_FUNC(/**/, register_pack);
 		FIELD_SET_FUNC(/**/, change_block);
 		/*
@@ -211,6 +212,7 @@ void Script::close()
 	for (BlockProperties *props : list) {
 		if (!props)
 			continue;
+		props->ref_on_placed = LUA_REFNIL;
 		props->ref_intersect_once = LUA_REFNIL;
 		props->ref_on_intersect = LUA_REFNIL;
 		props->ref_on_collide = LUA_REFNIL;

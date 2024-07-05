@@ -371,6 +371,7 @@ void Server::stepSendMedia(RemotePlayer *player)
 	m_con->send(player->peer_id, 0, out);
 }
 
+// Similar to Client::pkt_PlaceBlock
 void Server::stepSendBlockUpdates(World *world)
 {
 	// Process block placement queue of this world for broacast
@@ -378,11 +379,12 @@ void Server::stepSendBlockUpdates(World *world)
 	if (queue.empty())
 		return;
 
-	SimpleLock world_lock(world->mutex);
+	std::set<bid_t> placed_block_ids;
 
 	Packet out;
 	out.write(Packet2Client::PlaceBlock);
 
+	SimpleLock world_lock(world->mutex);
 	auto it = queue.cbegin();
 	for (; it != queue.cend(); ++it) {
 		// Fit everything into an MTU
@@ -395,12 +397,23 @@ void Server::stepSendBlockUpdates(World *world)
 		// Write BlockUpdate
 		it->write(out);
 
+		placed_block_ids.insert(it->getId());
+
 		DEBUGLOG("Server: sending block x=%d,y=%d,id=%d\n",
 			it->pos.X, it->pos.Y, it->getId());
 	}
 
 	queue.erase(queue.cbegin(), it); // "it" is not removed.
+	world_lock.unlock();
+
 	broadcastInWorld(world, 0, out);
+
+	if (m_script) {
+		m_script->setWorld(world);
+		for (bid_t id : placed_block_ids)
+			m_script->onBlockPlaced(id);
+		m_script->setPlayer(nullptr);
+	}
 }
 
 void Server::stepWorldTick(World *world, float dtime)

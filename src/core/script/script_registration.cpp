@@ -56,6 +56,18 @@ int Script::l_include(lua_State *L)
 	return 0;
 }
 
+int Script::l_load_hardcoded_packs(lua_State *L)
+{
+	MESSY_CPP_EXCEPTIONS_START
+	Script *script = get_script(L);
+
+	script->m_bmgr->doPackRegistration();
+	// required media is added by BlockManager::sanityCheck()
+
+	MESSY_CPP_EXCEPTIONS_END
+	return 0;
+}
+
 int Script::l_register_pack(lua_State *L)
 {
 	MESSY_CPP_EXCEPTIONS_START
@@ -113,6 +125,8 @@ int Script::l_change_block(lua_State *L)
 
 	// ---------- Physics
 
+
+	function_ref_from_field(L, 2, "on_placed",         props->ref_on_placed);
 	function_ref_from_field(L, 2, "on_intersect_once", props->ref_intersect_once);
 	function_ref_from_field(L, 2, "on_intersect",      props->ref_on_intersect);
 	function_ref_from_field(L, 2, "on_collide",        props->ref_on_collide);
@@ -188,7 +202,6 @@ int Script::l_change_block(lua_State *L)
 		props->paramtypes = (BlockParams::Type)value;
 	}
 	lua_pop(L, 1);
-
 
 	logger(LL_DEBUG, "Changed block_id=%i\n", block_id);
 

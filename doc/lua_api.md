@@ -78,9 +78,21 @@ HUD Definition: (table)
  * `value` (any, tbd.)
 
 
-### Packs
+### Registration
 
+ * `env.include(asset_name)`
+    * Adds another script to the required assets and executes it.
+ * `env.require_asset(asset_name)`
+    * To use for dynamically used assets, such as audio playback.
+    * `asset_name` (string): file name without extension
+
+
+#### Packs
+
+ * `env.load_hardcoded_packs()`
+    * Loads the original packs
  * `env.register_pack(Pack Definition)`
+    * Registers a new pack
 
 Pack Definition: (table)
 
@@ -91,7 +103,7 @@ Pack Definition: (table)
  * `blocks` (table): List of block ID's contained in this pack
 
 
-### Blocks
+#### Blocks
 
  * `env.change_block(id, Block Definition)`
     * The block must first be registered by `env.register_pack`.
@@ -124,4 +136,5 @@ Block Definition - callbacks:
  * `on_intersect_once(tile)` <- `nil`
     * Called once when entering the block.
     * `tile` (number): The tile index of the block
+ * `on_placed()` <- `nil`
 

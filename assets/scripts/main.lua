@@ -89,6 +89,16 @@ env.change_block(99, {
 
 assert(env.API_VERSION >= 2, "Script implementation is too old.")
 
+if true then
+	env.load_hardcoded_packs()
+	--[[env.change_block(0, {
+		on_placed = function()
+			print("PLACED")
+		end
+	})]]
+	return
+end
+
 reg = {}
 
 function reg.table_to_pack_blocks(block_defs)
