@@ -49,15 +49,19 @@ public:
 
 	void step(float dtime);
 
+	u32 getNextPRNum();
+
 	const peer_t peer_id;
 	std::string name;
+	float dtime_delay = 0; //< RTT compensation upon the next ::step call
 	core::vector2df pos;
 	core::vector2df vel;
 	core::vector2df acc;
-	blockpos_t last_pos;
+	blockpos_t last_pos; //< from the last full step
 	bool did_jerk = false; //< abrupt position changes. e.g. teleporter
 
-	float dtime_delay = 0; //< RTT compensation upon the next ::step call
+	inline blockpos_t getCurrentBlockPos()
+	{ return blockpos_t(pos.X + 0.5f, pos.Y + 0.5f); }
 
 	// For keys or killing blocks
 	std::set<blockpos_t> *on_touch_blocks = nullptr;
@@ -89,11 +93,7 @@ public:
 	static constexpr float JUMP_SPEED = 30.0f;
 
 protected:
-	Player(peer_t peer_id) :
-		peer_id(peer_id), m_world(nullptr) {}
-
-	inline blockpos_t getCurrentBlockPos()
-	{ return blockpos_t(pos.X + 0.5f, pos.Y + 0.5f); }
+	Player(peer_t peer_id);
 
 	void stepInternal(float dtime);
 	bool stepCollisions(float dtime);
@@ -108,5 +108,6 @@ protected:
 	PlayerControls m_controls;
 	core::vector2d<s8> m_collision;
 
+	u32 m_prng_state;
 	float m_jump_cooldown = 0;
 };

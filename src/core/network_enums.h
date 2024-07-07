@@ -16,7 +16,7 @@ enum class Packet2Client : uint16_t {
 	Move,
 	Chat,
 	PlaceBlock,
-	Key, // key blocks
+	ActivateBlock,
 	GodMode,
 	Smiley,
 	PlayerFlags,

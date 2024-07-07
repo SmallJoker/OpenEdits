@@ -85,8 +85,8 @@ static BP_STEP_CALLBACK(step_portal)
 	if (positions.empty())
 		return;
 
-	// TODO: This must be deterministic for accurate client-side prediction
-	auto dst_pos = positions[rand() % positions.size()];
+	u32 pr = player.getNextPRNum(); // proper client-side prediction
+	auto dst_pos = positions[pr % positions.size()];
 	BlockParams dst_bp;
 	world->getParams(dst_pos, &dst_bp);
 

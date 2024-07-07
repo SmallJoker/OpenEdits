@@ -57,7 +57,7 @@ public:
 	//void onBlockErased(bid_t block_id);
 
 	void onIntersect(const BlockProperties *props);
-	void onIntersectOnce(const BlockProperties *props);
+	void onIntersectOnce(blockpos_t pos, const BlockProperties *props);
 
 	struct CollisionInfo {
 		const BlockProperties *props = nullptr;

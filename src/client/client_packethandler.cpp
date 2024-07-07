@@ -30,7 +30,7 @@ const ClientPacketHandler Client::packet_actions[] = {
 	{ ClientState::WorldPlay, &Client::pkt_Move },
 	{ ClientState::WorldPlay, &Client::pkt_Chat }, // 10
 	{ ClientState::WorldPlay, &Client::pkt_PlaceBlock },
-	{ ClientState::WorldPlay, &Client::pkt_Key }, // superseded by pkt_SetTile
+	{ ClientState::WorldPlay, &Client::pkt_ActivateBlock },
 	{ ClientState::WorldPlay, &Client::pkt_GodMode },
 	{ ClientState::WorldPlay, &Client::pkt_Smiley },
 	{ ClientState::WorldPlay, &Client::pkt_PlayerFlags }, // 15
@@ -52,16 +52,14 @@ void Client::pkt_Hello(Packet &pkt)
 	m_protocol_version = pkt.read<uint16_t>();
 	m_my_peer_id = pkt.read<peer_t>();
 
-	pkt.data_version = m_protocol_version; // for bmgr->read
+	pkt.data_version = m_protocol_version;
 
 	auto player = std::make_unique<LocalPlayer>(m_my_peer_id);
-	m_start_data.nickname = player->name = pkt.readStr16();
+	player->name = pkt.readStr16();
+	m_start_data.nickname = player->name; // for completeness' sake
+
 	player->setScript((Script *)m_script);
 	m_players.emplace(m_my_peer_id, player.release());
-
-	if (m_protocol_version < 7)
-		m_bmgr->read(pkt);
-	// else: sent after login
 
 	m_auth = Auth();
 
@@ -495,8 +493,22 @@ void Client::pkt_SetTile(Packet &pkt)
 	logger(LL_INFO, "Deprecated. Use Lua.");
 }
 
-void Client::pkt_Key(Packet &pkt)
+void Client::pkt_ActivateBlock(Packet &pkt)
 {
+	/*
+		TODO: In long term, key blocks (and others) should raise "events" from Lua-side.
+
+		@ Client
+		1. LocalPlayer physics
+		2. Lua callback (any)
+		3. Call to "event" sender function
+		@ Server
+		4. Event filtering (anti-spam, anti-cheat)
+		5. event handler Lua function (includes calls to `env.world.set_tile` etc)
+		6. Event packet sent to relevant players (or none)
+		@ Client (of all players)
+		7. event handler Lua function (same as server)
+	*/
 	auto player = getMyPlayer();
 
 	bid_t key_bid = pkt.read<bid_t>();
@@ -509,7 +521,7 @@ void Client::pkt_Key(Packet &pkt)
 			// good
 			break;
 		default:
-			// Unknown key
+			// what to do?
 			return;
 	};
 

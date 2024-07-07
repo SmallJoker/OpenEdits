@@ -32,7 +32,7 @@ void Script::get_position_range(lua_State *L, int idx, PositionRange &range)
 	range.type = (PRT)type;
 	switch (range.type) {
 		case PRT::T_CURRENT_POS:
-			range.minp = player->last_pos;
+			range.minp = player->getCurrentBlockPos();
 			break;
 		case PRT::T_AREA: {
 			World *world = player->getWorld().get();
@@ -63,7 +63,7 @@ int Script::l_world_event(lua_State *L)
 		event.payload = luaL_checkinteger(L, 2);
 
 	if (lua_isnoneornil(L, 3)) {
-		event.pos = player->last_pos;
+		event.pos = player->getCurrentBlockPos();
 	} else {
 		// automatic floor
 		event.pos.X = luaL_checknumber(L, 3) + 0.5f;
@@ -105,11 +105,13 @@ int Script::l_world_get_block(lua_State *L)
 	Script *script = get_script(L);
 	Player *player = script->m_player;
 
-	blockpos_t pos = player->last_pos;
+	blockpos_t pos;
 	if (!lua_isnil(L, 1)) {
 		// automatic floor
 		pos.X = luaL_checknumber(L, 1) + 0.5f;
 		pos.Y = luaL_checknumber(L, 2) + 0.5f;
+	} else {
+		pos = player->getCurrentBlockPos();
 	}
 
 	World *world = player->getWorld().get();

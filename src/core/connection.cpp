@@ -34,7 +34,7 @@ const size_t CON_CHANNELS = 2;
 
 // Globally accessible values
 const uint16_t PROTOCOL_VERSION_MAX = 7;
-const uint16_t PROTOCOL_VERSION_MIN = 5;
+const uint16_t PROTOCOL_VERSION_MIN = 7;
 // Note: ENet already splits up packets into fragments, thus manual splitting
 // for low data volumes should not be necessary.
 size_t CONNECTION_MTU;

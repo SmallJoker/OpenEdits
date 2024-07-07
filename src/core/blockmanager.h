@@ -118,9 +118,6 @@ public:
 	void doPackRegistration();
 	void doPackPostprocess();
 
-	void read(Packet &pkt);
-	void write(Packet &pkt) const;
-
 	void registerPack(BlockPack *pack);
 	void setDriver(video::IVideoDriver *driver);
 	void setMediaMgr(MediaManager *media) { m_media = media; }

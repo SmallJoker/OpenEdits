@@ -65,7 +65,7 @@ void Script::onIntersect(const BlockProperties *props)
 	runBlockCb_0(props->ref_on_intersect, "on_intersect");
 }
 
-void Script::onIntersectOnce(const BlockProperties *props)
+void Script::onIntersectOnce(blockpos_t pos, const BlockProperties *props)
 {
 	lua_State *L = m_lua;
 	m_last_block_id = props->id;
@@ -74,7 +74,7 @@ void Script::onIntersectOnce(const BlockProperties *props)
 		return; // NOP
 
 	Block block;
-	m_player->getWorld()->getBlock(m_player->last_pos, &block);
+	m_player->getWorld()->getBlock(pos, &block);
 
 	int top = lua_gettop(L);
 	lua_rawgeti(L, LUA_REGISTRYINDEX, props->ref_intersect_once);

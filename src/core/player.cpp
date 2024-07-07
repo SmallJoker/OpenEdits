@@ -10,6 +10,16 @@
 constexpr float DISTANCE_STEP = 0.4f; // absolute max is 0.5f
 constexpr float VELOCITY_MAX = 200.0f;
 
+Player::Player(peer_t peer_id) :
+	peer_id(peer_id),
+	m_world(nullptr)
+{
+	m_prng_state = peer_id;
+	// randomize a little bit
+	m_prng_state = mulberry32_next(&m_prng_state);
+}
+
+
 Player::~Player()
 {
 }
@@ -43,6 +53,8 @@ void Player::readPhysics(Packet &pkt)
 {
 	ASSERT_FORCED(pkt.data_version != 0, "invalid proto ver");
 
+	pkt.read(dtime_delay);
+
 	pkt.read(pos.X);
 	pkt.read(pos.Y);
 
@@ -52,21 +64,19 @@ void Player::readPhysics(Packet &pkt)
 	pkt.read(acc.X);
 	pkt.read(acc.Y);
 
+	pkt.read<u32>(m_prng_state);
 	pkt.read<u8>(coins); // type safety!
-
-	pkt.read<u8>(); // flags
 
 	m_controls.jump = pkt.read<u8>();
 	pkt.read(m_controls.dir.X);
 	pkt.read(m_controls.dir.Y);
-
-	if (pkt.data_version >= 6)
-		dtime_delay = pkt.read<float>();
 }
 
 void Player::writePhysics(Packet &pkt) const
 {
 	ASSERT_FORCED(pkt.data_version != 0, "invalid proto ver");
+
+	pkt.write(dtime_delay);
 
 	pkt.write(pos.X);
 	pkt.write(pos.Y);
@@ -77,19 +87,14 @@ void Player::writePhysics(Packet &pkt) const
 	pkt.write(acc.X);
 	pkt.write(acc.Y);
 
+	pkt.write<u32>(m_prng_state);
 	pkt.write<u8>(coins);
-
-	u8 flags = 0;
-	pkt.write(flags);
 
 	pkt.write<u8>(m_controls.jump);
 	core::vector2df dir_normal = m_controls.dir;
 	dir_normal.normalize();
 	pkt.write(dir_normal.X);
 	pkt.write(dir_normal.Y);
-
-	if (pkt.data_version >= 6)
-		pkt.write<float>(dtime_delay);
 }
 
 bool Player::setControls(const PlayerControls &ctrl)
@@ -264,10 +269,8 @@ void Player::stepInternal(float dtime)
 	}
 
 	if (props && bp != last_pos) {
-		if (m_script) {
-			last_pos = bp;
-			m_script->onIntersectOnce(props);
-		}
+		if (m_script)
+			m_script->onIntersectOnce(bp, props);
 
 		if (on_touch_blocks && props->trigger_on_touch)
 			on_touch_blocks->emplace(bp);
@@ -476,7 +479,11 @@ void Player::collideWith(float dtime, int x, int y)
 
 			break;
 	}
+}
 
+u32 Player::getNextPRNum()
+{
+	return mulberry32_next(&m_prng_state);
 }
 
 void Player::setGodMode(bool value)

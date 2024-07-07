@@ -427,7 +427,7 @@ void Server::stepWorldTick(World *world, float dtime)
 			kdata.stop();
 			bid_t block_id = (&kdata - meta.keys) + Block::ID_KEY_R;
 			Packet out;
-			out.write(Packet2Client::Key);
+			out.write(Packet2Client::ActivateBlock);
 			out.write(block_id);
 			out.write<u8>(false);
 

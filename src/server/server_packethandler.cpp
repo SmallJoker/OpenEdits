@@ -78,8 +78,9 @@ void Server::pkt_Hello(peer_t peer_id, Packet &pkt)
 
 	player->name = name;
 	player->state = RemotePlayerState::Login;
-	if (protocol_ver >= 7)
-		player->media.needs_audiovisuals = pkt.read<u8>() & 1;
+
+	u8 init_flags = pkt.read<u8>();
+	player->media.needs_audiovisuals = init_flags & 1;
 
 	{
 		// Confirm
@@ -87,10 +88,6 @@ void Server::pkt_Hello(peer_t peer_id, Packet &pkt)
 		reply.write(player->protocol_version);
 		reply.write(player->peer_id);
 		reply.writeStr16(player->name);
-
-		if (player->protocol_version < 7)
-			m_bmgr->write(reply);
-		// else: sent after login
 
 		m_con->send(peer_id, 0, reply);
 	}
@@ -168,7 +165,7 @@ void Server::signInPlayer(RemotePlayer *player)
 
 	ASSERT_FORCED(m_media, "Missing ServerMedia");
 
-	if (player->protocol_version >= 7) {
+	{
 		Packet out = player->createPacket(Packet2Client::MediaList);
 		m_media->writeMediaList(player, out);
 		m_con->send(player->peer_id, 0, out);
@@ -826,7 +823,11 @@ void Server::pkt_TriggerBlocks(peer_t peer_id, Packet &pkt)
 					int key_id = b.id - Block::ID_KEY_R;
 					auto &kdata = meta.keys[key_id];
 					if (kdata.set(5.0f)) {
-						// TODO: replace with events
+						Packet out;
+						out.write(Packet2Client::ActivateBlock);
+						out.write(b.id);
+						out.write<u8>(kdata.isActive());
+						broadcastInWorld(player, 1, out);
 					}
 				}
 				break;

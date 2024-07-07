@@ -100,7 +100,7 @@ private:
 	void pkt_ChatReplay(Packet &pkt);
 	void pkt_PlaceBlock(Packet &pkt);
 	void pkt_SetTile(Packet &pkt);
-	void pkt_Key(Packet &pkt);
+	void pkt_ActivateBlock(Packet &pkt);
 	void pkt_GodMode(Packet &pkt);
 	void pkt_Smiley(Packet &pkt);
 	void pkt_PlayerFlags(Packet &pkt);
