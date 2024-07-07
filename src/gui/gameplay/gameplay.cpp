@@ -452,10 +452,13 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 						else
 							world->getParams(bp, &params);
 
+						// Avoid movement keys to leak into GUI elements
+						m_gui->guienv->setFocus(nullptr);
 						m_blockselector->setParamsFromBlock(block_id, params);
 						break;
 					}
-					if (!((m_may_drag_draw && m_drag_draw_block.getId() != Block::ID_INVALID) || l_pressed || r_pressed))
+					if (!((m_may_drag_draw && m_drag_draw_block.getId() != Block::ID_INVALID)
+							|| l_pressed || r_pressed))
 						break;
 
 					blockpos_t bp;
@@ -495,6 +498,8 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 					if (!m_may_drag_draw)
 						m_drag_draw_block.set(Block::ID_INVALID);
 
+					// Avoid movement keys to leak into GUI elements
+					m_gui->guienv->setFocus(nullptr);
 					m_gui->getClient()->updateBlock(bu);
 					return true;
 				}

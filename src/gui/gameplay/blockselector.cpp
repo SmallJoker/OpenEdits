@@ -15,12 +15,14 @@ enum ElementId : int {
 	ID_HOTBAR_0 = 300, // Counted by button number
 	ID_SHOWMORE = 320, // [+] [-] button
 	ID_TabControl,
-	ID_BoxCoinDoor,
-	ID_BoxNote,
-	ID_TabTeleporter,
-	ID_TabTeleporter_ID,
-	ID_TabTeleporter_DST,
-	ID_BoxText,
+	ID_SPECIFIC_POPUPS_START,
+		ID_BoxCoinDoor,
+		ID_BoxNote,
+		ID_TabTeleporter,
+		ID_TabTeleporter_ID,
+		ID_TabTeleporter_DST,
+		ID_BoxText,
+	ID_SPECIFIC_POPUPS_END,
 
 	ID_SELECTOR_TAB_0, // Offset for BlockDrawType tabs
 	ID_SELECTOR_0 = 400, // Offset for the block ID
@@ -352,7 +354,6 @@ bool SceneBlockSelector::OnEvent(const SEvent &e)
 		// Show/hide block selector
 		if (id == ID_SHOWMORE) {
 			toggleShowMore();
-			m_gui->setFocus(nullptr);
 			return true;
 		}
 	}
@@ -361,7 +362,25 @@ bool SceneBlockSelector::OnEvent(const SEvent &e)
 		m_last_selected_tab = element->getActiveTab();
 	}
 	if (e.EventType == EET_KEY_INPUT_EVENT) {
+		if (e.KeyInput.Key == KEY_ESCAPE && e.KeyInput.PressedDown) {
+			// close whatever is open in bringToFront
+			if (m_showmore && m_show_selector) {
+				for (s32 id = ID_SPECIFIC_POPUPS_START + 1; id < ID_SPECIFIC_POPUPS_END; ++id) {
+					auto e = m_showmore->getElementFromId(id, true);
+					if (e) {
+						m_gui->setFocus(nullptr);
+						e->remove();
+						return true;
+					}
+				}
+
+				toggleShowMore();
+				return true;
+			}
+		}
+
 		{
+			// Let it be eaten by the edit box
 			auto element = m_gui->getFocus();
 			if (element && element->getType() == gui::EGUIET_EDIT_BOX)
 				return false;
@@ -557,6 +576,7 @@ void SceneBlockSelector::drawBlockSelector()
 	if (!m_enabled)
 		return;
 
+	m_gui->setFocus(nullptr);
 	m_showmore->removeAllChildren();
 	if (!m_show_selector) {
 		m_showmore->setText(L"+");
