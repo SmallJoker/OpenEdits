@@ -81,9 +81,6 @@ lua_Integer check_field_int(lua_State *L, int idx, const char *field)
 
 void dump_args(lua_State *L, FILE *file, bool details)
 {
-	if (details)
-		puts("");
-
 	int nargs = lua_gettop(L);
 	char buf[64];
 	for (int i = 1; i < nargs + 1; ++i) {

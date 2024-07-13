@@ -35,7 +35,16 @@ static int l_print(lua_State *L)
 
 static int l_error(lua_State *L)
 {
-	logger(LL_ERROR, "%s: ", __func__);
+	lua_Debug ar;
+	const char *file = "???";
+	int line_num = -1;
+
+	if (lua_getstack(L, 1, &ar) && lua_getinfo(L, "Sl", &ar)) {
+		file = ar.source;
+		line_num = ar.currentline;
+	}
+
+	logger(LL_ERROR, "%s (%s L%d): ", __func__, file, line_num);
 	dump_args(L, stderr, true);
 	fflush(stderr);
 	return 0;

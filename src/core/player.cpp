@@ -287,7 +287,7 @@ void Player::stepInternal(float dtime)
 	last_pos = bp;
 
 	// Controls handling
-	if (m_controls.jump && m_jump_cooldown <= 0) {
+	if (controls_enabled && m_controls.jump && m_jump_cooldown <= 0) {
 		if (get_sign(m_collision.X * acc.X) == 1 && std::fabs(vel.X) < 3.0f) {
 			vel.X += m_collision.X * -Player::JUMP_SPEED;
 			m_jump_cooldown = 0.2f;

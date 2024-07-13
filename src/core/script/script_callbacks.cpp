@@ -74,7 +74,8 @@ void Script::onIntersectOnce(blockpos_t pos, const BlockProperties *props)
 		return; // NOP
 
 	Block block;
-	m_player->getWorld()->getBlock(pos, &block);
+	if (m_world)
+		m_world->getBlock(pos, &block);
 
 	int top = lua_gettop(L);
 	lua_rawgeti(L, LUA_REGISTRYINDEX, props->ref_intersect_once);

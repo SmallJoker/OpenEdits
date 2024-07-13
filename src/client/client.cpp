@@ -46,6 +46,9 @@ Client::~Client()
 {
 	logger(LL_PRINT, "Stopping ...");
 
+	delete m_con;
+	m_con = nullptr;
+
 	{
 		// In case a packet is being processed
 		SimpleLock lock(m_players_lock);
@@ -70,7 +73,6 @@ Client::~Client()
 		delete m_media;
 		m_media = nullptr;
 	}
-	delete m_con;
 }
 
 // -------------- Public members -------------

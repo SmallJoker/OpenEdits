@@ -15,6 +15,7 @@ To-do:
  * Achievements: death counter, timer
  * Modding:
     * `on_trigger` server-side callbacks
+    * Player-specific gravity and speed modifiers
     * Ensure correct client-side prediction
     * Preserve unknown blocks + data
     * Movable objects, e.g. for mobs.

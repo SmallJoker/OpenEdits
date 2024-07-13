@@ -56,9 +56,13 @@ static void test_with_script()
 	BlockManager bmgr;
 	ClientScript script(&bmgr);
 
+	ClientMedia media;
+	media.indexAssets();
+
 	script.init();
+	script.setMediaMgr(&media);
 	script.setTestMode("media");
-	CHECK(script.loadFromFile("assets/scripts/main.lua"));
+	CHECK(script.loadFromAsset("unittest.lua"));
 }
 
 

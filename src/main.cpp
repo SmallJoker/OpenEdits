@@ -2,8 +2,9 @@
 #include "core/utils.h" // to_player_name
 #include "server/database_auth.h" // AuthAccount
 #include "server/server.h"
-#include <string.h> // strcmp
 #include "version.h"
+#include <fstream>
+#include <string.h> // strcmp
 
 #if BUILD_CLIENT
 	#include "client/client.h" // ClientStartData
@@ -32,11 +33,13 @@ static void exit_cleanup()
 #endif
 }
 
+#ifdef __unix__
 static void sigint_handler(int signal)
 {
 	printf("\nmain: Received signal %i\n", signal);
 	exit_cleanup();
 }
+#endif
 
 static int run_client()
 {
@@ -156,16 +159,15 @@ static int parse_args(int argc, char *argv[])
 
 		// Try to find a matching file
 		bool from_file = false;
-		FILE *fh = fopen(argv[3], "r");
-		if (fh) {
-			char *line = nullptr;
-			size_t len;
-			from_file = getline(&line, &len, fh) >= 0;
-			if (from_file) {
+		std::ifstream is(argv[3]);
+		if (is.good()) {
+			std::string line;
+			std::getline(is, line);
+			if (!line.empty()) {
+				from_file = true;
 				start_data.password = strtrim(line);
 				puts("--- Using password provided by file");
 			}
-			fclose(fh);
 		}
 
 		if (!from_file)

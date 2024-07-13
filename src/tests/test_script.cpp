@@ -14,16 +14,25 @@ void unittest_script()
 	script.do_load_string_n_table = true;
 	CHECK(script.init());
 	script.setTestMode("init");
-	CHECK(script.loadFromFile("assets/scripts/main.lua"));
+	CHECK(script.loadFromFile("assets/scripts/constants.lua"));
 	CHECK(script.loadFromFile("assets/scripts/unittest.lua"));
 
 	RemotePlayer p(12345, PROTOCOL_VERSION_MAX);
 	script.setPlayer(&p);
 
+	// on_intersect_once
+	{
+		script.setTestMode("py set +1");
+		float y = p.pos.Y;
+		blockpos_t pos = p.getCurrentBlockPos();
+		script.onIntersectOnce(pos, bmgr.getProps(2));
+		CHECK(std::fabs(p.pos.Y - (y + 1)) < 0.001f);
+	}
+
 	// on_intersect test. Multiple times to ensure the stack is OK
+	script.setTestMode("py set -1");
 	for (int y = 10; y < 12; ++y) {
 		p.pos.Y = y;
-		script.setTestMode("set_pos");
 		script.onIntersect(bmgr.getProps(2));
 		CHECK(script.popErrorCount() == 0);
 		CHECK(std::fabs(p.pos.Y - (y + 1)) < 0.001f);
@@ -32,6 +41,7 @@ void unittest_script()
 	// on_collide test
 	{
 		// fall onto the block (positive Y velocity)
+
 		Script::CollisionInfo ci;
 		ci.pos.X = 15;
 		ci.pos.Y = 12;

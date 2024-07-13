@@ -85,10 +85,11 @@ Permission/player flag examples:
  * CMake (cmake-gui recommended for desktops)
  * [Irrlicht-Mt](https://github.com/SmallJoker/irrlicht-mt) : GUI/rendering library
  * [enet](http://enet.bespin.org/) : networking library
+ * LuaJIT or Lua 5.1 : (WIP) server-defined scripts
  * SQLite3 : auth & world saving
  * Threads (pthread?)
  * zlib: world compression (including EELVL import/export)
- * OpenAL: sound (for GUI builds only)
+ * [OpenAL-soft](https://github.com/kcat/openal-soft): sound (for GUI builds only)
 
 Dependency tree:
 

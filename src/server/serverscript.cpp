@@ -34,6 +34,11 @@ int ServerScript::implWorldSetTile(PositionRange range, bid_t block_id, int tile
 
 static void run_0_args_callback(lua_State *L, int ref, const char *dbg)
 {
+	if (ref <= LUA_NOREF) {
+		logger(LL_DEBUG, "0 arg callback unavailable. name='%s'", dbg);
+		return;
+	}
+
 	int top = lua_gettop(L);
 	lua_rawgeti(L, LUA_REGISTRYINDEX, ref);
 	luaL_checktype(L, -1, LUA_TFUNCTION);
