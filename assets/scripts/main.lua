@@ -6,7 +6,9 @@ env.include("constants.lua")
 local GRAVITY    = 100.0 -- m/s² for use in callbacks
 local JUMP_SPEED =  30.0 -- m/s  for use in callbacks
 
-env.event_handler = function(...)
+env.event_handlers = {}
+
+env.event_handlers[1] = function(...)
 	print("CALL", unpack({...}))
 end
 
@@ -28,19 +30,6 @@ env.callbacks.on_join(function()
 		jump_speed = num
 	})
 end)
-
-
-env.change_block(99, {
-	events = {
-		-- Triggered by client-sent "on touch" or similar
-		testevent = function()
-			world.set_tile(ID_DOOR, "all", 1)
-		end
-	},
-	on_intersect_once = function()
-		env.send_event("testevent")
-	end
-})
 ]]
 
 assert(env.API_VERSION >= 2, "Script implementation is too old.")

@@ -50,50 +50,109 @@ void Script::get_position_range(lua_State *L, int idx, PositionRange &range)
 	}
 }
 
-int Script::l_world_event(lua_State *L)
+static void read_blockparams(lua_State *L, int &idx, BlockParams &params)
+{
+	using Type = BlockParams::Type;
+	switch (params.getType()) {
+		case Type::INVALID:
+		case Type::None:
+			break;
+		case Type::STR16:
+			*params.text = luaL_checkstring(L, ++idx);
+			return;
+		case Type::U8:
+			params.param_u8 = luaL_checkinteger(L, ++idx);
+			return;
+		case Type::U8U8U8:
+			params.teleporter.rotation = luaL_checkinteger(L, ++idx);
+			params.teleporter.id       = luaL_checkinteger(L, ++idx);
+			params.teleporter.dst_id   = luaL_checkinteger(L, ++idx);
+			return;
+		// DO NOT USE default CASE
+	}
+
+	luaL_error(L, "unhandled type=%d at index=%d", params.getType(), idx);
+}
+
+static int write_blockparams(lua_State *L, const BlockParams &params)
+{
+	using Type = BlockParams::Type;
+	switch (params.getType()) {
+		case Type::None:
+			return 0;
+			break;
+		case Type::STR16:
+			lua_pushstring(L, params.text->c_str());
+			return 1;
+		case Type::U8:
+			lua_pushinteger(L, params.param_u8);
+			return 1;
+		case Type::U8U8U8:
+			lua_pushinteger(L, params.teleporter.rotation);
+			lua_pushinteger(L, params.teleporter.id);
+			lua_pushinteger(L, params.teleporter.dst_id);
+			return 3;
+		case Type::INVALID:
+			break;
+		// DO NOT USE default CASE
+	}
+
+	luaL_error(L, "unhandled type=%d", params.getType());
+	return 0;
+}
+
+int Script::l_send_event(lua_State *L)
 {
 	MESSY_CPP_EXCEPTIONS_START
 	Script *script = get_script(L);
 	Player *player = script->m_player;
 
-	Player::Event event;
+	const u16 event_id = luaL_checkinteger(L, 1);
+	std::vector<BlockParams> data;
+	data.reserve(lua_gettop(L) / 2);
 
-	event.block_id = luaL_checkinteger(L, 1);
-	if (!lua_isnoneornil(L, 2))
-		event.payload = luaL_checkinteger(L, 2);
-
-	if (lua_isnoneornil(L, 3)) {
-		event.pos = player->getCurrentBlockPos();
-	} else {
-		// automatic floor
-		event.pos.X = luaL_checknumber(L, 3) + 0.5f;
-		event.pos.Y = luaL_checknumber(L, 4) + 0.5f;
+	int idx = 1;
+	const int stack_max = lua_gettop(L);
+	while (idx < stack_max) {
+		int type = luaL_checkinteger(L, ++idx);
+		logger(LL_DEBUG, "read event idx=%d, type=%d", idx, type);
+		BlockParams &params = data.emplace_back((BlockParams::Type)type);
+		read_blockparams(L, idx, params);
 	}
 
 	if (player->event_list) {
-		player->event_list->insert(event);
+		auto [it, is_new] = player->event_list->emplace(event_id);
+		std::swap(*it->data, data);
 	}
 	return 0;
 	MESSY_CPP_EXCEPTIONS_END
 }
 
-void Script::onEvent(blockpos_t pos, bid_t block_id, uint32_t payload)
+void Script::onEvent(const ScriptEvent &se)
 {
+	if (m_ref_event_handlers < 0)
+		throw std::runtime_error("missing handler");
+
 	lua_State *L = m_lua;
 
 	int top = lua_gettop(L);
-	lua_rawgeti(L, LUA_REGISTRYINDEX, m_ref_event_handler);
-	luaL_checktype(L, -1, LUA_TFUNCTION);
-	lua_pushinteger(L, block_id);
-	lua_pushinteger(L, pos.X);
-	lua_pushinteger(L, pos.Y);
-	lua_pushinteger(L, payload);
-	if (lua_pcall(L, 4, 0, 0)) {
-		logger(LL_ERROR, "event_handler block=%d failed: %s\n",
-			block_id,
+	lua_rawgeti(L, LUA_REGISTRYINDEX, m_ref_event_handlers);
+	lua_rawgeti(L, -1, se.event_id);
+	if (lua_type(L, -1) != LUA_TFUNCTION) {
+		logger(LL_ERROR, "Invalid event_handler id=%d", se.event_id);
+		return;
+	}
+
+	int nargs = 0;
+	for (const BlockParams &params : *se.data)
+		nargs += write_blockparams(L, params);
+
+	if (lua_pcall(L, nargs, 0, 0)) {
+		logger(LL_ERROR, "event_handler id=%d failed: %s\n",
+			se.event_id,
 			lua_tostring(L, -1)
 		);
-		lua_settop(L, top); // function + error msg
+		lua_settop(L, top); // table + function + error msg
 		return;
 	}
 
@@ -145,27 +204,7 @@ int Script::l_world_get_params(lua_State *L)
 	if (!params)
 		return 0;
 
-	using BT = BlockParams::Type;
-	switch (params->getType()) {
-		case BT::None:
-			return 0;
-		case BT::STR16:
-			lua_pushstring(L, params->text->c_str());
-			return 1;
-		case BT::U8:
-			lua_pushinteger(L, params->param_u8);
-			return 1;
-		case BT::U8U8U8:
-			lua_pushinteger(L, params->teleporter.rotation);
-			lua_pushinteger(L, params->teleporter.id);
-			lua_pushinteger(L, params->teleporter.dst_id);
-			return 3;
-		case BT::INVALID:
-			break;
-	}
-
-	luaL_error(L, "BlockParams INVALID");
-	return 0;
+	return write_blockparams(L, *params);
 }
 
 int Script::l_world_set_tile(lua_State *L)

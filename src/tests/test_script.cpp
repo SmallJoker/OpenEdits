@@ -16,6 +16,7 @@ void unittest_script()
 	script.setTestMode("init");
 	CHECK(script.loadFromFile("assets/scripts/constants.lua"));
 	CHECK(script.loadFromFile("assets/scripts/unittest.lua"));
+	script.onScriptsLoaded();
 
 	RemotePlayer p(12345, PROTOCOL_VERSION_MAX);
 	script.setPlayer(&p);
@@ -55,6 +56,26 @@ void unittest_script()
 		p.vel = core::vector2df(0, 20);
 		CHECK(script.onCollide(ci) == (int)BlockProperties::CollisionType::Velocity);
 		CHECK(script.popErrorCount() == 0);
+	}
+
+	// script events
+	{
+
+		std::set<ScriptEvent> myevents;
+
+		// make the player send an event
+		{
+			p.event_list = &myevents;
+
+			script.onIntersect(bmgr.getProps(4));
+			CHECK(myevents.size() == 1);
+			auto se = myevents.begin();
+			CHECK(se->event_id == 1003 && se->data->size() == 2);
+			p.event_list = nullptr;
+		}
+
+		// run callback function
+		script.onEvent(*myevents.begin());
 	}
 
 	script.close();

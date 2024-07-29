@@ -8,7 +8,7 @@
 
 using namespace ScriptUtils;
 
-Logger script_logger("Script", LL_INFO);
+Logger script_logger("Script", LL_DEBUG);
 static Logger &logger = script_logger;
 
 
@@ -185,12 +185,12 @@ bool Script::init()
 
 		lua_newtable(L);
 		{
-			FIELD_SET_FUNC(world_, event);
 			FIELD_SET_FUNC(world_, get_block);
 			FIELD_SET_FUNC(world_, get_params);
 			FIELD_SET_FUNC(world_, set_tile);
 		}
 		lua_setfield(L, -2, "world");
+		FIELD_SET_FUNC(/**/, send_event);
 
 		initSpecifics();
 	}
@@ -226,7 +226,7 @@ void Script::close()
 		props->ref_on_intersect = LUA_REFNIL;
 		props->ref_on_collide = LUA_REFNIL;
 	}
-	m_ref_event_handler = LUA_REFNIL;
+	m_ref_event_handlers = LUA_REFNIL;
 
 	lua_close(m_lua);
 	m_lua = nullptr;
@@ -324,4 +324,24 @@ int Script::l_require_asset(lua_State *L)
 		lua_error(L);
 
 	return 0;
+}
+
+// -------------- ScriptEvent struct -------------
+
+ScriptEvent::ScriptEvent(u16 event_id)
+	: event_id(event_id)
+{
+	data = new std::vector<BlockParams>();
+}
+
+ScriptEvent::~ScriptEvent()
+{
+	delete data;
+}
+
+ScriptEvent &ScriptEvent::operator=(ScriptEvent &&other)
+{
+	event_id = other.event_id;
+	std::swap(data, other.data);
+	return *this;
 }

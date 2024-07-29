@@ -30,9 +30,6 @@ Main entry point: `main.lua`
 Namespace: `env.world`. Associated to the world of the currently
 active player of the callback.
 
- * **DRAFT** `event(block_id, payload, x, y)`
-    * `payload` (optional)
-    * `x, y` (optional): if not provided, the current player position is used.
  * `get_block(x, y)` -> `fg, tile, bg`
     * `x, y` (optional): if set to `nil`, the current player position is used.
  * `get_params(x, y)` -> (variable)
@@ -41,6 +38,20 @@ active player of the callback.
  * `set_tile(block_id, tile, PositionRange ...)`
     * Sets the block tile
     * `PositionRange` (optional): defines which blocks that are affected
+
+
+#### Script events
+
+ * `env.send_event(event_id, ...)`
+    * `event_id` (integer)
+	* `...`: flat type + value list
+		* Example: `*_U8U8U8, 42, 32, 1, *_STR16, "test value"`,
+		* `typeN`: one of the accepted `env.PARAMS_TYPE_*`
+		* value N...: N values matching the specified type
+* `env.event_handlers[event_id] = function(...)`
+	* Counterpart for `env.send_event`, run on the other peer
+	* `...`: flat value list but without types
+	* Return value: (none)
 
 
 ### Player API

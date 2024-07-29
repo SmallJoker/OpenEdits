@@ -10,6 +10,7 @@
 
 using namespace irr;
 
+struct ScriptEvent;
 class Packet;
 class Script;
 class World;
@@ -66,16 +67,7 @@ public:
 	// For keys or killing blocks
 	std::set<blockpos_t> *on_touch_blocks = nullptr;
 
-	struct Event {
-		bid_t block_id;
-		blockpos_t pos;
-		uint32_t payload = 0;
-		bool operator<(const Event &rhs) const
-		{
-			return (pos.X < rhs.pos.X) && (pos.Y < rhs.pos.Y);
-		}
-	};
-	std::set<Event> *event_list = nullptr;
+	std::set<ScriptEvent> *event_list = nullptr;
 
 	void setGodMode(bool value);
 	bool godmode = false;

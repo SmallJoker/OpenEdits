@@ -3,8 +3,10 @@
 #include "core/types.h" // bid_t
 #include <string>
 
+struct BlockParams;
 struct BlockProperties;
 struct lua_State;
+struct ScriptEvent;
 class BlockManager;
 class MediaManager;
 class Player;
@@ -72,7 +74,7 @@ private:
 
 	// -------- Environment
 public:
-	void onEvent(blockpos_t pos, bid_t block_id, uint32_t payload); // TODO
+	void onEvent(const ScriptEvent &se);
 
 protected:
 	static void get_position_range(lua_State *L, int idx, PositionRange &range);
@@ -81,7 +83,7 @@ protected:
 
 
 private:
-	static int l_world_event(lua_State *L); // TODO
+	static int l_send_event(lua_State *L);
 	static int l_world_get_block(lua_State *L);
 	static int l_world_get_params(lua_State *L);
 	static int l_world_set_tile(lua_State *L);
@@ -118,7 +120,26 @@ protected:
 	MediaManager *m_media = nullptr;
 	World *m_world = nullptr;
 
-	int m_ref_event_handler = -2; // LUA_NOREF
+	int m_ref_event_handlers = -2; // LUA_NOREF
 
 	bid_t m_last_block_id = Block::ID_INVALID;
+};
+
+
+struct ScriptEvent {
+	ScriptEvent(u16 event_id);
+	~ScriptEvent();
+
+
+	ScriptEvent &operator=(const ScriptEvent &other) = delete;
+	ScriptEvent &operator=(ScriptEvent &&other);
+
+	bool operator<(const ScriptEvent &rhs) const
+	{
+		return event_id < rhs.event_id && data < rhs.data;
+	}
+
+	u16 event_id;
+	// Pointer is stupid but I want to keep headers lightweight.
+	std::vector<BlockParams> *data = nullptr;
 };
