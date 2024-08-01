@@ -11,6 +11,7 @@ struct lua_State;
 class Script;
 
 extern Logger script_logger;
+#define logger_off(...)
 
 
 // Must be split to properly show the executed line number in gdb

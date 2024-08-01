@@ -27,8 +27,6 @@ if env.test_mode == "media" then
 	env.include("constants.lua")
 end
 
-env.event_handlers = {}
-
 env.world.on_player_join = function()
 	print("JOIN", env.player.get_name())
 end
@@ -95,17 +93,18 @@ env.change_block(2, {
 	end,
 })
 
-
 -- event sender/receiver test
-env.event_handlers[1003] = function(...)
-	local a, b = unpack({...})
-	print("got event!", dump({...}), dump(a), dump(b))
-end
+local EV = env.register_event(1003, 0, env.PARAMS_TYPE_STR16, env.PARAMS_TYPE_U8U8U8,
+	function(...)
+		local a, b = unpack({...})
+		print("got event!", dump({...}), dump(a), dump(b))
+	end
+)
 
 env.change_block(4, {
 	on_intersect = function()
 		print("send event!")
-		env.send_event(1003, env.PARAMS_TYPE_STR16, "hello world", env.PARAMS_TYPE_U8U8U8, 200, 10, 3)
+		env.send_event(EV, "hello world", 200, 10, 3)
 	end
 })
 

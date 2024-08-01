@@ -37,6 +37,7 @@ const ServerPacketHandler Server::packet_actions[] = {
 	{ RemotePlayerState::WorldPlay, &Server::pkt_Smiley },
 	{ RemotePlayerState::Idle,      &Server::pkt_FriendAction },
 	{ RemotePlayerState::Idle,      &Server::pkt_MediaRequest },
+	{ RemotePlayerState::WorldPlay, &Server::pkt_ScriptEvent },
 	{ RemotePlayerState::Invalid, 0 }
 };
 
@@ -843,6 +844,24 @@ void Server::pkt_TriggerBlocks(peer_t peer_id, Packet &pkt)
 	if (is_dead) {
 		if (m_deaths.find(peer_id) == m_deaths.end())
 			m_deaths.insert({peer_id, Timer(1.0f) });
+	}
+}
+
+void Server::pkt_ScriptEvent(peer_t peer_id, Packet &pkt)
+{
+	// TODO
+	// Broadcast to players (depending on flags)
+
+	while (pkt.getRemainingBytes()) {
+		u16 event_id = pkt.read<u16>();
+		if (event_id == UINT16_MAX)
+			break;
+
+		ScriptEvent se(event_id);
+		Packet *pkt_ptr = &pkt;
+		std::swap(se.data, pkt_ptr);
+		m_script->onEvent(se);
+		std::swap(se.data, pkt_ptr);
 	}
 }
 

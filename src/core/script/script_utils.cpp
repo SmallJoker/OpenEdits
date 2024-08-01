@@ -22,7 +22,7 @@ void cpp_exception_handler(lua_State *L)
 	} catch (std::runtime_error &e) {
 		n = snprintf(tmp_errorlog, sizeof(tmp_errorlog), "std::runtime_error(\"%s\")", e.what());
 	} catch (std::exception &e) {
-		n = snprintf(tmp_errorlog, sizeof(tmp_errorlog), "std::exception(\"%s\")", e.what());
+		n = snprintf(tmp_errorlog, sizeof(tmp_errorlog), "(%s)", e.what());
 	}
 	// Cannot catch lua_longjmp: incomplete type. RAII might not work.
 
@@ -96,6 +96,10 @@ void dump_args(lua_State *L, FILE *file, bool details)
 				break;
 			case LUA_TFUNCTION:
 				snprintf(buf, sizeof(buf), "%p", lua_topointer(L, i));
+				str = buf;
+				break;
+			case LUA_TTABLE:
+				snprintf(buf, sizeof(buf), "{#table=%zu}", lua_objlen(L, i));
 				str = buf;
 				break;
 			default: break;

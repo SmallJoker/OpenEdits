@@ -19,7 +19,11 @@ reg.blocks_doors = {
 	{ id = 28, tiles = tiles_gate },
 }
 
-local is_key_active = {}
+local KEY_EV = env.register_event(4, 0, env.PARAMS_TYPE_U8,
+	function(key_id)
+		print("keys", key_id)
+	end
+)
 
 local function make_key_block(id, door_id, gate_id)
 	local def = {
@@ -30,14 +34,15 @@ local function make_key_block(id, door_id, gate_id)
 			world.set_tile(gate_id, 1, world.PRT_ENTIRE_WORLD)
 		end,
 		on_intersect_once = function(_)
-			world.event(id, 0)
+			print("send event", KEY_EV)
+			env.send_event(KEY_EV, id)
 		end
 	}
 	return def
 end
 
 reg.blocks_keys = {
-	make_key_block(6, 23, 26),
-	make_key_block(7, 24, 27),
-	make_key_block(8, 25, 28),
+	make_key_block(6, 23, 26), -- R
+	make_key_block(7, 24, 27), -- G
+	make_key_block(8, 25, 28), -- B
 }

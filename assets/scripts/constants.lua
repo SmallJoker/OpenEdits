@@ -43,3 +43,16 @@ if env.gui then
 	local h = env.gui
 	h.HUDT_TEXT = 0
 end
+
+
+-- Not constant but needed regardless
+env.event_handlers = {}
+
+local old_register = env.register_event
+env.register_event = function(event_id, ...)
+	local values = { ... }
+	assert(type(values[#values]) == "function")
+	env.event_handlers[event_id] = values[#values]
+	values[#values] = nil
+	return assert(old_register(event_id, unpack(values)), "fail")
+end

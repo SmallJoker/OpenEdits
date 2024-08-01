@@ -506,34 +506,19 @@ void Client::processPacket(peer_t peer_id, Packet &pkt)
 	}
 }
 
-void Client::stepPhysics(float dtime)
+/// @return: map dirty
+static bool send_on_touch_blocks(Client *cli, Player *player, Packet &pkt)
 {
-	auto world = getWorld();
-	if (!world.get())
-		return;
+	if (!player || !player->on_touch_blocks)
+		throw std::runtime_error("null ptr");
 
-	std::set<blockpos_t> on_touch_blocks;
-	SimpleLock lock(m_players_lock);
-
-	for (auto it : m_players) {
-		if (it.first == m_my_peer_id) {
-			it.second->on_touch_blocks = &on_touch_blocks;
-			it.second->step(dtime);
-			it.second->on_touch_blocks = nullptr;
-		} else {
-			it.second->step(dtime);
-		}
-	}
-
-	auto &meta = world->getMeta();
-
-	// Process node events
 	bool map_dirty = false;
-	Packet pkt;
 	pkt.write(Packet2Server::OnTouchBlock);
 
-	auto player = getPlayerNoLock(m_my_peer_id);
-	for (blockpos_t bp : on_touch_blocks) {
+	const auto world = player->getWorld().get();
+	auto &meta = world->getMeta();
+
+	for (blockpos_t bp : *player->on_touch_blocks) {
 		Block b;
 		if (!world->getBlock(bp, &b))
 			continue;
@@ -566,7 +551,7 @@ void Client::stepPhysics(float dtime)
 					e.block = new GameEvent::BlockData();
 					e.block->b = b;
 					e.block->pos = bp;
-					sendNewEvent(e);
+					cli->sendNewEvent(e);
 				}
 			break;
 			case Block::ID_PIANO:
@@ -575,7 +560,7 @@ void Client::stepPhysics(float dtime)
 					e.block = new GameEvent::BlockData();
 					e.block->b = b;
 					e.block->pos = bp;
-					sendNewEvent(e);
+					cli->sendNewEvent(e);
 				}
 				break;
 			case Block::ID_CHECKPOINT:
@@ -608,16 +593,74 @@ void Client::stepPhysics(float dtime)
 			break;
 		}
 	} // for
+	return map_dirty;
+}
 
-	if (pkt.size() > 4) {
-		pkt.write(BLOCKPOS_INVALID); // end
+static void send_script_events(Player *player, Packet &pkt)
+{
+	pkt.write(Packet2Server::ScriptEvent);
 
-		m_con->send(0, 1, pkt);
+	for (const auto &event : *player->event_list) {
+		pkt.write(event.event_id);
+
+		const uint8_t *data;
+		size_t len = event.data->readRawNoCopy(&data, -1);
+		pkt.writeRaw(data, len);
+	}
+}
+
+void Client::stepPhysics(float dtime)
+{
+	auto world = getWorld();
+	if (!world.get())
+		return;
+
+	std::set<blockpos_t> on_touch_blocks;
+	std::set<ScriptEvent> script_events;
+	SimpleLock lock(m_players_lock);
+
+	for (auto it : m_players) {
+		if (it.first == m_my_peer_id) {
+			it.second->on_touch_blocks = &on_touch_blocks;
+			it.second->event_list = &script_events;
+			it.second->step(dtime);
+			it.second->on_touch_blocks = nullptr;
+		} else {
+			it.second->step(dtime);
+		}
+	}
+
+
+	auto player = getPlayerNoLock(m_my_peer_id);
+
+	// Process node events
+	bool map_dirty = false;
+	{
+		Packet pkt;
+		player->on_touch_blocks = &on_touch_blocks;
+		map_dirty |= send_on_touch_blocks(this, player, pkt);
+		player->on_touch_blocks = nullptr;
+
+		if (pkt.size() > 2) {
+			pkt.write(BLOCKPOS_INVALID); // terminating position
+
+			m_con->send(0, 1, pkt);
+		}
+	}
+
+	{
+		Packet pkt;
+		send_script_events(player, pkt);
+
+		if (pkt.size() > 2) {
+			pkt.write(UINT16_MAX); // terminating event ID
+
+			m_con->send(0, 1, pkt);
+		}
 	}
 
 	if (map_dirty) {
 		// Triggering an event anyway. Update coin doors.
-		auto player = getPlayerNoLock(m_my_peer_id);
 		player->updateCoinCount();
 
 		GameEvent e(GameEvent::C2G_MAP_UPDATE);

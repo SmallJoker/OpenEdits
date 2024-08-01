@@ -46,6 +46,7 @@ private:
 	void pkt_Chat(peer_t peer_id, Packet &pkt);
 	void pkt_PlaceBlock(peer_t peer_id, Packet &pkt);
 	void pkt_TriggerBlocks(peer_t peer_id, Packet &pkt);
+	void pkt_ScriptEvent(peer_t peer_id, Packet &pkt);
 	void pkt_GodMode(peer_t peer_id, Packet &pkt);
 	void pkt_Smiley(peer_t peer_id, Packet &pkt);
 	void pkt_FriendAction(peer_t peer_id, Packet &pkt);

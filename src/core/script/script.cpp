@@ -8,7 +8,7 @@
 
 using namespace ScriptUtils;
 
-Logger script_logger("Script", LL_DEBUG);
+Logger script_logger("Script", LL_INFO);
 static Logger &logger = script_logger;
 
 
@@ -190,6 +190,7 @@ bool Script::init()
 			FIELD_SET_FUNC(world_, set_tile);
 		}
 		lua_setfield(L, -2, "world");
+		FIELD_SET_FUNC(/**/, register_event);
 		FIELD_SET_FUNC(/**/, send_event);
 
 		initSpecifics();
@@ -324,24 +325,4 @@ int Script::l_require_asset(lua_State *L)
 		lua_error(L);
 
 	return 0;
-}
-
-// -------------- ScriptEvent struct -------------
-
-ScriptEvent::ScriptEvent(u16 event_id)
-	: event_id(event_id)
-{
-	data = new std::vector<BlockParams>();
-}
-
-ScriptEvent::~ScriptEvent()
-{
-	delete data;
-}
-
-ScriptEvent &ScriptEvent::operator=(ScriptEvent &&other)
-{
-	event_id = other.event_id;
-	std::swap(data, other.data);
-	return *this;
 }

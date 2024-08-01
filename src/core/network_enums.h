@@ -44,5 +44,6 @@ enum class Packet2Server : uint16_t {
 	Smiley,
 	FriendAction,
 	MediaRequest,
+	ScriptEvent,
 	MAX_END
 };

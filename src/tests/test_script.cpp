@@ -2,6 +2,7 @@
 
 #include "core/blockmanager.h"
 #include "core/connection.h" // PROTOCOL_VERSION_*
+#include "core/packet.h"
 #include "server/remoteplayer.h"
 #include "server/serverscript.h"
 
@@ -70,7 +71,7 @@ void unittest_script()
 			script.onIntersect(bmgr.getProps(4));
 			CHECK(myevents.size() == 1);
 			auto se = myevents.begin();
-			CHECK(se->event_id == 1003 && se->data->size() == 2);
+			CHECK(se->event_id == 1003 && se->data->size() == 2 + 11 + 3);
 			p.event_list = nullptr;
 		}
 

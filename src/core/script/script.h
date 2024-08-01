@@ -1,14 +1,16 @@
 #pragma once
 
+#include "core/blockparams.h"
 #include "core/types.h" // bid_t
+#include <map>
 #include <string>
 
-struct BlockParams;
 struct BlockProperties;
 struct lua_State;
 struct ScriptEvent;
 class BlockManager;
 class MediaManager;
+class Packet;
 class Player;
 class World;
 
@@ -83,6 +85,7 @@ protected:
 
 
 private:
+	static int l_register_event(lua_State *L);
 	static int l_send_event(lua_State *L);
 	static int l_world_get_block(lua_State *L);
 	static int l_world_get_params(lua_State *L);
@@ -120,6 +123,9 @@ protected:
 	MediaManager *m_media = nullptr;
 	World *m_world = nullptr;
 
+	using EventDefinition = std::vector<BlockParams::Type>;
+	std::map<u16, EventDefinition> m_event_defs;
+
 	int m_ref_event_handlers = -2; // LUA_NOREF
 
 	bid_t m_last_block_id = Block::ID_INVALID;
@@ -129,7 +135,6 @@ protected:
 struct ScriptEvent {
 	ScriptEvent(u16 event_id);
 	~ScriptEvent();
-
 
 	ScriptEvent &operator=(const ScriptEvent &other) = delete;
 	ScriptEvent &operator=(ScriptEvent &&other);
@@ -141,5 +146,5 @@ struct ScriptEvent {
 
 	u16 event_id;
 	// Pointer is stupid but I want to keep headers lightweight.
-	std::vector<BlockParams> *data = nullptr;
+	Packet *data = nullptr;
 };

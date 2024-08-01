@@ -6,8 +6,6 @@ env.include("constants.lua")
 local GRAVITY    = 100.0 -- m/s² for use in callbacks
 local JUMP_SPEED =  30.0 -- m/s  for use in callbacks
 
-env.event_handlers = {}
-
 env.event_handlers[1] = function(...)
 	print("CALL", unpack({...}))
 end
