@@ -36,6 +36,10 @@ static void test_server_client()
 			srv.readMediaRequest(&player, pkt);
 			CHECK(player.media.requested.size() > 0);
 			CHECK(pkt.getRemainingBytes() == 0);
+
+			for (const std::string &s : player.media.requested) {
+				printf("\t %s\n", s.c_str());
+			}
 		}
 
 		{

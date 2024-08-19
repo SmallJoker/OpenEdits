@@ -16,7 +16,13 @@ class World;
 
 class Script {
 public:
-	Script(BlockManager *bmgr);
+	enum Type {
+		ST_UNKNOWN,
+		ST_SERVER,
+		ST_CLIENT
+	};
+
+	Script(BlockManager *bmgr, Type type);
 	virtual ~Script();
 
 	bool init();
@@ -35,6 +41,8 @@ protected:
 public:
 	/// Setter for `env.test_mode` (unittests)
 	void setTestMode(const std::string &value);
+	/// Getter for `env.test_feedback` (unittests)
+	std::string getTestFeedback();
 	static int popErrorCount();
 
 	// UNSAFE. Accepts any path.
@@ -52,6 +60,7 @@ private:
 	static int l_register_pack(lua_State *L);
 	static int l_change_block(lua_State *L);
 
+	int m_private_include_depth = 0;
 
 	// -------- Callbacks
 public:
@@ -118,6 +127,8 @@ protected:
 
 	// -------- Members
 protected:
+	const Type m_scripttype;
+
 	lua_State *m_lua = nullptr;
 	BlockManager *m_bmgr = nullptr;
 	MediaManager *m_media = nullptr;

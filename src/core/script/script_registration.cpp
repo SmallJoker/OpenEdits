@@ -48,9 +48,23 @@ int Script::l_include(lua_State *L)
 	Script *script = get_script(L);
 
 	std::string asset_name = luaL_checkstring(L, 1);
+	bool is_public = true;
+	if (!lua_isnoneornil(L, 2)) {
+		std::string scope = luaL_checkstring(L, 2);
+		is_public = (scope != "server");
+		// TODO: support "client"-only scripts.
+	}
 
-	if (!script->loadFromAsset(asset_name))
-		lua_error(L);
+	if (!is_public)
+		script->m_private_include_depth++;
+
+	bool ok = script->loadFromAsset(asset_name);
+
+	if (!is_public)
+		script->m_private_include_depth--;
+
+	if (!ok)
+		luaL_error(L, "Failed to load script"); // provides backtrace
 
 	MESSY_CPP_EXCEPTIONS_END
 	return 0;

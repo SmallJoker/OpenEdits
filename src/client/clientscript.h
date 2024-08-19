@@ -7,7 +7,7 @@ class Client;
 class ClientScript : public Script {
 public:
 	ClientScript(BlockManager *bmgr) :
-		Script(bmgr) {}
+		Script(bmgr, ST_CLIENT) {}
 
 	void initSpecifics() override;
 	void closeSpecifics() override;

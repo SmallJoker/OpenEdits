@@ -5,7 +5,7 @@
 class ServerScript : public Script {
 public:
 	ServerScript(BlockManager *bmgr) :
-		Script(bmgr) {}
+		Script(bmgr, ST_SERVER) {}
 
 	void onScriptsLoaded() override;
 

@@ -91,8 +91,12 @@ HUD Definition: (table)
 
 ### Registration
 
- * `env.include(asset_name)`
+ * `env.include(asset_name, [scope])`
     * Adds another script to the required assets and executes it.
+    * `scope` (string): optional. Default: `nil`
+       * value `nil`: distributes and runs the script on server and client
+       * value `"server"`: script is only available and run on server-side
+       * Note for `scope ~= nil`: avoid registrations. There would be mismatches.
  * `env.require_asset(asset_name)`
     * To use for dynamically used assets, such as audio playback.
     * `asset_name` (string): file name without extension

@@ -10,7 +10,7 @@ extern size_t CONNECTION_MTU;
 
 namespace fs = std::filesystem;
 const std::string CACHE_DIR = "cache";
-static Logger logger("ClientMedia", LL_DEBUG);
+static Logger logger("ClientMedia", LL_INFO);
 
 // Requires "computeHash" to be run first, or set "data_hash" manually
 std::string MediaManager::File::getDiskFileName()
@@ -31,6 +31,10 @@ void ClientMedia::readMediaList(Packet &pkt)
 {
 	time_t time_now = time(nullptr);
 
+	decltype(m_media_available) local_media;
+	std::swap(m_media_available, local_media);
+	// m_media_available is now EMPTY
+
 	// name, size, data hash
 	while (pkt.getRemainingBytes()) {
 		std::string name = pkt.readStr16();
@@ -42,6 +46,7 @@ void ClientMedia::readMediaList(Packet &pkt)
 
 		File file;
 		file.file_size = size;
+		file.data_hash = data_hash;
 
 		// Check file in cache
 		file.file_path = file.getDiskFileName();
@@ -51,18 +56,20 @@ void ClientMedia::readMediaList(Packet &pkt)
 			// overwrite path of the indexed local files
 			m_media_available[name] = file.file_path;
 			bytes_done += size;
+			logger(LL_DEBUG, "%s: file %s from cache\n", __func__, name.c_str());
 			continue;
 		}
 
 		// Check the local files to avoid unnecessary caching
-		auto it = m_media_available.find(name);
-		if (it != m_media_available.end()) {
+		auto it = local_media.find(name);
+		if (it != local_media.end()) {
 			file.file_size = size;
 			file.file_path = it->second;
 			// Cache function oveerwrites the hash!
 			if (file.cacheToRAM() && file.data_hash == data_hash && file.file_size == size) {
-				// "m_media_available" is already OK and up-to-date
+				m_media_available[name] = it->second;
 				bytes_done += size;
+				logger(LL_DEBUG, "%s: file %s from distr\n", __func__, name.c_str());
 				continue;
 			}
 		}

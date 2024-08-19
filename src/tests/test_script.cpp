@@ -17,9 +17,11 @@ void unittest_script()
 	script.setTestMode("init");
 	CHECK(script.loadFromFile("assets/scripts/constants.lua"));
 	CHECK(script.loadFromFile("assets/scripts/unittest.lua"));
+	CHECK(script.loadFromFile("assets/scripts/unittest_server.lua"));
 	script.onScriptsLoaded();
 
 	RemotePlayer p(12345, PROTOCOL_VERSION_MAX);
+	p.name = "MCFOOBAR";
 	script.setPlayer(&p);
 
 	// on_intersect_once
@@ -77,6 +79,15 @@ void unittest_script()
 
 		// run callback function
 		script.onEvent(*myevents.begin());
+		CHECK(script.getTestFeedback() == ";hello world200103");
+	}
+
+	// join/leave
+	{
+		script.onPlayerJoin(&p);
+		CHECK(script.getTestFeedback() == "J_COM;J_SRV;");
+		script.onPlayerLeave(&p);
+		CHECK(script.getTestFeedback() == "L_COM;L_SRV;");
 	}
 
 	script.close();

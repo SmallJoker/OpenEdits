@@ -58,7 +58,8 @@ static int l_panic(lua_State *L)
 
 // -------------- Script class functions -------------
 
-Script::Script(BlockManager *bmgr) :
+Script::Script(BlockManager *bmgr, Type type) :
+	m_scripttype(type),
 	m_bmgr(bmgr)
 {
 	ASSERT_FORCED(m_bmgr, "Missing BlockManager");
@@ -70,7 +71,7 @@ Script::~Script()
 	close();
 }
 
-static const std::string G_WHITELIST[] = {
+static const char *G_WHITELIST[] = {
 	"_G",
 	"assert",
 	"pairs",
@@ -82,19 +83,33 @@ static const std::string G_WHITELIST[] = {
 	"tostring",
 	"type",
 	"unpack",
+// tables
+	"math",
+	"string",
+	nullptr
 };
 
-static void process_api_whitelist(lua_State *L)
+static const char *STRING_WHITELIST[] = {
+	"byte",
+	"char",
+	"find",
+	"format",
+	"rep",
+	"sub",
+	nullptr
+};
+
+static void process_api_whitelist_single(lua_State *L, const char *whitelist[])
 {
-	lua_getglobal(L, "_G");
 	int table = lua_gettop(L);
 	lua_pushnil(L);
 	while (lua_next(L, table)) {
 		// key @ -2, value @ -1
 		std::string str = lua_tostring(L, -2);
 		bool found = false;
-		for (const std::string &white : G_WHITELIST) {
-			if (white == str) {
+
+		for (auto white = whitelist; *white; ++white) {
+			if (*white == str) {
 				found = true;
 				break;
 			}
@@ -105,6 +120,17 @@ static void process_api_whitelist(lua_State *L)
 		}
 		lua_pop(L, 1);
 	}
+}
+static void process_api_whitelist(lua_State *L)
+{
+	lua_getglobal(L, "_G");
+	process_api_whitelist_single(L, G_WHITELIST);
+	lua_pop(L, 1);
+
+	// no filter for "math".
+
+	lua_getglobal(L, "string");
+	process_api_whitelist_single(L, STRING_WHITELIST);
 	lua_pop(L, 1);
 }
 
@@ -124,13 +150,14 @@ bool Script::init()
 		lua_rawseti(L, LUA_REGISTRYINDEX, CUSTOM_RIDX_TRACEBACK);
 	}
 
+	luaopen_math(L);
+	luaopen_string(L);
+
 	// Remove functions that we probably don't need
 	process_api_whitelist(L);
 
-	luaopen_math(L);
 	if (do_load_string_n_table) {
 		// not really needed but helpful for tests
-		luaopen_string(L);
 		luaopen_table(L);
 	}
 
@@ -238,18 +265,28 @@ bool Script::loadFromAsset(const std::string &asset_name)
 	ASSERT_FORCED(m_media, "Missing MediaManager");
 
 	const char *real_path = m_media->getAssetPath(asset_name.c_str());
-	if (!real_path)
-		return false;
 
 	if (asset_name.find_first_of(":/\\") != std::string::npos) {
 		logger(LL_ERROR, "Invalid asset name '%s'", asset_name.c_str());
+		ASSERT_FORCED(!real_path, "bad indexer!");
 		return false;
+	}
+
+	const bool is_public = m_private_include_depth == 0;
+	if (!real_path)
+		return is_public == (m_scripttype == ST_SERVER); // ignore on client side
+
+	if (!is_public && m_scripttype != ST_SERVER) {
+		// May be triggered by unittests
+		logger(LL_WARN, "Accessed unobtainable asset '%s'", asset_name.c_str());
+		return true; // do not load
 	}
 
 	if (!loadFromFile(real_path))
 		return false;
 
-	return m_media->requireAsset(asset_name.c_str());
+	// Server only: mark as required
+	return !is_public || m_media->requireAsset(asset_name.c_str());
 }
 
 static const char *SEPARATOR = "----------------\n";
@@ -268,7 +305,8 @@ bool Script::loadFromFile(const std::string &filename)
 	}
 
 	m_last_block_id = Block::ID_INVALID;
-	logger(LL_INFO, "Loading file: '%s'\n", filename.c_str());
+	logger(LL_INFO, "Loading file: '%s' (public? %d)\n",
+		filename.c_str(), m_private_include_depth == 0);
 
 	lua_rawgeti(m_lua, LUA_REGISTRYINDEX, CUSTOM_RIDX_TRACEBACK);
 	luaL_checktype(m_lua, -1, LUA_TFUNCTION);
@@ -311,6 +349,19 @@ void Script::setTestMode(const std::string &value)
 	lua_pop(L, 1); // env
 }
 
+// TODO: unused.
+std::string Script::getTestFeedback()
+{
+	lua_State *L = m_lua;
+
+	lua_getglobal(L, "env");
+	lua_getfield(L, -1, "test_feedback");
+	std::string out = luaL_checkstring(L, -1);
+	lua_pop(L, 2); // env + field
+
+	return out;
+}
+
 int Script::popErrorCount()
 {
 	return logger.popErrorCount();
@@ -322,7 +373,7 @@ int Script::l_require_asset(lua_State *L)
 	const char *asset_name = luaL_checkstring(L, 1);
 
 	if (!script->m_media->requireAsset(asset_name))
-		lua_error(L);
+		luaL_error(L, "not found");
 
 	return 0;
 }

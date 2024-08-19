@@ -115,8 +115,11 @@ void BlockManager::sanityCheck()
 		for (bid_t id : pack->block_ids) {
 			auto prop = m_props[id];
 
-			if (m_media)
-				m_media->requireAsset(("pack_" + pack->name + ".png").c_str());
+			if (m_media) {
+				bool ok = m_media->requireAsset(("pack_" + pack->name + ".png").c_str());
+				if (!ok)
+					logger(LL_ERROR, "BlockManager: pack texture '%s' not found\n", pack->name.c_str());
+			}
 
 			if (prop->tile_dependent_physics == -1) {
 				// Help to make sure that the clients' prediction is always correct
