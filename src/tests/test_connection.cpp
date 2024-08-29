@@ -35,7 +35,7 @@ void unittest_connection()
 		pkt.write<int32_t>(0x50EFBE); // BEEFS
 		pkt.writeStr16("hello world");
 
-		for (int i = 0; i < 2; ++i) {
+		for (int i = 0; i < 3; ++i) {
 			// Attempt to re-send (e.g. for another peer...?)
 
 			proc.last_size = 0;

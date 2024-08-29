@@ -238,26 +238,28 @@ void Connection::send(peer_t peer_id, uint16_t flags, Packet &pkt)
 		logger(LL_ERROR, "%s: Tried to send packet that is partially read back\n", m_name);
 		return;
 	}
+	_ENetPacket *epkt = pkt.ptrForSend();
+
 	uint8_t channel = flags & FLAG_MASK_CHANNEL;
 
 	// Most of it should be reliable
 	// TODO: test ENET_PACKET_FLAG_UNSEQUENCED
 	if (!(flags & FLAG_UNRELIABLE))
-		pkt.ptr()->flags |= ENET_PACKET_FLAG_RELIABLE;
+		epkt->flags |= ENET_PACKET_FLAG_RELIABLE;
 
 	// Prepare for sending
 	SimpleLock lock(m_host_lock);
 
 	if (flags & FLAG_BROADCAST) {
 		peer_id = 0;
-		enet_host_broadcast(m_host, channel, pkt.ptr());
+		enet_host_broadcast(m_host, channel, epkt);
 	} else {
 		auto peer = findPeer(peer_id);
 		if (!peer)
 			return;
 
 		peer_id = peer->connectID;
-		enet_peer_send(peer, channel, pkt.ptr());
+		enet_peer_send(peer, channel, epkt);
 	}
 
 	logger(LL_DEBUG, "%s: packet sent. peer_id=%u, channel=%d, dump=%s\n",

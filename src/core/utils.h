@@ -50,5 +50,9 @@ inline float get_sign(float f)
 	return 0;
 }
 
+// Provided by zlib
+extern "C"
+unsigned long crc32_z(unsigned long adler, const unsigned char *buf, size_t len);
+
 /// Pseudo-random number generator
 uint32_t mulberry32_next(uint32_t *state);

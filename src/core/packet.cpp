@@ -70,7 +70,7 @@ void Packet::limitRemainingBytes(size_t n)
 }
 
 
-const void *Packet::data() const
+const uint8_t *Packet::data() const
 {
 	return m_data->data;
 }
@@ -102,7 +102,7 @@ std::string Packet::dump(size_t n)
 }
 
 
-_ENetPacket *Packet::ptr()
+_ENetPacket *Packet::ptrForSend()
 {
 	m_data->dataLength = m_write_offset;
 	return m_data;

@@ -13,7 +13,7 @@ class Packet {
 public:
 	/// Empty, preallocated container
 	Packet(size_t n_prealloc = 200);
-	/// Initialization by data copy
+	/// Initialization by data copy (e.g. for SQLite data)
 	Packet(const void *bytes, size_t len);
 	/// Take ownership of an existing packet (from ENet)
 	Packet(_ENetPacket **pkt);
@@ -33,12 +33,12 @@ public:
 	void limitRemainingBytes(size_t n);
 
 	inline size_t size() const { return m_write_offset; }
-	const void *data() const;
+	const uint8_t *data() const;
 
 	std::string dump(size_t n = 10);
 
 	// For network sending
-	_ENetPacket *ptr();
+	_ENetPacket *ptrForSend();
 
 	template<typename T>
 	T read();
@@ -79,5 +79,7 @@ private:
 	bool m_is_big_endian = false;
 	size_t m_read_offset = 0;
 	size_t m_write_offset = 0;
+	// `this.(*m_data).data[i]` could be reduced by 1 level of indirection,
+	// but comes at the cost of manually managing the lifecycle of our data.
 	_ENetPacket *m_data = nullptr;
 };

@@ -99,7 +99,7 @@ bool DatabaseWorld::load(World *world)
 		// Player flags
 		const void *blob = sqlite3_column_blob(s, 7);
 		const size_t len = sqlite3_column_bytes(s, 7);
-		Packet pkt((const char *)blob, len);
+		Packet pkt(blob, len);
 		meta.readPlayerFlags(pkt);
 	}
 
@@ -107,7 +107,7 @@ bool DatabaseWorld::load(World *world)
 		// World data
 		const void *blob = sqlite3_column_blob(s, 8);
 		const size_t len = sqlite3_column_bytes(s, 8);
-		Packet pkt((const char *)blob, len);
+		Packet pkt(blob, len);
 		pkt.data_version = PROTOCOL_VERSION_FAKE_DISK;
 		world->read(pkt);
 	}

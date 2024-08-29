@@ -1,6 +1,7 @@
 #include "mediamanager.h"
 #include "filesystem.h"
 #include "logger.h"
+#include "utils.h"
 #include <filesystem>
 
 namespace fs = std::filesystem;
@@ -22,10 +23,6 @@ MediaManager::AssetType MediaManager::File::getTypeFromFileName(const std::strin
 
 	return AssetType::Invalid;
 }
-
-// Provided by zlib
-extern "C"
-unsigned long crc32_z(unsigned long adler, const unsigned char *buf, size_t len);
 
 void MediaManager::File::computeHash()
 {
