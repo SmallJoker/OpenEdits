@@ -87,6 +87,9 @@ void dump_args(lua_State *L, FILE *file, bool details)
 		const char *str = "??";
 		int type = lua_type(L, i);
 		switch (type) {
+			case LUA_TNIL:
+				str = "<nil>";
+				break;
 			case LUA_TBOOLEAN:
 				str = lua_toboolean(L, i) ? "true" : "false";
 				break;
@@ -95,17 +98,21 @@ void dump_args(lua_State *L, FILE *file, bool details)
 				str = lua_tostring(L, i);
 				break;
 			case LUA_TFUNCTION:
-				snprintf(buf, sizeof(buf), "%p", lua_topointer(L, i));
+				snprintf(buf, sizeof(buf), "<func %p>", lua_topointer(L, i));
 				str = buf;
 				break;
 			case LUA_TTABLE:
-				snprintf(buf, sizeof(buf), "{#table=%zu}", lua_objlen(L, i));
+				snprintf(buf, sizeof(buf), "<#table %zu>", lua_objlen(L, i));
 				str = buf;
 				break;
-			default: break;
+			case LUA_TUSERDATA:
+			case LUA_TLIGHTUSERDATA:
+				snprintf(buf, sizeof(buf), "<%s %p>", lua_typename(L, type), lua_touserdata(L, i));
+				str = buf;
+				break;
 		}
 		if (details)
-			fprintf(file, "\t#%i(%s) = %s\n", i, lua_typename(L,type ), str);
+			fprintf(file, "\t#%i(%s) = %s\n", i, lua_typename(L, type), str);
 		else
 			fprintf(file, "\t%s", str);
 	}

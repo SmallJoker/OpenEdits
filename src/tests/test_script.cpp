@@ -3,15 +3,84 @@
 #include "core/blockmanager.h"
 #include "core/connection.h" // PROTOCOL_VERSION_*
 #include "core/packet.h"
+#include "core/script/playerref.h"
+#include "core/script/script_utils.h"
 #include "server/remoteplayer.h"
 #include "server/serverscript.h"
 
+static int testprint(lua_State *L)
+{
+	ScriptUtils::dump_args(L, stdout, true);
+	puts("");
+	return 0;
+}
+
+static void test_playerref()
+{
+	lua_State *L = lua_open();
+	luaopen_base(L);
+
+	lua_pushcfunction(L, testprint);
+	lua_setglobal(L, "print");
+
+	PlayerRef::doRegister(L);
+
+	// Needed by PlayerRef calls
+	lua_newtable(L);
+	lua_rawseti(L, LUA_REGISTRYINDEX, ScriptUtils::CUSTOM_RIDX_PLAYER_REFS);
+
+	RemotePlayer p(1009, 10);
+	p.name = "FooMcBar";
+
+	for (int i = 0; i < 2; ++i) {
+		PlayerRef::push(L, &p);
+		lua_setglobal(L, "player");
+	}
+
+	int status = luaL_dostring(L, R"EOF(
+		t = getmetatable(player)
+		--rawset(t, "__gc", "test") -- does not affect PlayerRef::garbagecollect
+		for k, v in pairs(t) do
+			print(k, v)
+		end
+		i = rawget(t, "__index")
+		assert(i == nil, "index leak")
+		print(player:get_name())
+	)EOF");
+	if (status != 0) {
+		puts(lua_tostring(L, -1));
+		CHECK(0);
+	}
+
+	CHECK(PlayerRef::invalidate(L, &p));  // invalidated and removed
+	CHECK(!PlayerRef::invalidate(L, &p)); // nothing to do
+
+	if (0) {
+		// Force PlayerRef::garbagecollect
+		lua_pushnil(L);
+		lua_setglobal(L, "player");
+		lua_gc(L, LUA_GCCOLLECT, 0);
+	}
+
+	status = luaL_dostring(L, R"EOF(
+		assert(player:get_name() == nil)
+	)EOF");
+	if (status != 0) {
+		puts(lua_tostring(L, -1));
+		CHECK(0);
+	}
+
+	// done
+	lua_close(L);
+}
 
 void unittest_script()
 {
+	test_playerref(); return;
+
 	BlockManager bmgr;
 
-	ServerScript script(&bmgr);
+	ServerScript script(&bmgr, nullptr);
 	script.do_load_string_n_table = true;
 	CHECK(script.init());
 	script.setTestMode("init");

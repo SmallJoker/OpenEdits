@@ -12,6 +12,7 @@ class BlockManager;
 class MediaManager;
 class Packet;
 class Player;
+class PlayerRef;
 class World;
 
 class Script {

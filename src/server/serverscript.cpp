@@ -1,6 +1,8 @@
 #include "serverscript.h"
+#include "remoteplayer.h"
+#include "server.h"
+#include "core/script/playerref.h"
 #include "core/script/script_utils.h"
-#include "core/player.h"
 #include "core/world.h"
 
 using namespace ScriptUtils;
@@ -13,12 +15,24 @@ void ServerScript::onScriptsLoaded()
 
 	lua_State *L = m_lua;
 
+	PlayerRef::doRegister(L);
+
 	lua_getglobal(L, "env");
-	lua_getfield(L, -1, "world");
-	function_ref_from_field(L, -1, "on_player_join", m_ref_on_player_join, true);
-	function_ref_from_field(L, -1, "on_player_leave", m_ref_on_player_leave, true);
-	lua_pop(L, 2); // env + world
+	lua_getfield(L, -1, "server");
+	field_set_function(L, "get_players_in_world", ServerScript::l_get_players_in_world);
+
+	function_ref_from_field(L, -1, "on_player_join", m_ref_on_player_join, false);
+	function_ref_from_field(L, -1, "on_player_leave", m_ref_on_player_leave, false);
+	lua_pop(L, 2); // env + server
 }
+
+void ServerScript::initSpecifics()
+{
+	lua_State *L = m_lua;
+	lua_newtable(L);
+	lua_setfield(L, -2, "server");
+}
+
 
 int ServerScript::implWorldSetTile(PositionRange range, bid_t block_id, int tile)
 {
@@ -57,6 +71,10 @@ static void run_0_args_callback(lua_State *L, int ref, const char *dbg)
 void ServerScript::onPlayerJoin(Player *player)
 {
 	setPlayer(player);
+
+	PlayerRef::push(m_lua, player);
+	lua_setglobal(m_lua, "foobar");
+
 	run_0_args_callback(m_lua, m_ref_on_player_join, "on_player_join");
 }
 
@@ -65,3 +83,21 @@ void ServerScript::onPlayerLeave(Player *player)
 	setPlayer(player);
 	run_0_args_callback(m_lua, m_ref_on_player_leave, "on_player_leave");
 }
+
+int ServerScript::l_get_players_in_world(lua_State *L)
+{
+	ServerScript *script = (ServerScript *)get_script(L);
+
+	if (!script->m_server)
+		luaL_error(L, "no server");
+
+	auto players = script->m_server->getPlayersNoLock(script->m_world);
+	lua_createtable(L, players.size(), 0);
+	size_t i = 0;
+	for (RemotePlayer *p : players) {
+		PlayerRef::push(L, p);
+		lua_rawseti(L, -2, ++i);
+	}
+	return 1;
+}
+

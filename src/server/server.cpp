@@ -59,7 +59,7 @@ Server::Server(bool *shutdown_requested) :
 		}
 	}
 
-	m_script = new ServerScript(m_bmgr);
+	m_script = new ServerScript(m_bmgr, this);
 	if (!m_script->init()) {
 		logger(LL_ERROR, "Failed to initialize Lua");
 		goto error;
@@ -274,6 +274,23 @@ RefCnt<World> Server::getWorldNoLock(std::string &id)
 			return world;
 	}
 	return nullptr;
+}
+
+std::vector<RemotePlayer *> Server::getPlayersNoLock(const World *world)
+{
+	std::vector<RemotePlayer *> ret;
+	for (auto p : m_players) {
+		auto w = p.second->getWorld();
+		if (w.get() != world)
+			continue;
+
+		RemotePlayer *rp = (RemotePlayer *)p.second;
+		if (rp->state != RemotePlayerState::WorldPlay)
+			continue;
+
+		ret.push_back(rp);
+	}
+	return ret;
 }
 
 // -------------- Networking --------------

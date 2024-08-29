@@ -229,6 +229,7 @@ void Script::onEvent(const ScriptEvent &se)
 	lua_rawgeti(L, -1, se.event_id);
 	if (lua_type(L, -1) != LUA_TFUNCTION) {
 		logger(LL_ERROR, "Invalid event_handler id=%d", se.event_id);
+		lua_settop(L, top);
 		return;
 	}
 
@@ -245,10 +246,11 @@ void Script::onEvent(const ScriptEvent &se)
 			se.event_id,
 			lua_tostring(L, -1)
 		);
-		lua_settop(L, top); // table + function + error msg
-		return;
+		// pop table + function + error msg
+		goto restore_stack;
 	}
 
+restore_stack:
 	lua_settop(L, top);
 }
 

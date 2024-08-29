@@ -28,6 +28,8 @@ public:
 	RemotePlayer *getPlayerNoLock(peer_t peer_id);
 	RefCnt<World> getWorldNoLock(std::string &id);
 
+	std::vector<RemotePlayer *> getPlayersNoLock(const World *world);
+
 	// ----------- Networking -----------
 	void onPeerConnected(peer_t peer_id) override;
 	void onPeerDisconnected(peer_t peer_id) override;

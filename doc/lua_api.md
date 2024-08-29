@@ -67,14 +67,23 @@ of the callback.
  * `.get_name()` -> string
  * `.hash()` -> (undefined)
      * Unique identifier (per connection) for faster array access
+ * `.send_event(...)` TODO WIP
+     * See `env.send_event`
 
 
-### Callbacks
+### Server API
 
- * `env.world.on_player_join()`
-    * Only called on server-side
- * `env.world.on_player_leave()`
-    * Only called on server-side
+Namespace: `env.server`. Only available for servers.
+
+ * `.on_player_join()`
+    * Callback
+ * `.on_player_leave()`
+    * Callback
+ * `.get_players_in_world()`
+    * Returns a table of players in the current world.
+       * key: ID, value: name
+    * Iterator. Updates `env.player`.
+    * `reset` (boolean, optional): sets `env.player` to the curernt player.
 
 
 ### GUI API
@@ -152,4 +161,4 @@ Block Definition - callbacks:
     * Called once when entering the block.
     * `tile` (number): The tile index of the block
  * `on_placed()` <- `nil`
-
+    * Called when at least one such block was placed.

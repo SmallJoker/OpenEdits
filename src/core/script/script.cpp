@@ -176,6 +176,10 @@ bool Script::init()
 	lua_newtable(L);
 	lua_rawseti(L, LUA_REGISTRYINDEX, CUSTOM_RIDX_PLAYER_CONTROLS);
 
+	// Internal tracker of online players => PlayerRef
+	lua_newtable(L);
+	lua_rawgeti(L, LUA_REGISTRYINDEX, CUSTOM_RIDX_PLAYER_REFS);
+
 #define FIELD_SET_FUNC(prefix, name) \
 	field_set_function(L, #name, Script::l_ ## prefix ## name)
 
