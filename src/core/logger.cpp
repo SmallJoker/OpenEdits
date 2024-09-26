@@ -19,10 +19,20 @@ static struct tty_checker {
 	}
 } run_on_startup;
 
+static time_t startup_time = 0;
+
+void Logger::doLogStartup()
+{
+	time_t timestamp_now = time(NULL);
+	struct tm *tm_info = localtime(&timestamp_now);
+	printf("Time: %lu | %s", timestamp_now, asctime(tm_info));
+
+	startup_time = timestamp_now;
+}
 
 Logger::Logger(const char *name, LogLevel default_ll) :
-	m_name(name),
-	m_level(default_ll)
+	log_level(default_ll),
+	m_name(name)
 {
 }
 
@@ -37,10 +47,11 @@ struct {
 	{ "debug", "\e[1;30m" }  // grey
 };
 
+
 void Logger::operator()(LogLevel ll, const char *fmt, ...)
 {
 	unsigned char ll_i = ll;
-	if (ll_i > (unsigned char)m_level)
+	if (ll_i > (unsigned char)log_level)
 		return;
 
 	FILE *stream = stdout;
@@ -52,10 +63,12 @@ void Logger::operator()(LogLevel ll, const char *fmt, ...)
 
 	char buf[1024];
 
-	{
+	time_t timestamp_now = time(NULL);
+	if (1) {
+		fprintf(stream, "%4lu", timestamp_now - startup_time);
+	} else {
 		// Print current time
-		time_t timer = time(NULL);
-		struct tm *tm_info = localtime(&timer);
+		struct tm *tm_info = localtime(&timestamp_now);
 		if (strftime(buf, sizeof(buf), "%H:%M:%S", tm_info))
 			fputs(buf, stream);
 	}

@@ -27,6 +27,13 @@ std::string Auth::generatePass()
 
 void Auth::hash(const std::string &inp1, const std::string &inp2)
 {
+	// Mainly protect against empty strings. We need enough salt.
+	if (inp1.size() < 10 || inp2.size() < 10) {
+		fprintf(stderr, "hash input 1 or 2 is too short!\n");
+		output = "BAD_HASH";
+		return;
+	}
+
 	std::string to_hash(inp1 + inp2);
 	if (to_hash.size() != inp1.size() + inp2.size()) {
 		// Naive check whether \0 did not terminate "data" too early

@@ -6,6 +6,7 @@ const core::vector2df SoundSpec::POS_NONE(INFINITY, INFINITY);
 
 #ifdef HAVE_SOUND
 
+#include "core/logger.h"
 #include <AL/al.h>
 #include <AL/alc.h>
 #include <fstream>
@@ -18,6 +19,7 @@ const core::vector2df SoundSpec::POS_NONE(INFINITY, INFINITY);
 #include "minimp3.h"
 #include "minimp3_ex.h"
 
+Logger logger("SoundPlayer", LL_INFO);
 
 struct SoundFile {
 	SoundFile()
@@ -42,7 +44,7 @@ struct SoundSource {
 		ALenum err = alGetError();
 		if (err != AL_NO_ERROR) {
 			source = 0;
-			fprintf(stderr, "SoundSource: alGenSources error %d\n", err);
+			logger(LL_ERROR, "alGenSources error %d\n", err);
 			return;
 		}
 
@@ -67,18 +69,20 @@ struct SoundSource {
 	ALuint source;
 };
 
-SoundPlayer::SoundPlayer(bool do_log) :
-	m_do_log(do_log)
+SoundPlayer::SoundPlayer(bool do_log)
 {
+	if (do_log)
+		logger.log_level = LL_DEBUG;
+
+	logger(LL_PRINT, "start");
+
 	m_device = alcOpenDevice(nullptr);
 
 	m_context = alcCreateContext(m_device, NULL);
 	if (!alcMakeContextCurrent(m_context)) {
 		m_context = nullptr;
-		puts("SoundPlayer: error creating context");
+		logger(LL_ERROR, "error creating context");
 	}
-
-	puts("--> SoundPlayer start");
 }
 
 SoundPlayer::~SoundPlayer()
@@ -91,15 +95,14 @@ SoundPlayer::~SoundPlayer()
 	if (m_device)
 		alcCloseDevice(m_device);
 
-	puts("<-- SoundPlayer stop");
+	logger(LL_PRINT, "stop");
 }
 
 void SoundPlayer::step()
 {
 	for (auto it = m_sources.begin(); it != m_sources.end(); ) {
 		if (!it->isAlive()) {
-			if (m_do_log)
-				printf("SoundPlayer: source %i is done\n", it->source);
+			logger(LL_DEBUG, "source %i is done\n", it->source);
 			it = m_sources.erase(it);
 		} else {
 			++it;
@@ -134,12 +137,10 @@ void SoundPlayer::play(const SoundSpec &spec)
 
 	alSourcePlay(src.source);
 
-	if (m_do_log) {
-		static const char *modes[2] = { "YES", "NO" };
-		printf("SoundPlayer::play name='%s', pitch=%.1f, pos=%s\n",
-			spec.name, spec.pitch, modes[positional]
-		);
-	}
+	static const char *modes[2] = { "YES", "NO" };
+	logger(LL_DEBUG, "play(name='%s', pitch=%.1f, pos=%s)",
+		spec.name, spec.pitch, modes[positional]
+	);
 }
 
 const SoundFile *SoundPlayer::getOrLoad(const char *name)
@@ -193,7 +194,7 @@ const SoundFile *SoundPlayer::getOrLoad(const char *name)
 			const size_t MIN_SIZE = MINIMP3_MAX_SAMPLES_PER_FRAME * sizeof(mp3d_sample_t);
 
 			if ((status = mp3dec_ex_open(&dec, file_path.c_str(), MP3D_SEEK_TO_SAMPLE))) {
-				fprintf(stderr, "SoundPlayer: failed to open MP3. status=%d\n", status);
+				logger(LL_ERROR, "failed to open MP3 '%s'. status=%d", file_path.c_str(), status);
 				goto mp3_exit;
 			}
 
@@ -202,7 +203,7 @@ const SoundFile *SoundPlayer::getOrLoad(const char *name)
 				case 1: al_format = AL_FORMAT_MONO16; break;
 				case 2: al_format = AL_FORMAT_STEREO16; break;
 				default:
-					fprintf(stderr, "SoundPlayer: cannot playback MP3 channel count=%d\n", dec.info.channels);
+					logger(LL_ERROR, "unhandled MP3 channel count=%d\n", dec.info.channels);
 					goto mp3_exit;
 			}
 
@@ -226,7 +227,7 @@ mp3_exit:
 		}
 		break;
 	default:
-		fprintf(stderr, "SoundPlayer: cannot find sound named '%s'\n", name);
+		logger(LL_ERROR, "cannot find sound '%s'", name);
 		return nullptr;
 	}
 
@@ -244,9 +245,9 @@ mp3_exit:
 
 struct SoundSource {};
 
-SoundPlayer::SoundPlayer(bool do_log) :
-	m_do_log(do_log)
+SoundPlayer::SoundPlayer(bool do_log)
 {
+	(void)do_log;
 	fputs("SoundPlayer not available!\n", stderr);
 }
 
@@ -258,8 +259,7 @@ void SoundPlayer::updateListener(core::vector2df pos) {}
 
 void SoundPlayer::play(const SoundSpec &spec)
 {
-	if (m_do_log)
-		puts("SoundPlayer: demo sound!");
+	puts("SoundPlayer: demo sound!");
 }
 
 #endif // HAVE_SOUND

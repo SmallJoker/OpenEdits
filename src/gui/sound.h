@@ -51,8 +51,6 @@ public:
 private:
 	const SoundFile *getOrLoad(const char *name);
 
-	bool m_do_log = false;
-
 	ALCdevice *m_device;
 	ALCcontext *m_context;
 

@@ -125,10 +125,12 @@ static void auth_database_test()
 void unittest_auth()
 {
 	const std::string unique_hash = Auth::generateRandom();
+	const char *my_salt_1 = "password 123";
+	const char *my_salt_2 = "passworb 123";
 	{
 		// One that passes
 		Auth auth_cli, auth_srv;
-		auth_cli.hash(unique_hash, "password");
+		auth_cli.hash(unique_hash, my_salt_1);
 		CHECK(auth_cli.output.size() > 20);
 
 		auto random = Auth::generateRandom();
@@ -143,12 +145,12 @@ void unittest_auth()
 	{
 		// Mismatch due to wrong random string
 		Auth auth_cli, auth_srv;
-		auth_cli.hash(unique_hash, "password");
+		auth_cli.hash(unique_hash, my_salt_1);
 
 		auto random = Auth::generateRandom();
 		auth_srv.hash(auth_cli.output, random);
 
-		auth_cli.rehash("password"); // not the random bytes
+		auth_cli.rehash(my_salt_1); // not the random bytes
 
 		CHECK(auth_cli.output != auth_srv.output);
 	}
@@ -156,8 +158,8 @@ void unittest_auth()
 	{
 		// Password mismatch
 		Auth auth_cli, auth_srv;
-		auth_cli.hash(unique_hash, "password");
-		auth_srv.hash(unique_hash, "password2");
+		auth_cli.hash(unique_hash, my_salt_1);
+		auth_srv.hash(unique_hash, my_salt_2);
 
 		CHECK(auth_cli.output != auth_srv.output);
 

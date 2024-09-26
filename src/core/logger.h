@@ -11,6 +11,8 @@ enum LogLevel {
 
 class Logger {
 public:
+	static void doLogStartup();
+
 	Logger(const char *name, LogLevel default_ll = LL_DEBUG);
 
 	#ifdef __GNUC__
@@ -26,8 +28,9 @@ public:
 
 	int popErrorCount();
 
+	LogLevel log_level;
+
 private:
 	const char *m_name;
-	LogLevel m_level;
 	int m_error_count = 0;
 };

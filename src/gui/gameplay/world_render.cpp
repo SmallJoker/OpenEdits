@@ -3,6 +3,7 @@
 #include "client/client.h"
 #include "client/localplayer.h"
 #include "core/blockmanager.h"
+#include "core/packet.h"
 #include "gui/CBulkSceneNode.h"
 #include <ICameraSceneNode.h>
 #include <ISceneCollisionManager.h>
@@ -290,14 +291,14 @@ void SceneWorldRender::drawBlocksInView()
 
 			if (b.id == Block::ID_TEXT) {
 				tile_hash = 0;
-				// TODO: use murmur hash
 				BlockParams params;
 				world->getParams(bp, &params);
 				if (params != BlockParams::Type::Text)
 					break;
 
-				for (char v : *params.text)
-					tile_hash = tile_hash ^ (~tile_hash << 1) ^ v;
+				Packet pkt;
+				params.write(pkt);
+				tile_hash = crc32_z(0, pkt.data(), pkt.size());
 			}
 
 			size_t hash_node_id = BlockDrawData::hash(bdd.b.id, tile_hash);

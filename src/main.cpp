@@ -1,4 +1,5 @@
 #include "core/blockmanager.h"
+#include "core/logger.h"
 #include "core/utils.h" // to_player_name
 #include "server/database_auth.h" // AuthAccount
 #include "server/server.h"
@@ -189,7 +190,8 @@ static int parse_args(int argc, char *argv[])
 int main(int argc, char *argv[])
 {
 	atexit(exit_cleanup);
-	srand(time(nullptr));
+	time_t timestamp = time(nullptr);
+	srand(timestamp);
 
 #ifdef __unix__
 	struct sigaction act;
@@ -198,6 +200,8 @@ int main(int argc, char *argv[])
 	sigaction(SIGINT, &act, NULL);
 	sigaction(SIGTERM, &act, NULL);
 #endif
+
+	Logger::doLogStartup();
 
 	// Used by Gui, Client and Unittests but not Server.
 	g_blockmanager = new BlockManager();

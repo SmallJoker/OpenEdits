@@ -273,7 +273,7 @@ void *Connection::recvAsync(void *con_p)
 	Connection *con = (Connection *)con_p;
 	con->recvAsyncInternal();
 
-	printf("<-- ENet %s: Thread stop\n", con->m_name);
+	logger(LL_PRINT, "%s: Thread stop", con->m_name);
 	return nullptr;
 }
 
