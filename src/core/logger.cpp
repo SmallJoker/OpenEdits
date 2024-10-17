@@ -1,9 +1,11 @@
 // Re-inventing the wheel
 
 #include "logger.h"
+#include "utils.h" // strsplit
+#include <map>
 #include <stdarg.h>
 #include <stdio.h>
-#include <time.h>
+#include <stdlib.h> // getenv
 #ifndef _WIN32
 	#include <unistd.h>
 #endif
@@ -19,7 +21,62 @@ static struct tty_checker {
 	}
 } run_on_startup;
 
+static std::vector<Logger *> loggers;
 static time_t startup_time = 0;
+
+static void do_log_level_overrides()
+{
+	const char *var_cstr = getenv("OE_DEBUG");
+	if (!var_cstr)
+		return;
+
+	struct LevelDef {
+		LogLevel ll;
+		bool handled;
+	};
+	std::map<std::string, LevelDef> overrides;
+
+	std::vector<std::string> parts = strsplit(var_cstr, ',');
+	for (const std::string &spec : parts) {
+		// Same syntax as WINEDEBUG
+		switch (spec[0]) {
+			case '+':
+				// Verbose
+				overrides.insert({ spec.substr(1), LevelDef { LL_DEBUG, false } });
+				continue;
+			case '-':
+				// Almost silent
+				overrides.insert({ spec.substr(1), LevelDef { LL_ERROR, false } });
+				continue;
+		}
+		fprintf(stderr, "-!- Unknown debug option: %s\n", spec.c_str());
+	}
+
+	auto it_all = overrides.find("all");
+	for (Logger *l : loggers) {
+		if (it_all != overrides.end()) {
+			l->log_level = it_all->second.ll;
+			it_all->second.handled = true;
+		}
+
+		// Specific overrides
+		auto it = overrides.find(l->getName());
+		if (it != overrides.end()) {
+			l->log_level = it->second.ll;
+			it->second.handled = true;
+		}
+	}
+
+	for (const auto &it : overrides) {
+		if (it.second.handled)
+			continue;
+		fprintf(stderr, "-!- Unknown logger name: %s\n", it.first.c_str());
+	}
+
+	// Free unused memory
+	decltype(loggers) empty;
+	std::swap(loggers, empty);
+}
 
 void Logger::doLogStartup()
 {
@@ -28,12 +85,15 @@ void Logger::doLogStartup()
 	printf("Time: %lu | %s", timestamp_now, asctime(tm_info));
 
 	startup_time = timestamp_now;
+
+	do_log_level_overrides();
 }
 
 Logger::Logger(const char *name, LogLevel default_ll) :
 	log_level(default_ll),
 	m_name(name)
 {
+	loggers.push_back(this);
 }
 
 struct {

@@ -14,6 +14,7 @@ public:
 	static void doLogStartup();
 
 	Logger(const char *name, LogLevel default_ll = LL_DEBUG);
+	inline const char *getName() { return m_name; }
 
 	#ifdef __GNUC__
 	#ifdef __MINGW32__

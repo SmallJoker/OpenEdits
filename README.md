@@ -54,6 +54,14 @@ Permission/player flag examples:
  * `--go USERNAME PASSWORD(FILE) [WORLD_ID]`
      * Starts a local server and joins the world ID (if provided)
 
+**Environment variables**
+
+ * `OE_DEBUG=+foo,-bar,+all` override the default log levels
+     * `+` prefix: verbose logging
+     * `-` prefix: ignore anything below error level
+     * `all`: Changes *all* loggers
+     * Specific log level overrides take priority over `all`.
+
 **World import/export**
 
  * `*.eelvl` files in `worlds/imports/` are listed by the server as playable read-only worlds
