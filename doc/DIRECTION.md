@@ -51,7 +51,7 @@ Server-only build:
 ### Graphics
 
 1. >= 32x32 px textures
-2. Where it matters, use [color-blind friendly colors](https://www.nature.com/articles/nmeth.1618.pdf)
+2. Where it matters, use [color-blind friendly colors](https://jfly.uni-koeln.de/html/manuals/pdf/color_blind.pdf)
 
 Helpful GIMP tools for texture creation:
 

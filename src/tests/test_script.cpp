@@ -76,12 +76,12 @@ static void test_playerref()
 
 void unittest_script()
 {
-	test_playerref(); return;
+	test_playerref();
 
 	BlockManager bmgr;
 
 	ServerScript script(&bmgr, nullptr);
-	script.do_load_string_n_table = true;
+	script.hide_global_table = false;
 	CHECK(script.init());
 	script.setTestMode("init");
 	CHECK(script.loadFromFile("assets/scripts/constants.lua"));
@@ -148,15 +148,15 @@ void unittest_script()
 
 		// run callback function
 		script.onEvent(*myevents.begin());
-		CHECK(script.getTestFeedback() == ";hello world200103");
+		CHECK(script.popTestFeedback() == "hello world200103;");
 	}
 
 	// join/leave
 	{
 		script.onPlayerJoin(&p);
-		CHECK(script.getTestFeedback() == "J_COM;J_SRV;");
+		CHECK(script.popTestFeedback() == "J_SRV;");
 		script.onPlayerLeave(&p);
-		CHECK(script.getTestFeedback() == "L_COM;L_SRV;");
+		CHECK(script.popTestFeedback() == "L_SRV;");
 	}
 
 	script.close();

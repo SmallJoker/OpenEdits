@@ -657,21 +657,11 @@ void Server::pkt_Leave(peer_t peer_id, Packet &pkt)
 {
 	RemotePlayer *player = getPlayerNoLock(peer_id);
 
-	if (m_script)
-		m_script->onPlayerLeave(player);
-
 	printf("Server: Player %s left world id=%s\n",
 		player->name.c_str(), player->getWorld()->getMeta().id.c_str()
 	);
 
-	Packet out;
-	out.write(Packet2Client::Leave);
-	out.write(peer_id);
-
-	broadcastInWorld(player, 0, out);
-
-	player->setWorld(nullptr);
-	player->state = RemotePlayerState::Idle;
+	sendPlayerLeave(player);
 }
 
 void Server::pkt_Move(peer_t peer_id, Packet &pkt)
@@ -847,6 +837,7 @@ void Server::pkt_TriggerBlocks(peer_t peer_id, Packet &pkt)
 	}
 }
 
+// Sent by `send_script_events`.
 void Server::pkt_ScriptEvent(peer_t peer_id, Packet &pkt)
 {
 	// TODO
@@ -1026,6 +1017,19 @@ void Server::sendMsg(peer_t peer_id, const std::string &text)
 	m_con->send(peer_id, 0, pkt);
 }
 
+void Server::sendPlayerLeave(RemotePlayer *player)
+{
+	if (m_script)
+		m_script->onPlayerLeave(player);
+
+	Packet out;
+	out.write(Packet2Client::Leave);
+	out.write(player->peer_id);
+	broadcastInWorld(player, 0, out);
+
+	player->setWorld(nullptr);
+	player->state = RemotePlayerState::Idle;
+}
 
 void Server::broadcastInWorld(Player *player, int flags, Packet &pkt)
 {

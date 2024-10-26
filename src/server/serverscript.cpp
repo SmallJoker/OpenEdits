@@ -71,10 +71,6 @@ static void run_0_args_callback(lua_State *L, int ref, const char *dbg)
 void ServerScript::onPlayerJoin(Player *player)
 {
 	setPlayer(player);
-
-	PlayerRef::push(m_lua, player);
-	lua_setglobal(m_lua, "foobar");
-
 	run_0_args_callback(m_lua, m_ref_on_player_join, "on_player_join");
 }
 
@@ -94,7 +90,7 @@ int ServerScript::l_get_players_in_world(lua_State *L)
 	auto players = script->m_server->getPlayersNoLock(script->m_world);
 	lua_createtable(L, players.size(), 0);
 	size_t i = 0;
-	for (RemotePlayer *p : players) {
+	for (Player *p : players) {
 		PlayerRef::push(L, p);
 		lua_rawseti(L, -2, ++i);
 	}

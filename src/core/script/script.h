@@ -43,14 +43,14 @@ public:
 	/// Setter for `env.test_mode` (unittests)
 	void setTestMode(const std::string &value);
 	/// Getter for `env.test_feedback` (unittests)
-	std::string getTestFeedback();
+	std::string popTestFeedback();
 	static int popErrorCount();
 
 	// UNSAFE. Accepts any path.
 	/// returns true on success
 	bool loadFromFile(const std::string &filename);
 
-	bool do_load_string_n_table = false;
+	bool hide_global_table = true;
 
 	// -------- Registration
 private:

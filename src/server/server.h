@@ -28,7 +28,7 @@ public:
 	RemotePlayer *getPlayerNoLock(peer_t peer_id);
 	RefCnt<World> getWorldNoLock(std::string &id);
 
-	std::vector<RemotePlayer *> getPlayersNoLock(const World *world);
+	std::vector<Player *> getPlayersNoLock(const World *world) override;
 
 	// ----------- Networking -----------
 	void onPeerConnected(peer_t peer_id) override;
@@ -55,6 +55,7 @@ private:
 	void pkt_Deprecated(peer_t peer_id, Packet &pkt);
 
 	void sendMsg(peer_t peer_id, const std::string &text);
+	void sendPlayerLeave(RemotePlayer *player);
 
 	void broadcastInWorld(Player *player, int flags, Packet &pkt);
 	void broadcastInWorld(const World *world, int flags, Packet &pkt);

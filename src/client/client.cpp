@@ -596,6 +596,7 @@ static bool send_on_touch_blocks(Client *cli, Player *player, Packet &pkt)
 	return map_dirty;
 }
 
+// Read back by `Server::pkt_ScriptEvent`
 static void send_script_events(Player *player, Packet &pkt)
 {
 	pkt.write(Packet2Server::ScriptEvent);

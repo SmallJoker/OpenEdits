@@ -276,9 +276,9 @@ RefCnt<World> Server::getWorldNoLock(std::string &id)
 	return nullptr;
 }
 
-std::vector<RemotePlayer *> Server::getPlayersNoLock(const World *world)
+std::vector<Player *> Server::getPlayersNoLock(const World *world)
 {
-	std::vector<RemotePlayer *> ret;
+	std::vector<Player *> ret;
 	for (auto p : m_players) {
 		auto w = p.second->getWorld();
 		if (w.get() != world)
@@ -288,7 +288,7 @@ std::vector<RemotePlayer *> Server::getPlayersNoLock(const World *world)
 		if (rp->state != RemotePlayerState::WorldPlay)
 			continue;
 
-		ret.push_back(rp);
+		ret.push_back(p.second);
 	}
 	return ret;
 }
@@ -315,14 +315,7 @@ void Server::onPeerDisconnected(peer_t peer_id)
 
 	logger(LL_DEBUG, "Player %s disconnected\n", player->name.c_str());
 
-	{
-		Packet pkt;
-		pkt.write(Packet2Client::Leave);
-		pkt.write(peer_id);
-		broadcastInWorld(player, 0, pkt);
-	}
-
-	player->setWorld(nullptr);
+	sendPlayerLeave(player);
 	m_players.erase(peer_id);
 
 	delete player;

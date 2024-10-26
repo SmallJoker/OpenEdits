@@ -21,7 +21,12 @@ static struct tty_checker {
 	}
 } run_on_startup;
 
-static std::vector<Logger *> loggers;
+// Problem: the loggers are registered before calling `main`.
+// std::vector behaves weirdly. It may forget early insertios.
+constexpr size_t LOGGERS_MAX = 20;
+static Logger *loggers[LOGGERS_MAX] = {};
+static uint8_t loggers_i = 0;
+
 static time_t startup_time = 0;
 
 static void do_log_level_overrides()
@@ -54,6 +59,9 @@ static void do_log_level_overrides()
 
 	auto it_all = overrides.find("all");
 	for (Logger *l : loggers) {
+		if (!l)
+			break; // end
+
 		if (it_all != overrides.end()) {
 			l->log_level = it_all->second.ll;
 			it_all->second.handled = true;
@@ -72,10 +80,6 @@ static void do_log_level_overrides()
 			continue;
 		fprintf(stderr, "-!- Unknown logger name: %s\n", it.first.c_str());
 	}
-
-	// Free unused memory
-	decltype(loggers) empty;
-	std::swap(loggers, empty);
 }
 
 void Logger::doLogStartup()
@@ -93,7 +97,12 @@ Logger::Logger(const char *name, LogLevel default_ll) :
 	log_level(default_ll),
 	m_name(name)
 {
-	loggers.push_back(this);
+	if (loggers_i < LOGGERS_MAX) {
+		loggers[loggers_i] = this;
+		loggers_i++;
+	} else {
+		puts("-!- Logger array too small!");
+	}
 }
 
 struct {

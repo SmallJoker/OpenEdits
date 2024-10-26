@@ -83,7 +83,8 @@ static const char *G_WHITELIST[] = {
 	"tostring",
 	"type",
 	"unpack",
-// tables
+// Tables / libraries
+	"table",
 	"math",
 	"string",
 	nullptr
@@ -132,6 +133,8 @@ static void process_api_whitelist(lua_State *L)
 	lua_getglobal(L, "string");
 	process_api_whitelist_single(L, STRING_WHITELIST);
 	lua_pop(L, 1);
+
+	// no filter for "table".
 }
 
 bool Script::init()
@@ -152,14 +155,10 @@ bool Script::init()
 
 	luaopen_math(L);
 	luaopen_string(L);
+	luaopen_table(L);
 
 	// Remove functions that we probably don't need
 	process_api_whitelist(L);
-
-	if (do_load_string_n_table) {
-		// not really needed but helpful for tests
-		luaopen_table(L);
-	}
 
 	// The most important functions
 	lua_atpanic(L, l_panic);
@@ -178,7 +177,7 @@ bool Script::init()
 
 	// Internal tracker of online players => PlayerRef
 	lua_newtable(L);
-	lua_rawgeti(L, LUA_REGISTRYINDEX, CUSTOM_RIDX_PLAYER_REFS);
+	lua_rawseti(L, LUA_REGISTRYINDEX, CUSTOM_RIDX_PLAYER_REFS);
 
 #define FIELD_SET_FUNC(prefix, name) \
 	field_set_function(L, #name, Script::l_ ## prefix ## name)
@@ -230,7 +229,7 @@ bool Script::init()
 
 
 #undef FIELD_SET_FUNC
-	if (!do_load_string_n_table) {
+	if (hide_global_table) {
 		lua_pushnil(L);
 		lua_setglobal(L, "_G");
 	}
@@ -353,15 +352,18 @@ void Script::setTestMode(const std::string &value)
 	lua_pop(L, 1); // env
 }
 
-// TODO: unused.
-std::string Script::getTestFeedback()
+std::string Script::popTestFeedback()
 {
 	lua_State *L = m_lua;
 
 	lua_getglobal(L, "env");
 	lua_getfield(L, -1, "test_feedback");
 	std::string out = luaL_checkstring(L, -1);
-	lua_pop(L, 2); // env + field
+	lua_pop(L, 1); // value
+
+	lua_pushstring(L, "");
+	lua_setfield(L, -2, "test_feedback");
+	lua_pop(L, 1); // env
 
 	return out;
 }

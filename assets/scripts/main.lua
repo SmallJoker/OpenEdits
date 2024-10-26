@@ -10,12 +10,19 @@ env.event_handlers[1] = function(...)
 	print("CALL", unpack({...}))
 end
 
-env.world.on_player_join = function()
-	print("JOIN", env.player.get_name())
-end
+if env.server then
+	env.server.on_player_join = function()
+		print("JOIN", env.player.get_name())
+		local names = {}
+		for _, p in ipairs(env.server.get_players_in_world()) do
+			names[#names + 1] = p:get_name()
+		end
+		print("List of players: " .. table.concat(names, ", "))
+	end
 
-env.world.on_player_leave = function()
-	print("LEAVE", env.player.get_name())
+	env.server.on_player_leave = function()
+		print("LEAVE", env.player.get_name())
+	end
 end
 
 --[[

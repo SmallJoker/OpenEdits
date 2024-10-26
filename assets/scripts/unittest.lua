@@ -23,23 +23,13 @@ end
 ----------- STARTUP -----------
 
 env.test_feedback = ""
-function feedback(str, new)
-	env.test_feedback = (new and "" or env.test_feedback) .. (str .. ";")
+function feedback(str)
+	env.test_feedback = env.test_feedback .. (str .. ";")
 end
 
 if env.test_mode:find("media") then
 	-- Function requires media manager to be present!
 	env.include("constants.lua")
-end
-
-env.world.on_player_join = function()
-	print("JOIN", env.player.get_name())
-	feedback("J_COM", true)
-end
-
-env.world.on_player_leave = function()
-	print("LEAVE", env.player.get_name())
-	feedback("L_COM", true)
 end
 
 if env.test_mode:find("media") then
@@ -110,7 +100,7 @@ EV = env.register_event(1003, 0, env.PARAMS_TYPE_STR16, env.PARAMS_TYPE_U8U8U8,
 	function(...)
 		print("got event!", dump({...}))
 		local s, u1, u2, u3 = unpack({...})
-		env.test_feedback = ";" .. s .. u1 .. u2 .. u3
+		feedback(s .. u1 .. u2 .. u3)
 	end
 )
 

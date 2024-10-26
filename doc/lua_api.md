@@ -80,10 +80,7 @@ Namespace: `env.server`. Only available for servers.
  * `.on_player_leave()`
     * Callback
  * `.get_players_in_world()`
-    * Returns a table of players in the current world.
-       * key: ID, value: name
-    * Iterator. Updates `env.player`.
-    * `reset` (boolean, optional): sets `env.player` to the curernt player.
+    * Returns a table of `PlayerRef` (ipairs).
 
 
 ### GUI API

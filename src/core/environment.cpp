@@ -1,5 +1,19 @@
 #include "environment.h"
+#include "player.h"
 #include <chrono>
+
+std::vector<Player *> Environment::getPlayersNoLock(const World *world)
+{
+	std::vector<Player *> ret;
+	for (auto p : m_players) {
+		auto w = p.second->getWorld();
+		if (w.get() != world)
+			continue;
+
+		ret.push_back(p.second);
+	}
+	return ret;
+}
 
 uint64_t Environment::getTimeNowDIV()
 {
