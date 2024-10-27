@@ -1,8 +1,6 @@
 #pragma once
 
-#include "core/blockparams.h"
 #include "core/types.h" // bid_t
-#include <map>
 #include <string>
 
 struct BlockProperties;
@@ -13,6 +11,7 @@ class MediaManager;
 class Packet;
 class Player;
 class PlayerRef;
+class ScriptEventManager;
 class World;
 
 class Script {
@@ -28,6 +27,8 @@ public:
 
 	bool init();
 	void close();
+	lua_State *getState() const { return m_lua; }
+	ScriptEventManager *getSEMgr() const { return m_emgr; }
 	virtual void step(float dtime) {}
 
 	void setMediaMgr(MediaManager *media) { m_media = media; }
@@ -85,9 +86,6 @@ private:
 
 
 	// -------- Environment
-public:
-	void onEvent(const ScriptEvent &se);
-
 protected:
 	static void get_position_range(lua_State *L, int idx, PositionRange &range);
 
@@ -135,28 +133,7 @@ protected:
 	MediaManager *m_media = nullptr;
 	World *m_world = nullptr;
 
-	using EventDefinition = std::vector<BlockParams::Type>;
-	std::map<u16, EventDefinition> m_event_defs;
-
-	int m_ref_event_handlers = -2; // LUA_NOREF
+	ScriptEventManager *m_emgr = nullptr; // owned
 
 	bid_t m_last_block_id = Block::ID_INVALID;
-};
-
-
-struct ScriptEvent {
-	ScriptEvent(u16 event_id);
-	~ScriptEvent();
-
-	ScriptEvent &operator=(const ScriptEvent &other) = delete;
-	ScriptEvent &operator=(ScriptEvent &&other);
-
-	bool operator<(const ScriptEvent &rhs) const
-	{
-		return event_id < rhs.event_id && data < rhs.data;
-	}
-
-	u16 event_id;
-	// Pointer is stupid but I want to keep headers lightweight.
-	Packet *data = nullptr;
 };

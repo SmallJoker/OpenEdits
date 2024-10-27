@@ -67,7 +67,7 @@ public:
 	// For keys or killing blocks
 	std::set<blockpos_t> *on_touch_blocks = nullptr;
 
-	std::set<ScriptEvent> *event_list = nullptr;
+	std::set<ScriptEvent> *script_events = nullptr;
 
 	void setGodMode(bool value);
 	bool godmode = false;

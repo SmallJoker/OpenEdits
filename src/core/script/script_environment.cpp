@@ -1,5 +1,6 @@
 #include "script.h"
 #include "script_utils.h"
+#include "scriptevent.h"
 #include "core/packet.h"
 #include "core/player.h"
 #include "core/world.h"
@@ -51,54 +52,6 @@ void Script::get_position_range(lua_State *L, int idx, PositionRange &range)
 	}
 }
 
-static int read_tagged_pkt(lua_State *L, int idx, BlockParams::Type type, Packet *pkt)
-{
-	using Type = BlockParams::Type;
-	switch (type) {
-		case Type::STR16:
-			pkt->writeStr16(luaL_checkstring(L, ++idx));
-			return idx;
-		case Type::U8:
-			pkt->write<u8>(luaL_checkinteger(L, ++idx));
-			return idx;
-		case Type::U8U8U8:
-			pkt->write<u8>(luaL_checkinteger(L, ++idx));
-			pkt->write<u8>(luaL_checkinteger(L, ++idx));
-			pkt->write<u8>(luaL_checkinteger(L, ++idx));
-			return idx;
-		case Type::INVALID:
-		case Type::None:
-			break;
-		// DO NOT USE default CASE
-	}
-
-	throw std::exception();
-}
-
-static int write_tagged_pkt(lua_State *L, BlockParams::Type type, Packet *pkt)
-{
-	using Type = BlockParams::Type;
-	switch (type) {
-		case Type::STR16:
-			lua_pushstring(L, pkt->readStr16().c_str());
-			return 1;
-		case Type::U8:
-			lua_pushinteger(L, pkt->read<u8>());
-			return 1;
-		case Type::U8U8U8:
-			lua_pushinteger(L, pkt->read<u8>());
-			lua_pushinteger(L, pkt->read<u8>());
-			lua_pushinteger(L, pkt->read<u8>());
-			return 3;
-		case Type::INVALID:
-		case Type::None:
-			break;
-		// DO NOT USE default CASE
-	}
-
-	throw std::exception();
-}
-
 static int write_blockparams(lua_State *L, const BlockParams &params)
 {
 	using Type = BlockParams::Type;
@@ -134,11 +87,12 @@ int Script::l_register_event(lua_State *L)
 	int event_id = luaL_checkinteger(L, 1);
 	(void)luaL_checkinteger(L, 2); // flags (TODO)
 
-	auto [it, is_new] = script->m_event_defs.insert({ event_id, {} });
+	auto &defs = script->m_emgr->getDefs();
+	auto [it, is_new] = defs.insert({ event_id, {} });
 	auto &def = it->second;
 	if (!is_new) {
 		logger(LL_WARN, "%s: overwriting id=%d", __func__, event_id);
-		def = EventDefinition();
+		def = ScriptEventManager::EventDef();
 	}
 
 	const int stack_max = lua_gettop(L);
@@ -177,81 +131,13 @@ int Script::l_send_event(lua_State *L)
 	Script *script = get_script(L);
 	Player *player = script->m_player;
 
-	const u16 event_id = luaL_checkinteger(L, 1);
-
-	auto def_it = script->m_event_defs.find(event_id);
-	if (def_it == script->m_event_defs.end())
-		throw std::runtime_error("unregistered event: " + std::to_string(event_id));
-
-	Packet pkt_null(50);
-	Packet *pkt = nullptr;
-
-	if (player->event_list) {
-		auto [it, is_new] = player->event_list->emplace(event_id);
-		pkt = it->data;
-	} else {
-		pkt = &pkt_null;
-	}
-
-	const auto &def = def_it->second;
-	auto it = def.begin();
-	const int stack_max = lua_gettop(L);
-	// read linearly from function arguments
-	for (int idx = 1; idx < stack_max; (void)idx /*nop*/, ++it) {
-		if (it == def.end())
-			goto error;
-
-		logger_off(LL_DEBUG, "%s: arg=%d, type=%d (%zu / %zu)", __func__, idx,
-			(int)*it, pkt->getReadPos(), pkt->size());
-		idx = read_tagged_pkt(L, idx, *it, pkt);
-	}
-
-	if (it != def.end()) {
-	error:
-		logger(LL_ERROR, "%s: argument count mismatch. expected=%zu, got >= %zu",
-			__func__, def.size(), it - def.begin());
-		throw std::exception();
+	ScriptEvent ev = script->m_emgr->readEventFromLua();
+	if (player->script_events) {
+		player->script_events->emplace(std::move(ev));
 	}
 
 	return 0;
 	MESSY_CPP_EXCEPTIONS_END
-}
-
-void Script::onEvent(const ScriptEvent &se)
-{
-	if (m_ref_event_handlers < 0)
-		throw std::runtime_error("missing handler");
-
-	lua_State *L = m_lua;
-
-	int top = lua_gettop(L);
-	lua_rawgeti(L, LUA_REGISTRYINDEX, m_ref_event_handlers);
-	lua_rawgeti(L, -1, se.event_id);
-	if (lua_type(L, -1) != LUA_TFUNCTION) {
-		logger(LL_ERROR, "Invalid event_handler id=%d", se.event_id);
-		lua_settop(L, top);
-		return;
-	}
-
-	auto def = m_event_defs.find(se.event_id);
-	if (def == m_event_defs.end())
-		throw std::runtime_error("unregistered event: " + std::to_string(se.event_id));
-
-	int nargs = 0;
-	for (const auto type : def->second)
-		nargs += write_tagged_pkt(L, type, se.data);
-
-	if (lua_pcall(L, nargs, 0, 0)) {
-		logger(LL_ERROR, "event_handler id=%d failed: %s\n",
-			se.event_id,
-			lua_tostring(L, -1)
-		);
-		// pop table + function + error msg
-		goto restore_stack;
-	}
-
-restore_stack:
-	lua_settop(L, top);
 }
 
 int Script::l_world_get_block(lua_State *L)
@@ -320,24 +206,4 @@ int Script::l_world_set_tile(lua_State *L)
 	script->get_position_range(L, 3, range);
 
 	return script->implWorldSetTile(range, block_id, tile);
-}
-
-// -------------- ScriptEvent struct -------------
-
-ScriptEvent::ScriptEvent(u16 event_id)
-	: event_id(event_id)
-{
-	data = new Packet();
-}
-
-ScriptEvent::~ScriptEvent()
-{
-	delete data;
-}
-
-ScriptEvent &ScriptEvent::operator=(ScriptEvent &&other)
-{
-	event_id = other.event_id;
-	std::swap(data, other.data);
-	return *this;
 }

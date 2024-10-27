@@ -1,5 +1,6 @@
 #include "script.h"
 #include "script_utils.h"
+#include "scriptevent.h"
 #include "core/blockmanager.h"
 #include "core/macros.h"
 #include "core/mediamanager.h"
@@ -63,6 +64,7 @@ Script::Script(BlockManager *bmgr, Type type) :
 	m_bmgr(bmgr)
 {
 	ASSERT_FORCED(m_bmgr, "Missing BlockManager");
+	m_emgr = new ScriptEventManager(this);
 }
 
 
@@ -240,7 +242,7 @@ bool Script::init()
 
 void Script::close()
 {
-	if (!m_lua)
+	if (!m_lua && !m_emgr)
 		return;
 
 	logger(LL_PRINT, "closing ...");
@@ -257,7 +259,9 @@ void Script::close()
 		props->ref_on_intersect = LUA_REFNIL;
 		props->ref_on_collide = LUA_REFNIL;
 	}
-	m_ref_event_handlers = LUA_REFNIL;
+
+	delete m_emgr;
+	m_emgr = nullptr;
 
 	lua_close(m_lua);
 	m_lua = nullptr;
@@ -340,6 +344,11 @@ bool Script::loadFromFile(const std::string &filename)
 	lua_pop(m_lua, 1); // error handler
 
 	return status == 0;
+}
+
+void Script::onScriptsLoaded()
+{
+	m_emgr->onScriptsLoaded();
 }
 
 void Script::setTestMode(const std::string &value)

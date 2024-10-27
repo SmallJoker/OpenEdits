@@ -5,6 +5,7 @@
 #include "core/packet.h"
 #include "core/script/playerref.h"
 #include "core/script/script_utils.h"
+#include "core/script/scriptevent.h"
 #include "server/remoteplayer.h"
 #include "server/serverscript.h"
 
@@ -137,17 +138,17 @@ void unittest_script()
 
 		// make the player send an event
 		{
-			p.event_list = &myevents;
+			p.script_events = &myevents;
 
 			script.onIntersect(bmgr.getProps(4));
 			CHECK(myevents.size() == 1);
 			auto se = myevents.begin();
 			CHECK(se->event_id == 1003 && se->data->size() == 2 + 11 + 3);
-			p.event_list = nullptr;
+			p.script_events = nullptr;
 		}
 
 		// run callback function
-		script.onEvent(*myevents.begin());
+		script.getSEMgr()->runLuaEventCallback(*myevents.begin());
 		CHECK(script.popTestFeedback() == "hello world200103;");
 	}
 

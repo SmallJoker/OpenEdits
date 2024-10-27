@@ -9,6 +9,7 @@
 #include "core/network_enums.h"
 #include "core/packet.h"
 #include "core/utils.h" // to_player_name
+#include "core/script/scriptevent.h"
 
 #if 0
 	#define DEBUGLOG(...) printf(__VA_ARGS__)
@@ -596,20 +597,6 @@ static bool send_on_touch_blocks(Client *cli, Player *player, Packet &pkt)
 	return map_dirty;
 }
 
-// Read back by `Server::pkt_ScriptEvent`
-static void send_script_events(Player *player, Packet &pkt)
-{
-	pkt.write(Packet2Server::ScriptEvent);
-
-	for (const auto &event : *player->event_list) {
-		pkt.write(event.event_id);
-
-		const uint8_t *data;
-		size_t len = event.data->readRawNoCopy(&data, -1);
-		pkt.writeRaw(data, len);
-	}
-}
-
 void Client::stepPhysics(float dtime)
 {
 	auto world = getWorld();
@@ -620,27 +607,23 @@ void Client::stepPhysics(float dtime)
 	std::set<ScriptEvent> script_events;
 	SimpleLock lock(m_players_lock);
 
-	for (auto it : m_players) {
-		if (it.first == m_my_peer_id) {
-			it.second->on_touch_blocks = &on_touch_blocks;
-			it.second->event_list = &script_events;
-			it.second->step(dtime);
-			it.second->on_touch_blocks = nullptr;
-		} else {
-			it.second->step(dtime);
-		}
-	}
-
-
 	auto player = getPlayerNoLock(m_my_peer_id);
+	player->on_touch_blocks = &on_touch_blocks;
+	player->script_events = &script_events;
+
+	for (auto it : m_players) {
+		if (it.first != m_my_peer_id) {
+			it.second->on_touch_blocks = nullptr;
+			it.second->script_events = nullptr;
+		}
+		it.second->step(dtime);
+	}
 
 	// Process node events
 	bool map_dirty = false;
 	{
 		Packet pkt;
-		player->on_touch_blocks = &on_touch_blocks;
 		map_dirty |= send_on_touch_blocks(this, player, pkt);
-		player->on_touch_blocks = nullptr;
 
 		if (pkt.size() > 2) {
 			pkt.write(BLOCKPOS_INVALID); // terminating position
@@ -649,15 +632,13 @@ void Client::stepPhysics(float dtime)
 		}
 	}
 
-	{
+	if (m_script) {
+		// Read back by `Server::pkt_ScriptEvent`
 		Packet pkt;
-		send_script_events(player, pkt);
-
-		if (pkt.size() > 2) {
-			pkt.write(UINT16_MAX); // terminating event ID
-
+		pkt.write(Packet2Server::ScriptEvent);
+		size_t count = m_script->getSEMgr()->writeBatch(pkt, player->script_events);
+		if (count > 0)
 			m_con->send(0, 1, pkt);
-		}
 	}
 
 	if (map_dirty) {

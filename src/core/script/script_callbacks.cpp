@@ -10,27 +10,6 @@ using namespace ScriptUtils;
 
 static Logger &logger = script_logger;
 
-void Script::onScriptsLoaded()
-{
-	lua_State *L = m_lua;
-
-	lua_getglobal(L, "env");
-	{
-		lua_getfield(L, -1, "event_handlers");
-		luaL_checktype(L, -1, LUA_TTABLE);
-
-		int &ref = m_ref_event_handlers;
-		if (ref >= 0)
-			luaL_unref(L, LUA_REGISTRYINDEX, ref);
-
-		ref = luaL_ref(L, LUA_REGISTRYINDEX); // pops value;
-		if (ref < 0) {
-			logger(LL_ERROR, "%s ref failed\n", lua_tostring(L, -2));
-		}
-	}
-	lua_pop(L, 1); // env
-}
-
 void Script::runBlockCb_0(int ref, const char *dbg)
 {
 	if (ref <= LUA_NOREF)

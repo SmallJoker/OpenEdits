@@ -12,6 +12,7 @@
 #include "core/packet.h"
 #include "core/utils.h"
 #include "core/world.h"
+#include "core/script/scriptevent.h"
 #include <set>
 
 #if 0
@@ -837,23 +838,12 @@ void Server::pkt_TriggerBlocks(peer_t peer_id, Packet &pkt)
 	}
 }
 
-// Sent by `send_script_events`.
 void Server::pkt_ScriptEvent(peer_t peer_id, Packet &pkt)
 {
-	// TODO
-	// Broadcast to players (depending on flags)
+	// TODO: Broadcast to players (depending on flags)
 
-	while (pkt.getRemainingBytes()) {
-		u16 event_id = pkt.read<u16>();
-		if (event_id == UINT16_MAX)
-			break;
-
-		ScriptEvent se(event_id);
-		Packet *pkt_ptr = &pkt;
-		std::swap(se.data, pkt_ptr);
-		m_script->onEvent(se);
-		std::swap(se.data, pkt_ptr);
-	}
+	// Sent by `ScriptEventManager::writeBatch`
+	m_script->getSEMgr()->runBatch(pkt);
 }
 
 void Server::pkt_GodMode(peer_t peer_id, Packet &pkt)
