@@ -46,7 +46,7 @@ SceneWorldRender::~SceneWorldRender()
 
 void SceneWorldRender::draw()
 {
-	zoom_factor = 2.4f;
+	zoom_factor = 2.0f;
 
 	if (!m_world_smgr) {
 		m_world_smgr = m_gui->scenemgr->createNewSceneManager(false);
@@ -112,6 +112,9 @@ void SceneWorldRender::step(float dtime)
 
 	drawBlocksInView();
 	updatePlayerPositions(dtime);
+
+	if (zoom_factor < 1.0f)
+		zoom_factor = 1.0f;
 
 	{
 		auto draw_area = m_gameplay->getDrawArea();

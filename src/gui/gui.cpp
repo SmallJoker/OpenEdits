@@ -16,7 +16,7 @@
 
 Gui::Gui()
 {
-	window_size = core::dimension2du(850, 550);
+	window_size = core::dimension2du(1000, 600);
 
 	SIrrlichtCreationParameters params;
 	params.DriverType = video::EDT_OPENGL;

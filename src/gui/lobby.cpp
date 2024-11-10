@@ -139,9 +139,6 @@ void SceneLobby::draw()
 		gui->addButton(rect_bl, nullptr, ID_BtnDisconnect, L"<< Disconnect");
 
 	}
-
-	m_dirty_worldlist = true;
-	updateWorldList();
 }
 
 void SceneLobby::step(float dtime)
@@ -329,6 +326,7 @@ void SceneLobby::addWorldsTab(gui::IGUITabControl *tc)
 		auto tab = tc->addTab(L"Public worlds");
 		setup_tab(gui, tab);
 		m_publiclist = gui->addListBox(list_rect, tab, ID_ListPublic, true);
+		m_publiclist->addItem(L"Loading ...");
 	}
 
 	{
@@ -343,6 +341,7 @@ void SceneLobby::addWorldsTab(gui::IGUITabControl *tc)
 		auto tab = tc->addTab(L"My worlds");
 		setup_tab(gui, tab);
 		m_mylist = gui->addListBox(list_rect, tab, ID_ListMine, true);
+		m_mylist->addItem(L"Loading ...");
 	}
 
 	{
@@ -350,7 +349,10 @@ void SceneLobby::addWorldsTab(gui::IGUITabControl *tc)
 		tab->setBackgroundColor(tc_bgcolor);
 		tab->setDrawBackground(true);
 		m_importlist = gui->addListBox(list_rect, tab, ID_ListImport, true);
+		m_importlist->addItem(L"Loading ...");
 	}
+
+	m_dirty_worldlist = true;
 }
 
 void SceneLobby::addFriendsTab(gui::IGUITabControl *tc)
