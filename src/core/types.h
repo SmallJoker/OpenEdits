@@ -22,7 +22,7 @@ constexpr u16 BLOCKPOS_INVALID = UINT16_MAX;
 
 struct PositionRange {
 	enum Type : uint8_t {
-		T_CURRENT_POS  = 0x00, // pos
+		T_ONE_BLOCK    = 0x00, // pos
 		T_AREA         = 0x01, // minpos, maxpos
 		T_CIRCLE       = 0x02, // pos, radius
 		T_ENTIRE_WORLD = 0x03, // no args

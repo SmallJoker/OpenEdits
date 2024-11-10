@@ -126,7 +126,7 @@ ScriptEvent ScriptEventManager::readEventFromLua() const
 
 	ScriptEvent se(event_id);
 
-	const auto &def = def_it->second;
+	const auto &def = def_it->second.types;
 	auto it = def.begin();
 	const int stack_max = lua_gettop(L);
 	// read linearly from function arguments
@@ -170,7 +170,7 @@ void ScriptEventManager::runLuaEventCallback(const ScriptEvent &se) const
 		throw std::runtime_error("unregistered event: " + std::to_string(se.event_id));
 
 	int nargs = 0;
-	for (const auto type : def->second)
+	for (const auto type : def->second.types)
 		nargs += write_tagged_pkt(L, type, *se.data);
 
 	if (lua_pcall(L, nargs, 0, 0)) {

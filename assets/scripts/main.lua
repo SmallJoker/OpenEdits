@@ -41,11 +41,6 @@ assert(env.API_VERSION >= 2, "Script implementation is too old.")
 
 if true then
 	env.load_hardcoded_packs()
-	--[[env.change_block(0, {
-		on_placed = function()
-			print("PLACED")
-		end
-	})]]
 	return
 end
 
@@ -70,30 +65,6 @@ local change_blocks = reg.change_blocks
 
 env.include("keys_doors.lua")
 
----------- Parameters (TODO)
-
---[[
-coins = env.new_parameter("coins", "player", env.PARAMTYPE_U32)
--- In a callback:
-local val = coins.get()
-coins.set(325) -- sends updates, if the server assigned the std::set<id> *ptr; (in Player)
-coins.on_change(function()
-	env.hud.set("da da da. aha. " .. coins.get())
-end)
-
-
-change_block({
-	paramtype = env.PARAMTYPE_U8U8,
-	get_tile = function(bx, by)
-		local num_u8_1, num_u8_2  = env.world.get_params(bx, by)
-		if num_u8_1 then
-			--env.world.set_params() server only
-		end
-		env.gui.append_text(-3, -5, "value")
-		return 1
-	end
-})
-]]
 
 ---------- Blocks tab
 

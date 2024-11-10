@@ -36,8 +36,11 @@ active player of the callback.
     * Retrieves the block parameters based on the type specified by the
       `params` Block Definition field.
  * `set_tile(block_id, tile, PositionRange ...)`
-    * Sets the block tile
+    * Sets the tile index of one or multiple blocks.
+    * Returns `true` if blocks were modified.
     * `PositionRange` (optional): defines which blocks that are affected
+		* arg 1: one of `env.world.PRT_*`
+		* arg 2+: see `script_environment.cpp` / `Script::get_position_range`
 
 
 #### Script events

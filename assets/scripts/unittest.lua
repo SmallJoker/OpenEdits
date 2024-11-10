@@ -42,10 +42,22 @@ env.register_pack({
 	blocks = { 0, 1, 2, 3, 4 }
 })
 
+env.change_block(0, {
+	on_intersect = function()
+		env.player.set_acc(0, 100)
+	end,
+})
+
 env.register_pack({
 	name = "basic",
 	default_type = env.DRAW_TYPE_SOLID,
 	blocks = { 9, 10, 11, 12, 13, 14, 15 }
+})
+
+env.register_pack({
+	name = "dev_blocks",
+	default_type = env.DRAW_TYPE_SOLID,
+	blocks = { 101, 102, 103, 104, 105, 106, 107 }
 })
 
 --[[
@@ -96,6 +108,7 @@ env.change_block(2, {
 
 -- event sender/receiver test
 local EV
+-- C++: unittest_script
 EV = env.register_event(1003, 0, env.PARAMS_TYPE_STR16, env.PARAMS_TYPE_U8U8U8,
 	function(...)
 		print("got event!", dump({...}))
@@ -112,3 +125,21 @@ env.change_block(4, {
 })
 
 --print(dump(_G))
+
+
+-- C++: test_script_world_interop
+env.change_block(101, {
+	tiles = {
+		-- Same types: client may switch on its own.
+		{ type = env.DRAW_TYPE_SOLID },
+		{ type = env.DRAW_TYPE_SOLID },
+	},
+	on_collide = function(bx, by)
+		print("collide with 101 at ", bx, by)
+		local fg, tile, bg = env.world.get_block(bx, by)
+		if tile == 0 then
+			assert(env.world.set_tile(101, 1, env.world.PRT_ONE_BLOCK, bx, by) == true)
+		end
+		return env.COLLISION_TYPE_POSITION
+	end
+})

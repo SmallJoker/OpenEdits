@@ -41,9 +41,11 @@ int ServerScript::implWorldSetTile(PositionRange range, bid_t block_id, int tile
 	if (!world)
 		luaL_error(L, "no world");
 
-	world->setBlockTiles(range, block_id, tile);
-	// TODO: broadcast
-	return 0;
+	// TODO: broadcast?
+
+	bool modified = world->setBlockTiles(range, block_id, tile);
+	lua_pushboolean(L, modified);
+	return 1;
 }
 
 static void run_0_args_callback(lua_State *L, int ref, const char *dbg)

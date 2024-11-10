@@ -178,13 +178,15 @@ void Player::step(float dtime)
 	if (m_script)
 		m_script->setPlayer(this);
 
-	// Maximal travel distance per iteration
+	// Maximum travel distance per iteration
 	while (true) {
 		float dtime2 = dtime;
 
+		// Note: discards the sign!
 		float v = vel.getLength();
 		float a = acc.getLength();
 		if (a > 0.1f) {
+			// One step at fixed distance (approximation)
 			// 0 = (0.5 * a) * t² + (v) * t - max_d
 			// t = (-v ± sqrt(v² + 2*a*max_d)) / a
 			float sq = sqrt(v * v + 2 * a * DISTANCE_STEP);
@@ -288,10 +290,10 @@ void Player::stepInternal(float dtime)
 
 	// Controls handling
 	if (controls_enabled && m_controls.jump && m_jump_cooldown <= 0) {
-		if (get_sign(m_collision.X * acc.X) == 1 && std::fabs(vel.X) < 3.0f) {
+		if (get_sign(m_collision.X * acc.X) == 1 && vel.X == 0) {
 			vel.X += m_collision.X * -Player::JUMP_SPEED;
 			m_jump_cooldown = 0.2f;
-		} else if (get_sign(m_collision.Y * acc.Y) == 1 && std::fabs(vel.Y) < 3.0f) {
+		} else if (get_sign(m_collision.Y * acc.Y) == 1 && vel.Y == 0) {
 			vel.Y += m_collision.Y * -Player::JUMP_SPEED;
 			m_jump_cooldown = 0.2f;
 		}
@@ -321,7 +323,7 @@ void Player::stepInternal(float dtime)
 	{
 		// Stokes friction to stop movement after releasing keys
 		const float viscosity = props ? props->viscosity : 1.0f;
-		const float coeff_s = godmode ? 1.5f : 4.0f * viscosity; // Stokes
+		const float coeff_s = godmode ? 1.5f : 6.0f * viscosity; // Stokes
 		if (std::fabs(acc.X) < 0.01f && !dir_normal.X)
 			acc.X += -coeff_s * vel.X;
 		if (std::fabs(acc.Y) < 0.01f && !dir_normal.Y)

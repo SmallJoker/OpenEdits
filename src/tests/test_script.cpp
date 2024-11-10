@@ -6,6 +6,7 @@
 #include "core/script/playerref.h"
 #include "core/script/script_utils.h"
 #include "core/script/scriptevent.h"
+#include "core/world.h"
 #include "server/remoteplayer.h"
 #include "server/serverscript.h"
 
@@ -75,6 +76,29 @@ static void test_playerref()
 	lua_close(L);
 }
 
+static void test_script_world_interop(BlockManager *bmgr, Script *script, RemotePlayer &p)
+{
+	auto w = std::make_shared<World>(bmgr, "interop");
+	w->createEmpty({ 10, 7 });
+	w->setBlock({ 5, 6 }, Block(101)); // center bottom
+
+	// env.world.set_tile
+	{
+		p.setScript(script);
+		p.setWorld(w);
+		p.setPosition({ 5.0f, 4.2f }, false);
+		p.step(0.01f); // update acceleration etc.
+		p.step(0.3f);
+		CHECK(std::fabs(p.pos.Y - 5.0f) < 0.001f);
+		Block b;
+		w->getBlock({ 5, 6 }, &b);
+		CHECK(b.tile == 1);
+
+		p.setWorld(nullptr);
+	}
+	CHECK(script->popErrorCount() == 0);
+}
+
 void unittest_script()
 {
 	test_playerref();
@@ -87,7 +111,9 @@ void unittest_script()
 	script.setTestMode("init");
 	CHECK(script.loadFromFile("assets/scripts/constants.lua"));
 	CHECK(script.loadFromFile("assets/scripts/unittest.lua"));
-	CHECK(script.loadFromFile("assets/scripts/unittest_server.lua"));
+	if (script.getScriptType() == Script::ST_SERVER) {
+		CHECK(script.loadFromFile("assets/scripts/unittest_server.lua"));
+	}
 	script.onScriptsLoaded();
 
 	RemotePlayer p(12345, PROTOCOL_VERSION_MAX);
@@ -159,6 +185,8 @@ void unittest_script()
 		script.onPlayerLeave(&p);
 		CHECK(script.popTestFeedback() == "L_SRV;");
 	}
+
+	test_script_world_interop(&bmgr, &script, p);
 
 	script.close();
 }

@@ -535,7 +535,7 @@ bool World::setBlockTiles(PositionRange range, bid_t block_id, u8 tile)
 	blockpos_t pos;
 
 	switch (range.type) {
-	case PRT::T_CURRENT_POS: {
+	case PRT::T_ONE_BLOCK: {
 		if (!isValidPosition(range.minp.X, range.minp.Y))
 			return false;
 

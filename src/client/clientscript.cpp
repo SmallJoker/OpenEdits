@@ -52,8 +52,9 @@ int ClientScript::implWorldSetTile(PositionRange range, bid_t block_id, int tile
 	}
 	// else: We may do it locally for smooth gameplay experience
 
-	world->setBlockTiles(range, block_id, tile);
-	return 0;
+	bool modified = world->setBlockTiles(range, block_id, tile);
+	lua_pushboolean(L, modified);
+	return 1;
 }
 
 int ClientScript::l_gui_change_hud(lua_State *L)

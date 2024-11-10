@@ -13,15 +13,12 @@ void Script::get_position_range(lua_State *L, int idx, PositionRange &range)
 {
 	using PRT = PositionRange::Type;
 
-	int type = PRT::T_CURRENT_POS;
-	if (!lua_isnil(L, idx)) {
-		type = luaL_checkinteger(L, idx);
-		if (type < 0 || type >= PRT::T_MAX_INVALID)
-			luaL_error(L, "PRT out of range");
-	}
+	int type = luaL_checkinteger(L, idx);
+	if (type < 0 || type >= PRT::T_MAX_INVALID)
+		luaL_error(L, "PRT out of range");
 
 	Script *script = get_script(L);
-	Player *player = script->m_player;
+	const Player *player = script->m_player;
 
 	auto read_pos = [&] (blockpos_t size, int iidx, blockpos_t *pos) {
 		float x = std::max<float>(0, luaL_checknumber(L, iidx + 0) + 0.5f);
@@ -33,8 +30,9 @@ void Script::get_position_range(lua_State *L, int idx, PositionRange &range)
 
 	range.type = (PRT)type;
 	switch (range.type) {
-		case PRT::T_CURRENT_POS:
-			range.minp = player->getCurrentBlockPos();
+		case PRT::T_ONE_BLOCK:
+			range.minp.X = luaL_checknumber(L, idx + 1) + 0.5f;
+			range.minp.Y = luaL_checknumber(L, idx + 2) + 0.5f;
 			break;
 		case PRT::T_AREA: {
 			World *world = player->getWorld().get();
@@ -58,7 +56,6 @@ static int write_blockparams(lua_State *L, const BlockParams &params)
 	switch (params.getType()) {
 		case Type::None:
 			return 0;
-			break;
 		case Type::STR16:
 			lua_pushstring(L, params.text->c_str());
 			return 1;
@@ -116,10 +113,12 @@ int Script::l_register_event(lua_State *L)
 		throw std::exception();
 	good:
 		logger_off(LL_DEBUG, "%s: id=%d, type=%d", __func__, event_id, type);
-		def.push_back((Type)type);
+		def.types.push_back((Type)type);
 	}
 
-	logger(LL_INFO, "%s: id=%d, cnt=%zu", __func__, event_id, def.size());
+	logger(LL_INFO, "%s: id=%d, cnt=%zu", __func__, event_id, def.types.size());
+
+	// Return the event ID
 	lua_pushinteger(L, event_id);
 	return 1;
 	MESSY_CPP_EXCEPTIONS_END

@@ -76,12 +76,11 @@ public:
 	// Resetable progress
 	u8 coins = 0;
 	blockpos_t checkpoint;
-	//std::map<size_t, BlockParams> params;
 
 	u8 smiley_id = 0;
 
 	static constexpr float GRAVITY_NORMAL = 100.0f;
-	static constexpr float CONTROLS_ACCEL = 60.0f;
+	static constexpr float CONTROLS_ACCEL = 75.0f;
 	static constexpr float JUMP_SPEED = 30.0f;
 
 protected:

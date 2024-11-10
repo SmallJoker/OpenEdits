@@ -32,7 +32,7 @@ end
 do
 	-- types.h / PositionRange::Type
 	local w = env.world
-	w.PRT_CURRENT_POS  = 0x00
+	w.PRT_ONE_BLOCK    = 0x00
 	w.PRT_AREA         = 0x01
 	w.PRT_CIRCLE       = 0x02
 	w.PRT_ENTIRE_WORLD = 0x03

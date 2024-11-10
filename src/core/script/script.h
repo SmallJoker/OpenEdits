@@ -27,6 +27,7 @@ public:
 
 	bool init();
 	void close();
+	Type getScriptType() const { return m_scripttype; }
 	lua_State *getState() const { return m_lua; }
 	ScriptEventManager *getSEMgr() const { return m_emgr; }
 	virtual void step(float dtime) {}

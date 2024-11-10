@@ -48,7 +48,9 @@ struct ScriptEvent {
 
 class ScriptEventManager {
 public:
-	using EventDef = std::vector<BlockParams::Type>;
+	struct EventDef {
+		std::vector<BlockParams::Type> types;
+	};
 
 private:
 	std::map<u16, EventDef> m_event_defs;
