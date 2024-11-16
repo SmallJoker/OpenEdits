@@ -322,6 +322,8 @@ void World::readPlain(Packet &pkt_in)
 	Packet &pkt = is_compressed ? pkt_tmp_decomp : pkt_in;
 	if (is_compressed) {
 		Decompressor d(&pkt, pkt_in);
+		// Simple 500 * 500 worlds are about 1 MB (decompressed)
+		d.setLimit(10 * (1024 * 1024)); // 10 MiB must suffice
 		d.decompress();
 	}
 

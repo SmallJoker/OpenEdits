@@ -1,15 +1,17 @@
 #include "compressor.h"
-#include <memory.h>
+#include <memory.h> // memset
 #include <stdexcept>
 #include <zlib.h>
+#include "logger.h"
 #include "packet.h"
+
+static Logger logger("Compressor", LL_WARN);
 
 #if 0
 	#define DEBUGLOG(...) printf(__VA_ARGS__)
 #else
 	#define DEBUGLOG(...) do {} while (false)
 #endif
-#define ERRORLOG(...) fprintf(stderr, __VA_ARGS__)
 
 constexpr size_t CHUNK_SMALL = 5000;
 constexpr size_t CHUNK_BIG = 10 * CHUNK_SMALL;
@@ -103,9 +105,9 @@ struct InflateWriter {
 				case Z_DATA_ERROR:
 				case Z_MEM_ERROR:
 				case Z_STREAM_ERROR:
-					ERRORLOG("zlib: error code %d, message: %s, near index 0x%04lX\n",
-						status, m_zs.msg ? m_zs.msg : "NULL", m_zs.total_in);
-					throw std::runtime_error("zlib: inflate error");
+					logger(LL_ERROR, "%s: error code %d, message: %s, near index 0x%04lX\n",
+						"compress",	status, m_zs.msg ? m_zs.msg : "NULL", m_zs.total_in);
+					throw std::runtime_error("inflate error");
 			}
 
 			// The amount of newly received bytes
@@ -114,8 +116,11 @@ struct InflateWriter {
 
 			writeChunk(m_buf_out, have);
 
-			if (have > 0)
-				DEBUGLOG("zlib: compressed=%zu, remaining=%d, (wrote=%zu)\n", n_proc, m_zs.avail_in, have);
+			if (have > 0) {
+				DEBUGLOG("zlib: compressed=%zu, remaining=%d, (wrote=%zu)\n",
+					n_proc, m_zs.avail_in, have);
+			}
+
 			if (m_zs.avail_in == 0)
 				break; // all bytes eaten
 
@@ -160,7 +165,7 @@ void Compressor::compress()
 	do {
 		len = m_input.readRawNoCopy(&buf, CHUNK_SMALL);
 		m_writer->compress(buf, len);
-		DEBUGLOG("Compress n=%zu, remaining=%zu\n", len, m_input.getRemainingBytes());
+		logger(LL_DEBUG, "Compressed n=%zu, remaining=%zu\n", len, m_input.getRemainingBytes());
 	} while (len == CHUNK_SMALL);
 
 	delete m_writer;
@@ -240,7 +245,8 @@ struct DeflateReader {
 				// All bytes eaten. Read next block
 				m_zs.avail_in = readChunk((const uint8_t **)&m_zs.next_in, CHUNK_BIG);
 
-				DEBUGLOG("zlib decompress: in available=%d, out remaining=%zu\n", m_zs.avail_in, n_bytes - n_read);
+				DEBUGLOG("decompress: in available=%d, out remaining=%zu\n",
+					m_zs.avail_in, n_bytes - n_read);
 
 				if (m_zs.avail_in == 0)
 					throw std::runtime_error("zlib data ended unexpectedly");
@@ -258,10 +264,9 @@ struct DeflateReader {
 				case Z_DATA_ERROR:
 				case Z_MEM_ERROR:
 				case Z_STREAM_ERROR:
-					//ERRORLOG("Got Adler %08lX\n", m_zs.adler);
-					ERRORLOG("zlib: error code %d, message: %s, near index 0x%04lX\n",
-						status, m_zs.msg ? m_zs.msg : "NULL", m_zs.total_out);
-					throw std::runtime_error("zlib: inflate error");
+					logger(LL_ERROR, "%s: error code %d, message: %s, near index 0x%04lX\n",
+						"decompress", status, m_zs.msg ? m_zs.msg : "NULL", m_zs.total_out);
+					throw std::runtime_error("inflate error");
 			}
 
 			// The amount of newly received bytes
@@ -270,6 +275,7 @@ struct DeflateReader {
 
 			if (n_bytes > 100)
 				DEBUGLOG("zlib: decompressed=%zu, remaining=%zu\n", have, n_bytes - n_read);
+
 			if (n_read >= n_bytes)
 				break;
 
@@ -313,7 +319,12 @@ void Decompressor::decompress()
 	do {
 		len = m_reader->decompress(m_output.writePreallocStart(CHUNK_SMALL), CHUNK_SMALL);
 		m_output.writePreallocEnd(len);
-		DEBUGLOG("Decompress n=%zu, total=%zu\n", len, m_output.size());
+		logger(LL_DEBUG, "Decompressed n=%zu, total=%zu\n", len, m_output.size());
+
+		if (m_output.size() > m_limit_bytes) {
+			logger(LL_ERROR, "decompress: data exceeds limit of %zu", m_limit_bytes);
+			throw std::runtime_error("too much data");
+		}
 	} while (len > 0);
 
 	delete m_reader;
