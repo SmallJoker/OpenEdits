@@ -81,7 +81,11 @@ int Script::l_register_event(lua_State *L)
 	MESSY_CPP_EXCEPTIONS_START
 	Script *script = get_script(L);
 
-	int event_id = luaL_checkinteger(L, 1);
+	int event_id_raw = luaL_checkinteger(L, 1);
+	uint16_t event_id = (uint16_t)event_id_raw;
+	if (event_id_raw != event_id || event_id_raw == UINT16_MAX)
+		luaL_error(L, "event id=%d is out of range", event_id);
+
 	(void)luaL_checkinteger(L, 2); // flags (TODO)
 
 	auto &defs = script->m_emgr->getDefs();

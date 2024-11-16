@@ -6,6 +6,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h> // getenv
+#include <time.h>
 #ifndef _WIN32
 	#include <unistd.h>
 #endif
@@ -86,7 +87,7 @@ void Logger::doLogStartup()
 {
 	time_t timestamp_now = time(NULL);
 	struct tm *tm_info = localtime(&timestamp_now);
-	printf("Time: %lu | %s", timestamp_now, asctime(tm_info));
+	printf("Time: %zu | %s", timestamp_now, asctime(tm_info));
 
 	startup_time = timestamp_now;
 
@@ -134,7 +135,7 @@ void Logger::operator()(LogLevel ll, const char *fmt, ...)
 
 	time_t timestamp_now = time(NULL);
 	if (1) {
-		fprintf(stream, "%4lu", timestamp_now - startup_time);
+		fprintf(stream, "%4zu", timestamp_now - startup_time);
 	} else {
 		// Print current time
 		struct tm *tm_info = localtime(&timestamp_now);

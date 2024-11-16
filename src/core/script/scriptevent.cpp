@@ -21,7 +21,7 @@ ScriptEvent::ScriptEvent(u16 event_id)
 
 ScriptEvent::ScriptEvent(ScriptEvent &&other)
 {
-	std::swap(event_id, other.event_id);
+	event_id = other.event_id;
 	std::swap(data, other.data);
 }
 
