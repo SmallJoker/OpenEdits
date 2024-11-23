@@ -1,2 +1,2 @@
 
-const char *VERSION_STRING = "OpenEdits v1.3.0-${GIT_SHA1} (${CMAKE_BUILD_TYPE})";
+const char *VERSION_STRING = "OpenEdits v1.3.1-${GIT_SHA1} (${CMAKE_BUILD_TYPE})";
