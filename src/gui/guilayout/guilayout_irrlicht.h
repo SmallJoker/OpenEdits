@@ -17,13 +17,12 @@ struct IGUIElementWrapper : public Element {
 	IGUIElementWrapper(gui::IGUIElement *elem = nullptr);
 	virtual ~IGUIElementWrapper();
 
-	void setElement(gui::IGUIElement *elem);
-	gui::IGUIElement *getElement() const {return m_element; }
+	gui::IGUIElement *getElement() const { return m_element; }
 
 	void updatePosition() override;
 	void doRecursive(std::function<bool(Element *)> callback) override;
 
-	static void debugFillArea(Element *e, video::IVideoDriver *driver, uint32_t color);
+	static void draw_wireframe(Element *e, video::IVideoDriver *driver, uint32_t color);
 
 	template <typename T, typename ... Args>
 	T *add(Args &&... args)
@@ -37,7 +36,11 @@ protected:
 	std::vector<std::unique_ptr<Element>> m_children; // e.g. tabs
 
 private:
+	void setElement(gui::IGUIElement *elem);
 	void setTextlike(bool use_get_text);
+
+	static bool draw_iguiw_wireframe(IGUIElementWrapper *e, video::IVideoDriver *driver, uint32_t color);
+	static bool draw_table_wireframe(Table *e, video::IVideoDriver *driver, uint32_t color);
 };
 
 }

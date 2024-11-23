@@ -218,7 +218,8 @@ void FlexBox::doRecursive(std::function<bool(Element *)> callback)
 		return;
 
 	for (auto &e : m_children) {
-		e->doRecursive(callback);
+		if (e.get())
+			e->doRecursive(callback);
 	}
 }
 

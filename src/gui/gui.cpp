@@ -56,8 +56,8 @@ Gui::Gui()
 
 		skin->setSize(gui::EGDS_SCROLLBAR_SIZE, 24);
 		// Input boxes and tooltip padding
-		skin->setSize(gui::EGDS_TEXT_DISTANCE_X, 6);
-		skin->setSize(gui::EGDS_TEXT_DISTANCE_Y, 6);
+		skin->setSize(gui::EGDS_TEXT_DISTANCE_X, 3);
+		skin->setSize(gui::EGDS_TEXT_DISTANCE_Y, 3);
 	}
 
 	{
@@ -169,7 +169,7 @@ void Gui::run()
 		guienv->drawAll();
 
 		if (m_show_debug)
-			guilayout::IGUIElementWrapper::debugFillArea(layout, driver, 0xFFFF0000);
+			guilayout::IGUIElementWrapper::draw_wireframe(layout, driver, 0xFFFF0000);
 
 		drawFPS();
 		drawPopup(dtime);

@@ -64,8 +64,9 @@ struct Table : public Element {
 
 	private:
 		friend struct Table;
-		u16 min_size = 0; // after getMinSize()
-		u16_x2 pos_minmax; // after tryFitElements()
+		friend struct IGUIElementWrapper;
+		u16 min_size = 0;  // after getMinSize()
+		u16_x2 pos_minmax; // {minp, maxp}, after tryFitElements()
 	};
 
 	virtual ~Table() = default;
@@ -73,16 +74,16 @@ struct Table : public Element {
 	void clear() override
 	{
 		m_children.clear();
-		m_cellinfo[0].clear();
-		m_cellinfo[1].clear();
+		m_cellinfo[SIZE_X].clear();
+		m_cellinfo[SIZE_Y].clear();
 	}
 
 	void doRecursive(std::function<bool(Element *)> callback) override;
 
 	void setSize(u16 x, u16 y)
 	{
-		m_cellinfo[0].resize(x);
-		m_cellinfo[1].resize(y);
+		m_cellinfo[SIZE_X].resize(x);
+		m_cellinfo[SIZE_Y].resize(y);
 		m_children.resize(x * y);
 	}
 
@@ -90,7 +91,7 @@ struct Table : public Element {
 	T *add(u16 x, u16 y, Args &&... args)
 	{
 		checkDimensions(x, y);
-		auto &idx = m_children[y * m_cellinfo[0].size() + x];
+		auto &idx = m_children[y * m_cellinfo[SIZE_X].size() + x];
 		// Perfect forwarding
 		idx = std::make_unique<T>(std::forward<Args>(args)...);
 		return dynamic_cast<T *>(idx.get());
@@ -99,19 +100,19 @@ struct Table : public Element {
 	Element *at(u16 x, u16 y) const
 	{
 		checkDimensions(x, y);
-		return m_children[y * m_cellinfo[0].size() + x].get();
+		return m_children[y * m_cellinfo[SIZE_X].size() + x].get();
 	}
 
 	CellInfo *col(u16 x)
 	{
-		checkDimensions(x, 0);
-		return &m_cellinfo[0][x];
+		checkDimensions(x, SIZE_X);
+		return &m_cellinfo[SIZE_X][x];
 	}
 
 	CellInfo *row(u16 y)
 	{
-		checkDimensions(0, y);
-		return &m_cellinfo[1][y];
+		checkDimensions(SIZE_X, y);
+		return &m_cellinfo[SIZE_Y][y];
 	}
 
 	void start(u16_x2 pos, u16_x2 size) override;
@@ -119,10 +120,12 @@ struct Table : public Element {
 	void updatePosition() override;
 
 private:
+	friend struct IGUIElementWrapper;
+
 	void checkDimensions(u16 x, u16 y) const
 	{
-		ASSERT_FORCED(x < m_cellinfo[0].size(), "X out of range");
-		ASSERT_FORCED(y < m_cellinfo[1].size(), "Y out of range");
+		ASSERT_FORCED(x < m_cellinfo[SIZE_X].size(), "X out of range");
+		ASSERT_FORCED(y < m_cellinfo[SIZE_Y].size(), "Y out of range");
 	}
 
 	void getMinSize(bool shrink_x, bool shrink_y) override;

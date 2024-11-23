@@ -333,7 +333,7 @@ void unittest_gui_layout(int which)
 
 		if (which == 3) {
 			// red rectangle to highlight area
-			IGUIElementWrapper::debugFillArea(root, device->getVideoDriver(), 0xFFFF0000);
+			IGUIElementWrapper::draw_wireframe(root, device->getVideoDriver(), 0xFFFF0000);
 		}
 
 		driver->endScene();
