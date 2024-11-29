@@ -8,7 +8,7 @@ extern "C" {
 	#include <lualib.h>
 }
 
-static Logger logger("ScriptEvents", LL_INFO);
+static Logger logger("ScriptEvent", LL_INFO);
 #define logger_off(...) {}
 
 // -------------- ScriptEvent -------------
@@ -114,11 +114,11 @@ void ScriptEventManager::readDefinitionFromLua()
 
 }
 
-ScriptEvent ScriptEventManager::readEventFromLua() const
+ScriptEvent ScriptEventManager::readEventFromLua(int start_idx) const
 {
 	lua_State *L = m_script->getState();
 
-	const u16 event_id = luaL_checkinteger(L, 1);
+	const u16 event_id = luaL_checkinteger(L, start_idx);
 
 	auto def_it = m_event_defs.find(event_id);
 	if (def_it == m_event_defs.end())
@@ -130,12 +130,13 @@ ScriptEvent ScriptEventManager::readEventFromLua() const
 	auto it = def.begin();
 	const int stack_max = lua_gettop(L);
 	// read linearly from function arguments
-	for (int idx = 1; idx < stack_max; (void)idx /*nop*/, ++it) {
+	for (int idx = start_idx; idx < stack_max; (void)idx /*nop*/, ++it) {
 		if (it == def.end())
 			goto error;
 
-		logger(LL_DEBUG, "%s: arg=%d, type=%d (%zu / %zu)", __func__, idx,
-			(int)*it, se.data->getReadPos(), se.data->size());
+		logger(LL_DEBUG, "%s: idx=%d, top_t=%d, want_t=%d, datalen=%zu",
+			__func__, idx + 1, lua_type(L, idx + 1),
+			(int)*it, se.data->size());
 		idx = read_tagged_pkt(L, idx, *it, *se.data);
 	}
 
@@ -186,25 +187,27 @@ restore_stack:
 	lua_settop(L, top);
 }
 
-size_t ScriptEventManager::runBatch(Packet &pkt) const
+bool ScriptEventManager::runBatch(Packet &pkt, size_t &invocations) const
 {
-	size_t count = 0;
 	while (pkt.getRemainingBytes()) {
 		u16 event_id = pkt.read<u16>();
 		if (event_id == UINT16_MAX)
 			break;
+
+		if (invocations == 0)
+			return false;
+		invocations--;
 
 		ScriptEvent se(event_id);
 		Packet *pkt_ptr = &pkt;
 		std::swap(se.data, pkt_ptr);
 		runLuaEventCallback(se);
 		std::swap(se.data, pkt_ptr);
-		count++;
 	}
-	return count;
+	return true;
 }
 
-size_t ScriptEventManager::writeBatch(Packet &pkt, std::set<ScriptEvent> *events_list) const
+size_t ScriptEventManager::writeBatch(Packet &pkt, ScriptEventList *events_list) const
 {
 	size_t count = 0;
 	for (const auto &event : *events_list) {

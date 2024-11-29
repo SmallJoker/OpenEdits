@@ -134,11 +134,11 @@ int Script::l_send_event(lua_State *L)
 	Script *script = get_script(L);
 	Player *player = script->m_player;
 
-	ScriptEvent ev = script->m_emgr->readEventFromLua();
-	if (player->script_events) {
-		player->script_events->emplace(std::move(ev));
-	}
+	ScriptEvent ev = script->m_emgr->readEventFromLua(1);
+	if (!player->script_events)
+		player->script_events.reset(new ScriptEventList());
 
+	player->script_events->emplace(std::move(ev));
 	return 0;
 	MESSY_CPP_EXCEPTIONS_END
 }

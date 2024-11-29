@@ -7,6 +7,7 @@
 #include "core/logger.h"
 #include "core/network_enums.h"
 #include "core/packet.h"
+#include "core/script/scriptevent.h"
 
 #if 0
 	#define DEBUGLOG(...) printf(__VA_ARGS__)
@@ -38,7 +39,7 @@ const ClientPacketHandler Client::packet_actions[] = {
 	{ ClientState::WorldPlay, &Client::pkt_ChatReplay },
 	{ ClientState::Connected, &Client::pkt_MediaList },
 	{ ClientState::Connected, &Client::pkt_MediaReceive },
-	{ ClientState::WorldPlay, &Client::pkt_SetTile }, // 20
+	{ ClientState::WorldPlay, &Client::pkt_ScriptEvent }, // 20
 	{ ClientState::Invalid, 0 }
 };
 
@@ -488,9 +489,14 @@ void Client::pkt_PlaceBlock(Packet &pkt)
 	sendNewEvent(e);
 }
 
-void Client::pkt_SetTile(Packet &pkt)
+void Client::pkt_ScriptEvent(Packet &pkt)
 {
-	logger(LL_INFO, "Deprecated. Use Lua.");
+	if (m_script && !m_rl_scriptevents.isActive()) {
+		const size_t limit = m_rl_scriptevents.getSumLimit() + 1.0f;
+		size_t countdown = limit;
+		m_script->getSEMgr()->runBatch(pkt, countdown);
+		m_rl_scriptevents.add(limit - countdown);
+	}
 }
 
 void Client::pkt_ActivateBlock(Packet &pkt)

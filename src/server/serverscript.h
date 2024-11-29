@@ -23,7 +23,7 @@ protected:
 public:
 	void onPlayerJoin(Player *player);
 	void onPlayerLeave(Player *player);
-private:
+protected:
 	static int l_get_players_in_world(lua_State *L);
 
 	int m_ref_on_player_join = -2; // LUA_NOREF

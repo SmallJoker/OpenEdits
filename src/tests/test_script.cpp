@@ -76,6 +76,35 @@ static void test_playerref()
 	lua_close(L);
 }
 
+static void test_playerref_scriptevents(Script &script, Player &p)
+{
+	lua_State *L = script.getState();
+	const BlockManager *bmgr = script.getBlockMgr();
+	PlayerRef::doRegister(L);
+
+	PlayerRef::push(L, &p);
+	lua_setglobal(L, "myplayerref");
+	p.setScript(&script);
+
+	{
+		auto props = bmgr->getProps(4);
+		CHECK(props != nullptr);
+		script.onIntersectOnce({0 , 0}, props);
+		CHECK(script.popErrorCount() == 0);
+		CHECK(p.script_events.get());
+		std::unique_ptr<ScriptEventList> list(p.script_events.release());
+		CHECK(list->begin()->event_id == 1004);
+
+		// Process the added event
+		script.getSEMgr()->runLuaEventCallback(*list->begin());
+		CHECK(script.popErrorCount() == 0);
+		CHECK(script.popTestFeedback() == "EV4.15577;");
+	}
+
+	p.setScript(nullptr);
+	PlayerRef::invalidate(L, &p);
+}
+
 static void test_script_world_interop(BlockManager *bmgr, Script *script, RemotePlayer &p)
 {
 	auto w = std::make_shared<World>(bmgr, "interop");
@@ -111,9 +140,8 @@ void unittest_script()
 	script.setTestMode("init");
 	CHECK(script.loadFromFile("assets/scripts/constants.lua"));
 	CHECK(script.loadFromFile("assets/scripts/unittest.lua"));
-	if (script.getScriptType() == Script::ST_SERVER) {
-		CHECK(script.loadFromFile("assets/scripts/unittest_server.lua"));
-	}
+	CHECK(script.getScriptType() == Script::ST_SERVER);
+	CHECK(script.loadFromFile("assets/scripts/unittest_server.lua"));
 	script.onScriptsLoaded();
 
 	RemotePlayer p(12345, PROTOCOL_VERSION_MAX);
@@ -159,24 +187,23 @@ void unittest_script()
 
 	// script events
 	{
-
-		std::set<ScriptEvent> myevents;
-
 		// make the player send an event
-		{
-			p.script_events = &myevents;
+		p.script_events.reset(new ScriptEventList());
+		auto &myevents = *p.script_events.get();
 
-			script.onIntersect(bmgr.getProps(4));
-			CHECK(myevents.size() == 1);
-			auto se = myevents.begin();
-			CHECK(se->event_id == 1003 && se->data->size() == 2 + 11 + 3);
-			p.script_events = nullptr;
-		}
+		script.onIntersect(bmgr.getProps(4));
+		CHECK(myevents.size() == 1);
+		auto se = myevents.begin();
+		CHECK(se->event_id == 1003 && se->data->size() == 2 + 11 + 3);
 
 		// run callback function
 		script.getSEMgr()->runLuaEventCallback(*myevents.begin());
 		CHECK(script.popTestFeedback() == "hello world200103;");
+
+		p.script_events.reset();
 	}
+
+	test_playerref_scriptevents(script, p);
 
 	// join/leave
 	{

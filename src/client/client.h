@@ -99,7 +99,7 @@ private:
 	void pkt_Chat(Packet &pkt);
 	void pkt_ChatReplay(Packet &pkt);
 	void pkt_PlaceBlock(Packet &pkt);
-	void pkt_SetTile(Packet &pkt);
+	void pkt_ScriptEvent(Packet &pkt);
 	void pkt_ActivateBlock(Packet &pkt);
 	void pkt_GodMode(Packet &pkt);
 	void pkt_Smiley(Packet &pkt);
@@ -113,6 +113,7 @@ private:
 		m_time_prev = 0; // old time, before step() call
 
 	Timer m_pos_send_timer;
+	RateLimit m_rl_scriptevents;
 
 	// State used for packet filtering
 	ClientState m_state = ClientState::None;

@@ -24,7 +24,7 @@ enum class Packet2Client : uint16_t {
 	ChatReplay,
 	MediaList,
 	MediaReceive,
-	placeholder,
+	ScriptEvent,
 	MAX_END
 };
 

@@ -26,6 +26,7 @@ static const float POSITION_SEND_INTERVAL = 5.0f;
 
 Client::Client(ClientStartData &init) :
 	Environment(g_blockmanager),
+	m_rl_scriptevents(20, 2),
 	m_start_data(std::move(init)) // eaten
 {
 	logger(LL_PRINT, "Startup ...");
@@ -604,17 +605,14 @@ void Client::stepPhysics(float dtime)
 		return;
 
 	std::set<blockpos_t> on_touch_blocks;
-	std::set<ScriptEvent> script_events;
 	SimpleLock lock(m_players_lock);
 
 	auto player = getPlayerNoLock(m_my_peer_id);
 	player->on_touch_blocks = &on_touch_blocks;
-	player->script_events = &script_events;
 
 	for (auto it : m_players) {
 		if (it.first != m_my_peer_id) {
 			it.second->on_touch_blocks = nullptr;
-			it.second->script_events = nullptr;
 		}
 		it.second->step(dtime);
 	}
@@ -636,10 +634,12 @@ void Client::stepPhysics(float dtime)
 		// Read back by `Server::pkt_ScriptEvent`
 		Packet pkt;
 		pkt.write(Packet2Server::ScriptEvent);
-		size_t count = m_script->getSEMgr()->writeBatch(pkt, player->script_events);
+		size_t count = m_script->getSEMgr()->writeBatch(pkt, player->script_events.get());
 		if (count > 0)
 			m_con->send(0, 1, pkt);
 	}
+	player->script_events.reset();
+	m_rl_scriptevents.step(dtime);
 
 	if (map_dirty) {
 		// Triggering an event anyway. Update coin doors.

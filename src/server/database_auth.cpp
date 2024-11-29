@@ -504,15 +504,17 @@ bool DatabaseAuth::getBanRecord(const std::string &affected, const std::string &
 	custom_bind_string(s, 1, affected);
 	custom_bind_string(s, 2, context);
 
+	const time_t time_now = time(nullptr);
 	bool good = false;
 	while (sqlite3_step(s) == SQLITE_ROW) {
 		int i = 0;
 		int64_t expiry = sqlite3_column_int64(s, i++);
-		if (expiry <= time(nullptr))
+		if (expiry <= time_now)
 			continue; // expired
 
 		good = true;
-		if (entry) {
+		// Always find the longest lasting ban record.
+		if (entry && expiry > entry->expiry) {
 			entry->expiry   = expiry;
 			entry->affected = (const char *)sqlite3_column_text(s, i++);
 			entry->context  = (const char *)sqlite3_column_text(s, i++);

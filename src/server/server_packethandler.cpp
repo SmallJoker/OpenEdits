@@ -191,6 +191,16 @@ void Server::pkt_Auth(peer_t peer_id, Packet &pkt)
 	}
 
 	if (action == "login2") {
+
+		std::string address = m_con->getPeerAddress(peer_id);
+		{
+			// Prevent password brute-force attacks
+			if (m_auth_db->getBanRecord(address, action, nullptr)) {
+				sendMsg(peer_id, "Too many login requests. Please wait a few seconds.");
+				return;
+			}
+		}
+
 		// Confirm the client-sent hash
 
 		AuthAccount info;
@@ -212,6 +222,13 @@ void Server::pkt_Auth(peer_t peer_id, Packet &pkt)
 		}
 
 		if (!signed_in) {
+			{
+				AuthBanEntry entry;
+				entry.affected = address;
+				entry.context = action;
+				entry.expiry = time(nullptr) + 2;
+				m_auth_db->ban(entry);
+			}
 			sendMsg(peer_id, "Incorrect password");
 			m_con->disconnect(peer_id);
 			return;
@@ -241,7 +258,7 @@ void Server::pkt_Auth(peer_t peer_id, Packet &pkt)
 		std::string address = m_con->getPeerAddress(peer_id);
 		{
 			// Prevent register spam
-			if (m_auth_db->getBanRecord(address, "register", nullptr)) {
+			if (m_auth_db->getBanRecord(address, action, nullptr)) {
 				sendMsg(peer_id, "Too many account creation requests.");
 				return;
 			}
@@ -269,7 +286,7 @@ void Server::pkt_Auth(peer_t peer_id, Packet &pkt)
 		{
 			AuthBanEntry entry;
 			entry.affected = address;
-			entry.context = "register";
+			entry.context = action;
 			entry.expiry = time(nullptr) + 60;
 			m_auth_db->ban(entry);
 		}
@@ -842,8 +859,15 @@ void Server::pkt_ScriptEvent(peer_t peer_id, Packet &pkt)
 {
 	// TODO: Broadcast to players (depending on flags)
 
-	// Sent by `ScriptEventManager::writeBatch`
-	m_script->getSEMgr()->runBatch(pkt);
+	RemotePlayer *player = getPlayerNoLock(peer_id);
+
+	if (!player->rl_scriptevents.isActive()) {
+		// Sent by `ScriptEventManager::writeBatch`
+		const size_t limit = player->rl_scriptevents.getSumLimit() + 1.0f;
+		size_t countdown = limit;
+		m_script->getSEMgr()->runBatch(pkt, countdown);
+		player->rl_scriptevents.add(limit - countdown);
+	}
 }
 
 void Server::pkt_GodMode(peer_t peer_id, Packet &pkt)

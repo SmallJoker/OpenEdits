@@ -32,9 +32,10 @@ public:
 		std::unordered_set<std::string> requested;
 	} media;
 
-	// Rate limits
+	// Rate limits (incoing requests)
 	RateLimit rl_blocks;
 	RateLimit rl_chat;
+	RateLimit rl_scriptevents;
 
 	void runAnticheat(float dtime);
 	// TODO: Reset when joining a world

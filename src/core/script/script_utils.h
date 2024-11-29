@@ -21,7 +21,7 @@ extern Logger script_logger;
 
 #define MESSY_CPP_EXCEPTIONS_END \
 	} catch (...) { \
-		cpp_exception_handler(L); \
+		ScriptUtils::cpp_exception_handler(L); \
 		return 0; \
 	}
 

@@ -9,6 +9,7 @@
 #include "core/network_enums.h"
 #include "core/packet.h"
 #include "core/world.h"
+#include "core/script/scriptevent.h"
 #include "version.h"
 
 #if 0
@@ -144,17 +145,41 @@ void Server::step(float dtime)
 		if (world) {
 			player->rl_blocks.step(dtime);
 			player->rl_chat.step(dtime);
+			player->rl_scriptevents.step(dtime);
 			player->time_since_move_pkt += dtime;
 
 			worlds.emplace(world);
-
-			stepSendBlockUpdates(world.get());
 		}
 
 		stepSendMedia(player);
 	}
 
+	// Process script events
+	for (auto p : m_players) {
+		RemotePlayer *player = (RemotePlayer *)p.second;
+
+		if (!player->getWorld())
+			continue; // already guarded by Player::setWorld
+		if (!player->script_events)
+			continue; // no data
+
+		ScriptEventList events_list;
+		std::swap(*player->script_events.get(), events_list);
+		player->script_events.reset();
+
+		if (player->protocol_version < 8)
+			continue; // packet ID used differently. logs a warning.
+
+		// See also: Client::stepPhysics
+		Packet pkt;
+		pkt.write(Packet2Client::ScriptEvent);
+		size_t count = m_script->getSEMgr()->writeBatch(pkt, &events_list);
+		if (count > 0)
+			m_con->send(p.first, 1, pkt);
+	}
+
 	for (auto &world : worlds) {
+		stepSendBlockUpdates(world.get());
 		stepWorldTick(world.get(), dtime);
 	}
 

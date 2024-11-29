@@ -107,27 +107,54 @@ env.change_block(2, {
 })
 
 -- event sender/receiver test
-local EV
+local EV_3
 -- C++: unittest_script
-EV = env.register_event(1003, 0, env.PARAMS_TYPE_STR16, env.PARAMS_TYPE_U8U8U8,
+-- Adwd an event to the queue and run it (locally)
+EV_3 = env.register_event(1003, 0, env.PARAMS_TYPE_STR16, env.PARAMS_TYPE_U8U8U8,
 	function(...)
-		print("got event!", dump({...}))
+		print("got EV_3!", dump({...}))
 		local s, u1, u2, u3 = unpack({...})
 		feedback(s .. u1 .. u2 .. u3)
 	end
 )
 
+local EV_4
+local EV_4_counter = 0
+-- C++: test_playerref_scriptevents (server-side loopback)
+-- Ping pong events
+local function ev_4_broadcast()
+	EV_4_counter = EV_4_counter + 1
+	print("send EV_4 #" .. EV_4_counter .. " to " .. myplayerref:get_name())
+	myplayerref:send_event(EV_4, "EV4.", EV_4_counter, 55, 77)
+end
+
+EV_4 = env.register_event(1004, 0, env.PARAMS_TYPE_STR16, env.PARAMS_TYPE_U8U8U8,
+	function(...)
+		print("got EV_4", dump({...}))
+		local s, u1, u2, u3 = unpack({...})
+		feedback(s .. u1 .. u2 .. u3)
+		ev_4_broadcast()
+	end
+)
+
 env.change_block(4, {
+	-- EV_03
 	on_intersect = function()
-		print("send event!")
-		env.send_event(EV, "hello world", 200, 10, 3)
+		print("send EV_3")
+		env.send_event(EV_3, "hello world", 200, 10, 3)
+	end,
+	-- EV_04
+	on_intersect_once = function()
+		ev_4_broadcast()
 	end
 })
+
 
 --print(dump(_G))
 
 
 -- C++: test_script_world_interop
+-- Run the callback to change the tile appearance (client-side only)
 env.change_block(101, {
 	tiles = {
 		-- Same types: client may switch on its own.
@@ -143,3 +170,5 @@ env.change_block(101, {
 		return env.COLLISION_TYPE_POSITION
 	end
 })
+
+

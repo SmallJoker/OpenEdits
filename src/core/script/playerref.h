@@ -23,6 +23,8 @@ private:
 
 	static int get_name(lua_State *L);
 
+	static int send_event(lua_State *L);
+
 	Player *m_player;
 };
 

@@ -29,6 +29,7 @@ public:
 	void close();
 	Type getScriptType() const { return m_scripttype; }
 	lua_State *getState() const { return m_lua; }
+	const BlockManager *getBlockMgr() const { return m_bmgr; }
 	ScriptEventManager *getSEMgr() const { return m_emgr; }
 	virtual void step(float dtime) {}
 
@@ -55,7 +56,7 @@ public:
 	bool hide_global_table = true;
 
 	// -------- Registration
-private:
+protected:
 	static int l_load_hardcoded_packs(lua_State *L);
 	/// Includes another script file (asset from cache or disk)
 	static int l_include(lua_State *L);
@@ -82,7 +83,7 @@ public:
 	};
 	/// Returns a valid value of BlockProperties::CollisionType
 	int onCollide(CollisionInfo ci);
-private:
+protected:
 	void runBlockCb_0(int ref, const char *dbg);
 
 
@@ -93,7 +94,7 @@ protected:
 	virtual int implWorldSetTile(PositionRange range, bid_t block_id, int tile) = 0;
 
 
-private:
+protected:
 	static int l_register_event(lua_State *L);
 	static int l_send_event(lua_State *L);
 	static int l_world_get_block(lua_State *L);
@@ -110,7 +111,7 @@ public:
 		m_world = world;
 	}
 
-private:
+protected:
 	static int l_player_get_pos(lua_State *L);
 	static int l_player_set_pos(lua_State *L);
 	static int l_player_get_vel(lua_State *L);

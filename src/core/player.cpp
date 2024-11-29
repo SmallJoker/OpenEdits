@@ -3,6 +3,7 @@
 #include "macros.h" // ASSERT_FORCED
 #include "packet.h"
 #include "script/script.h"
+#include "script/scriptevent.h" // for .clear()
 #include "utils.h"
 #include "world.h"
 #include <rect.h>
@@ -31,6 +32,11 @@ void Player::setWorld(RefCnt<World> world)
 
 	if (m_world.get())
 		m_world->getMeta().online--;
+
+	{
+		on_touch_blocks = nullptr;
+		script_events.reset();
+	}
 
 	m_world = world;
 
@@ -486,6 +492,11 @@ void Player::collideWith(float dtime, int x, int y)
 u32 Player::getNextPRNum()
 {
 	return mulberry32_next(&m_prng_state);
+}
+
+ScriptEventManager *Player::getSEMgr() const
+{
+	return m_script ? m_script->getSEMgr() : nullptr;
 }
 
 void Player::setGodMode(bool value)

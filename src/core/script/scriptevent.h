@@ -45,6 +45,7 @@ struct ScriptEvent {
 	Packet *data = nullptr;
 };
 
+using ScriptEventList = std::set<ScriptEvent>;
 
 class ScriptEventManager {
 public:
@@ -64,11 +65,11 @@ public:
 	void readDefinitionFromLua();
 	decltype(m_event_defs) &getDefs() { return m_event_defs; }
 
-	ScriptEvent readEventFromLua() const;
+	ScriptEvent readEventFromLua(int start_idx) const;
 	void runLuaEventCallback(const ScriptEvent &se) const;
 
-	size_t runBatch(Packet &pkt) const;
-	size_t writeBatch(Packet &pkt, std::set<ScriptEvent> *events_list) const;
-
-
+	/// @param invocations Remaining allowed Lua invocations (hard limit)
+	/// @return True if all ScriptEvents could be processed.
+	bool runBatch(Packet &pkt, size_t &invocations) const;
+	size_t writeBatch(Packet &pkt, ScriptEventList *events_list) const;
 };

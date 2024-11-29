@@ -1,10 +1,11 @@
 #include "playerref.h"
 #include "script_utils.h"
+#include "scriptevent.h"
 #include "core/player.h"
 
 static const char *CLASS_NAME = "PlayerRef";
 
-static Logger logger("PlayerRef", LL_DEBUG);
+static Logger logger("PlayerRef", LL_INFO);
 
 void PlayerRef::doRegister(lua_State *L)
 {
@@ -16,6 +17,7 @@ void PlayerRef::doRegister(lua_State *L)
 	};
 	static const luaL_Reg classtable_fn[] = {
 		{"get_name", get_name},
+		{"send_event", send_event},
 		{nullptr, nullptr}
 	};
 
@@ -123,3 +125,22 @@ int PlayerRef::get_name(lua_State *L)
 	lua_pushstring(L, ref->m_player->name.c_str());
 	return 1;
 }
+
+int PlayerRef::send_event(lua_State* L)
+{
+	MESSY_CPP_EXCEPTIONS_START
+	PlayerRef *ref = toPlayerRef(L, 1);
+	if (!ref->m_player)
+		return 0;
+
+	Player *player = ref->m_player;
+
+	ScriptEvent ev = player->getSEMgr()->readEventFromLua(2);
+	if (!player->script_events)
+		player->script_events.reset(new ScriptEventList());
+
+	player->script_events->emplace(std::move(ev));
+	return 0;
+	MESSY_CPP_EXCEPTIONS_END
+}
+

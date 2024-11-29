@@ -69,9 +69,16 @@ of the callback.
  * `.set_vel(x, y)`
  * `.get_name()` -> string
  * `.hash()` -> (undefined)
-     * Unique identifier (per connection) for faster array access
- * `.send_event(...)` TODO WIP
-     * See `env.send_event`
+    * Unique identifier (per connection) for faster array access
+
+
+#### PlayerRef
+
+A `userdata` object.
+
+ * `:get_name()` -> string
+ * `:send_event()`
+    * See `env.send_event`. For servers only.
 
 
 ### Server API

@@ -13,7 +13,10 @@ using namespace irr;
 struct ScriptEvent;
 class Packet;
 class Script;
+class ScriptEventManager;
 class World;
+
+using ScriptEventList = std::set<ScriptEvent>;
 
 struct PlayerControls {
 	bool operator ==(const PlayerControls &o) const
@@ -67,7 +70,8 @@ public:
 	// For keys or killing blocks
 	std::set<blockpos_t> *on_touch_blocks = nullptr;
 
-	std::set<ScriptEvent> *script_events = nullptr;
+	ScriptEventManager *getSEMgr() const;
+	std::unique_ptr<std::set<ScriptEvent>> script_events;
 
 	void setGodMode(bool value);
 	bool godmode = false;
