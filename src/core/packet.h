@@ -71,10 +71,17 @@ public:
 	/// Move forth N bytes that were written to
 	void     writePreallocEnd(size_t nbytes);
 
+	// ========== Encryption ==========
+	/// Encrypts the entire packet
+	void encryptAll(const std::string &key);
+	/// Decrypts the packet starting from the read position
+	void decrypt(const std::string &key);
+
 	uint16_t data_version = 0;
 
 private:
 	inline void checkLength(size_t nbytes);
+	void encryptionXOR(const std::string &key, uint16_t offset);
 
 	bool m_is_big_endian = false;
 	size_t m_read_offset = 0;

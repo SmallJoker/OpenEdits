@@ -1,5 +1,6 @@
 #include "unittest_internal.h"
 #include "core/blockparams.h"
+#include "core/auth.h" // Auth (hash)
 #include "core/compressor.h"
 #include "core/packet.h"
 
@@ -102,6 +103,40 @@ static void test_compressor()
 	}
 }
 
+static void test_encrypted()
+{
+	Auth auth;
+	{
+		const std::string salt = Auth::generateRandom();
+		auth.hash(val_str, salt);
+	}
+
+	Packet pkt;
+	for (int i = 0; i < 300; ++i)
+		pkt.writeStr16(val_str);
+
+	printf("Before enc: %s\n", pkt.dump().c_str());
+	pkt.encryptAll(auth.output);
+	printf("After enc:  %s\n", pkt.dump().c_str());
+
+	// Make sure that it's no longer plaintext
+	{
+		try {
+			for (int i = 0; i < 300; ++i)
+				pkt.readStr16();
+		} catch (std::exception &e) {
+			// out_of_range string reads
+			puts("Packet read failed successfully!");
+		}
+		// reset read pointer to 0
+		pkt.readRawNoCopyEnd(pkt.getReadPos());
+	}
+
+	pkt.decrypt(auth.output);
+	for (int i = 0; i < 300; ++i)
+		CHECK(pkt.readStr16() == val_str);
+}
+
 void unittest_packet()
 {
 	const uint8_t val_u8 = 9;
@@ -145,4 +180,5 @@ void unittest_packet()
 	test_blockparams();
 	test_view_read_write();
 	test_compressor();
+	test_encrypted();
 }
