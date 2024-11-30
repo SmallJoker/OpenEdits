@@ -630,7 +630,7 @@ void Client::stepPhysics(float dtime)
 		}
 	}
 
-	if (m_script) {
+	if (m_script && player->script_events.get()) {
 		// Read back by `Server::pkt_ScriptEvent`
 		Packet pkt;
 		pkt.write(Packet2Server::ScriptEvent);
