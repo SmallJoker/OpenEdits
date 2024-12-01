@@ -23,11 +23,13 @@ public:
 	/// Removes old cache files from the disk
 	void removeOldCache();
 
-	size_t countDone() const { return m_media_available.size(); }
+	// Info: `m_media_available` contains the local cache until `readMediaList`.
+	size_t countDone() const { return m_got_list ? m_media_available.size() : 0; }
 	size_t countMissing() const { return m_to_request.size() + m_pending.size(); }
 	size_t bytes_done = 0,
 		bytes_missing = 0;
 
 private:
 	std::unordered_set<std::string> m_to_request, m_pending;
+	bool m_got_list = false;
 };

@@ -79,7 +79,7 @@ Client::~Client()
 
 // -------------- Public members -------------
 
-void Client::setupMedia(bool need_audiovisuals)
+void Client::prepareScript(bool need_audiovisuals)
 {
 	ASSERT_FORCED(!m_media && !m_script, "m_media or m_script double-init");
 

@@ -307,7 +307,7 @@ bool Gui::connect(ClientStartData &init)
 	m_client = new Client(init);
 	m_client->setEventTarget(this);
 	setEventTarget(m_client);
-	m_client->setupMedia(true);
+	m_client->prepareScript(true);
 	m_client->connect();
 
 	setNextScene(SceneHandlerType::Loading);

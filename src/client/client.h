@@ -40,7 +40,7 @@ public:
 	Client(ClientStartData &init);
 	~Client();
 
-	void setupMedia(bool need_audiovisuals);
+	void prepareScript(bool need_audiovisuals);
 	void connect();
 
 	void step(float dtime) override;
