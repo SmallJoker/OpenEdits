@@ -33,7 +33,7 @@ const size_t CON_CLIENTS = 32; // server only
 const size_t CON_CHANNELS = 2;
 
 // Globally accessible values
-const uint16_t PROTOCOL_VERSION_MAX = 8;
+const uint16_t PROTOCOL_VERSION_MAX = 8; // TODO: set to 9 after encryption is implemented
 const uint16_t PROTOCOL_VERSION_MIN = 7;
 // Note: ENet already splits up packets into fragments, thus manual splitting
 // for low data volumes should not be necessary.

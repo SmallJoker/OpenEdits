@@ -456,7 +456,7 @@ void Client::onPeerConnected(peer_t)
 	pkt.write(PROTOCOL_VERSION_MAX);
 	pkt.write(PROTOCOL_VERSION_MIN);
 	pkt.writeStr16(m_start_data.nickname);
-	pkt.write<u8>(m_media->download_audiovisuals); // proto_ver >= 7
+	pkt.write<u8>(m_media->download_audiovisuals);
 
 	m_con->send(0, 0, pkt);
 }

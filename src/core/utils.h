@@ -55,4 +55,13 @@ extern "C"
 unsigned long crc32_z(unsigned long adler, const unsigned char *buf, size_t len);
 
 /// Pseudo-random number generator
-uint32_t mulberry32_next(uint32_t *state);
+// mulberry32 PRNG (CC 0), (C) 2017, Tommy Ettinger
+// https://gist.github.com/tommyettinger/46a874533244883189143505d203312c
+// Inline this function to increase execution speed by 10x in tight loops
+inline uint32_t mulberry32_next(uint32_t *state)
+{
+	uint32_t z = (*state += 0x6D2B79F5UL);
+	z = (z ^ (z >> 15)) * (z | 1UL);
+	z ^= z + (z ^ (z >> 7)) * (z | 61UL);
+	return z ^ (z >> 14);
+}

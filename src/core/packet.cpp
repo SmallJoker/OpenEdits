@@ -224,7 +224,7 @@ DEFINE_PACKET_TYPES(int16_t)
 DEFINE_PACKET_TYPES(uint16_t)
 DEFINE_PACKET_TYPES(int32_t)
 DEFINE_PACKET_TYPES(uint32_t)
-DEFINE_PACKET_TYPES(uint64_t) // time_t
+DEFINE_PACKET_TYPES(int64_t) // time_t
 DEFINE_PACKET_TYPES(float)
 DEFINE_PACKET_TYPES(Packet2Client)
 DEFINE_PACKET_TYPES(Packet2Server)
@@ -277,8 +277,15 @@ void Packet::encryptionXOR(const std::string &key, uint16_t offset)
 		| (key[(offset >> 0) % key.size()] << 24);
 
 	uint8_t *data = m_data->data;
-	for (size_t i = 0; i < m_write_offset; ++i) {
-		uint8_t out = mulberry32_next(&state);
-		data[i] ^= out;
+	const size_t len_2 = (m_write_offset / 2) * 2;
+	for (size_t i = 0; i < len_2; ++i) {
+		uint16_t out = mulberry32_next(&state);
+		data[  i] ^= out;
+		data[++i] ^= out >> 8;
+	}
+	// Uneven amount of data bytes
+	if (len_2 != m_write_offset) {
+		uint16_t out = mulberry32_next(&state);
+		data[len_2] ^= out;
 	}
 }

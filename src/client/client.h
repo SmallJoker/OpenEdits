@@ -123,7 +123,7 @@ private:
 	ClientStartData m_start_data;
 	peer_t m_my_peer_id = 0;
 
-	Auth m_auth;
+	Auth m_auth, m_encryption;
 	ClientMedia *m_media = nullptr;
 	ClientScript *m_script = nullptr;
 };

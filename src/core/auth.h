@@ -9,6 +9,7 @@ public:
 
 	void hash(const std::string &inp1, const std::string &inp2);
 	void rehash(const std::string &inp2) { hash(output, inp2); }
+	bool rehashByTime(time_t t_server, time_t t_client, bool check_t_server);
 
 	enum class Status {
 		Unauthenticated, // needs to login
@@ -18,8 +19,9 @@ public:
 	};
 	Status status = Status::Unauthenticated;
 
+	time_t salt_time = 0; // used temporarily
 	std::string salt_1_const; // database-specific
-	std::string salt_2_var; // per login/pw change attempt
+	std::string salt_challenge; // per login/pw change attempt
 
 	std::string output;
 };

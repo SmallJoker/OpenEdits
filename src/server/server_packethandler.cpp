@@ -96,60 +96,61 @@ void Server::pkt_Hello(peer_t peer_id, Packet &pkt)
 
 	logger(LL_PRINT, "Hello from %s, proto_ver=%d\n", player->name.c_str(), player->protocol_version);
 
-	{
-		// Auth
-		bool is_guest = player->name.rfind("GUEST", 0) == 0;
-		if (is_guest) {
-			// Ensure digits only
-			for (char c : player->name.substr(5)) {
-				if (!std::isdigit(c)) {
-					is_guest = false;
-					break;
-				}
-			}
-
-			if (!is_guest) {
-				sendMsg(peer_id, "Temporary accounts (guest) must follow the naming scheme GUEST[0-9]*");
-				m_con->disconnect(peer_id);
-				return;
+	// Auth
+	bool is_guest = player->name.rfind("GUEST", 0) == 0;
+	if (is_guest) {
+		// Ensure digits only
+		for (char c : player->name.substr(5)) {
+			if (!std::isdigit(c)) {
+				is_guest = false;
+				break;
 			}
 		}
 
-		if (is_guest) {
-			player->auth.status = Auth::Status::Guest;
-
-			// Log in instantly
-			signInPlayer(player);
-			return;
-		}
-
-		if (!m_auth_db) {
-			sendMsg(peer_id, "Server error: Auth database error. Please use GuestXXXX accounts.");
+		if (!is_guest) {
+			sendMsg(peer_id, "Temporary accounts (guest) must follow the naming scheme GUEST[0-9]*");
 			m_con->disconnect(peer_id);
 			return;
 		}
+	}
 
-		// Prompt for authentication if needed
-		AuthAccount info;
-		bool ok = m_auth_db->load(player->name, &info);
-		if (ok) {
-			player->auth.salt_2_var = Auth::generateRandom();
+	if (is_guest) {
+		player->auth.status = Auth::Status::Guest;
 
-			Packet out;
-			out.write(Packet2Client::Auth);
-			out.writeStr16("login1");
-			out.writeStr16(m_auth_db->getUniqueSalt());
-			out.writeStr16(player->auth.salt_2_var);
-			m_con->send(peer_id, 0, out);
-		} else {
-			player->auth.status = Auth::Status::Unregistered;
+		// Log in instantly
+		signInPlayer(player);
+		return;
+	}
 
-			Packet out;
-			out.write(Packet2Client::Auth);
-			out.writeStr16("register");
-			out.writeStr16(m_auth_db->getUniqueSalt());
-			m_con->send(peer_id, 0, out);
-		}
+	if (!m_auth_db) {
+		sendMsg(peer_id, "Server error: Auth database error. Please use GuestXXXX accounts.");
+		m_con->disconnect(peer_id);
+		return;
+	}
+
+	// Prompt for authentication if needed
+	AuthAccount info;
+	ok = m_auth_db->load(player->name, &info);
+	if (ok) {
+		player->auth.status = Auth::Status::Unauthenticated;
+		player->auth.salt_challenge = Auth::generateRandom();
+		player->encryption.salt_time = time(nullptr);
+
+		Packet out;
+		out.write(Packet2Client::Auth);
+		out.writeStr16("login1");
+		out.writeStr16(m_auth_db->getUniqueSalt());
+		out.writeStr16(player->auth.salt_challenge); // challenge
+		out.write<s64>(player->encryption.salt_time); // replay prevention
+		m_con->send(peer_id, 0, out);
+	} else {
+		player->auth.status = Auth::Status::Unregistered;
+
+		Packet out;
+		out.write(Packet2Client::Auth);
+		out.writeStr16("register");
+		out.writeStr16(m_auth_db->getUniqueSalt());
+		m_con->send(peer_id, 0, out);
 	}
 }
 
@@ -158,11 +159,19 @@ void Server::signInPlayer(RemotePlayer *player)
 	player->state = RemotePlayerState::Idle;
 	logger(LL_PRINT, "Player %s logged in\n", player->name.c_str());
 
+	const bool enable_encryption = !player->encryption.output.empty();
 	{
 		Packet out;
 		out.write(Packet2Client::Auth);
 		out.writeStr16("signed_in");
+		out.write<u8>(enable_encryption);
 		m_con->send(player->peer_id, 0, out);
+	}
+
+	if (enable_encryption) {
+		// Enable encryption.
+		player->encryption.status = Auth::Status::SignedIn;
+		// TODO: ^ use this variable to encrypt all packets sent to `player`.
 	}
 
 	ASSERT_FORCED(m_media, "Missing ServerMedia");
@@ -190,7 +199,10 @@ void Server::pkt_Auth(peer_t peer_id, Packet &pkt)
 		return;
 	}
 
+	// Authenticate by password (hash challenge)
 	if (action == "login2") {
+		if (player->auth.status != Auth::Status::Unauthenticated)
+			return;
 
 		std::string address = m_con->getPeerAddress(peer_id);
 		{
@@ -210,14 +222,25 @@ void Server::pkt_Auth(peer_t peer_id, Packet &pkt)
 			return;
 		}
 
-		std::string hash = pkt.readStr16();
+		const std::string hash = pkt.readStr16();
+
+		if (pkt.data_version >= 9) {
+			player->encryption.output = info.password;
+			time_t time_client = pkt.read<s64>();
+			if (!player->encryption.rehashByTime(player->encryption.salt_time, time_client, false)) {
+				sendMsg(peer_id, "Kick. Time out of sync.");
+				m_con->disconnect(peer_id);
+				return;
+			}
+		}
 
 		// Compare doubly-hashed passwords
-		player->auth.hash(info.password, player->auth.salt_2_var);
+		player->auth.hash(info.password, player->auth.salt_challenge);
 
 		bool signed_in = player->auth.output == hash;
 		if (info.password.empty()) {
 			sendMsg(peer_id, "No password saved. Change your password with /setpass !");
+			player->encryption.output.clear(); // encryption is impossible
 			signed_in = true;
 		}
 
@@ -234,7 +257,7 @@ void Server::pkt_Auth(peer_t peer_id, Packet &pkt)
 			return;
 		}
 
-		player->auth.salt_2_var.clear(); // would allow to change the password directly
+		player->auth.salt_challenge.clear(); // would allow to change the password directly
 		player->auth.status = Auth::Status::SignedIn;
 
 		signInPlayer(player);
@@ -245,8 +268,10 @@ void Server::pkt_Auth(peer_t peer_id, Packet &pkt)
 		return;
 	}
 
+	// Register new account, password provided.
 	if (action == "register") {
-		// Register new account, password provided.
+		if (player->auth.status != Auth::Status::Unregistered)
+			return;
 
 		AuthAccount info;
 		bool ok = m_auth_db->load(player->name, &info);
@@ -293,8 +318,11 @@ void Server::pkt_Auth(peer_t peer_id, Packet &pkt)
 		return;
 	}
 
-	if (action == "setpass" && player->auth.status == Auth::Status::SignedIn) {
-		// Update password with specified hash
+	// Update password with specified hash
+	if (action == "setpass") {
+		if (player->auth.status != Auth::Status::SignedIn)
+			return;
+
 		AuthAccount info;
 		bool ok = m_auth_db->load(player->name, &info);
 		if (!ok) {
@@ -631,7 +659,7 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 		out.write(Packet2Client::ChatReplay);
 		auto &meta = world->getMeta();
 		for (const WorldMeta::ChatHistory &entry : meta.chat_history) {
-			out.write<u64>(entry.timestamp);
+			out.write<s64>(entry.timestamp);
 			out.writeStr16(entry.name);
 			out.writeStr16(entry.message);
 		}
