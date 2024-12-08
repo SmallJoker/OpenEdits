@@ -52,7 +52,7 @@ void Server::pkt_Hello(peer_t peer_id, Packet &pkt)
 	uint16_t protocol_max = pkt.read<uint16_t>();
 	uint16_t protocol_min = pkt.read<uint16_t>();
 
-	uint16_t protocol_ver = std::min(PROTOCOL_VERSION_MAX, protocol_max);
+	const uint16_t protocol_ver = std::min(PROTOCOL_VERSION_MAX, protocol_max);
 	if (protocol_ver < protocol_min || protocol_ver < PROTOCOL_VERSION_MIN) {
 		char buf[255];
 		snprintf(buf, sizeof(buf), "server=[%d,%d], client=[%d,%d]",
@@ -134,14 +134,12 @@ void Server::pkt_Hello(peer_t peer_id, Packet &pkt)
 	if (ok) {
 		player->auth.status = Auth::Status::Unauthenticated;
 		player->auth.salt_challenge = Auth::generateRandom();
-		player->encryption.salt_time = time(nullptr);
 
 		Packet out;
 		out.write(Packet2Client::Auth);
 		out.writeStr16("login1");
 		out.writeStr16(m_auth_db->getUniqueSalt());
 		out.writeStr16(player->auth.salt_challenge); // challenge
-		out.write<s64>(player->encryption.salt_time); // replay prevention
 		m_con->send(peer_id, 0, out);
 	} else {
 		player->auth.status = Auth::Status::Unregistered;
@@ -159,19 +157,11 @@ void Server::signInPlayer(RemotePlayer *player)
 	player->state = RemotePlayerState::Idle;
 	logger(LL_PRINT, "Player %s logged in\n", player->name.c_str());
 
-	const bool enable_encryption = !player->encryption.output.empty();
 	{
 		Packet out;
 		out.write(Packet2Client::Auth);
 		out.writeStr16("signed_in");
-		out.write<u8>(enable_encryption);
 		m_con->send(player->peer_id, 0, out);
-	}
-
-	if (enable_encryption) {
-		// Enable encryption.
-		player->encryption.status = Auth::Status::SignedIn;
-		// TODO: ^ use this variable to encrypt all packets sent to `player`.
 	}
 
 	ASSERT_FORCED(m_media, "Missing ServerMedia");
@@ -222,25 +212,13 @@ void Server::pkt_Auth(peer_t peer_id, Packet &pkt)
 			return;
 		}
 
-		const std::string hash = pkt.readStr16();
-
-		if (pkt.data_version >= 9) {
-			player->encryption.output = info.password;
-			time_t time_client = pkt.read<s64>();
-			if (!player->encryption.rehashByTime(player->encryption.salt_time, time_client, false)) {
-				sendMsg(peer_id, "Kick. Time out of sync.");
-				m_con->disconnect(peer_id);
-				return;
-			}
-		}
-
 		// Compare doubly-hashed passwords
 		player->auth.hash(info.password, player->auth.salt_challenge);
 
+		const std::string hash = pkt.readStr16();
 		bool signed_in = player->auth.output == hash;
 		if (info.password.empty()) {
 			sendMsg(peer_id, "No password saved. Change your password with /setpass !");
-			player->encryption.output.clear(); // encryption is impossible
 			signed_in = true;
 		}
 

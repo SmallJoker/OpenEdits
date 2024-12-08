@@ -88,29 +88,19 @@ void Client::pkt_Auth(Packet &pkt)
 		m_auth.hash(m_auth.salt_1_const, m_start_data.password);
 		m_start_data.password.clear();
 
-		const std::string db_password = m_auth.output;
-
-		m_auth.rehash(pkt.readStr16()); // process challange
-
-		time_t time_client = time(nullptr);
-		if (m_protocol_version >= 9) {
-			m_encryption.output = db_password;
-			time_t time_server = pkt.read<s64>();
-			if (!m_encryption.rehashByTime(time_server, time_client, true)) {
-				GameEvent e(GameEvent::C2G_DIALOG);
-				e.text = new std::string("Cannot connect: Time is out of sync.");
-				sendNewEvent(e);
-				m_con->disconnect(Connection::PEER_ID_FIRST);
-				return;
-			}
+		std::string challenge = pkt.readStr16();
+		if (challenge.size() < 30) {
+			disconnect("Login challenge is too short");
+			return;
 		}
+
+		m_auth.rehash(challenge);
 
 		// Go ahead to the next step
 		Packet out;
 		out.write(Packet2Server::Auth);
 		out.writeStr16("login2");
 		out.writeStr16(m_auth.output); // challenge result
-		out.write<s64>(time_client); // replay prevention
 		m_con->send(0, 0, out);
 
 		return;
@@ -125,17 +115,6 @@ void Client::pkt_Auth(Packet &pkt)
 	}
 
 	if (action == "signed_in") {
-		u8 flags = 0;
-		if (m_protocol_version >= 9)
-			flags = pkt.read<u8>();
-
-		if (flags & 0x01) {
-			// Enable encryption
-			if (m_encryption.output.empty())
-				logger(LL_ERROR, "encryption fault");
-
-			m_encryption.status = Auth::Status::SignedIn;
-		}
 		m_state = ClientState::MediaDownload;
 		return;
 	}

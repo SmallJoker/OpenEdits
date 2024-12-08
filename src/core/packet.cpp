@@ -1,6 +1,5 @@
 #include "packet.h"
 #include "network_enums.h"
-#include "utils.h" // mulberry32_next
 
 #include <enet/enet.h>
 #include <stdexcept>
@@ -186,35 +185,6 @@ void Packet::writePreallocEnd(size_t nbytes)
 	m_write_offset += nbytes;
 }
 
-void Packet::encryptAll(const std::string &key)
-{
-	// key.size() is generally 48 (SHA3).
-
-	uint16_t offset = rand(); // any random number is fine
-	encryptionXOR(key, offset);
-
-	// Idea: make packet lengths more uniform (padding)
-	write(offset);
-}
-
-void Packet::decrypt(const std::string &key)
-{
-	if (getRemainingBytes() < 2)
-		throw std::out_of_range("No data");
-
-	uint16_t offset;
-	{
-		// Read and remove tailing bytes
-		const size_t old_read_offset = m_read_offset;
-		m_read_offset = m_write_offset - 2;
-		offset = read<uint16_t>();
-		m_read_offset = old_read_offset;
-		m_write_offset -= 2;
-	}
-
-	encryptionXOR(key, offset);
-}
-
 #define DEFINE_PACKET_TYPES(TYPE) \
 	template TYPE Packet::read<TYPE>(); \
 	template void Packet::write<TYPE>(TYPE);
@@ -267,25 +237,4 @@ void Packet::checkLength(size_t nbytes)
 {
 	if (m_read_offset + nbytes > size())
 		throw std::out_of_range("Packet has no leftover data");
-}
-
-// Symmetric key
-void Packet::encryptionXOR(const std::string &key, uint16_t offset)
-{
-	uint32_t state = offset
-		| (key[(offset >> 8) % key.size()] << 16)
-		| (key[(offset >> 0) % key.size()] << 24);
-
-	uint8_t *data = m_data->data;
-	const size_t len_2 = (m_write_offset / 2) * 2;
-	for (size_t i = 0; i < len_2; ++i) {
-		uint16_t out = mulberry32_next(&state);
-		data[  i] ^= out;
-		data[++i] ^= out >> 8;
-	}
-	// Uneven amount of data bytes
-	if (len_2 != m_write_offset) {
-		uint16_t out = mulberry32_next(&state);
-		data[len_2] ^= out;
-	}
 }

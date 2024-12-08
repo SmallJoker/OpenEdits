@@ -23,7 +23,7 @@ public:
 
 	const uint16_t protocol_version;
 
-	Auth auth, encryption;
+	Auth auth;
 	RemotePlayerState state = RemotePlayerState::Invalid;
 
 	struct {

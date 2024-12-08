@@ -420,6 +420,14 @@ LocalPlayer *Client::getPlayerNoLock(peer_t peer_id)
 
 // -------------- Networking -------------
 
+void Client::disconnect(const char *reason)
+{
+	GameEvent e(GameEvent::C2G_DIALOG);
+	e.text = new std::string(reason ? reason : "Disconnect requested.");
+	sendNewEvent(e);
+	m_con->disconnect(Connection::PEER_ID_FIRST);
+}
+
 Packet Client::createPacket(Packet2Server type) const
 {
 	Packet pkt;

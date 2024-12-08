@@ -67,6 +67,7 @@ public:
 	ClientState getState() const { return m_state; }
 
 	// ----------- Networking -----------
+	void disconnect(const char *reason);
 	Packet createPacket(Packet2Server type) const;
 	void sendPlayerMove();
 
@@ -123,7 +124,7 @@ private:
 	ClientStartData m_start_data;
 	peer_t m_my_peer_id = 0;
 
-	Auth m_auth, m_encryption;
+	Auth m_auth;
 	ClientMedia *m_media = nullptr;
 	ClientScript *m_script = nullptr;
 };

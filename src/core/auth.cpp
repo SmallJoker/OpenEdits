@@ -5,6 +5,19 @@ extern "C" {
 
 constexpr unsigned int SHA3_VARIANT = 384;
 
+/*
+	Notes for encryption/cryptography:
+
+	time_t server_time, client_time; (avoid replay attacks)
+	size_t nonce_use_counter = 0; (re-generated periodically)
+	std::string nonce[2]; (one per channel)
+	// No encryption for unreliable packets
+
+	Resources to consider:
+		https://github.com/samuel-lucas6/Cryptography-Guidelines
+		https://en.wikipedia.org/wiki/Comparison_of_cryptography_libraries
+*/
+
 std::string Auth::generateRandom()
 {
 	std::string random(40, '\0');
@@ -49,28 +62,4 @@ void Auth::hash(const std::string &inp1, const std::string &inp2)
 		to_hash.c_str(), to_hash.size(),
 		(void *)output.c_str(), output.size()
 	);
-}
-
-bool Auth::rehashByTime(time_t t_server, time_t t_client, bool check_t_server)
-{
-	char buf[40]; // (64 / 4) + 1 + (64 / 4) + \0
-	int len;
-
-	// Check whether the time is within a certain tolerance to prevent replay attacks
-	if (std::abs(time(nullptr) - (check_t_server ? t_server : t_client)) > 5)
-		goto on_error;
-
-	// Use both timestamps as salt for the encryption key
-	len = snprintf(buf, sizeof(buf), "%zX:%zX", t_server, t_client);
-
-	if (len < 10)
-		goto on_error;
-	//printf("rehashed: %s\n", buf);
-
-	rehash(buf);
-	return true;
-
-on_error:
-	output.clear();
-	return false;
 }
