@@ -43,10 +43,9 @@ int ClientScript::implWorldSetTile(PositionRange range, bid_t block_id, int tile
 		luaL_error(L, "no world");
 
 	const BlockProperties *props = m_bmgr->getProps(block_id);
-	if (props->tile_dependent_physics) {
+	if (props->tile_dependent_physics && !invoked_by_server) {
 		// The server must broadcast this change to all players so they
 		// cannot get out of sync (prediction errors)
-		// TODO: maybe send a Packet to the server as request?
 		luaL_error(L, "Block tile change must be initiated by server");
 		return 0;
 	}

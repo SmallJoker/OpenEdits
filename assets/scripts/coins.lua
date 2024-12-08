@@ -14,8 +14,8 @@ local blocks_coins = {
 		end,
 		on_intersect_once = function(tile)
 			if tile == 0 then
-				-- TODO: play sound
-				world.set_tile(100, 1, world.PRT_CURRENT_POS)
+				local px, py = env.player.get_pos()
+				world.set_tile(100, 1, world.PRT_ONE_BLOCK, px, py)
 				anyones_coins = anyones_coins + 1
 				if env.gui then
 					env.gui.play_sound("coin.mp3")

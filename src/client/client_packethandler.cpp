@@ -499,7 +499,13 @@ void Client::pkt_ScriptEvent(Packet &pkt)
 	if (m_script && !m_rl_scriptevents.isActive()) {
 		const size_t limit = m_rl_scriptevents.getSumLimit() + 1.0f;
 		size_t countdown = limit;
-		m_script->getSEMgr()->runBatch(pkt, countdown);
+		try {
+			m_script->invoked_by_server = true;
+			m_script->getSEMgr()->runBatch(pkt, countdown);
+		} catch (...) {
+			m_script->invoked_by_server = false;
+			throw;
+		}
 		m_rl_scriptevents.add(limit - countdown);
 	}
 }

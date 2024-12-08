@@ -32,6 +32,9 @@ active player of the callback.
 
  * `get_block(x, y)` -> `fg, tile, bg`
     * `x, y` (optional): if set to `nil`, the current player position is used.
+ * `place_block(x, y, ...)`
+    * Client-side only
+    * `...`: Block Parameters (variable)
  * `get_params(x, y)` -> (variable)
     * Retrieves the block parameters based on the type specified by the
       `params` Block Definition field.
@@ -39,22 +42,22 @@ active player of the callback.
     * Sets the tile index of one or multiple blocks.
     * Returns `true` if blocks were modified.
     * `PositionRange` (optional): defines which blocks that are affected
-		* arg 1: one of `env.world.PRT_*`
-		* arg 2+: see `script_environment.cpp` / `Script::get_position_range`
+        * arg 1: one of `env.world.PRT_*`
+        * arg 2+: see `script_environment.cpp` / `Script::get_position_range`
 
 
 #### Script events
 
  * `env.send_event(event_id, ...)`
     * `event_id` (integer)
-	* `...`: flat type + value list
-		* Example: `*_U8U8U8, 42, 32, 1, *_STR16, "test value"`,
-		* `typeN`: one of the accepted `env.PARAMS_TYPE_*`
-		* value N...: N values matching the specified type
+    * `...`: flat type + value list
+        * Example: `*_U8U8U8, 42, 32, 1, *_STR16, "test value"`,
+        * `typeN`: one of the accepted `env.PARAMS_TYPE_*`
+        * value N...: N values matching the specified type
 * `env.event_handlers[event_id] = function(...)`
-	* Counterpart for `env.send_event`, run on the other peer
-	* `...`: flat value list but without types
-	* Return value: (none)
+    * Counterpart for `env.send_event`, run on the other peer
+    * `...`: flat value list but without types
+    * Return value: (none)
 
 
 ### Player API
@@ -167,5 +170,17 @@ Block Definition - callbacks:
  * `on_intersect_once(tile)` <- `nil`
     * Called once when entering the block.
     * `tile` (number): The tile index of the block
+ * `pre_place(x, y, ...)` <- `env.PLACEMENT_TYPE_*`
+    * TODO: IMPLEMENT
+    * `x`, `y`: The block that should be replaced
+    * `...`: Block Parameters of the selected block (variable)
+    * This defaults to
+```
+	function(x, y, ...)
+		env.world.place_block(x, y, ...)
+		return env.PLACEMENT_TYPE
+	end
+```
  * `on_placed()` <- `nil`
+    * TODO: IMPLEMENT
     * Called when at least one such block was placed.

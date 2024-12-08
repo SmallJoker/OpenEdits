@@ -154,6 +154,7 @@ void Server::pkt_Hello(peer_t peer_id, Packet &pkt)
 
 void Server::signInPlayer(RemotePlayer *player)
 {
+	player->setScript(m_script);
 	player->state = RemotePlayerState::Idle;
 	logger(LL_PRINT, "Player %s logged in\n", player->name.c_str());
 

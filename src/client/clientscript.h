@@ -15,6 +15,8 @@ public:
 	void setClient(Client *cli) { m_client = cli; }
 	void setMyPlayer(const Player *player) { m_my_player = player; }
 
+	bool invoked_by_server = false; /// server-sent events.
+
 protected:
 	int implWorldSetTile(PositionRange range, bid_t block_id, int tile) override;
 

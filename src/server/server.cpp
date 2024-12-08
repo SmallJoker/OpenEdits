@@ -158,14 +158,15 @@ void Server::step(float dtime)
 	for (auto p : m_players) {
 		RemotePlayer *player = (RemotePlayer *)p.second;
 
-		if (!player->getWorld())
-			continue; // already guarded by Player::setWorld
 		if (!player->script_events)
 			continue; // no data
 
 		ScriptEventList events_list;
 		std::swap(*player->script_events.get(), events_list);
 		player->script_events.reset();
+
+		if (!player->getWorld())
+			continue; // already guarded by Player::setWorld
 
 		if (player->protocol_version < 8)
 			continue; // packet ID used differently. logs a warning.

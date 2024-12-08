@@ -19,23 +19,35 @@ reg.blocks_doors = {
 	{ id = 28, tiles = tiles_gate },
 }
 
-local KEY_EV = env.register_event(4, 0, env.PARAMS_TYPE_U8,
+local keys_blocks_LUT = {}
+local KEY_EV
+KEY_EV = env.register_event(4, 0, env.PARAMS_TYPE_U8,
 	function(key_id)
-		print("keys", key_id)
+		print("keys @ " .. (env.server and "server" or "client"), key_id)
+
+		if env.server then
+			for _, player in ipairs(env.server.get_players_in_world()) do
+				print("Send to " .. player:get_name())
+				player:send_event(KEY_EV, key_id)
+			end
+		else
+			local b = keys_blocks_LUT[key_id]
+			world.set_tile(b[1], 1, world.PRT_ENTIRE_WORLD)
+			world.set_tile(b[2], 1, world.PRT_ENTIRE_WORLD)
+		end
 	end
 )
 
-local function make_key_block(id, door_id, gate_id)
+local function make_key_block(key_id, door_id, gate_id)
+	keys_blocks_LUT[key_id] = { door_id, gate_id }
 	local def = {
-		id = id,
+		id = key_id,
 		tiles = { { type = env.DRAW_TYPE_DECORATION, alpha = true } },
 		on_event = function(payload, bx, by)
-			world.set_tile(door_id, 1, world.PRT_ENTIRE_WORLD)
-			world.set_tile(gate_id, 1, world.PRT_ENTIRE_WORLD)
 		end,
 		on_intersect_once = function(_)
 			print("send event", KEY_EV)
-			env.send_event(KEY_EV, id)
+			env.send_event(KEY_EV, key_id)
 		end
 	}
 	return def

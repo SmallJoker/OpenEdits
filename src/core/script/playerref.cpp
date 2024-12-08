@@ -129,13 +129,15 @@ int PlayerRef::get_name(lua_State *L)
 int PlayerRef::send_event(lua_State* L)
 {
 	MESSY_CPP_EXCEPTIONS_START
-	PlayerRef *ref = toPlayerRef(L, 1);
-	if (!ref->m_player)
+	Player *player = toPlayerRef(L, 1)->m_player;
+	if (!player)
 		return 0;
 
-	Player *player = ref->m_player;
+	ScriptEventManager *smgr = player->getSEMgr();
+	if (!smgr)
+		luaL_error(L, "Missing ScriptEventManager");
 
-	ScriptEvent ev = player->getSEMgr()->readEventFromLua(2);
+	ScriptEvent ev = smgr->readEventFromLua(2);
 	if (!player->script_events)
 		player->script_events.reset(new ScriptEventList());
 
