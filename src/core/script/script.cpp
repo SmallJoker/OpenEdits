@@ -218,6 +218,7 @@ bool Script::init()
 		lua_newtable(L);
 		{
 			FIELD_SET_FUNC(world_, get_block);
+			FIELD_SET_FUNC(world_, get_blocks_in_range);
 			FIELD_SET_FUNC(world_, get_params);
 			FIELD_SET_FUNC(world_, set_tile);
 		}

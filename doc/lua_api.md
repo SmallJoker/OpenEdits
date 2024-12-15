@@ -32,6 +32,17 @@ active player of the callback.
 
  * `get_block(x, y)` -> `fg, tile, bg`
     * `x, y` (optional): if set to `nil`, the current player position is used.
+ * `get_blocks_in_range(options, block_ids, PositionRange ...)`
+    * `options` (table): All fields are optional. Defaults specified below.
+        * `return_pos = false`
+        * `return_tile = false`
+        * `return_params = false`
+    * `block_ids` (table/number): Block ID whitelist
+        * Format: `{ block_id_1, block_id_2, ... }`
+    * `PositionRange`: see `env.world.set_tile`
+    * Return value: (table)
+        * Key: integer-based
+        * Value: `{ [x, y,] block_id [, tile] [, params ...] }`
  * `place_block(x, y, ...)`
     * Client-side only
     * `...`: Block Parameters (variable)

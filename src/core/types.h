@@ -20,18 +20,6 @@ namespace irr {
 typedef core::vector2d<u16> blockpos_t;
 constexpr u16 BLOCKPOS_INVALID = UINT16_MAX;
 
-struct PositionRange {
-	enum Type : uint8_t {
-		T_ONE_BLOCK    = 0x00, // pos
-		T_AREA         = 0x01, // minpos, maxpos
-		T_CIRCLE       = 0x02, // pos, radius
-		T_ENTIRE_WORLD = 0x03, // no args
-		T_MAX_INVALID  = 0x04
-	} type = T_MAX_INVALID;
-	blockpos_t minp, maxp;
-	float radius = 0;
-};
-
 typedef uint16_t bid_t;
 
 struct Block {

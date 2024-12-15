@@ -111,10 +111,11 @@ static void test_script_world_interop(BlockManager *bmgr, Script *script, Remote
 	w->createEmpty({ 10, 7 });
 	w->setBlock({ 5, 6 }, Block(101)); // center bottom
 
+	p.setScript(script);
+	p.setWorld(w);
+
 	// env.world.set_tile
 	{
-		p.setScript(script);
-		p.setWorld(w);
 		p.setPosition({ 5.0f, 4.2f }, false);
 		p.step(0.01f); // update acceleration etc.
 		p.step(0.3f);
@@ -122,10 +123,29 @@ static void test_script_world_interop(BlockManager *bmgr, Script *script, Remote
 		Block b;
 		w->getBlock({ 5, 6 }, &b);
 		CHECK(b.tile == 1);
-
-		p.setWorld(nullptr);
 	}
 	CHECK(script->popErrorCount() == 0);
+
+	// env.world.get_blocks_in_range
+	{
+		{
+			BlockUpdate bu(bmgr);
+			bu.pos = blockpos_t(7, 6);
+			bu.set(102);
+			w->updateBlock(bu);
+		}
+
+		p.setPosition({ 7.1f, 5.4f }, false);
+		p.step(0.01f);
+		p.step(0.3f); // call on_intersect_once
+		//printf("%.3f %.3f\n", p.pos.X, p.pos.Y);
+
+		// expected: 2 blocks, 1x 4 values, 1x 7 values
+		CHECK(script->popTestFeedback() == "called_102 2 4 7;");
+	}
+	CHECK(script->popErrorCount() == 0);
+
+	p.setWorld(nullptr);
 }
 
 void unittest_script()

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/operators.h" // PositionRange
 #include "core/types.h" // bid_t
 #include <string>
 
@@ -98,6 +99,7 @@ protected:
 	static int l_register_event(lua_State *L);
 	static int l_send_event(lua_State *L);
 	static int l_world_get_block(lua_State *L);
+	static int l_world_get_blocks_in_range(lua_State *L);
 	static int l_world_get_params(lua_State *L);
 	static int l_world_set_tile(lua_State *L);
 

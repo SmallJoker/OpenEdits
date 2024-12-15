@@ -173,6 +173,103 @@ int Script::l_world_get_block(lua_State *L)
 	return 3;
 }
 
+int Script::l_world_get_blocks_in_range(lua_State *L)
+{
+	MESSY_CPP_EXCEPTIONS_START
+	Script *script = get_script(L);
+	Player *player = script->m_player;
+
+	World *world = player->getWorld().get();
+	if (!world)
+		luaL_error(L, "no world");
+
+	luaL_checktype(L, 1, LUA_TTABLE);
+	luaL_checktype(L, 2, LUA_TTABLE);
+
+	// Argument 1: Options
+	struct {
+		bool return_pos;
+		bool return_tile;
+		bool return_params;
+	} opt;
+
+	lua_getfield(L, 1, "return_pos");
+	opt.return_pos = !lua_isnil(L, -1) && lua_toboolean(L, -1);
+	lua_pop(L, 1);
+
+	lua_getfield(L, 1, "return_tile");
+	opt.return_tile = !lua_isnil(L, -1) && lua_toboolean(L, -1);
+	lua_pop(L, 1);
+
+	lua_getfield(L, 1, "return_params");
+	opt.return_params = !lua_isnil(L, -1) && lua_toboolean(L, -1);
+	lua_pop(L, 1);
+
+	// Argument 2: Block ID whitelist
+	std::set<bid_t> bid_whitelist;
+	for (lua_pushnil(L); lua_next(L, 2); lua_pop(L, 1)) {
+		// key @ -2, value @ -1
+		bid_t block_id = lua_tonumber(L, -1); // downcast
+		bid_whitelist.insert(block_id);
+	}
+
+	// Argument 3: Range
+	PositionRange range;
+	script->get_position_range(L, 3, range);
+
+	lua_createtable(L, 100, 0); // guessed average
+	const int value_count = 0
+		+ 2 * opt.return_pos
+		+ 1 // block_Id
+		+ 1 * opt.return_tile
+		+ 2 * opt.return_params; // guessed average
+
+	int ret_index = 0;
+	blockpos_t pos;
+	Block b;
+	for (bool ok = range.iteratorStart(world, &pos); ok; ok = range.iteratorNext(&pos)) {
+		world->getBlock(pos, &b);
+		if (bid_whitelist.find(b.id) == bid_whitelist.end())
+			continue;
+
+		lua_createtable(L, value_count, 0);
+		int n = 1; // b.id
+		if (opt.return_pos) {
+			lua_pushinteger(L, pos.X);
+			lua_pushinteger(L, pos.Y);
+			n += 2;
+		}
+
+		lua_pushinteger(L, b.id);
+
+		if (opt.return_tile) {
+			lua_pushinteger(L, b.tile);
+			++n;
+		}
+
+		if (opt.return_params) {
+			auto params = world->getParamsPtr(pos);
+			if (params)
+				n += write_blockparams(L, *params);
+		}
+
+		// Traverse the stack backwards to insert the pushed values
+		while (n --> 0) {
+			// insert the topmost value
+			lua_rawseti(L,
+				-n - 2, // position of the table
+				n + 1  // table index
+			);
+		}
+
+		luaL_checktype(L, -1, LUA_TTABLE); // sanity check
+		lua_rawseti(L, -2, ++ret_index);
+	}
+
+	MESSY_CPP_EXCEPTIONS_END
+	return 1;
+}
+
 int Script::l_world_get_params(lua_State *L)
 {
 	Script *script = get_script(L);

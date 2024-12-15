@@ -2,6 +2,7 @@
 #include "blockmanager.h"
 #include "compressor.h"
 #include "macros.h"
+#include "operators.h" // PositionRange
 #include "packet.h"
 #include "utils.h" // strtrim
 #include <cstring> // memset
@@ -531,69 +532,29 @@ Block *World::updateBlock(BlockUpdate bu)
 
 bool World::setBlockTiles(PositionRange range, bid_t block_id, u8 tile)
 {
-	using PRT = PositionRange::Type;
-
 	bool modified = false;
 	blockpos_t pos;
 
-	switch (range.type) {
-	case PRT::T_ONE_BLOCK: {
-		if (!isValidPosition(range.minp.X, range.minp.Y))
-			return false;
-
-		Block &b = getBlockRefNoCheck(range.minp);
-		if (b.id == block_id) {
-			b.tile = tile;
-			modified = true;
-		}
-	} break;
-	case PRT::T_AREA:
-	case PRT::T_CIRCLE: {
-		core::vector2df center;
-		if (range.type == PRT::T_CIRCLE) {
-			if (range.radius <= 0)
-				return true; // 0 blocks affected
-
-			center = core::vector2df(range.minp.X, range.minp.Y);
-			range.minp.X = std::round(center.X - range.radius);
-			range.minp.Y = std::round(center.Y - range.radius);
-			range.maxp.X = std::round(center.X + range.radius);
-			range.maxp.Y = std::round(center.Y + range.radius);
-		}
-
-		if (!isValidPosition(range.minp.X, range.minp.Y))
-			return false;
-		if (!isValidPosition(range.maxp.X, range.maxp.Y))
-			return false;
-
-
-		for (pos.Y = range.minp.Y; pos.Y <= range.maxp.Y; ++pos.Y)
-		for (pos.X = range.minp.X; pos.X <= range.maxp.X; ++pos.X) {
-			if (range.radius) {
-				if (center.getDistanceFromSQ(core::vector2df(pos.X, pos.Y)) > range.radius * range.radius)
-					continue;
-			}
-
-			Block &b = getBlockRefNoCheck(pos);
-			if (b.id == block_id) {
-				b.tile = tile;
-				modified = true;
-			}
-		}
-	} break;
-	case PRT::T_ENTIRE_WORLD:
+	if (range.type == PositionRange::T_ENTIRE_WORLD) {
+		// Optimization
 		for (Block *b = begin(); b != end(); ++b) {
 			if (b->id == block_id) {
 				b->tile = tile;
 				modified = true;
 			}
 		}
-		break;
-	case PRT::T_MAX_INVALID:
-		return false;
+		goto done;
 	}
 
+	for (bool ok = range.iteratorStart(this, &pos); ok; ok = range.iteratorNext(&pos)) {
+		Block &b = getBlockRefNoCheck(pos);
+		if (b.id == block_id) {
+			b.tile = tile;
+			modified = true;
+		}
+	}
 
+done:
 	this->was_modified |= modified;
 	return modified;
 }

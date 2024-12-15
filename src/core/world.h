@@ -5,6 +5,7 @@
 #include "core/playerflags.h"
 #include "core/timer.h"
 #include "core/types.h"
+#include "core/operators.h" // PositionRange
 #include <string>
 #include <map>
 #include <unordered_set>

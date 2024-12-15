@@ -171,4 +171,20 @@ env.change_block(101, {
 	end
 })
 
-
+-- C++: test_script_world_interop
+-- Get blocks in range, triggered by on_intersect_once
+env.change_block(102, {
+	tiles = {
+		{ type = env.DRAW_TYPE_ACTION },
+	},
+	params = env.PARAMS_TYPE_U8U8U8,
+	on_intersect_once = function()
+		local list = env.world.get_blocks_in_range({
+			return_pos = true,
+			return_tile = true,
+			return_params = true,
+		}, {101, 102}, env.world.PRT_ENTIRE_WORLD)
+		print(dump(list))
+		feedback("called_102 " .. #list .. " " .. #list[1] .. " " .. #list[2])
+	end
+})
