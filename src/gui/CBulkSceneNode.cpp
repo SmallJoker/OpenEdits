@@ -64,8 +64,8 @@ void CBulkSceneNode::OnAnimate(u32 t_ms)
 	const size_t vertices_size_old = vertices.size();
 	const size_t vertices_size_new = 4 * m_tiles.size();
 
-	vertices.set_used(vertices_size_new);
-	indices.set_used(6 * m_tiles.size());
+	vertices.resize(vertices_size_new);
+	indices.resize(6 * m_tiles.size());
 
 	if (vertices_size_new <= vertices_size_old)
 		return; // Nothing to update

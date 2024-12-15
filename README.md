@@ -9,6 +9,14 @@ The project direction can be found in [doc/DIRECTION.md](doc/DIRECTION.md).
 
 ## Gameplay
 
+**Account management**
+
+ * Any specified username is automatically converted to uppercase.
+ * `GUESTxxx` usernames are treated as temporary.
+     * Registration is nethier needed nor possible.
+ * The account registration is rate limited by IP.
+
+
 **Hotkeys**
 
  * W/A/S/D or arrow keys: move player
@@ -33,7 +41,8 @@ The project direction can be found in [doc/DIRECTION.md](doc/DIRECTION.md).
 
 **Chat commands**
 
- * See `/help`
+ * See `/help` and `/help COMMAND` (in-game)
+
 
 Permission/player flag examples:
 

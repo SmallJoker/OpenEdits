@@ -19,6 +19,7 @@ Gui::Gui()
 	window_size = core::dimension2du(1000, 600);
 
 	SIrrlichtCreationParameters params;
+	params.ApplicationName = APPLICATION_NAME;
 	params.DriverType = video::EDT_OPENGL;
 	params.Vsync = true;
 	//params.AntiAlias = 32; -- only does something on Windows?
@@ -245,15 +246,22 @@ SceneHandler *Gui::getHandler(SceneHandlerType type)
 
 void Gui::setWindowTitle()
 {
-	core::stringw version;
-	core::multibyteToWString(version, VERSION_STRING);
+	core::stringw title;
+	{
+		core::stringc appver;
+		appver.append(APPLICATION_NAME)
+			.append(" ")
+			.append(VERSION_STRING);
+
+		core::multibyteToWString(title, appver);
+	}
 	auto it = m_handlers.find(m_scenetype);
 	if (it != m_handlers.end()) {
-		version.append(L" - ");
-		version.append(it->second->m_scene_name);
+		title.append(L" - ");
+		title.append(it->second->m_scene_name);
 	}
 
-	m_device->setWindowCaption(version.c_str());
+	m_device->setWindowCaption(title.c_str());
 }
 
 io::IFileSystem *Gui::getFileSystem()
