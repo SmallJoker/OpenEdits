@@ -476,7 +476,6 @@ CBulkSceneNode *SceneWorldRender::drawBottomLeftText(video::ITexture *texture)
 	node->drop();
 
 	node->setVertexSize(dim);
-	node->getMaterial(0).Lighting = false;
 	node->getMaterial(0).setTexture(0, texture);
 	node->getMaterial(0).MaterialType = video::EMT_TRANSPARENT_ALPHA_CHANNEL_REF;
 
@@ -487,7 +486,6 @@ CBulkSceneNode *SceneWorldRender::drawBottomLeftText(video::ITexture *texture)
 bool SceneWorldRender::assignBlockTexture(const BlockTile tile, scene::ISceneNode *node)
 {
 	auto &mat = node->getMaterial(0);
-	mat.Lighting = false;
 	mat.ZWriteEnable = video::EZW_AUTO;
 	node->getMaterial(0).forEachTexture([](video::SMaterialLayer &layer) {
 		layer.MinFilter = video::ETMINF_LINEAR_MIPMAP_LINEAR;
@@ -579,7 +577,6 @@ void SceneWorldRender::updatePlayerPositions(float dtime)
 				nf_id
 			);
 			nf->forEachMaterial([](video::SMaterial &mat){
-				mat.Lighting = false;
 				mat.ZWriteEnable = video::EZW_AUTO;
 				mat.MaterialType = video::EMT_TRANSPARENT_ALPHA_CHANNEL_REF;
 			});
@@ -598,7 +595,6 @@ void SceneWorldRender::updatePlayerPositions(float dtime)
 				nf_id + 1
 			);
 			nt->forEachMaterial([](video::SMaterial &mat){
-				mat.Lighting = false;
 				mat.ZWriteEnable = video::EZW_AUTO;
 				//mat.MaterialType = video::EMT_TRANSPARENT_ALPHA_CHANNEL_REF;
 			});
@@ -631,7 +627,6 @@ void SceneWorldRender::updatePlayerPositions(float dtime)
 				);
 
 				ga->forEachMaterial([](video::SMaterial &mat){
-					mat.Lighting = false;
 					mat.ZWriteEnable = video::EZW_AUTO;
 					mat.MaterialType = video::EMT_TRANSPARENT_ALPHA_CHANNEL;
 				});

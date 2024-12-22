@@ -59,8 +59,8 @@ void CBulkSceneNode::OnRegisterSceneNode()
 
 void CBulkSceneNode::OnAnimate(u32 t_ms)
 {
-	auto &vertices = m_buffer->Vertices;
-	auto &indices = m_buffer->Indices;
+	auto &vertices = m_buffer->Vertices->Data;
+	auto &indices = m_buffer->Indices->Data;
 	const size_t vertices_size_old = vertices.size();
 	const size_t vertices_size_new = 4 * m_tiles.size();
 
@@ -141,7 +141,6 @@ void CBulkSceneNode::render()
 	{
 		driver->setTransform(video::ETS_WORLD, AbsoluteTransformation);
 		video::SMaterial m;
-		m.Lighting = false;
 		driver->setMaterial(m);
 		driver->draw3DBox(m_bbox_large, video::SColor(0,208,195,152));
 	}

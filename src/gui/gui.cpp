@@ -4,8 +4,8 @@
 #include "core/blockmanager.h"
 #include "core/macros.h"
 #include "guilayout/guilayout_irrlicht.h"
-#include <irrlicht.h>
 #include <chrono>
+#include <assert.h>
 // Scene handlers
 #include "connect.h"
 #include "register.h"
@@ -13,6 +13,13 @@
 #include "lobby.h"
 #include "gameplay/gameplay.h"
 #include "version.h"
+// Irrlicht includes
+#include <irrlicht.h>
+#include <IGUIEnvironment.h>
+#include <IGUIFont.h>
+#include <IGUISkin.h>
+#include <ISceneManager.h>
+#include <IVideoDriver.h>
 
 Gui::Gui()
 {

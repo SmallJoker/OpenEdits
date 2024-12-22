@@ -7,7 +7,13 @@
 #include "gui/guilayout/guilayout_irrlicht.h"
 #include "core/utils.h"
 #include <chrono>
-#include <irrlicht.h> // createDeviceEx (and everything else)
+// Irrlicht includes
+#include <irrlicht.h> // createDeviceEx
+#include <IGUIButton.h>
+#include <IGUIEditBox.h>
+#include <IGUIEnvironment.h>
+#include <IGUITabControl.h>
+#include <IVideoDriver.h>
 
 
 using namespace irr;

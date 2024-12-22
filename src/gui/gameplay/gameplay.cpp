@@ -7,7 +7,14 @@
 #include "minimap.h"
 #include "smileyselector.h"
 #include "world_render.h"
-#include <irrlicht.h>
+// Irrlicht includes
+#include <IGUIButton.h>
+#include <IGUIEditBox.h>
+#include <IGUIEnvironment.h>
+#include <IGUIFont.h>
+#include <IGUIListBox.h>
+#include <IGUIStaticText.h>
+#include <IVideoDriver.h>
 
 static int SIZEW = 650; // world render size
 
