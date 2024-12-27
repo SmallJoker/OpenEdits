@@ -9,9 +9,6 @@ local blocks_coins = {
 	{
 		id = 100,
 		tiles = { { alpha = true }, { alpha = true } },
-		on_event = function(event_id)
-			-- TODO: implement
-		end,
 		on_intersect_once = function(tile)
 			if tile == 0 then
 				local px, py = env.player.get_pos()

@@ -36,6 +36,8 @@ do
 	w.PRT_AREA         = 0x01
 	w.PRT_CIRCLE       = 0x02
 	w.PRT_ENTIRE_WORLD = 0x03
+
+	w.ID_ERASE_BACKGROUND = 0x8000
 end
 
 if env.gui then

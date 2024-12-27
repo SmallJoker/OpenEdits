@@ -448,7 +448,7 @@ void Server::stepSendBlockUpdates(World *world)
 		m_script->setWorld(world);
 		for (bid_t id : placed_block_ids)
 			m_script->onBlockPlaced(id);
-		m_script->setPlayer(nullptr);
+		m_script->setWorld(nullptr);
 	}
 }
 

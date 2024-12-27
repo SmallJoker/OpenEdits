@@ -225,11 +225,10 @@ bool Script::init()
 		lua_setfield(L, -2, "world");
 		FIELD_SET_FUNC(/**/, register_event);
 		FIELD_SET_FUNC(/**/, send_event);
-
-		initSpecifics();
 	}
 	lua_setglobal(L, "env");
 
+	initSpecifics();
 
 #undef FIELD_SET_FUNC
 	if (hide_global_table) {

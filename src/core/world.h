@@ -48,12 +48,12 @@ struct BlockUpdate {
 	BlockParams params;
 	peer_t peer_id = -1; // specified by server
 
+	static constexpr bid_t BG_FLAG { 0x8000 };
+
 private:
 	// New block ID (BlockUpdate::BG_FLAG for backgrounds)
 	bid_t id = Block::ID_INVALID;
 	const BlockManager *m_mgr;
-
-	static constexpr bid_t BG_FLAG { 0x8000 };
 };
 
 struct BlockUpdateHash {

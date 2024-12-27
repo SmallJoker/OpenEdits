@@ -62,7 +62,6 @@ public:
 	ScriptEventManager(Script *script);
 	void onScriptsLoaded();
 
-	void readDefinitionFromLua();
 	decltype(m_event_defs) &getDefs() { return m_event_defs; }
 
 	ScriptEvent readEventFromLua(int start_idx) const;

@@ -88,7 +88,7 @@ protected:
 	void runBlockCb_0(int ref, const char *dbg);
 
 
-	// -------- Environment
+	// -------- World / events
 protected:
 	static void get_position_range(lua_State *L, int idx, PositionRange &range);
 

@@ -43,8 +43,6 @@ local function make_key_block(key_id, door_id, gate_id)
 	local def = {
 		id = key_id,
 		tiles = { { type = env.DRAW_TYPE_DECORATION, alpha = true } },
-		on_event = function(payload, bx, by)
-		end,
 		on_intersect_once = function(_)
 			print("send event", KEY_EV)
 			env.send_event(KEY_EV, key_id)

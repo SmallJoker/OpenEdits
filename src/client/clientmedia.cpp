@@ -34,7 +34,6 @@ void ClientMedia::readMediaList(Packet &pkt)
 	decltype(m_media_available) local_media;
 	std::swap(m_media_available, local_media);
 	// m_media_available is now EMPTY
-	m_got_list = true;
 
 	// name, size, data hash
 	while (pkt.getRemainingBytes()) {
@@ -78,6 +77,8 @@ void ClientMedia::readMediaList(Packet &pkt)
 		m_to_request.insert(name);
 		bytes_missing += size;
 	}
+
+	m_got_list = true;
 }
 
 void ClientMedia::writeMediaRequest(Packet &pkt)

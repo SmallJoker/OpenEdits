@@ -9,6 +9,26 @@ using namespace ScriptUtils;
 
 static Logger &logger = script_logger;
 
+
+void ServerScript::initSpecifics()
+{
+	// env space
+	lua_State *L = m_lua;
+
+	lua_getglobal(L, "env");
+	{
+		lua_newtable(L);
+		field_set_function(L, "get_players_in_world", ServerScript::l_get_players_in_world);
+		lua_setfield(L, -2, "server");
+	}
+	{
+		lua_getfield(L, -1, "world");
+		field_set_function(L, "set_block", ServerScript::l_world_set_block);
+		lua_pop(L, 1); // world
+	}
+	lua_pop(L, 1); // env
+}
+
 void ServerScript::onScriptsLoaded()
 {
 	Script::onScriptsLoaded();
@@ -19,31 +39,76 @@ void ServerScript::onScriptsLoaded()
 
 	lua_getglobal(L, "env");
 	lua_getfield(L, -1, "server");
-	field_set_function(L, "get_players_in_world", ServerScript::l_get_players_in_world);
 
 	function_ref_from_field(L, -1, "on_player_join", m_ref_on_player_join, false);
 	function_ref_from_field(L, -1, "on_player_leave", m_ref_on_player_leave, false);
 	lua_pop(L, 2); // env + server
 }
 
-void ServerScript::initSpecifics()
+static int read_blockparams(lua_State *L, int idx, BlockParams params)
 {
-	lua_State *L = m_lua;
-	lua_newtable(L);
-	lua_setfield(L, -2, "server");
+	using Type = BlockParams::Type;
+	switch (params.getType()) {
+		case Type::None:
+			return 0;
+		case Type::STR16:
+			{
+				size_t len;
+				const char *ptr = luaL_checklstring(L, idx, &len);
+				params.text->assign(ptr, len);
+			}
+			return 1;
+		case Type::U8:
+			params.param_u8 = luaL_checkint(L, idx);
+			return 1;
+		case Type::U8U8U8:
+			params.teleporter.rotation = luaL_checkint(L, idx);
+			params.teleporter.id       = luaL_checkint(L, idx + 1);
+			params.teleporter.dst_id   = luaL_checkint(L, idx + 2);
+			return 3;
+		case Type::INVALID:
+			break;
+		// DO NOT USE default CASE
+	}
+
+	luaL_error(L, "unhandled type=%d", params.getType());
+	return 0;
 }
 
+int ServerScript::l_world_set_block(lua_State *L)
+{
+	ServerScript *script = (ServerScript *)get_script(L);
+	World *world = script->m_world;
+	if (!world)
+		luaL_error(L, "no world");
+
+	BlockUpdate bu(script->m_bmgr);
+	bid_t block_id = luaL_checknumber(L, 1);
+	bu.pos.X = luaL_checknumber(L, 2) + 0.5f;
+	bu.pos.Y = luaL_checknumber(L, 3) + 0.5f;
+	if (block_id == (0 | BlockUpdate::BG_FLAG)) {
+		bu.setErase(block_id);
+	} else {
+		bu.set(block_id);
+		read_blockparams(L, 4, bu.params);
+	}
+
+	// See also: `Server::pkt_PlaceBlock`
+	const Block *block = world->updateBlock(bu);
+	if (block)
+		world->proc_queue.insert(bu);
+
+	return 0;
+}
 
 int ServerScript::implWorldSetTile(PositionRange range, bid_t block_id, int tile)
 {
 	lua_State *L = m_lua;
-	World *world = m_player->getWorld().get();
-	if (!world)
+	if (!m_world)
 		luaL_error(L, "no world");
 
-	// TODO: broadcast?
-
-	bool modified = world->setBlockTiles(range, block_id, tile);
+	// Note: There is no broadcast. Client-side updates must be performed by events.
+	bool modified = m_world->setBlockTiles(range, block_id, tile);
 	lua_pushboolean(L, modified);
 	return 1;
 }

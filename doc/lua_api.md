@@ -42,9 +42,9 @@ active player of the callback.
     * `PositionRange`: see `env.world.set_tile`
     * Return value: (table)
         * Key: integer-based
-        * Value: `{ [x, y,] block_id [, tile] [, params ...] }`
- * `place_block(x, y, ...)`
-    * Client-side only
+        * Value: `{ block_id [, x, y] [, tile] [, params ...] }`
+ * `set_block(x, y, ...)`
+    * Server-side only
     * `...`: Block Parameters (variable)
  * `get_params(x, y)` -> (variable)
     * Retrieves the block parameters based on the type specified by the
@@ -100,9 +100,9 @@ A `userdata` object.
 Namespace: `env.server`. Only available for servers.
 
  * `.on_player_join()`
-    * Callback
+    * Callback to overwrite at load time
  * `.on_player_leave()`
-    * Callback
+    * Callback to overwrite at load time
  * `.get_players_in_world()`
     * Returns a table of `PlayerRef` (ipairs).
 
@@ -181,15 +181,15 @@ Block Definition - callbacks:
  * `on_intersect_once(tile)` <- `nil`
     * Called once when entering the block.
     * `tile` (number): The tile index of the block
- * `pre_place(x, y, ...)` <- `env.PLACEMENT_TYPE_*`
+ * `on_place(x, y, ...)` <- `nil`
     * TODO: IMPLEMENT
     * `x`, `y`: The block that should be replaced
     * `...`: Block Parameters of the selected block (variable)
     * This defaults to
 ```
 	function(x, y, ...)
-		env.world.place_block(x, y, ...)
-		return env.PLACEMENT_TYPE
+		-- env.world.ID_ERASE_BACKGROUND = BG_FLAG || 0x8000
+		env.world.set_block(BLOCKID, x, y, ...)
 	end
 ```
  * `on_placed()` <- `nil`

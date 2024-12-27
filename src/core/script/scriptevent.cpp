@@ -109,11 +109,6 @@ void ScriptEventManager::onScriptsLoaded()
 	lua_pop(L, 1); // env
 }
 
-void ScriptEventManager::readDefinitionFromLua()
-{
-
-}
-
 ScriptEvent ScriptEventManager::readEventFromLua(int start_idx) const
 {
 	lua_State *L = m_script->getState();
@@ -142,8 +137,8 @@ ScriptEvent ScriptEventManager::readEventFromLua(int start_idx) const
 
 	if (it != def.end()) {
 error:
-		logger(LL_ERROR, "%s: argument count mismatch. expected=%zu, got >= %zu",
-			__func__, def.size(), it - def.begin());
+		logger(LL_ERROR, "%s: argument count mismatch. expected=%zu, got=%d",
+			__func__, def.size(), (stack_max - start_idx));
 		throw std::exception();
 	}
 

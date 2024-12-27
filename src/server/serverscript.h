@@ -3,6 +3,7 @@
 #include "core/script/script.h"
 
 class Server;
+struct BlockUpdate;
 
 class ServerScript : public Script {
 public:
@@ -11,11 +12,16 @@ public:
 		m_server(server)
 	{}
 
-	void onScriptsLoaded() override;
-
 protected:
 	void initSpecifics() override;
 
+public:
+	void onScriptsLoaded() override;
+
+
+	// -------- World / events
+protected:
+	static int l_world_set_block(lua_State *L);
 	int implWorldSetTile(PositionRange range, bid_t block_id, int tile) override;
 
 

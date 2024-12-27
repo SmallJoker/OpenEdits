@@ -18,14 +18,17 @@ void ClientScript::initSpecifics()
 #define FIELD_SET_FUNC(prefix, name) \
 	field_set_function(L, #name, ClientScript::l_ ## prefix ## name)
 
-	lua_newtable(L);
+	lua_getglobal(L, "env");
 	{
+		lua_newtable(L);
 		FIELD_SET_FUNC(gui_, change_hud);
 		FIELD_SET_FUNC(gui_, play_sound);
+		lua_setfield(L, -2, "gui");
 	}
-	lua_setfield(L, -2, "gui");
+	lua_pop(L, 1); // env
 
 #undef FIELD_SET_FUNC
+
 }
 
 void ClientScript::closeSpecifics()

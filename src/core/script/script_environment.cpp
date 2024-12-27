@@ -219,8 +219,8 @@ int Script::l_world_get_blocks_in_range(lua_State *L)
 
 	lua_createtable(L, 100, 0); // guessed average
 	const int value_count = 0
-		+ 2 * opt.return_pos
 		+ 1 // block_Id
+		+ 2 * opt.return_pos
 		+ 1 * opt.return_tile
 		+ 2 * opt.return_params; // guessed average
 
@@ -234,13 +234,13 @@ int Script::l_world_get_blocks_in_range(lua_State *L)
 
 		lua_createtable(L, value_count, 0);
 		int n = 1; // b.id
+		lua_pushinteger(L, b.id);
+
 		if (opt.return_pos) {
 			lua_pushinteger(L, pos.X);
 			lua_pushinteger(L, pos.Y);
 			n += 2;
 		}
-
-		lua_pushinteger(L, b.id);
 
 		if (opt.return_tile) {
 			lua_pushinteger(L, b.tile);

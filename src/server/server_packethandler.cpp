@@ -694,11 +694,12 @@ void Server::pkt_Move(peer_t peer_id, Packet &pkt)
 	RemotePlayer *player = getPlayerNoLock(peer_id);
 	ASSERT_FORCED(player, "Player required!");
 
-	// TODO: Anticheat test here
-	/*core::vector2df
-		pos = player->pos,
-		vel = player->vel,
-		acc = player->acc;*/
+	/* TODO reject old (unreliable) packets
+		u8 seqnum = pkt.read<u8>();
+		if (wrapped_dist_u8(seqnum, player->seqnum) < 0)
+			return; // outdated
+		player->seqnum = seqnum;
+	*/
 
 	player->readPhysics(pkt);
 	player->dtime_delay = m_con->getPeerRTT(peer_id) / 2.0f;
@@ -864,17 +865,18 @@ void Server::pkt_TriggerBlocks(peer_t peer_id, Packet &pkt)
 
 void Server::pkt_ScriptEvent(peer_t peer_id, Packet &pkt)
 {
-	// TODO: Broadcast to players (depending on flags)
-
 	RemotePlayer *player = getPlayerNoLock(peer_id);
 
-	if (!player->rl_scriptevents.isActive()) {
-		// Sent by `ScriptEventManager::writeBatch`
-		const size_t limit = player->rl_scriptevents.getSumLimit() + 1.0f;
-		size_t countdown = limit;
-		m_script->getSEMgr()->runBatch(pkt, countdown);
-		player->rl_scriptevents.add(limit - countdown);
-	}
+	if (player->rl_scriptevents.isActive())
+		return; // ignore packet
+
+	// Sent by `ScriptEventManager::writeBatch`
+	const size_t limit = player->rl_scriptevents.getSumLimit() + 1.0f;
+	size_t countdown = limit;
+	m_script->setPlayer(player);
+	m_script->getSEMgr()->runBatch(pkt, countdown);
+	m_script->setPlayer(nullptr);
+	player->rl_scriptevents.add(limit - countdown);
 }
 
 void Server::pkt_GodMode(peer_t peer_id, Packet &pkt)
