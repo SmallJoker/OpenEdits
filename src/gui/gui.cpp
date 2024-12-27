@@ -28,6 +28,7 @@ Gui::Gui()
 	SIrrlichtCreationParameters params;
 	params.ApplicationName = APPLICATION_NAME;
 	params.DriverType = video::EDT_OPENGL;
+	params.OGLES2ShaderPath = "./shaders/"; // take from IrrlichtMt
 	params.Vsync = true;
 	//params.AntiAlias = 32; -- only does something on Windows?
 	params.WindowSize = window_size;

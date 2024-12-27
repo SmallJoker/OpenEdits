@@ -311,7 +311,6 @@ static bool editbox_move_to_end(gui::IGUIEnvironment *guienv, wchar_t charval = 
 	root->bringToFront(element);
 
 	SEvent ev;
-	memset(&ev, 0, sizeof(ev));
 	ev.EventType = EET_KEY_INPUT_EVENT;
 	ev.KeyInput.PressedDown = true;
 	ev.KeyInput.Char = charval;
@@ -874,6 +873,7 @@ video::ITexture *SceneGameplay::generateTexture(const std::string &text, u32 col
 	dim.Width += 2;
 
 	auto texture = driver->addRenderTargetTexture(dim); //, "rt", video::ECF_A8R8G8B8);
+	// FIXME: With the OpenGL 3 driver the resulting image is mirrored along the Y axis.
 	driver->setRenderTarget(texture, true, true, video::SColor(bgcolor));
 
 	m_gui->font->draw(textw.c_str(), core::recti(core::vector2di(2,0), dim), 0xFF555555); // Shadow

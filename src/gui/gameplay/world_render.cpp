@@ -576,7 +576,7 @@ void SceneWorldRender::updatePlayerPositions(float dtime)
 				nf_pos,
 				nf_id
 			);
-			nf->forEachMaterial([](video::SMaterial &mat){
+			nf->forEachMaterial([](video::SMaterial &mat) {
 				mat.ZWriteEnable = video::EZW_AUTO;
 				mat.MaterialType = video::EMT_TRANSPARENT_ALPHA_CHANNEL_REF;
 			});

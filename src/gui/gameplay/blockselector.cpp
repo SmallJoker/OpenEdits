@@ -75,7 +75,6 @@ void SceneBlockSelector::draw()
 static void editbox_move_to_end(gui::IGUIElement *element)
 {
 	SEvent ev;
-	memset(&ev, 0, sizeof(ev));
 	ev.EventType = EET_KEY_INPUT_EVENT;
 	ev.KeyInput.PressedDown = true;
 	ev.KeyInput.Char = '\0';

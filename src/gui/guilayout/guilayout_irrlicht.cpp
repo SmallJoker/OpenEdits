@@ -244,6 +244,9 @@ bool IGUIElementWrapper::draw_table_wireframe(Table *e, video::IVideoDriver *dri
 
 void IGUIElementWrapper::draw_wireframe(Element *e, video::IVideoDriver *driver, uint32_t color)
 {
+	// Needed for the OpenGL 3+ driver
+	driver->setMaterial(driver->getMaterial2D());
+
 	auto drawfunc = [driver, &color] (Element *e_raw) -> bool {
 		bool ok = true;
 		do {
