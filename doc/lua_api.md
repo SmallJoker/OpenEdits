@@ -71,28 +71,29 @@ active player of the callback.
     * Return value: (none)
 
 
-### Player API
+### Player API (PlayerRef)
 
-Namespace: `env.player`. Associated to the currently active player
-of the callback.
-
- * `.get_pos()` -> `x, y`
-    * The block underneath is at `(floor(x + 0.5), floor(y + 0.5))`.
- * `.set_pos(x, y)`
- * `.get_vel()` -> `x, y`
- * `.set_vel(x, y)`
- * `.get_name()` -> string
- * `.hash()` -> (undefined)
-    * Unique identifier (per connection) for faster array access
-
-
-#### PlayerRef
+In callbacks, `env.player` is assigned to the current active player.
 
 A `userdata` object.
 
  * `:get_name()` -> string
+ * `:hash()` -> (undefined)
+    * Unique identifier (per connection) for faster array access
  * `:send_event()`
     * See `env.send_event`. For servers only.
+ * `:get_pos()` -> `x, y`
+    * The block underneath is at `(floor(x + 0.5), floor(y + 0.5))`.
+ * `:set_pos(x, y)`
+ * `:get_vel()` -> `x, y`
+ * `:set_vel(x, y)`
+ * `:get_acc()` -> `x, y`
+ * `:set_acc(x, y)`
+ * `:get_controls()` -> table
+    * Table fields:
+       * `jump` (bool)
+       * `dir_x`, `dir_y` (number)
+       * Note: `dir_(x|y)` may have any value range.
 
 
 ### Server API

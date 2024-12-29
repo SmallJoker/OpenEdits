@@ -11,7 +11,7 @@ local blocks_coins = {
 		tiles = { { alpha = true }, { alpha = true } },
 		on_intersect_once = function(tile)
 			if tile == 0 then
-				local px, py = env.player.get_pos()
+				local px, py = env.player:get_pos()
 				world.set_tile(100, 1, world.PRT_ONE_BLOCK, px, py)
 				anyones_coins = anyones_coins + 1
 				if env.gui then

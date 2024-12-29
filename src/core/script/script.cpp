@@ -5,7 +5,6 @@
 #include "core/macros.h"
 #include "core/mediamanager.h"
 #include <fstream>
-#include <memory> // unique_ptr
 
 using namespace ScriptUtils;
 
@@ -13,7 +12,7 @@ Logger script_logger("Script", LL_INFO);
 static Logger &logger = script_logger;
 
 
-static const lua_Integer SCRIPT_API_VERSION = 2;
+static const lua_Integer SCRIPT_API_VERSION = 3;
 
 /*
 	Sandbox theory: http://lua-users.org/wiki/SandBoxes
@@ -194,26 +193,11 @@ bool Script::init()
 		FIELD_SET_FUNC(/**/, load_hardcoded_packs);
 		FIELD_SET_FUNC(/**/, register_pack);
 		FIELD_SET_FUNC(/**/, change_block);
-		/*
-			Not populated variables:
-				PROTO_VER
-				player
-				get_handler
-		*/
 
-		lua_newtable(L);
-		{
-			FIELD_SET_FUNC(player_, get_pos);
-			FIELD_SET_FUNC(player_, set_pos);
-			FIELD_SET_FUNC(player_, get_vel);
-			FIELD_SET_FUNC(player_, set_vel);
-			FIELD_SET_FUNC(player_, get_acc);
-			FIELD_SET_FUNC(player_, set_acc);
-			FIELD_SET_FUNC(player_, get_controls);
-			FIELD_SET_FUNC(player_, get_name);
-			FIELD_SET_FUNC(player_, hash);
+		if (m_emgr) {
+			lua_newtable(L);
+			lua_setfield(L, -2, "event_handlers");
 		}
-		lua_setfield(L, -2, "player");
 
 		lua_newtable(L);
 		{

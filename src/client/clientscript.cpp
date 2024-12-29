@@ -1,7 +1,7 @@
 #include "clientscript.h"
+#include "core/script/playerref.h"
 #include "core/script/script_utils.h"
 #include "core/blockmanager.h"
-#include "core/player.h"
 #include "core/world.h"
 #include "client.h"
 #include "hudelement.h"
@@ -14,6 +14,9 @@ static Logger &logger = script_logger;
 void ClientScript::initSpecifics()
 {
 	lua_State *L = m_lua;
+
+	PlayerRef::doRegister(L);
+	pushCurrentPlayerRef();
 
 #define FIELD_SET_FUNC(prefix, name) \
 	field_set_function(L, #name, ClientScript::l_ ## prefix ## name)
@@ -41,7 +44,7 @@ int ClientScript::implWorldSetTile(PositionRange range, bid_t block_id, int tile
 		return 0; // no-op
 
 	lua_State *L = m_lua;
-	World *world = m_player->getWorld().get();
+	World *world = m_world;
 	if (!world)
 		luaL_error(L, "no world");
 

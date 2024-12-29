@@ -1,7 +1,6 @@
 #include "script.h"
 #include "script_utils.h"
 #include "core/blockmanager.h"
-#include "core/logger.h"
 #include "core/macros.h"
 #include "core/player.h"
 #include "core/world.h"

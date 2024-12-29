@@ -44,7 +44,7 @@ env.register_pack({
 
 env.change_block(0, {
 	on_intersect = function()
-		env.player.set_acc(0, 100)
+		env.player:set_acc(0, 100)
 	end,
 })
 
@@ -62,10 +62,10 @@ env.register_pack({
 
 --[[
 local coins = env.register_variable(env.PARAMS_TYPE_U8, FLAG_IMMEDIATE + FLAG_PUBLIC)
-loca value = env.player.get_var(coins)
-env.player.set_var(coins, value + 1)
+loca value = env.player:get_var(coins)
+env.player:set_var(coins, value + 1)
 
-env.player.variables = {
+env.player:variables = {
 	[player_id] = { [var_id] = 1 }
 }
 env.on_set_variable = function(id, ...)
@@ -87,10 +87,10 @@ env.change_block(2, {
 			or env.COLLISION_TYPE_NONE
 	end,
 	on_intersect = function()
-		local px, py = env.player.get_pos()
+		local px, py = env.player:get_pos()
 		if env.test_mode == "py set -1" then
 			py = py + 1
-			env.player.set_pos(nil, py)
+			env.player:set_pos(nil, py)
 			return
 		end
 		error("unhandled test_mode")
@@ -98,8 +98,8 @@ env.change_block(2, {
 	on_intersect_once = function(tile)
 		print("on_intersect_once: tile=" .. tile)
 		if env.test_mode == "py set +1" then
-			local px, py = env.player.get_pos()
-			env.player.set_pos(nil, py + 1)
+			local px, py = env.player:get_pos()
+			env.player:set_pos(nil, py + 1)
 			return
 		end
 		error("unhandled test_mode")

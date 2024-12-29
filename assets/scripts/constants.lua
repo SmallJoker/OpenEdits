@@ -46,10 +46,6 @@ if env.gui then
 	h.HUDT_TEXT = 0
 end
 
-
--- Not constant but needed regardless
-env.event_handlers = {}
-
 local old_register = env.register_event
 env.register_event = function(event_id, ...)
 	local values = { ... }

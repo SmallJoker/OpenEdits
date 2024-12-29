@@ -1,3 +1,13 @@
+-- v1.3.1 backwards compatibility
+env.event_handlers = {}
+
+if true then
+	env.load_hardcoded_packs()
+	return
+end
+
+assert(env.API_VERSION >= 3, "Script implementation is too old.")
+
 env.include("constants.lua")
 
 -------------- Client & server script
@@ -12,7 +22,7 @@ end
 
 if env.server then
 	env.server.on_player_join = function()
-		print("JOIN", env.player.get_name())
+		print("JOIN", env.player:get_name())
 		local names = {}
 		for _, p in ipairs(env.server.get_players_in_world()) do
 			names[#names + 1] = p:get_name()
@@ -21,28 +31,21 @@ if env.server then
 	end
 
 	env.server.on_player_leave = function()
-		print("LEAVE", env.player.get_name())
+		print("LEAVE", env.player:get_name())
 	end
 end
 
 --[[
 To implement:
-env.callbacks.on_join(function()
-	player.set_physics({
+scriptevent_handler_func = function()
+	player:set_physics({
 		default_acceleration = num,       -- when no "on_collide" is defined
 		acceleration_multiplicator = num, -- should affect the final acceleration
 		control_acceleration = num,
 		jump_speed = num
 	})
-end)
-]]
-
-assert(env.API_VERSION >= 2, "Script implementation is too old.")
-
-if true then
-	env.load_hardcoded_packs()
-	return
 end
+]]
 
 reg = {}
 
@@ -98,25 +101,25 @@ local blocks_action = {
 	{
 		id = 0,
 		on_intersect = function()
-			player.set_acc(0, GRAVITY)
+			player:set_acc(0, GRAVITY)
 		end,
 	},
 	{
 		id = 1,
 		on_intersect = function()
-			player.set_acc(-GRAVITY, 0)
+			player:set_acc(-GRAVITY, 0)
 		end,
 	},
 	{
 		id = 2,
 		on_intersect = function()
-			player.set_acc(0, -GRAVITY)
+			player:set_acc(0, -GRAVITY)
 		end,
 	},
 	{
 		id = 3,
 		on_intersect = function()
-			player.set_acc(GRAVITY, 0)
+			player:set_acc(GRAVITY, 0)
 		end,
 	},
 	{
@@ -151,14 +154,14 @@ local function make_oneway_block(id)
 		on_collide = function(bx, by, is_x)
 			if is_x then
 				-- Sideway gate
-				local _, py = player.get_pos()
-				local ctrl_jump = player.get_controls().jump
+				local _, py = player:get_pos()
+				local ctrl_jump = player:get_controls().jump
 				if py == by and not ctrl_jump then
 					return env.COLLISION_TYPE_POSITION
 				end
 			else -- y
-				local _, py = player.get_pos()
-				local _, vy = player.get_vel()
+				local _, py = player:get_pos()
+				local _, vy = player:get_vel()
 				-- normal step-up
 				if vy >= 0 and py + 0.55 < by then
 					return env.COLLISION_TYPE_POSITION

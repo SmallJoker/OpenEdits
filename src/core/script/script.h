@@ -109,23 +109,14 @@ public:
 	void setPlayer(Player *player);
 	void setWorld(World *world)
 	{
-		m_player = nullptr;
+		*m_player = nullptr;
 		m_world = world;
 	}
 
 protected:
-	static int l_player_get_pos(lua_State *L);
-	static int l_player_set_pos(lua_State *L);
-	static int l_player_get_vel(lua_State *L);
-	static int l_player_set_vel(lua_State *L);
-	static int l_player_get_acc(lua_State *L);
-	static int l_player_set_acc(lua_State *L);
-	static int l_player_get_controls(lua_State *L);
-	static int l_player_get_name(lua_State *L);
-	static int l_player_hash(lua_State *L);
-protected:
-	Player *m_player = nullptr;
-	bool m_player_controls_cached = false;
+	void pushCurrentPlayerRef();
+	inline Player *getCurrentPlayer() const { return *m_player; }
+	Player **m_player = nullptr;
 
 
 	// -------- Members

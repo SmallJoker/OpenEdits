@@ -15,6 +15,9 @@ void ServerScript::initSpecifics()
 	// env space
 	lua_State *L = m_lua;
 
+	PlayerRef::doRegister(L);
+	pushCurrentPlayerRef();
+
 	lua_getglobal(L, "env");
 	{
 		lua_newtable(L);
@@ -31,11 +34,7 @@ void ServerScript::initSpecifics()
 
 void ServerScript::onScriptsLoaded()
 {
-	Script::onScriptsLoaded();
-
 	lua_State *L = m_lua;
-
-	PlayerRef::doRegister(L);
 
 	lua_getglobal(L, "env");
 	lua_getfield(L, -1, "server");

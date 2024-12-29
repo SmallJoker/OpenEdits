@@ -18,7 +18,7 @@ void Script::get_position_range(lua_State *L, int idx, PositionRange &range)
 		luaL_error(L, "PRT out of range");
 
 	Script *script = get_script(L);
-	const Player *player = script->m_player;
+	const Player *player = script->getCurrentPlayer();
 
 	auto read_pos = [&] (blockpos_t size, int iidx, blockpos_t *pos) {
 		float x = std::max<float>(0, luaL_checknumber(L, iidx + 0) + 0.5f);
@@ -132,7 +132,7 @@ int Script::l_send_event(lua_State *L)
 {
 	MESSY_CPP_EXCEPTIONS_START
 	Script *script = get_script(L);
-	Player *player = script->m_player;
+	Player *player = script->getCurrentPlayer();
 
 	ScriptEvent ev = script->m_emgr->readEventFromLua(1);
 	if (!player->script_events)
@@ -147,7 +147,7 @@ int Script::l_world_get_block(lua_State *L)
 {
 	MESSY_CPP_EXCEPTIONS_START
 	Script *script = get_script(L);
-	Player *player = script->m_player;
+	Player *player = script->getCurrentPlayer();
 
 	blockpos_t pos;
 	if (!lua_isnil(L, 1)) {
@@ -177,9 +177,7 @@ int Script::l_world_get_blocks_in_range(lua_State *L)
 {
 	MESSY_CPP_EXCEPTIONS_START
 	Script *script = get_script(L);
-	Player *player = script->m_player;
-
-	World *world = player->getWorld().get();
+	World *world = script->m_world;
 	if (!world)
 		luaL_error(L, "no world");
 
@@ -273,13 +271,12 @@ int Script::l_world_get_blocks_in_range(lua_State *L)
 int Script::l_world_get_params(lua_State *L)
 {
 	Script *script = get_script(L);
-	Player *player = script->m_player;
+	World *world = script->m_world;
 
 	blockpos_t pos;
 	pos.X = luaL_checknumber(L, 1) + 0.5f;
 	pos.Y = luaL_checknumber(L, 2) + 0.5f;
 
-	World *world = player->getWorld().get();
 	if (!world)
 		luaL_error(L, "no world");
 

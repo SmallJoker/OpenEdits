@@ -24,7 +24,7 @@ protected:
 	static int l_gui_play_sound(lua_State *L);
 
 private:
-	bool isMe() const { return m_player == m_my_player; }
+	bool isMe() const { return *m_player == m_my_player; }
 	const Player *m_my_player = nullptr;
 
 	Client *m_client = nullptr;
