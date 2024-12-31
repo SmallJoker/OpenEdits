@@ -179,6 +179,9 @@ void Server::step(float dtime)
 			m_con->send(p.first, 1, pkt);
 	}
 
+	if (m_script)
+		m_script->onStep((double)getTimeNowDIV() / TIME_RESOLUTION);
+
 	for (auto &world : worlds) {
 		stepSendBlockUpdates(world.get());
 		stepWorldTick(world.get(), dtime);
@@ -289,7 +292,7 @@ RemotePlayer *Server::getPlayerNoLock(peer_t peer_id)
 	return it != m_players.end() ? dynamic_cast<RemotePlayer *>(it->second) : nullptr;
 }
 
-RefCnt<World> Server::getWorldNoLock(std::string &id)
+RefCnt<World> Server::getWorldNoLock(const std::string &id)
 {
 	for (auto p : m_players) {
 		auto world = p.second->getWorld();

@@ -10,6 +10,8 @@ namespace {
 	};
 }
 
+static Logger &logger = script_logger;
+
 void Script::setPlayer(Player *player)
 {
 	*m_player = player;
@@ -30,4 +32,16 @@ void Script::pushCurrentPlayerRef()
 	lua_setfield(L, -2, "player");
 
 	lua_pop(L, 1); // env
+}
+
+void Script::onPlayerJoin(Player *player)
+{
+	setPlayer(player);
+	runCb_0(m_ref_on_player_join, "on_player_join");
+}
+
+void Script::onPlayerLeave(Player *player)
+{
+	setPlayer(player);
+	runCb_0(m_ref_on_player_leave, "on_player_leave");
 }

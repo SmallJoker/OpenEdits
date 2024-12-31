@@ -21,7 +21,7 @@ env.event_handlers[1] = function(...)
 end
 
 if env.server then
-	env.server.on_player_join = function()
+	env.on_player_join = function()
 		print("JOIN", env.player:get_name())
 		local names = {}
 		for _, p in ipairs(env.server.get_players_in_world()) do
@@ -30,9 +30,13 @@ if env.server then
 		print("List of players: " .. table.concat(names, ", "))
 	end
 
-	env.server.on_player_leave = function()
+	env.on_player_leave = function()
 		print("LEAVE", env.player:get_name())
 	end
+end
+
+if env.server then
+	env.on_step = function(abstime) end
 end
 
 --[[

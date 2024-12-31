@@ -177,6 +177,9 @@ void Client::step(float dtime)
 		m_pos_send_timer.set(POSITION_SEND_INTERVAL);
 	}
 
+	if (m_script)
+		m_script->onStep((double)m_time / TIME_RESOLUTION);
+
 	// Timed gates update
 	while (world.get()) { // run once
 		uint8_t tile_new = (m_time      / TIME_RESOLUTION) % 10;

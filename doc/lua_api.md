@@ -25,11 +25,15 @@ Main entry point: `main.lua`
     * Includes detailed argument dumping
 
 
-### Environment API
+### Environment World API
 
 Namespace: `env.world`. Associated to the world of the currently
 active player of the callback.
 
+ * `get_id()` -> string
+    * Server only
+ * `select(id)` -> boolean
+    * Server only
  * `get_block(x, y)` -> `fg, tile, bg`
     * `x, y` (optional): if set to `nil`, the current player position is used.
  * `get_blocks_in_range(options, block_ids, PositionRange ...)`
@@ -55,6 +59,11 @@ active player of the callback.
     * `PositionRange` (optional): defines which blocks that are affected
         * arg 1: one of `env.world.PRT_*`
         * arg 2+: see `script_environment.cpp` / `Script::get_position_range`
+
+Environment-related callbacks:
+
+ * `.on_step(abstime)`
+    * `abstime` (number), absolute timestamp
 
 
 #### Script events
@@ -95,15 +104,18 @@ A `userdata` object.
        * `dir_x`, `dir_y` (number)
        * Note: `dir_(x|y)` may have any value range.
 
-
-### Server API
-
-Namespace: `env.server`. Only available for servers.
+Player-related callbacks in `env`:
 
  * `.on_player_join()`
     * Callback to overwrite at load time
  * `.on_player_leave()`
     * Callback to overwrite at load time
+
+
+### Server API
+
+Namespace: `env.server`. Only available for servers.
+
  * `.get_players_in_world()`
     * Returns a table of `PlayerRef` (ipairs).
 

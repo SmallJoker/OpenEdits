@@ -333,6 +333,14 @@ bool Script::loadFromFile(const std::string &filename)
 void Script::onScriptsLoaded()
 {
 	m_emgr->onScriptsLoaded();
+
+	lua_State *L = m_lua;
+
+	lua_getglobal(L, "env");
+	function_ref_from_field(L, -1, "on_step", m_ref_on_step);
+	function_ref_from_field(L, -1, "on_player_join", m_ref_on_player_join, false);
+	function_ref_from_field(L, -1, "on_player_leave", m_ref_on_player_leave, false);
+	lua_pop(L, 1); // env
 }
 
 void Script::setTestMode(const std::string &value)
@@ -375,4 +383,27 @@ int Script::l_require_asset(lua_State *L)
 		luaL_error(L, "not found");
 
 	return 0;
+}
+
+void Script::onStep(double abstime)
+{
+	if (m_ref_on_step < 0)
+		return; // not defined
+
+	lua_State *L = m_lua;
+	int top = lua_gettop(L);
+	lua_rawgeti(L, LUA_REGISTRYINDEX, m_ref_on_step);
+	luaL_checktype(L, -1, LUA_TFUNCTION);
+	lua_pushnumber(L, abstime);
+
+	// Execute!
+	if (lua_pcall(L, 1, 0, 0)) {
+		logger(LL_ERROR, "on_step failed: %s\n",
+			lua_tostring(L, -1)
+		);
+		lua_settop(L, top); // function + error msg
+		return;
+	}
+
+	lua_settop(L, top);
 }

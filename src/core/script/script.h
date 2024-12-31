@@ -71,6 +71,8 @@ protected:
 public:
 	virtual void onScriptsLoaded();
 
+	void onStep(double abstime);
+
 	void onBlockPlaced(bid_t block_id);
 	//void onBlockErased(bid_t block_id);
 
@@ -85,6 +87,7 @@ public:
 	/// Returns a valid value of BlockProperties::CollisionType
 	int onCollide(CollisionInfo ci);
 protected:
+	void runCb_0(int ref, const char *dbg);
 	void runBlockCb_0(int ref, const char *dbg);
 
 
@@ -98,6 +101,7 @@ protected:
 protected:
 	static int l_register_event(lua_State *L);
 	static int l_send_event(lua_State *L);
+
 	static int l_world_get_block(lua_State *L);
 	static int l_world_get_blocks_in_range(lua_State *L);
 	static int l_world_get_params(lua_State *L);
@@ -112,6 +116,8 @@ public:
 		*m_player = nullptr;
 		m_world = world;
 	}
+	void onPlayerJoin(Player *player);
+	void onPlayerLeave(Player *player);
 
 protected:
 	void pushCurrentPlayerRef();
@@ -131,4 +137,8 @@ protected:
 	ScriptEventManager *m_emgr = nullptr; // owned
 
 	bid_t m_last_block_id = Block::ID_INVALID;
+
+	int m_ref_on_step = -2; // LUA_NOREF
+	int m_ref_on_player_join = -2; // LUA_NOREF
+	int m_ref_on_player_leave = -2; // LUA_NOREF
 };

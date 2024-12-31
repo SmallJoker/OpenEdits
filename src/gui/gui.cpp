@@ -111,6 +111,8 @@ void Gui::run()
 	auto t_last = std::chrono::steady_clock::now();
 	getHandler(m_scenetype)->OnOpen();
 
+	constexpr float SERVER_TICK = 0.1f;
+	float server_tick_bank = 0;
 	while (m_device->run() && m_scenetype_next != SceneHandlerType::CTRL_QUIT) {
 		float dtime;
 		{
@@ -134,8 +136,13 @@ void Gui::run()
 
 		if (m_client)
 			m_client->step(dtime);
-		if (m_server)
-			m_server->step(dtime);
+		if (m_server) {
+			server_tick_bank += dtime;
+			if (server_tick_bank >= SERVER_TICK) {
+				m_server->step(server_tick_bank);
+				server_tick_bank = 0;
+			}
+		}
 
 		bool is_new_screen = (m_scenetype_next != m_scenetype);
 

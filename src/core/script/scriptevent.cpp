@@ -94,6 +94,7 @@ void ScriptEventManager::onScriptsLoaded()
 
 	lua_getglobal(L, "env");
 	{
+		// Same as `function_ref_from_field`
 		lua_getfield(L, -1, "event_handlers");
 		luaL_checktype(L, -1, LUA_TTABLE);
 
@@ -196,8 +197,14 @@ bool ScriptEventManager::runBatch(Packet &pkt, size_t &invocations) const
 		ScriptEvent se(event_id);
 		Packet *pkt_ptr = &pkt;
 		std::swap(se.data, pkt_ptr);
-		runLuaEventCallback(se);
-		std::swap(se.data, pkt_ptr);
+		try {
+			runLuaEventCallback(se);
+			std::swap(se.data, pkt_ptr);
+		} catch (...) {
+			std::swap(se.data, pkt_ptr);
+			// The packet offset is invalid now. Abort.
+			throw;
+		}
 	}
 	return true;
 }

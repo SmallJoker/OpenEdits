@@ -21,19 +21,17 @@ public:
 
 	// -------- World / events
 protected:
+	static int l_world_get_id(lua_State *L);
+	static int l_world_select(lua_State *L);
+
 	static int l_world_set_block(lua_State *L);
 	int implWorldSetTile(PositionRange range, bid_t block_id, int tile) override;
 
 
 	// -------- Player API
-public:
-	void onPlayerJoin(Player *player);
-	void onPlayerLeave(Player *player);
 protected:
 	static int l_get_players_in_world(lua_State *L);
 
-	int m_ref_on_player_join = -2; // LUA_NOREF
-	int m_ref_on_player_leave = -2; // LUA_NOREF
 	Server *m_server = nullptr;
 
 };

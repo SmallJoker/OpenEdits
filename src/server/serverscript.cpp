@@ -26,6 +26,8 @@ void ServerScript::initSpecifics()
 	}
 	{
 		lua_getfield(L, -1, "world");
+		field_set_function(L, "get_id", ServerScript::l_world_get_id);
+		field_set_function(L, "select", ServerScript::l_world_select);
 		field_set_function(L, "set_block", ServerScript::l_world_set_block);
 		lua_pop(L, 1); // world
 	}
@@ -34,14 +36,34 @@ void ServerScript::initSpecifics()
 
 void ServerScript::onScriptsLoaded()
 {
-	lua_State *L = m_lua;
+	Script::onScriptsLoaded();
+}
 
-	lua_getglobal(L, "env");
-	lua_getfield(L, -1, "server");
+// -------- World / events
 
-	function_ref_from_field(L, -1, "on_player_join", m_ref_on_player_join, false);
-	function_ref_from_field(L, -1, "on_player_leave", m_ref_on_player_leave, false);
-	lua_pop(L, 2); // env + server
+int ServerScript::l_world_get_id(lua_State *L)
+{
+	ServerScript *script = (ServerScript *)get_script(L);
+	const World *world = script->m_world;
+	if (world) {
+		lua_pushstring(L, world->getMeta().id.c_str());
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
+int ServerScript::l_world_select(lua_State *L)
+{
+	ServerScript *script = (ServerScript *)get_script(L);
+	const char *id = luaL_checkstring(L, 1);
+
+	auto world = script->m_server->getWorldNoLock(id);
+	if (world)
+		script->setWorld(world.get());
+
+	lua_pushboolean(L, !!world);
+	return 1;
 }
 
 static int read_blockparams(lua_State *L, int idx, BlockParams params)
@@ -110,40 +132,6 @@ int ServerScript::implWorldSetTile(PositionRange range, bid_t block_id, int tile
 	bool modified = m_world->setBlockTiles(range, block_id, tile);
 	lua_pushboolean(L, modified);
 	return 1;
-}
-
-static void run_0_args_callback(lua_State *L, int ref, const char *dbg)
-{
-	if (ref <= LUA_NOREF) {
-		logger(LL_DEBUG, "0 arg callback unavailable. name='%s'", dbg);
-		return;
-	}
-
-	int top = lua_gettop(L);
-	lua_rawgeti(L, LUA_REGISTRYINDEX, ref);
-	luaL_checktype(L, -1, LUA_TFUNCTION);
-	if (lua_pcall(L, 0, 0, 0)) {
-		logger(LL_ERROR, "%s failed: %s\n",
-			dbg,
-			lua_tostring(L, -1)
-		);
-		lua_settop(L, top); // function + error msg
-		return;
-	}
-
-	lua_settop(L, top);
-}
-
-void ServerScript::onPlayerJoin(Player *player)
-{
-	setPlayer(player);
-	run_0_args_callback(m_lua, m_ref_on_player_join, "on_player_join");
-}
-
-void ServerScript::onPlayerLeave(Player *player)
-{
-	setPlayer(player);
-	run_0_args_callback(m_lua, m_ref_on_player_leave, "on_player_leave");
 }
 
 int ServerScript::l_get_players_in_world(lua_State *L)

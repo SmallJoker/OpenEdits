@@ -9,6 +9,30 @@ using namespace ScriptUtils;
 
 static Logger &logger = script_logger;
 
+void Script::runCb_0(int ref, const char *dbg)
+{
+	if (ref <= LUA_NOREF) {
+		logger(LL_DEBUG, "0 arg callback unavailable. name='%s'", dbg);
+		return;
+	}
+
+	lua_State *L = m_lua;
+
+	int top = lua_gettop(L);
+	lua_rawgeti(L, LUA_REGISTRYINDEX, ref);
+	luaL_checktype(L, -1, LUA_TFUNCTION);
+	if (lua_pcall(L, 0, 0, 0)) {
+		logger(LL_ERROR, "%s failed: %s\n",
+			dbg,
+			lua_tostring(L, -1)
+		);
+		lua_settop(L, top); // function + error msg
+		return;
+	}
+
+	lua_settop(L, top);
+}
+
 void Script::runBlockCb_0(int ref, const char *dbg)
 {
 	if (ref <= LUA_NOREF)

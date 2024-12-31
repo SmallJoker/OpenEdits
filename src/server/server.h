@@ -26,7 +26,7 @@ public:
 
 	// ----------- Utility functions -----------
 	RemotePlayer *getPlayerNoLock(peer_t peer_id);
-	RefCnt<World> getWorldNoLock(std::string &id);
+	RefCnt<World> getWorldNoLock(const std::string &id);
 
 	std::vector<Player *> getPlayersNoLock(const World *world) override;
 
