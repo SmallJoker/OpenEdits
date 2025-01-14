@@ -56,7 +56,7 @@ void SceneConnect::draw()
 		auto texture = gui->getVideoDriver()->getTexture("assets/logo.png");
 		auto dim = texture->getOriginalSize();
 
-		auto *i_img = gui->addImage(texture, nopos, false, 0, -1, L"test test");
+		auto *i_img = gui->addImage(texture, nopos, false);
 		auto *g_img = root.add<WRAP>(1, 1, i_img);
 		g_img->margin = { 1, 1, 1, 1 };
 		g_img->expand = { 0, 0 };

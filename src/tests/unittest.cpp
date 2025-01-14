@@ -43,8 +43,8 @@ void unittest()
 	try
 #endif
 	{
+		//unittest_gui_layout(4); return;
 		unittest_mediamanager();
-		//unittest_gui_layout(3);
 
 		unittest_auth();
 		unittest_chatcommand();

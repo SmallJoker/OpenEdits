@@ -97,21 +97,22 @@ struct Table : public Element {
 		return dynamic_cast<T *>(idx.get());
 	}
 
-	Element *at(u16 x, u16 y) const
+	void set(u16 x, u16 y, Element *e)
 	{
 		checkDimensions(x, y);
-		return m_children[y * m_cellinfo[SIZE_X].size() + x].get();
+		auto &idx = m_children[y * m_cellinfo[SIZE_X].size() + x];
+		idx.reset(e);
 	}
 
 	CellInfo *col(u16 x)
 	{
-		checkDimensions(x, SIZE_X);
+		checkDimensions(x, 0);
 		return &m_cellinfo[SIZE_X][x];
 	}
 
 	CellInfo *row(u16 y)
 	{
-		checkDimensions(SIZE_X, y);
+		checkDimensions(0, y);
 		return &m_cellinfo[SIZE_Y][y];
 	}
 

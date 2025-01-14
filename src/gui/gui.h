@@ -36,6 +36,8 @@ class Client;
 struct ClientStartData;
 class Server;
 
+class GuiScript;
+
 class SceneHandler;
 class SceneConnect;
 class SceneLobby;
@@ -89,6 +91,7 @@ public:
 
 	// For use in SceneHandler
 	scene::ISceneManager *scenemgr = nullptr;
+	GuiScript *script = nullptr; // owned by Client
 	guilayout::Table *layout = nullptr;
 	gui::IGUIEnvironment *guienv = nullptr;
 	gui::IGUIFont *font = nullptr;

@@ -9,8 +9,8 @@ public:
 	ClientScript(BlockManager *bmgr) :
 		Script(bmgr, ST_CLIENT) {}
 
-	void initSpecifics() override;
-	void closeSpecifics() override;
+	virtual void initSpecifics() override;
+	virtual void closeSpecifics() override;
 
 	void setClient(Client *cli) { m_client = cli; }
 	void setMyPlayer(const Player *player) { m_my_player = player; }
@@ -20,10 +20,7 @@ public:
 protected:
 	int implWorldSetTile(PositionRange range, bid_t block_id, int tile) override;
 
-	static int l_gui_change_hud(lua_State *L);
-	static int l_gui_play_sound(lua_State *L);
-
-private:
+protected:
 	bool isMe() const { return *m_player == m_my_player; }
 	const Player *m_my_player = nullptr;
 

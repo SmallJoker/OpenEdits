@@ -108,6 +108,9 @@ struct BlockProperties {
 	inline bool haveOnIntersectOnce() const { return ref_intersect_once >= 0; }
 	inline bool haveOnIntersect()     const { return ref_on_intersect >= 0; }
 	inline bool haveOnCollide()       const { return ref_on_collide >= 0; }
+#if BUILD_CLIENT
+	int ref_gui_def = -2; // LUA_NOREF
+#endif
 };
 
 class BlockManager {

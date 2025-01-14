@@ -79,7 +79,7 @@ Client::~Client()
 
 // -------------- Public members -------------
 
-void Client::prepareScript(bool need_audiovisuals)
+void Client::prepareScript(ClientScript *script, bool need_audiovisuals)
 {
 	ASSERT_FORCED(!m_media && !m_script, "m_media or m_script double-init");
 
@@ -100,7 +100,7 @@ void Client::prepareScript(bool need_audiovisuals)
 
 	m_bmgr->setMediaMgr(m_media);
 
-	m_script = new ClientScript(m_bmgr);
+	m_script = script ? script : new ClientScript(m_bmgr);
 	m_script->setMediaMgr(m_media);
 	m_script->setClient(this);
 	ASSERT_FORCED(m_script->init(), "No future.");

@@ -32,12 +32,12 @@ static BlockID pull_blockid(lua_State *L, int idx)
 	return ret;
 }
 
-static int read_block_drawtype(lua_State *L, int idx)
+static BlockDrawType read_block_drawtype(lua_State *L, int idx)
 {
 	int type = luaL_checkint(L, idx);
 	if (type < 0 || type >= (int)BlockDrawType::Invalid)
 		luaL_error(L, "Invalid BlockDrawType value");
-	return type;
+	return (BlockDrawType)type;
 }
 
 // -------------- Script class functions -------------
@@ -92,12 +92,10 @@ int Script::l_register_pack(lua_State *L)
 	const char *name = check_field_string(L, 1, "name");
 
 	auto pack = std::make_unique<BlockPack>(name);
-
 	lua_getfield(L, 1, "blocks");
 	{
 		int table = lua_gettop(L);
-		lua_pushnil(L);
-		while (lua_next(L, table)){
+		for (lua_pushnil(L); lua_next(L, table); lua_pop(L, 1)) {
 			// key @ -2, value @ -1
 			(void)luaL_checkint(L, -2);
 
@@ -105,14 +103,13 @@ int Script::l_register_pack(lua_State *L)
 			// maybe add string indices later?
 
 			pack->block_ids.push_back(id.id);
-			lua_pop(L, 1); // value
 		}
 	}
-	lua_pop(L, 1); // table
+	lua_pop(L, 1); // blocks
 
-
+	luaL_checktype(L, 1, LUA_TTABLE);
 	lua_getfield(L, 1, "default_type");
-	pack->default_type = (BlockDrawType)read_block_drawtype(L, -1);
+	pack->default_type = read_block_drawtype(L, -1);
 	lua_pop(L, 1); // table
 
 	logger(LL_INFO, "register pack: %s\n", pack->name.c_str());
@@ -188,7 +185,7 @@ int Script::l_change_block(lua_State *L)
 			{
 				lua_getfield(L, -1, "type");
 				if (!lua_isnil(L, -1))
-					tiles[i].type = (BlockDrawType)read_block_drawtype(L, -1);
+					tiles[i].type = read_block_drawtype(L, -1);
 				else if (tiles[i].type == BlockDrawType::Invalid)
 					tiles[i].type = props->pack->default_type;
 				lua_pop(L, 1); // type
@@ -205,6 +202,20 @@ int Script::l_change_block(lua_State *L)
 		}
 	} // else: 1 tile with default type
 	lua_pop(L, 1);
+
+
+	// ---------- GUI
+
+#if BUILD_CLIENT
+	function_ref_from_field(L, 2, "gui_def", props->ref_gui_def, LUA_TTABLE);
+#endif
+	if (!BUILD_CLIENT) {
+		lua_getfield(L, 2, "gui_def");
+		if (!lua_isnil(L, -1))
+			luaL_checktype(L, -1, LUA_TTABLE);
+		lua_pop(L, 1);
+	}
+
 
 	// ---------- Other
 

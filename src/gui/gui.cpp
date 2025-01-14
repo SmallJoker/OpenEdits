@@ -4,6 +4,7 @@
 #include "core/blockmanager.h"
 #include "core/macros.h"
 #include "guilayout/guilayout_irrlicht.h"
+#include "guiscript.h"
 #include <chrono>
 #include <assert.h>
 // Scene handlers
@@ -330,7 +331,8 @@ bool Gui::connect(ClientStartData &init)
 	m_client = new Client(init);
 	m_client->setEventTarget(this);
 	setEventTarget(m_client);
-	m_client->prepareScript(true);
+	script = new GuiScript(g_blockmanager, guienv);
+	m_client->prepareScript(script, true);
 	m_client->connect();
 
 	setNextScene(SceneHandlerType::Loading);

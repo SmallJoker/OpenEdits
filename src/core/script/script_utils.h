@@ -45,7 +45,7 @@ namespace ScriptUtils {
 	}
 
 	void function_ref_from_field(lua_State *L, int idx, const char *field,
-			int &ref, bool required = false);
+			int &ref, int type = LUA_TFUNCTION);
 
 	const char *check_field_string(lua_State *L, int idx, const char *field);
 	lua_Integer check_field_int(lua_State *L, int idx, const char *field);

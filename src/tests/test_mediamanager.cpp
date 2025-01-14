@@ -65,7 +65,7 @@ static void test_with_script()
 
 	script.init();
 	script.setMediaMgr(&media);
-	script.setTestMode("media");
+	script.setTestMode("const media");
 	CHECK(script.loadFromAsset("unittest.lua"));
 }
 

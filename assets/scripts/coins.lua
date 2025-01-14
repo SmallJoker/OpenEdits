@@ -14,15 +14,27 @@ local blocks_coins = {
 				local px, py = env.player:get_pos()
 				world.set_tile(100, 1, world.PRT_ONE_BLOCK, px, py)
 				anyones_coins = anyones_coins + 1
-				if env.gui then
-					env.gui.play_sound("coin.mp3")
+				if gui then
+					gui.play_sound("coin.mp3")
 				end
 			end
 			-- env.world.event(42, can_predict)
 		end
 	},
 	{
-		id = 43,
+		id = 43, -- Coindoor
+		gui_def = {
+			-- root element
+			type = gui.ELMT_TABLE, grid = { 2, 2 }, fields = {
+				{ type = gui.ELMT_TEXT, text = "coins" },
+				{ type = gui.ELMT_NUMERIC, name = "coins", default = 2 },
+			},
+			values = { ["coins"] = 0 }, -- to be filled by engine
+			pre_place = function(values, id, ...)
+				-- must match the "params" type
+				gui.select_params(values.coins)
+			end,
+		}
 		params = env.PARAMS_TYPE_U8,
 		tiles = { { type = env.DRAW_TYPE_SOLID }, { type = env.DRAW_TYPE_SOLID, alpha = true } },
 		on_collide = function(bx, by, is_x)

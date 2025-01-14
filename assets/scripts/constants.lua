@@ -32,18 +32,26 @@ end
 do
 	-- types.h / PositionRange::Type
 	local w = env.world
-	w.PRT_ONE_BLOCK    = 0x00
-	w.PRT_AREA         = 0x01
-	w.PRT_CIRCLE       = 0x02
-	w.PRT_ENTIRE_WORLD = 0x03
+	w.PRT_ONE_BLOCK    = 0
+	w.PRT_AREA         = 1
+	w.PRT_CIRCLE       = 2
+	w.PRT_ENTIRE_WORLD = 3
 
 	w.ID_ERASE_BACKGROUND = 0x8000
 end
 
-if env.gui then
+-- "env.gui": backwards compatibility
+gui = gui or env.gui or {}
+
+
+if gui then
 	-- hudelement.h / HudElement::Type
-	local h = env.gui
-	h.HUDT_TEXT = 0
+	gui.HUDT_TEXT = 0
+
+	-- guiscript.cpp
+	gui.ELMT_TABLE   = 1
+	gui.ELMT_TEXT    = 5
+	gui.ELMT_NUMERIC = 6
 end
 
 local old_register = env.register_event

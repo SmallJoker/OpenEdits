@@ -27,7 +27,7 @@ function feedback(str)
 	env.test_feedback = env.test_feedback .. (str .. ";")
 end
 
-if env.test_mode:find("media") then
+if env.test_mode:find("const") then
 	-- Function requires media manager to be present!
 	env.include("constants.lua")
 end
@@ -187,4 +187,21 @@ env.change_block(102, {
 		print(dump(list))
 		feedback("called_102 " .. #list .. " " .. #list[1] .. " " .. #list[2])
 	end
+})
+
+-- C++: setup_guiscript
+-- Display a Lua-provided GUI
+env.change_block(103, {
+	gui_def = {
+		-- root element
+		type = gui.ELMT_TABLE, grid = { 2, 2 }, fields = {
+			{ type = gui.ELMT_TEXT, text = "coins" },
+			{ type = gui.ELMT_NUMERIC, name = "coins", default = 2 },
+		},
+		values = { ["coins"] = 0 }, -- to be filled by engine
+		pre_place = function(values, id, ...)
+			-- must match the "params" type
+			gui.select_params(values.coins)
+		end,
+	}
 })

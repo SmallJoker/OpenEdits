@@ -268,6 +268,33 @@ static void test_layout_flexbox_calc()
 	fprintf(stderr, "TODO: test_layout_flexbox_calc\n");
 }
 
+// ---------------- Script integration ----------------
+
+#include "core/blockmanager.h"
+#include "client/clientmedia.h"
+#include "gui/guiscript.h"
+
+static Element *setup_guiscript(gui::IGUIEnvironment *guienv)
+{
+	// similar to test_mediamanger.h / test_with_script
+	static Element *e;
+
+	BlockManager bmgr;
+
+	ClientMedia media;
+	media.indexAssets();
+
+	GuiScript script(&bmgr, guienv);
+	script.init();
+	script.setMediaMgr(&media);
+	script.setTestMode("const gui");
+	CHECK(script.loadFromAsset("unittest.lua"));
+
+	e = script.getLayout(103).release();
+	return e;
+}
+
+
 // ---------------- Main test function ----------------
 
 void unittest_gui_layout(int which)
@@ -310,7 +337,12 @@ void unittest_gui_layout(int which)
 			root = setup_tabcontrol();
 			suffix = L"Tab control (Irrlicht)";
 			break;
+		case 4:
+			root = setup_guiscript(guienv);
+			suffix = L"GuiScript test";
+			break;
 	}
+	CHECK(root);
 	device->setWindowCaption((std::wstring(L"Layout demo") + L" - " + suffix).c_str());
 
 	bool is_new_screen = true;
