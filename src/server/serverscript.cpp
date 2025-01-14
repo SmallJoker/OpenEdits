@@ -66,36 +66,6 @@ int ServerScript::l_world_select(lua_State *L)
 	return 1;
 }
 
-static int read_blockparams(lua_State *L, int idx, BlockParams params)
-{
-	using Type = BlockParams::Type;
-	switch (params.getType()) {
-		case Type::None:
-			return 0;
-		case Type::STR16:
-			{
-				size_t len;
-				const char *ptr = luaL_checklstring(L, idx, &len);
-				params.text->assign(ptr, len);
-			}
-			return 1;
-		case Type::U8:
-			params.param_u8 = luaL_checkint(L, idx);
-			return 1;
-		case Type::U8U8U8:
-			params.teleporter.rotation = luaL_checkint(L, idx);
-			params.teleporter.id       = luaL_checkint(L, idx + 1);
-			params.teleporter.dst_id   = luaL_checkint(L, idx + 2);
-			return 3;
-		case Type::INVALID:
-			break;
-		// DO NOT USE default CASE
-	}
-
-	luaL_error(L, "unhandled type=%d", params.getType());
-	return 0;
-}
-
 int ServerScript::l_world_set_block(lua_State *L)
 {
 	ServerScript *script = (ServerScript *)get_script(L);
@@ -111,7 +81,7 @@ int ServerScript::l_world_set_block(lua_State *L)
 		bu.setErase(block_id);
 	} else {
 		bu.set(block_id);
-		read_blockparams(L, 4, bu.params);
+		script->readBlockParams(4, bu.params);
 	}
 
 	// See also: `Server::pkt_PlaceBlock`

@@ -6,6 +6,7 @@
 #include "core/script/script_utils.h"
 #include "guilayout/guilayout_irrlicht.h"
 // Irrlicht includes
+#include <IEventReceiver.h> // SEvent
 #include <IGUIEditBox.h>
 #include <IGUIStaticText.h>
 
@@ -19,7 +20,7 @@ enum GUIElementType {
 	ELMT_TABLE   = 1,
 
 	ELMT_TEXT    = 5,
-	ELMT_NUMERIC = 6,
+	ELMT_INPUT   = 6,
 };
 
 void GuiScript::initSpecifics()
@@ -33,7 +34,7 @@ void GuiScript::initSpecifics()
 	lua_newtable(L);
 	FIELD_SET_FUNC(gui_, change_hud);
 	FIELD_SET_FUNC(gui_, play_sound);
-	// TODO: implement `select_params`
+	FIELD_SET_FUNC(gui_, select_params);
 	lua_setglobal(L, "gui");
 
 #undef FIELD_SET_FUNC
@@ -43,6 +44,52 @@ void GuiScript::closeSpecifics()
 {
 	ClientScript::closeSpecifics();
 }
+
+void GuiScript::linkWithGui(BlockParams *bp)
+{
+	m_block_params = bp;
+}
+
+bool GuiScript::OnEvent(const SEvent &e)
+{
+	// TODO: find elements by name
+	if (e.EventType == EET_GUI_EVENT && e.GUIEvent.EventType == gui::EGET_EDITBOX_CHANGED) {
+		auto ie = e.GUIEvent.Caller;
+		auto name = ie->getName();
+		// find out whether we should listen
+		auto it = m_fields.find(name);
+		if (it == m_fields.end() || !m_props)
+			goto nomatch;
+
+		core::stringc ctext;
+		wStringToUTF8(ctext, ie->getText());
+		// TODO: Does this need a mutex?
+		lua_State *L = m_lua;
+
+		// Call "on_input" and retrieve the new value from the "values" table
+		int top = lua_gettop(L);
+		lua_rawgeti(L, LUA_REGISTRYINDEX, CUSTOM_RIDX_TRACEBACK);
+
+		lua_rawgeti(L, LUA_REGISTRYINDEX, m_props->ref_gui_def);
+		lua_getfield(L, -1, "on_input"); // function
+		lua_getfield(L, -2, "values"); // arg 1
+		lua_pushstring(L, ie->getName()); // arg 2
+		lua_pushstring(L, ctext.c_str()); // arg 3
+
+		int status = lua_pcall(L, 3, 0, top + 1);
+		if (status != 0) {
+			const char *err = lua_tostring(L, -1);
+			logger(LL_ERROR, "%s", err);
+		}
+		lua_settop(L, top);
+
+		updateInputValue(ie);
+	}
+
+nomatch:
+	return false;
+}
+
 
 /// `true` if OK
 static bool read_u16_array(lua_State *L, const char *field, u16 *ptr, size_t len)
@@ -80,15 +127,47 @@ done:
 	return true;
 }
 
-#include "tests/unittest_internal.h"
+void GuiScript::updateInputValue(gui::IGUIElement *ie)
+{
+	logger(LL_INFO, "%s, name=%s", __func__, ie->getName());
+
+	lua_State *L = m_lua;
+	lua_rawgeti(L, LUA_REGISTRYINDEX, m_props->ref_gui_def);
+	lua_getfield(L, -1, "values");
+	lua_remove(L, -2); // "gui_def"
+	lua_getfield(L, -1, ie->getName());
+	lua_remove(L, -2); // "values"
+
+	const char *text = lua_tostring(L, -1);
+	if (text) {
+		core::stringw wtext;
+		core::utf8ToWString(wtext, text);
+		ie->setText(wtext.c_str());
+	}
+	lua_pop(L, 1);
+}
+
 int GuiScript::gui_read_element(lua_State *L)
 {
 	MESSY_CPP_EXCEPTIONS_START
 	GuiScript *script = static_cast<GuiScript *>(get_script(L));
+	if (script->m_elements.empty()) {
+		// Root table --> check whether the format is OK
+		luaL_checktype(L, -1, LUA_TTABLE);
+
+		lua_getfield(L, -1, "values");
+		luaL_checktype(L, -1, LUA_TTABLE);
+		lua_pop(L, 1);
+
+		lua_getfield(L, -1, "on_input");
+		luaL_checktype(L, -1, LUA_TFUNCTION);
+		lua_pop(L, 1);
+	}
 
 	int type = check_field_int(L, -1, "type");
 	logger(LL_DEBUG, "read element T=%d", type);
-	std::unique_ptr<Element> e;
+
+	auto &e = script->m_elements.emplace_back();
 
 	switch ((GUIElementType)type) {
 	case ELMT_TABLE:
@@ -110,7 +189,7 @@ int GuiScript::gui_read_element(lua_State *L)
 				u16 x = i - y * grid[1];
 
 				gui_read_element(L);
-				t->set(x, y, script->m_elements.back().release());
+				t->get(x, y) = std::move(script->m_elements.back());
 				script->m_elements.pop_back();
 			}
 			lua_pop(L, 1); // fields
@@ -122,18 +201,20 @@ int GuiScript::gui_read_element(lua_State *L)
 			core::stringw wtext;
 			core::utf8ToWString(wtext, text);
 			auto ie = script->m_guienv->addStaticText(wtext.c_str(), core::recti());
-			ie->setOverrideColor(0xFFFFFFFF);
 			e.reset(new IGUIElementWrapper(ie));
+			ie->setOverrideColor(0xFFFFFFFF);
 		}
 		break;
-	case ELMT_NUMERIC:
+	case ELMT_INPUT:
 		{
 			const char *name = check_field_string(L, -1, "name");
-			// TOOD: retrieve current from "values" table
 
 			auto ie = script->m_guienv->addEditBox(L"", core::recti());
 			e.reset(new IGUIElementWrapper(ie));
 			ie->setName(name);
+			script->m_fields.insert(name);
+
+			script->updateInputValue(ie);
 		}
 		break;
 	default:
@@ -143,53 +224,48 @@ int GuiScript::gui_read_element(lua_State *L)
 	read_u16_array(L, "margin", e->margin.data(), e->margin.size());
 	read_u16_array(L, "expand", e->expand.data(), e->expand.size());
 	read_u16_array(L, "min_size", e->min_size.data(), e->min_size.size());
-
-	script->m_elements.push_back(std::move(e));
-
 	return 0;
 	MESSY_CPP_EXCEPTIONS_END
 }
 
 EPtr GuiScript::getLayout(bid_t block_id)
 {
-	auto props = m_bmgr->getProps(block_id);
-	if (!props || props->ref_gui_def < 0)
+	m_elements.clear();
+	m_fields.clear();
+
+	m_props = m_bmgr->getProps(block_id);
+	if (!m_props || m_props->ref_gui_def < 0)
 		return nullptr; // no GUI
 
 	lua_State *L = m_lua;
 
-	m_elements.clear();
 
 	int top = lua_gettop(L);
 	lua_rawgeti(L, LUA_REGISTRYINDEX, CUSTOM_RIDX_TRACEBACK);
-	luaL_checktype(L, -1, LUA_TFUNCTION);
 	int errorhandler = lua_gettop(L);
 
 	// Function
 	lua_pushcfunction(L, gui_read_element);
 	// Argument 1
-	lua_rawgeti(L, LUA_REGISTRYINDEX, props->ref_gui_def);
-	luaL_checktype(L, -1, LUA_TTABLE);
+	lua_rawgeti(L, LUA_REGISTRYINDEX, m_props->ref_gui_def);
 
 	int status = lua_pcall(L, 1, 0, errorhandler);
 	if (status != 0) {
 		const char *err = lua_tostring(L, -1);
 		logger(LL_ERROR, "%s failed: %s", __func__, err);
+		m_elements.clear();
+		m_fields.clear();
 	}
+
 	lua_settop(L, top);
-
-	MESSY_CPP_EXCEPTIONS_START {
-		// read "values"
-		// read "pre_place"
-	} MESSY_CPP_EXCEPTIONS_END
-
-	lua_pop(L, 1); // gui_def table
 
 	if (m_elements.empty())
 		return nullptr;
 
 	return std::move(m_elements.front());
 }
+
+// -------------- Static Lua functions -------------
 
 int GuiScript::l_gui_change_hud(lua_State *L)
 {
@@ -242,6 +318,22 @@ int GuiScript::l_gui_play_sound(lua_State *L)
 	GameEvent e(GameEvent::C2G_SOUND_PLAY);
 	e.text = new std::string(sound_name);
 	script->m_client->sendNewEvent(e);
+
+	return 0;
+	MESSY_CPP_EXCEPTIONS_END
+}
+
+int GuiScript::l_gui_select_params(lua_State *L)
+{
+	MESSY_CPP_EXCEPTIONS_START
+	GuiScript *script = static_cast<GuiScript *>(get_script(L));
+	if (!script->m_props)
+		return 0; // invalid use
+
+	BlockParams bp(script->m_props->paramtypes);
+	script->readBlockParams(1, bp);
+	if (script->m_block_params)
+		*script->m_block_params = bp;
 
 	return 0;
 	MESSY_CPP_EXCEPTIONS_END

@@ -192,16 +192,24 @@ env.change_block(102, {
 -- C++: setup_guiscript
 -- Display a Lua-provided GUI
 env.change_block(103, {
+	params = env.PARAMS_TYPE_U8,
 	gui_def = {
 		-- root element
 		type = gui.ELMT_TABLE, grid = { 2, 2 }, fields = {
-			{ type = gui.ELMT_TEXT, text = "coins" },
-			{ type = gui.ELMT_NUMERIC, name = "coins", default = 2 },
+			[1] = { type = gui.ELMT_TEXT, text = "coins" },
+			[2] = { type = gui.ELMT_INPUT, name = "mytext" },
+			[4] = { type = gui.ELMT_INPUT, name = "coins" },
 		},
-		values = { ["coins"] = 0 }, -- to be filled by engine
-		pre_place = function(values, id, ...)
+		values = { ["mytext"] = "hello world", ["coins"] = 0 },
+		on_input = function(values, k, v)
+			if k == "coins" then
+				v = tonumber(v) and v or values[k]
+			end
+			values[k] = v
 			-- must match the "params" type
 			gui.select_params(values.coins)
+			print("on_input", k, v)
 		end,
+		-- on_copy = function() .... (Ctrl + RMB)
 	}
 })

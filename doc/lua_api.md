@@ -122,9 +122,25 @@ Namespace: `env.server`. Only available for servers.
 
 ### GUI API
 
-Namespace: `env.gui`. Only available for clients.
+Namespace: `gui`. Only available for GUI clients.
 
  * `change_hud(id, HUD Definition)`
+ * `play_sound(asset_name)`
+    * Depends on `env.require_asset`
+ * `select_params(...)`
+    * `...`: Block Parameters (variable)
+    * Generally to be used in the `gui_def.on_input` callback
+
+
+Block Definition field `gui_def`:
+
+ * (GUI Element Definition)
+ * `values` (table): default values of the GUI elements
+ * `on_input(values, k, v)`
+    * Executed upon value change of a GUI element
+    * `values` (table): reference to `gui_def.values`
+    * `k` (string): changed GUI element name
+    * `v` (variable): value of the GUI element
 
 HUD Definition: (table)
 
@@ -133,6 +149,8 @@ HUD Definition: (table)
 
 
 ### Registration
+
+These functions must be run at load time.
 
  * `env.include(asset_name, [scope])`
     * Adds another script to the required assets and executes it.
@@ -168,6 +186,7 @@ Pack Definition: (table)
 
 Block Definition - regular fields:
 
+ * `gui_def`: See [GUI API]
  * `params` (optional, number)
     * Defines what kind of data can be saved for this block.
     * Warning: Changing this type will truncate existing saved data.

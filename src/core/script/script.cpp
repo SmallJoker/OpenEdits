@@ -81,6 +81,7 @@ static const char *G_WHITELIST[] = {
 	"pcall",
 	"xpcall",
 	"select",
+	"tonumber",
 	"tostring",
 	"type",
 	"unpack",

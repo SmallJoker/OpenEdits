@@ -5,6 +5,7 @@
 
 #include "gui/guilayout/guilayout.h"
 #include "gui/guilayout/guilayout_irrlicht.h"
+#include "gui/guiscript.h"
 #include "core/utils.h"
 #include <chrono>
 // Irrlicht includes
@@ -28,12 +29,15 @@ using namespace guilayout;
 // ------------------- Irrlicht env -------------------
 
 static IrrlichtDevice *device;
+static GuiScript *script;
 
 struct UnittestEventReceiver : public IEventReceiver {
 	~UnittestEventReceiver() {}
 
 	bool OnEvent(const SEvent &event) override
 	{
+		if (script)
+			return script->OnEvent(event);
 		return false;
 	}
 };
@@ -271,26 +275,48 @@ static void test_layout_flexbox_calc()
 // ---------------- Script integration ----------------
 
 #include "core/blockmanager.h"
+#include "core/world.h"
 #include "client/clientmedia.h"
-#include "gui/guiscript.h"
 
 static Element *setup_guiscript(gui::IGUIEnvironment *guienv)
 {
 	// similar to test_mediamanger.h / test_with_script
-	static Element *e;
+	static Element *e; // never freed
+	static BlockManager *bmgr; // never freed (needed by GUI callbacks)
 
-	BlockManager bmgr;
+	bmgr = new BlockManager();
 
 	ClientMedia media;
 	media.indexAssets();
 
-	GuiScript script(&bmgr, guienv);
-	script.init();
-	script.setMediaMgr(&media);
-	script.setTestMode("const gui");
-	CHECK(script.loadFromAsset("unittest.lua"));
+	script = new GuiScript(bmgr, guienv);
+	script->hide_global_table = false;
+	script->init();
+	script->setMediaMgr(&media);
+	script->setTestMode("const gui");
+	CHECK(script->loadFromAsset("unittest.lua"));
 
-	e = script.getLayout(103).release();
+	auto props = bmgr->getProps(103);
+	e = script->getLayout(props->id).release();
+
+	BlockParams bp(props->paramtypes);
+	script->linkWithGui(&bp);
+	{
+		// Test coin input box --> `on_input` callback
+		auto eww = (IGUIElementWrapper *)((Table *)e)->get(1, 1).get();
+		CHECK(eww);
+
+		eww->getElement()->setText(L"98");
+
+		SEvent ev;
+		ev.EventType = EET_GUI_EVENT;
+		ev.GUIEvent.EventType = gui::EGET_EDITBOX_CHANGED;
+		ev.GUIEvent.Caller = eww->getElement();
+		ev.GUIEvent.Element = nullptr;
+		script->OnEvent(ev);
+	}
+	CHECK(bp.param_u8 == 98);
+
 	return e;
 }
 
@@ -380,6 +406,7 @@ void unittest_gui_layout(int which)
 
 	root->clear();
 	guienv->clear();
+	delete script;
 	puts("GUI: Terminated properly.");
 }
 

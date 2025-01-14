@@ -4,6 +4,7 @@
 #include "core/types.h" // bid_t
 #include <string>
 
+struct BlockParams;
 struct BlockProperties;
 struct lua_State;
 struct ScriptEvent;
@@ -94,6 +95,10 @@ protected:
 	// -------- World / events
 protected:
 	static void get_position_range(lua_State *L, int idx, PositionRange &range);
+
+	/// returns how many values were read
+	int readBlockParams(int idx, BlockParams &params);
+
 
 	virtual int implWorldSetTile(PositionRange range, bid_t block_id, int tile) = 0;
 

@@ -51,7 +51,7 @@ if gui then
 	-- guiscript.cpp
 	gui.ELMT_TABLE   = 1
 	gui.ELMT_TEXT    = 5
-	gui.ELMT_NUMERIC = 6
+	gui.ELMT_INPUT   = 6
 end
 
 local old_register = env.register_event

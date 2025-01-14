@@ -97,11 +97,10 @@ struct Table : public Element {
 		return dynamic_cast<T *>(idx.get());
 	}
 
-	void set(u16 x, u16 y, Element *e)
+	std::unique_ptr<Element> &get(u16 x, u16 y)
 	{
 		checkDimensions(x, y);
-		auto &idx = m_children[y * m_cellinfo[SIZE_X].size() + x];
-		idx.reset(e);
+		return m_children[y * m_cellinfo[SIZE_X].size() + x];
 	}
 
 	CellInfo *col(u16 x)
