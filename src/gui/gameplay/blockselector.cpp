@@ -3,6 +3,9 @@
 
 #include "core/blockmanager.h"
 #include "core/world.h" // BlockUpdate
+#include "gui/guiscript.h"
+#include "gui/guilayout/guilayout.h"
+// Irrlicht includes
 #include <IGUIButton.h>
 #include <IGUIEditBox.h>
 #include <IGUIEnvironment.h>
@@ -16,6 +19,7 @@ enum ElementId : int {
 	ID_SHOWMORE = 320, // [+] [-] button
 	ID_TabControl,
 	ID_SPECIFIC_POPUPS_START,
+		ID_ScriptElements,
 		ID_BoxCoinDoor,
 		ID_BoxNote,
 		ID_TabTeleporter,
@@ -102,6 +106,43 @@ gui::IGUIEditBox *SceneBlockSelector::createInputBox(const SEvent &e, s32 id, bo
 	m_gui->setFocus(element);
 
 	return element;
+}
+
+void SceneBlockSelector::toggleScriptElements(const SEvent &e)
+{
+	GuiScript *script = m_gameplay->getGUI()->script;
+	if (!script)
+		return;
+
+	auto elem = m_showmore->getElementFromId(ID_ScriptElements, true);
+	if (elem) {
+		script->closeGUI();
+		elem->remove();
+	}
+	auto skin = m_gui->getSkin();
+	video::SColor color(skin->getColor(gui::EGDC_3D_FACE));
+
+	auto tab = m_gui->addTab(core::recti(), e.GUIEvent.Caller, ID_ScriptElements);
+	tab->setBackgroundColor(color);
+	tab->setDrawBackground(true);
+	tab->setNotClipped(true);
+
+	auto *le_root = script->openGUI(m_selected_bid, tab);
+	if (!le_root) {
+		// No GUI
+		tab->remove();
+		return;
+	}
+	// TODO: implement le_root->getMinSize(false, false);
+
+	core::recti rect_tab(
+		core::vector2di(-BTN_SIZE.Width * 2.5f, BTN_SIZE.Height + 2),
+		core::dimension2di(BTN_SIZE.Width * 5, BTN_SIZE.Height * 3)
+	);
+	tab->setRelativePosition(rect_tab);
+
+	le_root->start({0,0}, {0,0}); // no-op args
+	// TODO: move to class member?
 }
 
 void SceneBlockSelector::toggleCoinBox(const SEvent &e)
@@ -272,6 +313,11 @@ bool SceneBlockSelector::OnEvent(const SEvent &e)
 	if (!m_enabled)
 		return false;
 
+	if (m_gameplay->getGUI()->script) {
+		if (m_gameplay->getGUI()->script->OnEvent(e))
+			return true; // handled
+	}
+
 	if (e.EventType == EET_MOUSE_INPUT_EVENT) {
 		switch (e.MouseInput.Event) {
 			case EMIE_LMOUSE_PRESSED_DOWN:
@@ -344,6 +390,7 @@ bool SceneBlockSelector::OnEvent(const SEvent &e)
 			if (!selectBlockId(id - ID_SELECTOR_0, false))
 				return false;
 
+			toggleScriptElements(e);
 			toggleCoinBox(e);
 			toggleNoteBox(e);
 			toggleTeleporterBox(e);

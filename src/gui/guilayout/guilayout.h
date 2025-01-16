@@ -30,8 +30,10 @@ struct Element {
 	DISABLE_COPY(Element)
 
 	virtual ~Element() = default;
-	virtual void clear() {} // for containers only: drop and clear m_children
-	virtual void doRecursive(std::function<bool(Element *)> callback) {}
+
+	/// for containers only
+	virtual void clear() { m_children.clear(); }
+	void doRecursive(std::function<bool(Element *)> callback);
 
 	u16_x4 margin {}; //< outer springs to space/dock elements (U,R,D,L)
 	u16_x2 expand {10, 10}; //< inner springs to enlarge elements (x,y) = padding / 2
@@ -56,6 +58,8 @@ protected:
 
 	// Populated after tryFitElements()
 	u16 m_wrapped_pos = 0; //< for FlexBox: next line position (X or Y)
+
+	std::vector<std::unique_ptr<Element>> m_children;
 };
 
 struct Table : public Element {
@@ -77,8 +81,6 @@ struct Table : public Element {
 		m_cellinfo[SIZE_X].clear();
 		m_cellinfo[SIZE_Y].clear();
 	}
-
-	void doRecursive(std::function<bool(Element *)> callback) override;
 
 	void setSize(u16 x, u16 y)
 	{
@@ -133,7 +135,6 @@ private:
 	void spreadCell(Element *prim, u16 num, Size dim);
 
 	std::vector<CellInfo> m_cellinfo[2];
-	std::vector<std::unique_ptr<Element>> m_children;
 	u16 m_total_weight_cell[2]; // after getMinSize()
 
 	bool m_scrollbars[2] {};
@@ -143,13 +144,6 @@ private:
 struct FlexBox : public Element {
 
 	virtual ~FlexBox() = default;
-
-	void clear() override
-	{
-		m_children.clear();
-	}
-
-	void doRecursive(std::function<bool(Element *)> callback) override;
 
 	template <typename T, typename ... Args>
 	T *add(Args &&... args)
@@ -183,7 +177,6 @@ private:
 	void getMinSize(bool shrink_x, bool shrink_y) override;
 	void spread(Element &box, SpreadData &d, Size i_width);
 
-	std::vector<std::unique_ptr<Element>> m_children;
 	bool m_scrollbars[2] {};
 	u16 m_scroll_offset[2] {};
 };

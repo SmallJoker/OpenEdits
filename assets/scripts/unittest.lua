@@ -200,6 +200,7 @@ env.change_block(103, {
 			[2] = { type = gui.ELMT_INPUT, name = "mytext" },
 			[4] = { type = gui.ELMT_INPUT, name = "coins" },
 		},
+		focus = "coins",
 		values = { ["mytext"] = "hello world", ["coins"] = 0 },
 		on_input = function(values, k, v)
 			if k == "coins" then

@@ -22,7 +22,7 @@ constexpr u16 SCROLLBAR_SIZE = 24;
 	#define DBG_TABLE(...) do {} while(0)
 #endif
 
-void Table::doRecursive(std::function<bool(Element *)> callback)
+void Element::doRecursive(std::function<bool(Element *)> callback)
 {
 	if (!callback(this))
 		return;
@@ -32,6 +32,7 @@ void Table::doRecursive(std::function<bool(Element *)> callback)
 			e->doRecursive(callback);
 	}
 }
+
 
 void Table::start(u16_x2 pos, u16_x2 size)
 {
@@ -210,17 +211,6 @@ void Table::spreadCell(Element *e, u16 num, Size dim)
 	e->pos[dir_R] =
 		+ fixed_offset // static offset
 		+ dynamic_space * weight_sum / total_springs;
-}
-
-void FlexBox::doRecursive(std::function<bool(Element *)> callback)
-{
-	if (!callback(this))
-		return;
-
-	for (auto &e : m_children) {
-		if (e.get())
-			e->doRecursive(callback);
-	}
 }
 
 

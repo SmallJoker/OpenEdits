@@ -11,8 +11,14 @@
 	#define PRINT_DBG(...) do {} while(0)
 #endif
 
-
 namespace guilayout {
+
+namespace {
+	class Spoofed : public gui::IGUIElement {
+	public:
+		gui::IGUIEnvironment *getEnv() { return Environment; }
+	};
+}
 
 IGUIElementWrapper::IGUIElementWrapper(gui::IGUIElement *elem)
 {
@@ -76,6 +82,20 @@ void IGUIElementWrapper::setElement(gui::IGUIElement *elem)
 	}
 }
 
+void IGUIElementWrapper::start(u16_x2 pos, u16_x2 size)
+{
+	if (!m_element)
+		return;
+
+	core::recti rect = m_element->getRelativePosition();
+	for (auto &e : m_children) {
+		e->start(
+			{0, 0},
+			{(u16)rect.getWidth(), (u16)rect.getHeight()}
+		);
+	}
+}
+
 void IGUIElementWrapper::updatePosition()
 {
 	core::recti rect {
@@ -119,15 +139,20 @@ void IGUIElementWrapper::updatePosition()
 	}
 }
 
-void IGUIElementWrapper::doRecursive(std::function<bool(Element *)> callback)
+IGUIElementWrapper *IGUIElementWrapper::find_wrapper(Element *e, const gui::IGUIElement *ie)
 {
-	if (!callback(this))
-		return;
+	if (!e)
+		return nullptr;
 
-	for (auto &e : m_children) {
-		if (e.get())
-			e->doRecursive(callback);
-	}
+	IGUIElementWrapper *ptr = nullptr;
+	e->doRecursive([ie, &ptr] (Element *e_raw) -> bool {
+		if (auto e = dynamic_cast<IGUIElementWrapper *>(e_raw)) {
+			if (e->m_element == ie)
+				ptr = e;
+		}
+		return !ptr;
+	});
+	return ptr;
 }
 
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(arr[0]))
@@ -268,13 +293,6 @@ void IGUIElementWrapper::draw_wireframe(Element *e, video::IVideoDriver *driver,
 	};
 
 	e->doRecursive(drawfunc);
-}
-
-namespace {
-	class Spoofed : public gui::IGUIElement {
-	public:
-		gui::IGUIEnvironment *getEnv() { return Environment; }
-	};
 }
 
 void IGUIElementWrapper::setTextlike(bool use_get_text)

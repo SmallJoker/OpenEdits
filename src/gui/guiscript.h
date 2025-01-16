@@ -16,10 +16,11 @@ namespace irr {
 
 namespace guilayout {
 	struct Element;
+	struct IGUIElementWrapper;
 }
 
 struct BlockParams;
-class BlockProperties;
+struct BlockProperties;
 
 using namespace irr;
 typedef std::unique_ptr<guilayout::Element> EPtr;
@@ -35,8 +36,9 @@ public:
 	void linkWithGui(BlockParams *bp);
 	bool OnEvent(const SEvent &e);
 
-	// root element
-	EPtr getLayout(bid_t block_id);
+	// Opens a GUI. Close with `Block::ID_INVALD`.
+	guilayout::Element *openGUI(bid_t block_id, gui::IGUIElement *parent);
+	void closeGUI() { openGUI(Block::ID_INVALID, nullptr); }
 
 private:
 	void updateInputValue(gui::IGUIElement *ie);
@@ -51,7 +53,11 @@ private:
 	BlockParams *m_block_params = nullptr;
 
 	// Temporary
+	std::list<EPtr> m_le_stack; //< temporary for layout
+	std::list<gui::IGUIElement *> m_ie_stack; //< for relative positions and rough tab order
+	std::string m_focus; //< name of the focussed element
+
+	// Until the GUI is closed
 	const BlockProperties *m_props = nullptr;
-	std::list<EPtr> m_elements; // stack of GUI elements
-	std::set<std::string> m_fields; // what to listen for
+	EPtr m_le_root = nullptr; //< currently open element
 };

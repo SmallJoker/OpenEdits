@@ -36,6 +36,8 @@ public:
 	// For Minimap
 	core::recti getDrawArea() { return m_draw_area; }
 
+	Gui *getGUI() { return m_gui; }
+
 	video::ITexture *generateTexture(const std::string &text, u32 color = 0xFFFFFFFF, u32 bgcolor = 0xFF000000);
 
 	/// returns true on success

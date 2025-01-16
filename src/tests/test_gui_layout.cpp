@@ -208,13 +208,15 @@ static Element *setup_tabcontrol()
 
 // -------------- Basic calculation test --------------
 
-class NopElement : public Element {
-public:
-	void updatePosition() override
-	{
-		// nop
-	}
-};
+namespace {
+	class NopElement : public Element {
+	public:
+		void updatePosition() override
+		{
+			// nop
+		}
+	};
+}
 
 static void test_layout_table_calc()
 {
@@ -296,14 +298,34 @@ static Element *setup_guiscript(gui::IGUIEnvironment *guienv)
 	script->setTestMode("const gui");
 	CHECK(script->loadFromAsset("unittest.lua"));
 
+	gui::IGUIElement *ie_parent = nullptr;
+
+	if (1) {
+		core::recti rect_tab(
+			core::vector2di(100, 50),
+			core::dimension2di(500, 300)
+		);
+
+		auto tab = guienv->addTab(rect_tab, nullptr, 12345);
+		tab->setBackgroundColor(0xFF66FFFF);
+		tab->setDrawBackground(true);
+		tab->setNotClipped(true);
+		ie_parent = tab;
+	}
+
 	auto props = bmgr->getProps(103);
-	e = script->getLayout(props->id).release();
+	e = script->openGUI(props->id, ie_parent);
+	Table *le_table; // not French
+	if (ie_parent)
+		le_table = (Table *)((IGUIElementWrapper *)e)->get(0);
+	else
+		le_table = (Table *)e;
 
 	BlockParams bp(props->paramtypes);
 	script->linkWithGui(&bp);
 	{
 		// Test coin input box --> `on_input` callback
-		auto eww = (IGUIElementWrapper *)((Table *)e)->get(1, 1).get();
+		auto eww = (IGUIElementWrapper *)le_table->get(1, 1).get();
 		CHECK(eww);
 
 		eww->getElement()->setText(L"98");
@@ -391,7 +413,7 @@ void unittest_gui_layout(int which)
 			unittest_toc("root->start()");
 		}
 
-		driver->beginScene(true, true, video::SColor(0xFF000022));
+		driver->beginScene(true, true, video::SColor(0xFF777777));
 
 		guienv->drawAll();
 
@@ -405,8 +427,8 @@ void unittest_gui_layout(int which)
 	}
 
 	root->clear();
-	guienv->clear();
 	delete script;
+	guienv->clear();
 	puts("GUI: Terminated properly.");
 }
 

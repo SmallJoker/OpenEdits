@@ -52,13 +52,12 @@ void GuiScript::linkWithGui(BlockParams *bp)
 
 bool GuiScript::OnEvent(const SEvent &e)
 {
-	// TODO: find elements by name
 	if (e.EventType == EET_GUI_EVENT && e.GUIEvent.EventType == gui::EGET_EDITBOX_CHANGED) {
 		auto ie = e.GUIEvent.Caller;
-		auto name = ie->getName();
+		auto e = IGUIElementWrapper::find_wrapper(m_le_root.get(), ie);
+
 		// find out whether we should listen
-		auto it = m_fields.find(name);
-		if (it == m_fields.end() || !m_props)
+		if (!e || !m_props)
 			goto nomatch;
 
 		core::stringc ctext;
@@ -70,6 +69,7 @@ bool GuiScript::OnEvent(const SEvent &e)
 		int top = lua_gettop(L);
 		lua_rawgeti(L, LUA_REGISTRYINDEX, CUSTOM_RIDX_TRACEBACK);
 
+		logger(LL_INFO, "on_input(...) for id=%d", m_props->id);
 		lua_rawgeti(L, LUA_REGISTRYINDEX, m_props->ref_gui_def);
 		lua_getfield(L, -1, "on_input"); // function
 		lua_getfield(L, -2, "values"); // arg 1
@@ -83,7 +83,13 @@ bool GuiScript::OnEvent(const SEvent &e)
 		}
 		lua_settop(L, top);
 
-		updateInputValue(ie);
+		m_le_root->doRecursive([this] (Element *e_raw) -> bool {
+			if (auto e = dynamic_cast<IGUIElementWrapper *>(e_raw)) {
+				updateInputValue(e->getElement());
+			}
+			return true; // continue
+		});
+		return true; // handled entirely
 	}
 
 nomatch:
@@ -129,13 +135,17 @@ done:
 
 void GuiScript::updateInputValue(gui::IGUIElement *ie)
 {
-	logger(LL_INFO, "%s, name=%s", __func__, ie->getName());
+	const char *name = ie->getName();
+	if (!name[0])
+		return;
+
+	logger(LL_INFO, "%s, name=%s", __func__, name);
 
 	lua_State *L = m_lua;
 	lua_rawgeti(L, LUA_REGISTRYINDEX, m_props->ref_gui_def);
 	lua_getfield(L, -1, "values");
 	lua_remove(L, -2); // "gui_def"
-	lua_getfield(L, -1, ie->getName());
+	lua_getfield(L, -1, name);
 	lua_remove(L, -2); // "values"
 
 	const char *text = lua_tostring(L, -1);
@@ -151,9 +161,15 @@ int GuiScript::gui_read_element(lua_State *L)
 {
 	MESSY_CPP_EXCEPTIONS_START
 	GuiScript *script = static_cast<GuiScript *>(get_script(L));
-	if (script->m_elements.empty()) {
+	if (script->m_le_stack.empty()) {
 		// Root table --> check whether the format is OK
 		luaL_checktype(L, -1, LUA_TTABLE);
+
+		lua_getfield(L, -1, "focus");
+		const char *name = lua_tostring(L, -1);
+		if (name)
+			script->m_focus = name;
+		lua_pop(L, 1);
 
 		lua_getfield(L, -1, "values");
 		luaL_checktype(L, -1, LUA_TTABLE);
@@ -167,7 +183,9 @@ int GuiScript::gui_read_element(lua_State *L)
 	int type = check_field_int(L, -1, "type");
 	logger(LL_DEBUG, "read element T=%d", type);
 
-	auto &e = script->m_elements.emplace_back();
+	auto &e = script->m_le_stack.emplace_back();
+	auto guienv = script->m_guienv;
+	auto parent = script->m_ie_stack.back();
 
 	switch ((GUIElementType)type) {
 	case ELMT_TABLE:
@@ -189,8 +207,8 @@ int GuiScript::gui_read_element(lua_State *L)
 				u16 x = i - y * grid[1];
 
 				gui_read_element(L);
-				t->get(x, y) = std::move(script->m_elements.back());
-				script->m_elements.pop_back();
+				t->get(x, y) = std::move(script->m_le_stack.back());
+				script->m_le_stack.pop_back();
 			}
 			lua_pop(L, 1); // fields
 		}
@@ -200,8 +218,9 @@ int GuiScript::gui_read_element(lua_State *L)
 			const char *text = check_field_string(L, -1, "text");
 			core::stringw wtext;
 			core::utf8ToWString(wtext, text);
-			auto ie = script->m_guienv->addStaticText(wtext.c_str(), core::recti());
+			auto ie = guienv->addStaticText(wtext.c_str(), core::recti(), false, true, parent);
 			e.reset(new IGUIElementWrapper(ie));
+
 			ie->setOverrideColor(0xFFFFFFFF);
 		}
 		break;
@@ -209,12 +228,13 @@ int GuiScript::gui_read_element(lua_State *L)
 		{
 			const char *name = check_field_string(L, -1, "name");
 
-			auto ie = script->m_guienv->addEditBox(L"", core::recti());
+			auto ie = guienv->addEditBox(L"", core::recti(), true, parent);
 			e.reset(new IGUIElementWrapper(ie));
 			ie->setName(name);
-			script->m_fields.insert(name);
 
 			script->updateInputValue(ie);
+			if (name == script->m_focus)
+				guienv->setFocus(ie);
 		}
 		break;
 	default:
@@ -228,17 +248,19 @@ int GuiScript::gui_read_element(lua_State *L)
 	MESSY_CPP_EXCEPTIONS_END
 }
 
-EPtr GuiScript::getLayout(bid_t block_id)
+guilayout::Element *GuiScript::openGUI(bid_t block_id, gui::IGUIElement *parent)
 {
-	m_elements.clear();
-	m_fields.clear();
+	m_le_root = nullptr;
+	m_le_stack.clear();
+	m_ie_stack.clear();
 
 	m_props = m_bmgr->getProps(block_id);
 	if (!m_props || m_props->ref_gui_def < 0)
 		return nullptr; // no GUI
 
-	lua_State *L = m_lua;
+	m_ie_stack.push_back(parent);
 
+	lua_State *L = m_lua;
 
 	int top = lua_gettop(L);
 	lua_rawgeti(L, LUA_REGISTRYINDEX, CUSTOM_RIDX_TRACEBACK);
@@ -253,16 +275,29 @@ EPtr GuiScript::getLayout(bid_t block_id)
 	if (status != 0) {
 		const char *err = lua_tostring(L, -1);
 		logger(LL_ERROR, "%s failed: %s", __func__, err);
-		m_elements.clear();
-		m_fields.clear();
+		m_le_stack.clear();
 	}
 
 	lua_settop(L, top);
 
-	if (m_elements.empty())
+	if (m_le_stack.empty())
 		return nullptr;
 
-	return std::move(m_elements.front());
+	if (m_le_stack.size() != 1) {
+		logger(LL_ERROR, "%s: logic error", __func__);
+		return nullptr;
+	}
+
+	m_le_root = std::move(m_le_stack.front());
+
+	if (parent) {
+		// To retrieve position information
+		auto iew = new IGUIElementWrapper(parent);
+		iew->add<Element>(m_le_root.release());
+		m_le_root.reset(iew);
+	}
+
+	return m_le_root.get();
 }
 
 // -------------- Static Lua functions -------------

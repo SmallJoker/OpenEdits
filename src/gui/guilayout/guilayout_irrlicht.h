@@ -19,11 +19,13 @@ struct IGUIElementWrapper : public Element {
 
 	gui::IGUIElement *getElement() const { return m_element; }
 
+	void start(u16_x2 pos, u16_x2 size) override;
 	void updatePosition() override;
-	void doRecursive(std::function<bool(Element *)> callback) override;
 
+	static IGUIElementWrapper *find_wrapper(Element *e, const gui::IGUIElement *ie);
 	static void draw_wireframe(Element *e, video::IVideoDriver *driver, uint32_t color);
 
+	// Same as `FlexBox::add`
 	template <typename T, typename ... Args>
 	T *add(Args &&... args)
 	{
@@ -31,9 +33,16 @@ struct IGUIElementWrapper : public Element {
 		return dynamic_cast<T *>(m_children.back().get());
 	}
 
+	template <typename T>
+	T *add(T *ptr)
+	{
+		return dynamic_cast<T *>(m_children.emplace_back(ptr).get());
+	}
+
+	Element *get(size_t i) { return m_children.at(i).get(); }
+
 protected:
 	gui::IGUIElement *m_element = nullptr;
-	std::vector<std::unique_ptr<Element>> m_children; // e.g. tabs
 
 private:
 	void setElement(gui::IGUIElement *elem);

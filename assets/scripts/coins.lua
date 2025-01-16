@@ -27,14 +27,14 @@ local blocks_coins = {
 			-- root element
 			type = gui.ELMT_TABLE, grid = { 2, 2 }, fields = {
 				{ type = gui.ELMT_TEXT, text = "coins" },
-				{ type = gui.ELMT_NUMERIC, name = "coins", default = 2 },
+				{ type = gui.ELMT_INPUT, name = "coins" },
 			},
 			values = { ["coins"] = 0 }, -- to be filled by engine
-			pre_place = function(values, id, ...)
+			on_input = function(values, id, ...)
 				-- must match the "params" type
 				gui.select_params(values.coins)
 			end,
-		}
+		},
 		params = env.PARAMS_TYPE_U8,
 		tiles = { { type = env.DRAW_TYPE_SOLID }, { type = env.DRAW_TYPE_SOLID, alpha = true } },
 		on_collide = function(bx, by, is_x)
