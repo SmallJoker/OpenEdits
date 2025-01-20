@@ -149,11 +149,16 @@ void GuiScript::updateInputValue(gui::IGUIElement *ie)
 	lua_remove(L, -2); // "values"
 
 	const char *text = lua_tostring(L, -1);
-	if (text) {
+	if (!text)
+		goto done;
+
+	{
 		core::stringw wtext;
 		core::utf8ToWString(wtext, text);
 		ie->setText(wtext.c_str());
 	}
+
+done:
 	lua_pop(L, 1);
 }
 
@@ -221,7 +226,7 @@ int GuiScript::gui_read_element(lua_State *L)
 			auto ie = guienv->addStaticText(wtext.c_str(), core::recti(), false, true, parent);
 			e.reset(new IGUIElementWrapper(ie));
 
-			ie->setOverrideColor(0xFFFFFFFF);
+			ie->setOverrideColor(0xFF000000); //(0xFFFFFFFF);
 		}
 		break;
 	case ELMT_INPUT:
@@ -231,6 +236,7 @@ int GuiScript::gui_read_element(lua_State *L)
 			auto ie = guienv->addEditBox(L"", core::recti(), true, parent);
 			e.reset(new IGUIElementWrapper(ie));
 			ie->setName(name);
+			ie->setTextAlignment(gui::EGUIA_CENTER, gui::EGUIA_CENTER);
 
 			script->updateInputValue(ie);
 			if (name == script->m_focus)

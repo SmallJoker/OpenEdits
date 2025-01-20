@@ -39,6 +39,7 @@ public:
 	// Opens a GUI. Close with `Block::ID_INVALD`.
 	guilayout::Element *openGUI(bid_t block_id, gui::IGUIElement *parent);
 	void closeGUI() { openGUI(Block::ID_INVALID, nullptr); }
+	const BlockProperties *getCurrentProps() const { return m_props; }
 
 private:
 	void updateInputValue(gui::IGUIElement *ie);

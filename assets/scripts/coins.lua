@@ -1,5 +1,3 @@
-local table_to_pack_blocks = reg.table_to_pack_blocks
-local change_blocks = reg.change_blocks
 local world = env.world
 
 env.require_asset("coin.mp3")
@@ -25,12 +23,16 @@ local blocks_coins = {
 		id = 43, -- Coindoor
 		gui_def = {
 			-- root element
-			type = gui.ELMT_TABLE, grid = { 2, 2 }, fields = {
+			type = gui.ELMT_TABLE, grid = { 2, 1 }, fields = {
 				{ type = gui.ELMT_TEXT, text = "coins" },
 				{ type = gui.ELMT_INPUT, name = "coins" },
 			},
-			values = { ["coins"] = 0 }, -- to be filled by engine
-			on_input = function(values, id, ...)
+			values = { ["coins"] = 10 },
+			on_input = function(values, k, v)
+				if k == "coins" then
+					v = tonumber(v) and v or values[k]
+				end
+				values[k] = v
 				-- must match the "params" type
 				gui.select_params(values.coins)
 			end,
@@ -50,7 +52,7 @@ local blocks_coins = {
 env.register_pack({
 	name = "coins",
 	default_type = env.DRAW_TYPE_ACTION,
-	blocks = table_to_pack_blocks(blocks_coins)
+	blocks = reg.table_to_pack_blocks(blocks_coins)
 })
 
-change_blocks(blocks_coins)
+reg.change_blocks(blocks_coins)

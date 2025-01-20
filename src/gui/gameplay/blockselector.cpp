@@ -108,17 +108,22 @@ gui::IGUIEditBox *SceneBlockSelector::createInputBox(const SEvent &e, s32 id, bo
 	return element;
 }
 
-void SceneBlockSelector::toggleScriptElements(const SEvent &e)
+bool SceneBlockSelector::toggleScriptElements(const SEvent &e)
 {
 	GuiScript *script = m_gameplay->getGUI()->script;
 	if (!script)
-		return;
+		return false;
 
+	auto props = script->getCurrentProps();
 	auto elem = m_showmore->getElementFromId(ID_ScriptElements, true);
 	if (elem) {
 		script->closeGUI();
 		elem->remove();
+
+		if (props && props->id == m_selected_bid)
+			return true; // just close
 	}
+
 	auto skin = m_gui->getSkin();
 	video::SColor color(skin->getColor(gui::EGDC_3D_FACE));
 
@@ -131,21 +136,24 @@ void SceneBlockSelector::toggleScriptElements(const SEvent &e)
 	if (!le_root) {
 		// No GUI
 		tab->remove();
-		return;
+		return false;
 	}
-	// TODO: implement le_root->getMinSize(false, false);
 
+	le_root->getMinSize(false, false);
+
+	s32 w = le_root->min_size[0] * 1.1f + 4;
+	s32 h = le_root->min_size[1] * 1.1f + 4;
 	core::recti rect_tab(
-		core::vector2di(-BTN_SIZE.Width * 2.5f, BTN_SIZE.Height + 2),
-		core::dimension2di(BTN_SIZE.Width * 5, BTN_SIZE.Height * 3)
+		core::vector2di((-w + BTN_SIZE.Width) / 2, BTN_SIZE.Height + 3),
+		core::dimension2di(w, h)
 	);
 	tab->setRelativePosition(rect_tab);
 
 	le_root->start({
-		1, 1,
-		(u16)(rect_tab.getWidth() - 2), (u16)(rect_tab.getHeight() - 2)
+		2, 2,
+		(u16)(w - 2), (u16)(h - 2)
 	});
-	// TODO: move to class member?
+	return true;
 }
 
 void SceneBlockSelector::toggleCoinBox(const SEvent &e)
@@ -316,9 +324,9 @@ bool SceneBlockSelector::OnEvent(const SEvent &e)
 	if (!m_enabled)
 		return false;
 
-	if (m_gameplay->getGUI()->script) {
-		if (m_gameplay->getGUI()->script->OnEvent(e))
-			return true; // handled
+	auto script = m_gameplay->getGUI()->script;
+	if (script) {
+		script->OnEvent(e);
 	}
 
 	if (e.EventType == EET_MOUSE_INPUT_EVENT) {
@@ -378,6 +386,7 @@ bool SceneBlockSelector::OnEvent(const SEvent &e)
 				break;
 			case ID_BoxText:
 				readTextBoxValue(e);
+			// ID_ScriptElements is already handled above.
 		}
 	}
 	if (e.EventType == EET_GUI_EVENT && e.GUIEvent.EventType == gui::EGET_BUTTON_CLICKED) {
@@ -393,11 +402,12 @@ bool SceneBlockSelector::OnEvent(const SEvent &e)
 			if (!selectBlockId(id - ID_SELECTOR_0, false))
 				return false;
 
-			toggleScriptElements(e);
-			toggleCoinBox(e);
-			toggleNoteBox(e);
-			toggleTeleporterBox(e);
-			toggleTextBox(e);
+			if (!toggleScriptElements(e)) {
+				toggleCoinBox(e);
+				toggleNoteBox(e);
+				toggleTeleporterBox(e);
+				toggleTextBox(e);
+			}
 			return true;
 		}
 		// Show/hide block selector
@@ -599,12 +609,17 @@ bool SceneBlockSelector::drawBlockButton(bid_t bid, const core::recti &rect, gui
 		e->setDrawBorder(false);
 		e->setPressedImage(make_pressed_image(m_gui->getVideoDriver(), tile.texture));
 
-		tooltip_len = snprintf(tooltip, sizeof(tooltip), "Pack: %s\nBlock ID: %i\nTile count: %zu\nCallbacks:%s%s",
+		tooltip_len = snprintf(tooltip, sizeof(tooltip), "Pack: %s\nBlock ID: %i\nTile count: %zu\nCallbacks:%s%s%s%s%s%s%s",
 			props->pack->name.c_str(),
 			bid,
 			props->tiles.size(),
-			props->ref_on_collide   >= 0 ? " collide" : "",
-			props->ref_on_intersect >= 0 ? " intersect" : ""
+			props->step                  ? " step[C++]" : "",
+			props->onCollide             ? " onCollide[C++]" : "",
+			props->trigger_on_touch      ? " on_touch[C++]" : "",
+			props->haveOnIntersectOnce() ? " intersect_once" : "",
+			props->haveOnIntersect()     ? " intersect" : "",
+			props->haveOnCollide()       ? " collide" : "",
+			props->ref_gui_def      >= 0 ? " gui" : ""
 		);
 	} else {
 		tooltip_len = snprintf(tooltip, sizeof(tooltip), "UNKNOWN BLOCK\nBlock ID: %i", bid);

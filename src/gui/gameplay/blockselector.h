@@ -38,7 +38,8 @@ private:
 	gui::IGUIEditBox *createInputBox(const SEvent &e, s32 id, bool may_open);
 
 	/// `e` for caller information
-	void toggleScriptElements(const SEvent &e);
+	/// Returns `true` if the event was handled successfully.
+	bool toggleScriptElements(const SEvent &e);
 
 	void toggleCoinBox(const SEvent &e);
 	void readCoinBoxValue(const SEvent &e);

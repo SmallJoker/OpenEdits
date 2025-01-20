@@ -308,10 +308,10 @@ void IGUIElementWrapper::setTextlike(bool use_get_text)
 		auto font = ((Spoofed *)m_element)->getEnv()->getSkin()->getFont();
 		core::dimension2du size = font->getDimension(L"AZyq_m");
 		text_height = size.Height + 4;
-		spacing = size.Width / 6 + 1;
+		spacing = (size.Width + 6 / 2) / 6;
 	}
 
-	float len = 6;
+	float len = 5;
 	if (use_get_text)
 		len = std::max<u16>(len, wcslen(m_element->getText()));
 

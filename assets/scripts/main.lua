@@ -208,6 +208,7 @@ env.register_pack({
 change_blocks(blocks_candy)
 
 env.include("coins.lua")
+env.include("teleporter.lua")
 
 
 ---------- Decoration tab
