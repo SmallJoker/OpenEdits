@@ -17,10 +17,10 @@ typedef std::array<u16, 4> u16_x4; // TODO: maybe change to s16?
 
 struct Element {
 	enum Direction {
-		DIR_UP,
-		DIR_RIGHT,
-		DIR_DOWN,
-		DIR_LEFT
+		DIR_LEFT,  // x
+		DIR_UP,    // y
+		DIR_RIGHT, // x+
+		DIR_DOWN   // y+
 	};
 	enum Size {
 		SIZE_X,
@@ -42,12 +42,14 @@ struct Element {
 	virtual void getMinSize(bool shrink_x, bool shrink_y) {}
 	u16_x2 min_size {}; //< dynamic size (margin, expand) is added atop if available
 
-	/// For the root container: initiates the positioning mechanism
-	virtual void start(u16_x2 pos, u16_x2 size) {}
+	/// For the current container: initiates the positioning mechanism
+	/// `pos_new` must be non-`nullptr` for the root element
+	virtual void start(const u16_x4 *pos_new) {}
+	/// Covenience function
+	void start(const u16_x4 pos_new) { start(&pos_new); }
 	// For containers
 	virtual void tryFitElements() {}
-	/// Callback executed after the positions were calculated
-	virtual void updatePosition() = 0;
+
 	// Populated after tryFitElements()
 	u16_x4 pos {}; //< Minimal and maximal position (1 px overlap with neighbours)
 
@@ -117,9 +119,8 @@ struct Table : public Element {
 		return &m_cellinfo[SIZE_Y][y];
 	}
 
-	void start(u16_x2 pos, u16_x2 size) override;
+	void start(const u16_x4 *pos_new) override;
 	void tryFitElements() override;
-	void updatePosition() override;
 
 private:
 	friend struct IGUIElementWrapper;
@@ -157,9 +158,8 @@ struct FlexBox : public Element {
 		return m_children.at(i).get();
 	}
 
-	void start(u16_x2 pos, u16_x2 size) override;
+	void start(const u16_x4 *pos_new) override;
 	void tryFitElements() override;
-	void updatePosition() override;
 
 	Size box_axis = SIZE_X;
 	bool allow_wrap = true;

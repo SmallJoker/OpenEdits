@@ -139,7 +139,7 @@ void SceneConnect::draw()
 		auto *i_list = gui->addListBox(norect, nullptr, ID_ListServers, true);
 		auto *g_list = table_srv->add<WRAP>(1, 0, i_list);
 
-		g_btn->margin = { 20, 1, 1, 0 };
+		g_btn->margin = { 0, 20, 1, 1 };
 		g_list->margin = { 1, 1, 1, 1 };
 		g_list->min_size = { 300, 100 };
 

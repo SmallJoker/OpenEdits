@@ -279,6 +279,7 @@ guilayout::Element *GuiScript::openGUI(bid_t block_id, gui::IGUIElement *parent)
 	}
 
 	lua_settop(L, top);
+	m_ie_stack.clear(); // may become invalid later
 
 	if (m_le_stack.empty())
 		return nullptr;
@@ -289,14 +290,6 @@ guilayout::Element *GuiScript::openGUI(bid_t block_id, gui::IGUIElement *parent)
 	}
 
 	m_le_root = std::move(m_le_stack.front());
-
-	if (parent) {
-		// To retrieve position information
-		auto iew = new IGUIElementWrapper(parent);
-		iew->add<Element>(m_le_root.release());
-		m_le_root.reset(iew);
-	}
-
 	return m_le_root.get();
 }
 

@@ -19,8 +19,7 @@ struct IGUIElementWrapper : public Element {
 
 	gui::IGUIElement *getElement() const { return m_element; }
 
-	void start(u16_x2 pos, u16_x2 size) override;
-	void updatePosition() override;
+	void start(const u16_x4 *pos_new) override;
 
 	static IGUIElementWrapper *find_wrapper(Element *e, const gui::IGUIElement *ie);
 	static void draw_wireframe(Element *e, video::IVideoDriver *driver, uint32_t color);

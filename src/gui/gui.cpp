@@ -178,7 +178,9 @@ void Gui::run()
 
 		if (is_new_screen) {
 			handler->draw();
-			layout->start({0, 0}, {(u16)window_size.Width, (u16)window_size.Height});
+			((guilayout::Element *)layout)->start(
+				{0, 0, (u16)window_size.Width, (u16)window_size.Height}
+			);
 		}
 
 		handler->step(dtime);

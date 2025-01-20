@@ -141,7 +141,10 @@ void SceneBlockSelector::toggleScriptElements(const SEvent &e)
 	);
 	tab->setRelativePosition(rect_tab);
 
-	le_root->start({0,0}, {0,0}); // no-op args
+	le_root->start({
+		1, 1,
+		(u16)(rect_tab.getWidth() - 2), (u16)(rect_tab.getHeight() - 2)
+	});
 	// TODO: move to class member?
 }
 

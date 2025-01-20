@@ -93,8 +93,8 @@ static Element *setup_table_demo()
 
 			switch (xp) {
 				case 1: b->margin = {5,5,5,5}; break; // x center, y center
-				case 2: b->margin = {15,15,15,0}; break; // y center, stick to left
-				case 3: b->margin = {0,15,15,0}; break; // stick to top left
+				case 2: b->margin = {0,15,15,15}; break; // y center, stick to left
+				case 3: b->margin = {0,0,15,15}; break; // stick to top left
 				default: b->margin = {0,0,0,0}; break; // fill
 			}
 
@@ -154,16 +154,16 @@ static Element *setup_box_demo()
 		//hbox->force_wrap = true;
 
 		auto label = hbox->add<TestButton>();
-		label->margin = {10,0,10,10};
+		label->margin = {10,10,0,10};
 		label->setSize({100, 30});
 
 		auto input = hbox->add<TestButton>();
-		input->margin = {1,0,0,0};
+		input->margin = {0,1,0,0};
 		input->expand = {1,0};
 		input->setSize({200, 30});
 
 		auto btn = hbox->add<TestButton>();
-		btn->margin = {10,10,0,0};
+		btn->margin = {0,10,10,0};
 	}
 	return &root;
 }
@@ -196,7 +196,7 @@ static Element *setup_tabcontrol()
 		tab->setBackgroundColor(0xFF66FFFF);
 		tab->setDrawBackground(true);
 		FlexBox *box = wrap->add<FlexBox>();
-		box->margin = { 2, 1, 1, 3 };
+		box->margin = { 3, 2, 1, 1 };
 		auto btn = device->getGUIEnvironment()->addButton(norect, tab, 422, L"test");
 		auto a = box->add<IGUIElementWrapper>(btn);
 		a->min_size = { 50, 20 };
@@ -211,10 +211,7 @@ static Element *setup_tabcontrol()
 namespace {
 	class NopElement : public Element {
 	public:
-		void updatePosition() override
-		{
-			// nop
-		}
+		// none
 	};
 }
 
@@ -240,7 +237,7 @@ static void test_layout_table_calc()
 	main.col(2)->weight = 2;
 
 	const u16 weight_width = WIDTH / (6 /* weight sum */);
-	main.start({0, 0}, {WIDTH, HEIGHT});
+	((Element *)&main)->start({0, 0, WIDTH, HEIGHT});
 
 	u16 v = 0;
 	CHECK(e00->pos[Element::DIR_LEFT]  == v + 0);
@@ -259,7 +256,7 @@ static void test_layout_table_calc()
 	main.row(1)->weight = 1;
 
 	const u16 weight_height = HEIGHT / (3 /* weight sum */);
-	main.start({0, 0}, {WIDTH, HEIGHT});
+	((Element *)&main)->start({0, 0, WIDTH, HEIGHT});
 
 	v = 0;
 	CHECK(e00->pos[Element::DIR_UP]   == v + 0);
@@ -279,6 +276,7 @@ static void test_layout_flexbox_calc()
 #include "core/blockmanager.h"
 #include "core/world.h"
 #include "client/clientmedia.h"
+core::recti rect_override;
 
 static Element *setup_guiscript(gui::IGUIEnvironment *guienv)
 {
@@ -301,12 +299,12 @@ static Element *setup_guiscript(gui::IGUIEnvironment *guienv)
 	gui::IGUIElement *ie_parent = nullptr;
 
 	if (1) {
-		core::recti rect_tab(
+		rect_override = core::recti(
 			core::vector2di(100, 50),
 			core::dimension2di(500, 300)
 		);
 
-		auto tab = guienv->addTab(rect_tab, nullptr, 12345);
+		auto tab = guienv->addTab(rect_override, nullptr, 12345);
 		tab->setBackgroundColor(0xFF66FFFF);
 		tab->setDrawBackground(true);
 		tab->setNotClipped(true);
@@ -315,12 +313,7 @@ static Element *setup_guiscript(gui::IGUIEnvironment *guienv)
 
 	auto props = bmgr->getProps(103);
 	e = script->openGUI(props->id, ie_parent);
-	Table *le_table; // not French
-	if (ie_parent)
-		le_table = (Table *)((IGUIElementWrapper *)e)->get(0);
-	else
-		le_table = (Table *)e;
-
+	Table *le_table = (Table *)e; // not French
 	BlockParams bp(props->paramtypes);
 	script->linkWithGui(&bp);
 	{
@@ -403,13 +396,10 @@ void unittest_gui_layout(int which)
 
 		if (is_new_screen && root) {
 			unittest_tic();
-			root->start(
-				{0, 0},
-				{
-					(u16)window_size.Width,
-					(u16)window_size.Height
-				}
-			);
+			if (rect_override.getArea() == 0)
+				root->start({0, 0, (u16)window_size.Width, (u16)window_size.Height });
+			else
+				root->start({0, 0, (u16)rect_override.getWidth(), (u16)rect_override.getHeight() });
 			unittest_toc("root->start()");
 		}
 

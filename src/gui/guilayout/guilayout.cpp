@@ -34,22 +34,27 @@ void Element::doRecursive(std::function<bool(Element *)> callback)
 }
 
 
-void Table::start(u16_x2 pos, u16_x2 size)
+void Table::start(const u16_x4 *pos_new)
 {
-	this->pos[DIR_LEFT]  = pos[0];
-	this->pos[DIR_RIGHT] = pos[0] + size[0];
-	this->pos[DIR_UP]    = pos[1];
-	this->pos[DIR_DOWN]  = pos[1] + size[1];
+	if (pos_new) {
+		pos = *pos_new;
 
-	getMinSize(false, false);
-	tryFitElements();
+		// TODO: If custom positions are provided,
+		// `getMinSize()` may be called multiple times.
+		getMinSize(false, false);
+		tryFitElements();
+	} // else: calculation already done by parent
+
 	if (m_scrollbars[0] || m_scrollbars[1]) {
 		// Retry with reduced form
 		getMinSize(m_scrollbars[0], m_scrollbars[1]);
 		tryFitElements();
 	}
 
-	updatePosition();
+	for (auto &e : m_children) {
+		if (e)
+			e->start(nullptr); // `pos` was updated by `tryFitElements`.
+	}
 }
 
 void Table::tryFitElements()
@@ -90,14 +95,6 @@ void Table::tryFitElements()
 		if (!e)
 			continue;
 		e->tryFitElements();
-	}
-}
-
-void Table::updatePosition()
-{
-	for (auto &e : m_children) {
-		if (e)
-			e->updatePosition();
 	}
 }
 
@@ -214,16 +211,17 @@ void Table::spreadCell(Element *e, u16 num, Size dim)
 }
 
 
-void FlexBox::start(u16_x2 pos, u16_x2 size)
+void FlexBox::start(const u16_x4 *pos_new)
 {
-	this->pos[DIR_LEFT]  = pos[0];
-	this->pos[DIR_RIGHT] = pos[0] + size[0];
-	this->pos[DIR_UP]    = pos[1];
-	this->pos[DIR_DOWN]  = pos[1] + size[1];
+	if (pos_new) {
+		pos = *pos_new;
 
-	getMinSize(false, false);
-	tryFitElements();
-	updatePosition();
+		getMinSize(false, false);
+		tryFitElements();
+	} // else: calculation already done by parent
+
+	for (auto &e : m_children)
+		e->start(nullptr);
 }
 
 #if 0
@@ -355,12 +353,6 @@ void FlexBox::tryFitElements()
 	for (auto &e : m_children) {
 		e->tryFitElements();
 	}
-}
-
-void FlexBox::updatePosition()
-{
-	for (auto &e : m_children)
-		e->updatePosition();
 }
 
 #if 0

@@ -70,7 +70,7 @@ void IGUIElementWrapper::setElement(gui::IGUIElement *elem)
 				min_size[SIZE_Y] += 4;
 			break;
 		case gui::EGUIET_STATIC_TEXT:
-			margin = { 1, 1, 1, 0 }; // left align
+			margin = { 0, 1, 1, 1 }; // left align
 			expand = { 0, 0 }; // no benefit from larger container
 			setTextlike(true);
 			{
@@ -82,22 +82,14 @@ void IGUIElementWrapper::setElement(gui::IGUIElement *elem)
 	}
 }
 
-void IGUIElementWrapper::start(u16_x2 pos, u16_x2 size)
+void IGUIElementWrapper::start(const u16_x4 *pos_new)
 {
 	if (!m_element)
 		return;
 
-	core::recti rect = m_element->getRelativePosition();
-	for (auto &e : m_children) {
-		e->start(
-			{0, 0},
-			{(u16)rect.getWidth(), (u16)rect.getHeight()}
-		);
-	}
-}
+	if (pos_new)
+		pos = *pos_new;
 
-void IGUIElementWrapper::updatePosition()
-{
 	core::recti rect {
 		pos[DIR_LEFT],
 		pos[DIR_UP],
@@ -117,6 +109,8 @@ void IGUIElementWrapper::updatePosition()
 	);
 #endif
 
+	// Sync with container
+	// FIXME: allow negative positions
 	m_element->setRelativePosition(rect);
 
 	// Deal nested elements
@@ -124,18 +118,27 @@ void IGUIElementWrapper::updatePosition()
 	case gui::EGUIET_TAB_CONTROL:
 		{
 			auto tc = (gui::IGUITabControl *)m_element;
+			// Update the own element to have correct children information
+			// force update tab positions
+			tc->setTabVerticalAlignment(tc->getTabVerticalAlignment());
+
 			size_t count = std::min<size_t>(tc->getTabCount(), m_children.size());
 			for (size_t i = 0; i < count; ++i) {
 				core::recti crect = tc->getTab(i)->getAbsoluteClippingRect();
-				m_children[i]->start(
-					{0, 0},
-					{(u16)crect.getWidth(), (u16)crect.getHeight()}
-				);
+
+				m_children[i]->start({
+					1, 1,
+					(u16)(crect.getWidth() - 2), (u16)(crect.getHeight() - 2)
+				});
 			}
 		}
 		break;
 	default:
-		break;
+		for (auto &e : m_children) {
+			// This container does not do any layouting, thus
+			e->start(&pos);
+		}
+	break;
 	}
 }
 
@@ -207,6 +210,7 @@ bool IGUIElementWrapper::draw_iguiw_wireframe(IGUIElementWrapper *e, video::IVid
 	return true;
 }
 
+// FIXME: This function does not take IGUIElement parent offsets into account :(
 bool IGUIElementWrapper::draw_table_wireframe(Table *e, video::IVideoDriver *driver, uint32_t color)
 {
 	if (e->m_children.empty())
@@ -274,6 +278,7 @@ void IGUIElementWrapper::draw_wireframe(Element *e, video::IVideoDriver *driver,
 
 	auto drawfunc = [driver, &color] (Element *e_raw) -> bool {
 		bool ok = true;
+
 		do {
 			if (auto e = dynamic_cast<Table *>(e_raw)) {
 				ok = draw_table_wireframe(e, driver, color);
