@@ -87,6 +87,11 @@ void SceneGameplay::OnClose()
 
 	delete m_soundplayer;
 	m_soundplayer = nullptr;
+
+	// After leave, `g_blockmanager` may change, thus `BlockUpdate m_selected`
+	// is invalid.
+	delete m_blockselector;
+	m_blockselector = nullptr;
 }
 
 
@@ -473,10 +478,10 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 
 					bool guess_layer = false;
 					if (l_pressed) {
-						m_blockselector->getBlockUpdate(m_drag_draw_block);
-						if (m_drag_draw_block.getId() == 0)
+						bool handled = m_blockselector->getBlockUpdate(bp, m_drag_draw_block);
+						if (m_drag_draw_block.getId() == 0) {
 							guess_layer = true;
-						else {
+						} else if (!handled) {
 							Block bt;
 							world->getBlock(bp, &bt);
 							if (bt.id == Block::ID_SPIKES)

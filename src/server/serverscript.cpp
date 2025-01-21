@@ -78,7 +78,7 @@ int ServerScript::l_world_set_block(lua_State *L)
 	bu.pos.X = luaL_checknumber(L, 2) + 0.5f;
 	bu.pos.Y = luaL_checknumber(L, 3) + 0.5f;
 	if (block_id == (0 | BlockUpdate::BG_FLAG)) {
-		bu.setErase(block_id);
+		bu.setErase(true);
 	} else {
 		bu.set(block_id);
 		script->readBlockParams(4, bu.params);

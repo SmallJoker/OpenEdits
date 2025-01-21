@@ -21,7 +21,10 @@ struct BlockUpdate {
 	BlockUpdate(const BlockManager *bmgr) : m_mgr(bmgr) {}
 
 	bool set(bid_t block_id);
-	void setErase(bool background);
+	inline bool setErase(bool background)
+	{
+		return set(background * BG_FLAG);
+	}
 
 	/// Checks whether the background flag matches the block properties
 	bool check(bid_t *block_id, bool *is_bg) const;

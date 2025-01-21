@@ -33,8 +33,10 @@ local blocks_coins = {
 					v = tonumber(v) and v or values[k]
 				end
 				values[k] = v
+			end,
+			on_place = function(values, x, y)
 				-- must match the "params" type
-				gui.select_params(values.coins)
+				gui.select_block(nil, values.coins)
 			end,
 		},
 		params = env.PARAMS_TYPE_U8,

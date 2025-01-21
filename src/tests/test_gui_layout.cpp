@@ -311,11 +311,12 @@ static Element *setup_guiscript(gui::IGUIEnvironment *guienv)
 		ie_parent = tab;
 	}
 
-	auto props = bmgr->getProps(103);
-	e = script->openGUI(props->id, ie_parent);
+	BlockUpdate bu(bmgr);
+	CHECK(bu.set(103));
+
+	e = script->openGUI(bu.getId(), ie_parent);
 	Table *le_table = (Table *)e; // not French
-	BlockParams bp(props->paramtypes);
-	script->linkWithGui(&bp);
+	script->linkWithGui(&bu);
 	{
 		// Test coin input box --> `on_input` callback
 		auto eww = (IGUIElementWrapper *)le_table->get(1, 1).get();
@@ -330,7 +331,9 @@ static Element *setup_guiscript(gui::IGUIEnvironment *guienv)
 		ev.GUIEvent.Element = nullptr;
 		script->OnEvent(ev);
 	}
-	CHECK(bp.param_u8 == 98);
+
+	script->onPlace({ 5, 7 });
+	CHECK(bu.params.param_u8 == 98);
 
 	return e;
 }

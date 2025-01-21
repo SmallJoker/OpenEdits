@@ -9,7 +9,9 @@
 
 bool BlockUpdate::set(bid_t block_id)
 {
-	auto props = m_mgr->getProps(block_id);
+	id = block_id;
+
+	auto props = m_mgr->getProps(getId());
 	if (!props) {
 		id = Block::ID_INVALID;
 		return false;
@@ -18,12 +20,6 @@ bool BlockUpdate::set(bid_t block_id)
 	id = block_id | (BG_FLAG * props->isBackground());
 	params = BlockParams(props->paramtypes);
 	return true;
-}
-
-void BlockUpdate::setErase(bool background)
-{
-	id = 0 | (BG_FLAG * background);
-	params = BlockParams();
 }
 
 bool BlockUpdate::check(bid_t *block_id, bool *is_bg) const

@@ -127,9 +127,10 @@ Namespace: `gui`. Only available for GUI clients.
  * `change_hud(id, HUD Definition)`
  * `play_sound(asset_name)`
     * Depends on `env.require_asset`
- * `select_params(...)`
+ * `select_block(block_id, ...)`
+    * `block_id` (nil/number): Block ID to select
     * `...`: Block Parameters (variable)
-    * Generally to be used in the `gui_def.on_input` callback
+    * Generally to be used in the `gui_def.on_place` callback
 
 
 Block Definition field `gui_def`:
@@ -141,6 +142,11 @@ Block Definition field `gui_def`:
     * `values` (table): reference to `gui_def.values`
     * `k` (string): changed GUI element name
     * `v` (variable): value of the GUI element
+ * `on_place(values, x, y)`
+    * Executed once per click (& drag)
+    * `values` (table): reference to `gui_def.values`
+    * `x`, `y`: The clicked block position
+    * `gui.select_block` may be used to set the selected Block Parameters.
 
 HUD Definition: (table)
 
@@ -213,17 +219,6 @@ Block Definition - callbacks:
  * `on_intersect_once(tile)` <- `nil`
     * Called once when entering the block.
     * `tile` (number): The tile index of the block
- * `on_place(x, y, ...)` <- `nil`
-    * TODO: IMPLEMENT
-    * `x`, `y`: The block that should be replaced
-    * `...`: Block Parameters of the selected block (variable)
-    * This defaults to
-```
-	function(x, y, ...)
-		-- env.world.ID_ERASE_BACKGROUND = BG_FLAG || 0x8000
-		env.world.set_block(BLOCKID, x, y, ...)
-	end
-```
  * `on_placed()` <- `nil`
     * TODO: IMPLEMENT
     * Called when at least one such block was placed.

@@ -1,6 +1,8 @@
+local ID_TELEPORTER = 242
+
 local blocks_teleporter = {
 	{
-		id = 242, -- ID_TELEPORTER
+		id = ID_TELEPORTER,
 		gui_def = {
 			-- root element
 			type = gui.ELMT_TABLE, grid = { 2, 2 }, fields = {
@@ -15,8 +17,17 @@ local blocks_teleporter = {
 					v = tonumber(v) and v or values[k]
 				end
 				values[k] = v
-				-- TODO: overwrite rotation
-				gui.select_params(1, values.id, values.dst)
+			end,
+			on_place = function(values, x, y)
+				local fg, tile, bg = env.world.get_block(x, y)
+				local rot = 0
+				if fg == ID_TELEPORTER then
+					-- inherit rotation + 1
+					rot, _, _ = env.world.get_params(x, y)
+					rot = (rot + 1) % 4;
+				end
+
+				gui.select_block(nil, rot, values.id, values.dst)
 			end,
 		},
 		params = env.PARAMS_TYPE_U8U8U8,

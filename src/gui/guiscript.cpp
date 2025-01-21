@@ -34,7 +34,7 @@ void GuiScript::initSpecifics()
 	lua_newtable(L);
 	FIELD_SET_FUNC(gui_, change_hud);
 	FIELD_SET_FUNC(gui_, play_sound);
-	FIELD_SET_FUNC(gui_, select_params);
+	FIELD_SET_FUNC(gui_, select_block);
 	lua_setglobal(L, "gui");
 
 #undef FIELD_SET_FUNC
@@ -45,9 +45,9 @@ void GuiScript::closeSpecifics()
 	ClientScript::closeSpecifics();
 }
 
-void GuiScript::linkWithGui(BlockParams *bp)
+void GuiScript::linkWithGui(BlockUpdate *bu)
 {
-	m_block_params = bp;
+	m_block_update = bu;
 }
 
 bool GuiScript::OnEvent(const SEvent &e)
@@ -62,26 +62,9 @@ bool GuiScript::OnEvent(const SEvent &e)
 
 		core::stringc ctext;
 		wStringToUTF8(ctext, ie->getText());
-		// TODO: Does this need a mutex?
-		lua_State *L = m_lua;
 
 		// Call "on_input" and retrieve the new value from the "values" table
-		int top = lua_gettop(L);
-		lua_rawgeti(L, LUA_REGISTRYINDEX, CUSTOM_RIDX_TRACEBACK);
-
-		logger(LL_INFO, "on_input(...) for id=%d", m_props->id);
-		lua_rawgeti(L, LUA_REGISTRYINDEX, m_props->ref_gui_def);
-		lua_getfield(L, -1, "on_input"); // function
-		lua_getfield(L, -2, "values"); // arg 1
-		lua_pushstring(L, ie->getName()); // arg 2
-		lua_pushstring(L, ctext.c_str()); // arg 3
-
-		int status = lua_pcall(L, 3, 0, top + 1);
-		if (status != 0) {
-			const char *err = lua_tostring(L, -1);
-			logger(LL_ERROR, "%s", err);
-		}
-		lua_settop(L, top);
+		onInput(ie->getName(), ctext.c_str());
 
 		m_le_root->doRecursive([this] (Element *e_raw) -> bool {
 			if (auto e = dynamic_cast<IGUIElementWrapper *>(e_raw)) {
@@ -130,6 +113,60 @@ done:
 		logger(LL_WARN, "Missing values for '%s'. want=0x%zX, got=0x%zX", field, expected, set_i);
 		return false;
 	}
+	return true;
+}
+
+void GuiScript::onInput(const char *k, const char *v)
+{
+	if (!m_props)
+		return;
+
+	lua_State *L = m_lua;
+
+	int top = lua_gettop(L);
+	lua_rawgeti(L, LUA_REGISTRYINDEX, CUSTOM_RIDX_TRACEBACK);
+
+	logger(LL_INFO, "on_input, id=%d", m_props->id);
+	lua_rawgeti(L, LUA_REGISTRYINDEX, m_props->ref_gui_def);
+	lua_getfield(L, -1, "on_input"); // function
+	lua_getfield(L, -2, "values"); // arg 1
+	lua_pushstring(L, k); // arg 2
+	lua_pushstring(L, v); // arg 3
+
+	int status = lua_pcall(L, 3, 0, top + 1);
+	if (status != 0) {
+		const char *err = lua_tostring(L, -1);
+		logger(LL_ERROR, "%s", err);
+	}
+	lua_settop(L, top);
+}
+
+bool GuiScript::onPlace(blockpos_t pos)
+{
+	if (!m_block_update)
+		return false;
+	auto props = m_bmgr->getProps(m_block_update->getId());
+	if (!props || props->ref_gui_def < 0)
+		return false;
+
+	lua_State *L = m_lua;
+
+	int top = lua_gettop(L);
+	lua_rawgeti(L, LUA_REGISTRYINDEX, CUSTOM_RIDX_TRACEBACK);
+
+	logger(LL_INFO, "on_place, id=%d", props->id);
+	lua_rawgeti(L, LUA_REGISTRYINDEX, props->ref_gui_def);
+	lua_getfield(L, -1, "on_place"); // function
+	lua_getfield(L, -2, "values"); // arg 1
+	lua_pushinteger(L, pos.X); // arg 2
+	lua_pushinteger(L, pos.Y); // arg 3
+
+	int status = lua_pcall(L, 3, 0, top + 1);
+	if (status != 0) {
+		const char *err = lua_tostring(L, -1);
+		logger(LL_ERROR, "%s", err);
+	}
+	lua_settop(L, top);
 	return true;
 }
 
@@ -357,18 +394,28 @@ int GuiScript::l_gui_play_sound(lua_State *L)
 	MESSY_CPP_EXCEPTIONS_END
 }
 
-int GuiScript::l_gui_select_params(lua_State *L)
+int GuiScript::l_gui_select_block(lua_State *L)
 {
 	MESSY_CPP_EXCEPTIONS_START
 	GuiScript *script = static_cast<GuiScript *>(get_script(L));
-	if (!script->m_props)
-		return 0; // invalid use
+	bool block_id_provided = false;
+	bid_t block_id;
+	if (!lua_isnil(L, 1)) {
+		block_id = luaL_checkinteger(L, 1);
+		block_id_provided = true;
+	}
 
-	BlockParams bp(script->m_props->paramtypes);
-	script->readBlockParams(1, bp);
-	if (script->m_block_params)
-		*script->m_block_params = bp;
+	BlockUpdate bu_fallback(script->m_bmgr);
+	BlockUpdate *bu = script->m_block_update;
+	if (!bu)
+		bu = &bu_fallback;
 
+	if (block_id_provided) {
+		if (!bu->set(block_id))
+			luaL_error(L, "invalid block_id=%d", block_id);
+	}
+
+	script->readBlockParams(2, bu->params);
 	return 0;
 	MESSY_CPP_EXCEPTIONS_END
 }

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/types.h"
+#include "core/world.h" // BlockUpdate
 #include <IEventReceiver.h>
 #include <rect.h>
 #include <vector>
@@ -32,7 +33,8 @@ public:
 	void setEraseMode(bool erase);
 
 	void setParamsFromBlock(bid_t block_id, BlockParams &params);
-	void getBlockUpdate(BlockUpdate &bu);
+	/// Returns true if handled by script
+	bool getBlockUpdate(blockpos_t pos, BlockUpdate &bu);
 
 private:
 	gui::IGUIEditBox *createInputBox(const SEvent &e, s32 id, bool may_open);
@@ -63,20 +65,28 @@ private:
 	bool m_do_enable = false; // Two-staged to update in draw()
 	bool m_enabled = false;
 
+	/// list of the N quick access block IDs
 	std::vector<bid_t> m_hotbar_ids;
+	/// starting position of the N quick access blocks
 	core::position2di m_hotbar_pos;
-	bid_t m_selected_bid = 0;
-	bid_t m_last_selected_bid = 0; // when holding shift
+
+	bool m_show_selector = false;
+	bid_t m_dragged_bid = Block::ID_INVALID; //< dragged to hotbar
+	gui::IGUIElement *m_showmore = nullptr;
+	gui::IGUIImage *m_highlight = nullptr;
+
+	int m_last_selected_tab = 0;
+
+	BlockUpdate m_selected; //< current selected block
+	bool m_selected_erase = false; //< when holding shift
+
+	// Legacy fields
+	bool m_legacy_compatible = false;
+	void convertBUToLegacy();
+	void convertLegacyToBU();
 	u8 m_selected_param1 = 0;
 	u8 m_selected_note = 0;
 	u8 m_selected_tp_id = 0;
 	u8 m_selected_tp_dst = 0;
 	std::string m_selected_text = "Hello World";
-
-	bool m_show_selector = false;
-	bid_t m_dragged_bid = Block::ID_INVALID;
-	gui::IGUIElement *m_showmore = nullptr;
-	gui::IGUIImage *m_highlight = nullptr;
-
-	int m_last_selected_tab = 0;
 };

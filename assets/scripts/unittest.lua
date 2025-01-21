@@ -208,9 +208,12 @@ env.change_block(103, {
 			end
 			values[k] = v
 			-- must match the "params" type
-			gui.select_params(values.coins)
 			print("on_input", k, v)
 		end,
-		-- on_copy = function() .... (Ctrl + RMB)
+		-- TODO: implement Ctrl + RMB to copy a block into `values`
+		on_place = function(values, x, y)
+			print("on_place", x, y)
+			gui.select_block(nil, values.coins)
+		end,
 	}
 })

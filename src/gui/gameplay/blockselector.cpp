@@ -35,11 +35,26 @@ enum ElementId : int {
 
 static const core::dimension2di BTN_SIZE(30, 30);
 
-SceneBlockSelector::SceneBlockSelector(SceneGameplay *parent, gui::IGUIEnvironment *gui)
+SceneBlockSelector::SceneBlockSelector(SceneGameplay *parent, gui::IGUIEnvironment *gui) :
+	m_selected(g_blockmanager)
 {
 	m_gameplay = parent;
 	m_gui = gui;
 	m_hotbar_ids = { 0, 9, 10, 2, 4, 48, 46, 67 };
+
+	using T = BlockParams::Type;
+
+	auto check = [](bid_t block_id, T type) -> bool {
+		auto props = g_blockmanager->getProps(block_id);
+		return !props || props->paramtypes == type;
+	};
+
+	m_legacy_compatible = true
+		&& check(Block::ID_COINDOOR, T::U8)
+		&& check(Block::ID_COINGATE, T::U8)
+		&& check(Block::ID_PIANO, T::U8)
+		&& check(Block::ID_TELEPORTER, T::Teleporter)
+		&& check(Block::ID_TEXT, T::Text);
 }
 
 SceneBlockSelector::~SceneBlockSelector()
@@ -73,7 +88,7 @@ void SceneBlockSelector::draw()
 	// Texture size must match BTN_SIZE to display properly
 	m_highlight->setImage(m_gui->getVideoDriver()->getTexture("assets/textures/selected_30px.png"));
 	m_highlight->setScaleImage(true);
-	selectBlockId(m_selected_bid, false);
+	selectBlockId(m_selected.getId(), false);
 }
 
 static void editbox_move_to_end(gui::IGUIElement *element)
@@ -120,7 +135,7 @@ bool SceneBlockSelector::toggleScriptElements(const SEvent &e)
 		script->closeGUI();
 		elem->remove();
 
-		if (props && props->id == m_selected_bid)
+		if (props && props->id == m_selected.getId())
 			return true; // just close
 	}
 
@@ -132,7 +147,8 @@ bool SceneBlockSelector::toggleScriptElements(const SEvent &e)
 	tab->setDrawBackground(true);
 	tab->setNotClipped(true);
 
-	auto *le_root = script->openGUI(m_selected_bid, tab);
+	script->linkWithGui(&m_selected);
+	auto *le_root = script->openGUI(m_selected.getId(), tab);
 	if (!le_root) {
 		// No GUI
 		tab->remove();
@@ -158,7 +174,9 @@ bool SceneBlockSelector::toggleScriptElements(const SEvent &e)
 
 void SceneBlockSelector::toggleCoinBox(const SEvent &e)
 {
-	bool may_open = m_selected_bid == Block::ID_COINDOOR || m_selected_bid == Block::ID_COINGATE;
+	bool may_open =
+		m_selected.getId() == Block::ID_COINDOOR
+		|| m_selected.getId() == Block::ID_COINGATE;
 	auto element = createInputBox(e, ID_BoxCoinDoor, may_open);
 	if (!element)
 		return;
@@ -188,13 +206,15 @@ void SceneBlockSelector::readCoinBoxValue(const SEvent &e)
 {
 	auto box = (gui::IGUIEditBox *)e.GUIEvent.Caller;
 	int val = -1;
-	if (sanitize_input(box, &val, 0, 127))
+	if (sanitize_input(box, &val, 0, 127)) {
 		m_selected_param1 = val;
+		convertLegacyToBU();
+	}
 }
 
 void SceneBlockSelector::toggleNoteBox(const SEvent &e)
 {
-	bool may_open = m_selected_bid == Block::ID_PIANO;
+	bool may_open = m_selected.getId() == Block::ID_PIANO;
 	auto element = createInputBox(e, ID_BoxNote, may_open);
 	if (!element)
 		return;
@@ -215,16 +235,17 @@ void SceneBlockSelector::readNoteBoxValue(const SEvent &e)
 	std::string note;
 	wide_to_utf8(note, box->getText());
 
-	if (SceneGameplay::pianoNoteToParam(note.c_str(), &m_selected_note))
+	if (SceneGameplay::pianoNoteToParam(note.c_str(), &m_selected_note)) {
 		box->setOverrideColor(0xFF000000); // black
-	else
+		convertLegacyToBU();
+	} else
 		box->setOverrideColor(0xFFCC0000); // red
 }
 
 void SceneBlockSelector::toggleTeleporterBox(const SEvent &e)
 {
 	auto elem = m_showmore->getElementFromId(ID_TabTeleporter, true);
-	bool may_open = m_selected_bid == Block::ID_TELEPORTER;
+	bool may_open = m_selected.getId() == Block::ID_TELEPORTER;
 	if (!may_open || elem) {
 		if (elem)
 			elem->remove();
@@ -292,7 +313,7 @@ void SceneBlockSelector::readTeleporterBox()
 void SceneBlockSelector::toggleTextBox(const SEvent &e)
 {
 	auto elem = m_showmore->getElementFromId(ID_BoxText, true);
-	bool may_open = m_selected_bid == Block::ID_TEXT;
+	bool may_open = m_selected.getId() == Block::ID_TEXT;
 	if (!may_open || elem) {
 		if (elem)
 			elem->remove();
@@ -316,6 +337,7 @@ void SceneBlockSelector::readTextBoxValue(const SEvent &e)
 {
 	auto box = (gui::IGUIEditBox *)e.GUIEvent.Caller;
 	wide_to_utf8(m_selected_text, box->getText());
+	convertLegacyToBU();
 }
 
 
@@ -326,7 +348,8 @@ bool SceneBlockSelector::OnEvent(const SEvent &e)
 
 	auto script = m_gameplay->getGUI()->script;
 	if (script) {
-		script->OnEvent(e);
+		if (script->OnEvent(e))
+			convertBUToLegacy();
 	}
 
 	if (e.EventType == EET_MOUSE_INPUT_EVENT) {
@@ -402,7 +425,7 @@ bool SceneBlockSelector::OnEvent(const SEvent &e)
 			if (!selectBlockId(id - ID_SELECTOR_0, false))
 				return false;
 
-			if (!toggleScriptElements(e)) {
+			if (!toggleScriptElements(e) && m_legacy_compatible) {
 				toggleCoinBox(e);
 				toggleNoteBox(e);
 				toggleTeleporterBox(e);
@@ -485,7 +508,7 @@ void SceneBlockSelector::setEraseMode(bool erase)
 	if (erase)
 		selectBlockId(0, false);
 	else
-		selectBlockId(m_last_selected_bid, false);
+		selectBlockId(m_selected.getId(), false);
 }
 
 void SceneBlockSelector::setParamsFromBlock(bid_t block_id, BlockParams &params)
@@ -493,63 +516,30 @@ void SceneBlockSelector::setParamsFromBlock(bid_t block_id, BlockParams &params)
 	if (!g_blockmanager->getProps(block_id))
 		return;
 
-	switch (block_id) {
-		case Block::ID_COINDOOR:
-		case Block::ID_COINGATE:
-			if (params.getType() != BlockParams::Type::U8)
-				return;
+	if (!selectBlockId(block_id, false))
+		return;
 
-			m_selected_param1 = params.param_u8;
-			break;
-		case Block::ID_PIANO:
-			if (params.getType() != BlockParams::Type::U8)
-				return;
-
-			m_selected_note = params.param_u8;
-			break;
-		case Block::ID_TELEPORTER:
-			if (params.getType() != BlockParams::Type::Teleporter)
-				return;
-
-			m_selected_tp_id = params.teleporter.id;
-			m_selected_tp_dst = params.teleporter.dst_id;
-			break;
-		case Block::ID_TEXT:
-			if (params.getType() != BlockParams::Type::Text)
-				return;
-
-			m_selected_text = *params.text;
-			break;
-		default:
-			if (params.getType() != BlockParams::Type::None)
-				return;
-			break; // select block
-	}
-
-	selectBlockId(block_id, false);
+	m_selected.params = params;
+	convertBUToLegacy();
 }
 
-void SceneBlockSelector::getBlockUpdate(BlockUpdate &bu)
+bool SceneBlockSelector::getBlockUpdate(blockpos_t pos, BlockUpdate &bu)
 {
-	bu.set(m_selected_bid);
-
-	switch (bu.getId()) {
-		case Block::ID_COINDOOR:
-		case Block::ID_COINGATE:
-			bu.params.param_u8 = m_selected_param1;
-			break;
-		case Block::ID_PIANO:
-			bu.params.param_u8 = m_selected_note;
-			break;
-		case Block::ID_TELEPORTER:
-			bu.params.teleporter.id = m_selected_tp_id;
-			bu.params.teleporter.dst_id = m_selected_tp_dst;
-			break;
-		case Block::ID_TEXT:
-			*bu.params.text = m_selected_text;
-		default:
-			break;
+	if (m_selected_erase) {
+		bu.setErase(true);
+		return false;
 	}
+
+	bool handled = false;
+	GuiScript *script = m_gameplay->getGUI()->script;
+	if (script && script->onPlace(pos)) {
+		convertBUToLegacy();
+		handled = true;
+	}
+
+	convertLegacyToBU();
+	bu = m_selected;
+	return handled;
 }
 
 static video::ITexture *make_pressed_image(video::IVideoDriver *driver, video::ITexture *source)
@@ -745,8 +735,58 @@ bool SceneBlockSelector::selectBlockId(int what, bool is_element_id)
 		m_highlight->setVisible(false);
 	}
 
-	if (selected != 0)
-		m_last_selected_bid = selected;
-	m_selected_bid = selected;
+	m_selected_erase = (selected == 0);
+	if (!m_selected_erase)
+		m_selected.set(selected);
 	return true;
 }
+
+void SceneBlockSelector::convertBUToLegacy()
+{
+	if (!m_legacy_compatible)
+		return;
+
+	const BlockParams &params = m_selected.params;
+	switch (m_selected.getId()) {
+		case Block::ID_COINDOOR:
+		case Block::ID_COINGATE:
+			m_selected_param1 = params.param_u8;
+			break;
+		case Block::ID_PIANO:
+			m_selected_note = params.param_u8;
+			break;
+		case Block::ID_TELEPORTER:
+			m_selected_tp_id = params.teleporter.id;
+			m_selected_tp_dst = params.teleporter.dst_id;
+			break;
+		case Block::ID_TEXT:
+			m_selected_text = *params.text;
+			break;
+	}
+}
+
+void SceneBlockSelector::convertLegacyToBU()
+{
+	if (!m_legacy_compatible)
+		return;
+
+	BlockParams &params = m_selected.params;
+	switch (m_selected.getId()) {
+		case Block::ID_COINDOOR:
+		case Block::ID_COINGATE:
+			params.param_u8 = m_selected_param1;
+			break;
+		case Block::ID_PIANO:
+			params.param_u8 = m_selected_note;
+			break;
+		case Block::ID_TELEPORTER:
+			params.teleporter.id = m_selected_tp_id;
+			params.teleporter.dst_id = m_selected_tp_dst;
+			break;
+		case Block::ID_TEXT:
+			*params.text = m_selected_text;
+		default:
+			break;
+	}
+}
+
