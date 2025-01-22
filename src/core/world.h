@@ -5,7 +5,6 @@
 #include "core/playerflags.h"
 #include "core/timer.h"
 #include "core/types.h"
-#include "core/operators.h" // PositionRange
 #include <string>
 #include <map>
 #include <unordered_set>
@@ -13,6 +12,7 @@
 class BlockManager;
 class Player;
 class Packet;
+struct PositionRange;
 
 // Requirement for the hash function
 static_assert(sizeof(size_t) >= sizeof(u64));
@@ -176,7 +176,7 @@ public:
 
 	bool checkUpdateBlockNeeded(BlockUpdate &bu);
 	Block *updateBlock(BlockUpdate bu);
-	bool setBlockTiles(PositionRange range, bid_t block_id, u8 tile);
+	bool setBlockTiles(PositionRange &range, bid_t block_id, int tile);
 
 	// BlockParams must be changed with updateBlock to ensure correct types
 	const BlockParams *getParamsPtr(blockpos_t pos) const;

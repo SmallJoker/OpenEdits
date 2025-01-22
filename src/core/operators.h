@@ -5,13 +5,22 @@
 class World;
 
 struct PositionRange {
-	enum Type : uint8_t {
-		T_ONE_BLOCK    = 0x00, // pos
-		T_AREA         = 0x01, // minpos, maxpos
-		T_CIRCLE       = 0x02, // pos, radius
-		T_ENTIRE_WORLD = 0x03, // no args
-		T_MAX_INVALID  = 0x04
-	} type = T_MAX_INVALID;
+	// Not directly used by PositionRange
+	enum Operator {
+		PROP_SET         = 0x00,
+		PROP_ADD         = 0x10,
+		PROP_MAX_INVALID = 0x20,
+		PROP_MASK        = 0xF0
+	} op = PROP_MAX_INVALID;
+
+	enum Type {
+		PRT_ONE_BLOCK    = 0x00, // pos
+		PRT_AREA         = 0x01, // minpos, maxpos
+		PRT_CIRCLE       = 0x02, // pos, radius
+		PRT_ENTIRE_WORLD = 0x03, // no args
+		PRT_MAX_INVALID  = 0x04,
+		PRT_MASK         = 0x0F
+	} type = PRT_MAX_INVALID;
 	blockpos_t minp, maxp; // max position inclusive
 	float radius = 0;
 

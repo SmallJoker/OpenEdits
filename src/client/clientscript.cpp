@@ -22,8 +22,10 @@ void ClientScript::closeSpecifics()
 
 int ClientScript::implWorldSetTile(PositionRange range, bid_t block_id, int tile)
 {
-	if (!isMe())
+	if (!isMe()) {
+		logger(LL_WARN, "set_tile: player != me");
 		return 0; // no-op
+	}
 
 	lua_State *L = m_lua;
 	World *world = m_world;

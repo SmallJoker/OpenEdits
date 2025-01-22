@@ -1,4 +1,5 @@
 #include "unittest_internal.h"
+#include "core/operators.h" // PositionRange
 #include "core/packet.h"
 #include "core/world.h"
 
@@ -81,7 +82,7 @@ static void test_positionrange()
 	w.createEmpty({20, 6});
 
 	PositionRange range;
-	range.type = PositionRange::T_AREA;
+	range.type = PositionRange::PRT_AREA;
 
 	// Start function
 	range.minp = blockpos_t(0, 2);
@@ -104,6 +105,40 @@ static void test_positionrange()
 	CHECK(ok_cnt == ((10 - 0) + 1) * ((5 - 2) + 1)); // area size
 }
 
+//#define LARGE
+static void test_positionrange_world
+#ifdef LARGE
+	(World &w2)
+#else
+	(World &w)
+#endif
+{
+#ifdef LARGE
+	World w(g_blockmanager, "foobar_400x400");
+	w.createEmpty({400, 400});
+#endif
+
+	PositionRange range;
+	range.type = PositionRange::PRT_AREA;
+	range.op = PositionRange::PROP_ADD;
+	range.minp = blockpos_t(0, 0);
+	range.maxp = blockpos_t(400, 400); // entire world
+
+	for (Block *b = w.begin(); b != w.end(); ++b)
+		*b = Block(100);
+
+	Block b;
+	u8 tile = 0;
+	CHECK(w.getBlock({1, 2}, &b) && b.id == 100 && b.tile == tile);
+
+	// Update the entire world
+	tile = 3;
+	unittest_tic();
+	w.setBlockTiles(range, 100, tile);
+	unittest_toc("setBlockTiles"); // 800-900 us for 400 * 400 tiles
+	CHECK(w.getBlock({1, 2}, &b) && b.id == 100 && b.tile == tile);
+}
+
 void unittest_world()
 {
 	World w(g_blockmanager, "foobar");
@@ -112,4 +147,5 @@ void unittest_world()
 	test_get_set_update(w);
 	test_readwrite(w);
 	test_positionrange();
+	test_positionrange_world(w);
 }

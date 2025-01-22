@@ -57,7 +57,7 @@ active player of the callback.
     * Sets the tile index of one or multiple blocks.
     * Returns `true` if blocks were modified.
     * `PositionRange` (optional): defines which blocks that are affected
-        * arg 1: one of `env.world.PRT_*`
+        * arg 1: one of `env.world.PRT_*`. May be combined with `env.world.PROP_*`.
         * arg 2+: see `script_environment.cpp` / `Script::get_position_range`
 
 Environment-related callbacks:

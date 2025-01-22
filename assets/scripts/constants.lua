@@ -30,13 +30,18 @@ do
 end
 
 do
-	-- types.h / PositionRange::Type
+	-- operators.h / PositionRange::Type
 	local w = env.world
-	w.PRT_ONE_BLOCK    = 0
-	w.PRT_AREA         = 1
-	w.PRT_CIRCLE       = 2
-	w.PRT_ENTIRE_WORLD = 3
+	w.PRT_ONE_BLOCK    = 0x00
+	w.PRT_AREA         = 0x01
+	w.PRT_CIRCLE       = 0x02
+	w.PRT_ENTIRE_WORLD = 0x03
 
+	-- operators.h / PositionRange::Operator
+	w.PROP_SET         = 0x00
+	w.PROP_ADD         = 0x10
+
+	-- world.h / BlockUpdate
 	w.ID_ERASE_BACKGROUND = 0x8000
 end
 

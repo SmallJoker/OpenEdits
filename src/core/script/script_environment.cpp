@@ -11,11 +11,16 @@ static Logger &logger = script_logger;
 
 void Script::get_position_range(lua_State *L, int idx, PositionRange &range)
 {
-	using PRT = PositionRange::Type;
+	using O = PositionRange::Operator;
+	using T = PositionRange::Type;
 
-	int type = luaL_checkinteger(L, idx);
-	if (type < 0 || type >= PRT::T_MAX_INVALID)
+	int combined = luaL_checkinteger(L, idx);
+	int type = combined & T::PRT_MASK;
+	int op   = combined & O::PROP_MASK;
+	if (combined < 0 || type >= T::PRT_MAX_INVALID)
 		luaL_error(L, "PRT out of range");
+	if (op >= O::PROP_MAX_INVALID)
+		luaL_error(L, "PROP out of range");
 
 	Script *script = get_script(L);
 	const Player *player = script->getCurrentPlayer();
@@ -28,25 +33,29 @@ void Script::get_position_range(lua_State *L, int idx, PositionRange &range)
 		pos->Y = std::min<u16>(y, size.Y);
 	};
 
-	range.type = (PRT)type;
+	range.op   = (O)op;
+	range.type = (T)type;
 	switch (range.type) {
-		case PRT::T_ONE_BLOCK:
+		case T::PRT_ONE_BLOCK:
 			range.minp.X = luaL_checknumber(L, idx + 1) + 0.5f;
 			range.minp.Y = luaL_checknumber(L, idx + 2) + 0.5f;
 			break;
-		case PRT::T_AREA: {
+		case T::PRT_AREA: {
 			World *world = player->getWorld().get();
 			read_pos(world->getSize(), idx + 1, &range.minp);
 			read_pos(world->getSize(), idx + 3, &range.maxp);
 		} break;
-		case PRT::T_CIRCLE: {
+		case T::PRT_CIRCLE: {
 			World *world = player->getWorld().get();
 			read_pos(world->getSize(), idx + 1, &range.minp);
 			range.radius = luaL_checknumber(L, idx + 3);
 		} break;
-		case PRT::T_ENTIRE_WORLD:
+		case T::PRT_ENTIRE_WORLD:
 			break;
-		case PRT::T_MAX_INVALID: return;
+		case T::PRT_MAX_INVALID:
+		case T::PRT_MASK:
+			// should not occur
+			return;
 	}
 }
 
@@ -324,12 +333,10 @@ int Script::l_world_set_tile(lua_State *L)
 	Script *script = get_script(L);
 
 	int block_id = luaL_checkinteger(L, 1);
+	int tile     = luaL_checkinteger(L, 2);
+
 	if (block_id < 0 || block_id > Block::ID_INVALID)
 		luaL_error(L, "block_id out of range");
-
-	int tile = luaL_checkinteger(L, 2);
-	if (tile < 0 || tile > Block::TILES_MAX)
-		luaL_error(L, "tile out of range");
 
 	PositionRange range;
 	script->get_position_range(L, 3, range);

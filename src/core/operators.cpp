@@ -9,10 +9,10 @@ bool PositionRange::iteratorStart(const World *world, blockpos_t *ppos)
 	const blockpos_t wmaxp = world->getSize() - blockpos_t(1, 1);
 
 	switch (type) {
-	case T_ONE_BLOCK:
+	case PRT_ONE_BLOCK:
 		*ppos = minp;
 		return world->isValidPosition(minp.X, minp.Y);
-	case T_CIRCLE:
+	case PRT_CIRCLE:
 		{
 			if (radius <= 0)
 				return false; // 0 blocks affected
@@ -24,7 +24,7 @@ bool PositionRange::iteratorStart(const World *world, blockpos_t *ppos)
 			maxp.Y = std::max<f32>(0, std::round(m_center.Y + radius));
 		}
 		// fall-through
-	case T_AREA:
+	case PRT_AREA:
 		// scissor minp/maxp area
 		{
 			minp.X = std::min(minp.X, wmaxp.X);
@@ -35,15 +35,16 @@ bool PositionRange::iteratorStart(const World *world, blockpos_t *ppos)
 		*ppos = minp;
 		--(ppos->X); // one step back
 		return iteratorNext(ppos);
-	case T_ENTIRE_WORLD:
+	case PRT_ENTIRE_WORLD:
 		minp = blockpos_t(0, 0);
 		maxp = wmaxp;
 
 		*ppos = minp;
 		--(ppos->X); // one step back
 		return iteratorNext(ppos);
-	case T_MAX_INVALID:
-		return false;
+	case PRT_MAX_INVALID:
+	case PRT_MASK:
+		break; // throw
 	}
 	throw std::runtime_error("invalid PRT");
 }
@@ -53,11 +54,11 @@ bool PositionRange::iteratorNext(blockpos_t *ppos) const
 	blockpos_t pos = *ppos;
 
 	switch (type) {
-	case T_ONE_BLOCK:
+	case PRT_ONE_BLOCK:
 		return false;
-	case T_AREA:
-	case T_CIRCLE:
-	case T_ENTIRE_WORLD:
+	case PRT_AREA:
+	case PRT_CIRCLE:
+	case PRT_ENTIRE_WORLD:
 		++pos.X;
 
 		for (; pos.Y <= maxp.Y; ++pos.Y) {
@@ -72,7 +73,8 @@ bool PositionRange::iteratorNext(blockpos_t *ppos) const
 			pos.X = minp.X;
 		}
 		return false;
-	case T_MAX_INVALID:
+	case PRT_MAX_INVALID:
+	case PRT_MASK:
 		return false;
 	}
 

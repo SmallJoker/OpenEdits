@@ -526,12 +526,17 @@ Block *World::updateBlock(BlockUpdate bu)
 	return &ref;
 }
 
-bool World::setBlockTiles(PositionRange range, bid_t block_id, u8 tile)
+bool World::setBlockTiles(PositionRange &range, bid_t block_id, int tile)
 {
+	using O = PositionRange::Operator;
+
+	const O op = range.op;
+	int sum;
+
 	bool modified = false;
 	blockpos_t pos;
 
-	if (range.type == PositionRange::T_ENTIRE_WORLD) {
+	if (range.type == PositionRange::PRT_ENTIRE_WORLD && op == O::PROP_SET) {
 		// Optimization
 		for (Block *b = begin(); b != end(); ++b) {
 			if (b->id == block_id) {
@@ -544,10 +549,23 @@ bool World::setBlockTiles(PositionRange range, bid_t block_id, u8 tile)
 
 	for (bool ok = range.iteratorStart(this, &pos); ok; ok = range.iteratorNext(&pos)) {
 		Block &b = getBlockRefNoCheck(pos);
-		if (b.id == block_id) {
-			b.tile = tile;
-			modified = true;
+		if (b.id != block_id)
+			continue;
+
+		switch (op) {
+			case O::PROP_SET:
+				b.tile = tile;
+				break;
+			case O::PROP_ADD:
+				// Disallow underflows
+				// Issue: (255 + N) becomes 0 too.
+				sum = tile + (int)b.tile;
+				b.tile = (sum == (int)(uint8_t)sum) * sum;
+				break;
+			default:
+				goto done; // invalid
 		}
+		modified = true;
 	}
 
 done:
