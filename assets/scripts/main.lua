@@ -34,6 +34,30 @@ if env.server then
 	env.on_step = function(abstime) end
 end
 
+-- Keep track of player data
+player_data = {}
+
+local old_event = env.on_player_event or (function() end)
+env.on_player_event = function(event, arg)
+	old_event(event, arg)
+
+	local id = env.player:hash()
+	if event == "join" then
+		player_data[id] = {}
+	end
+	if event == "leave" then
+		player_data[id] = nil
+	end
+
+	if not player_data[id] then
+		-- godmode may be called too early
+		return
+	end
+	if event == "godmode" then
+		player_data[id].godmode = arg
+	end
+end
+
 --[[
 To implement:
 scriptevent_handler_func = function()

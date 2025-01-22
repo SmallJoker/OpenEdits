@@ -42,6 +42,7 @@ void PlayerRef::doRegister(lua_State *L)
 		{"get_name", get_name},
 		{"hash", hash},
 		{"send_event", send_event},
+		{"next_prn", next_prn},
 		{"get_pos", get_pos},
 		{"set_pos", set_pos},
 		{"get_vel", get_vel},
@@ -181,6 +182,16 @@ int PlayerRef::send_event(lua_State *L)
 	player->script_events->emplace(std::move(ev));
 	return 0;
 	MESSY_CPP_EXCEPTIONS_END
+}
+
+int PlayerRef::next_prn(lua_State* L)
+{
+	Player *player = toPlayerRef(L, 1)->m_player;
+	if (!player)
+		return 0;
+
+	lua_pushinteger(L, player->getNextPRNum());
+	return 1;
 }
 
 

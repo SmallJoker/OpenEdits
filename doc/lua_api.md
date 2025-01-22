@@ -91,6 +91,8 @@ A `userdata` object.
     * Unique identifier (per connection) for faster array access
  * `:send_event()`
     * See `env.send_event`. For servers only.
+ * `:next_prn()` -> integer
+    * Gets the next pseudo-random number
  * `:get_pos()` -> `x, y`
     * The block underneath is at `(floor(x + 0.5), floor(y + 0.5))`.
  * `:set_pos(x, y)`

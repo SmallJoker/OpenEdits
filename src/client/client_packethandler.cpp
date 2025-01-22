@@ -280,6 +280,9 @@ void Client::pkt_Join(Packet &pkt)
 		player->updateCoinCount(true);
 	}
 
+	if (m_script)
+		m_script->onPlayerEvent("join", player);
+
 	{
 		GameEvent e(GameEvent::C2G_PLAYER_JOIN);
 		e.player = player;
@@ -297,6 +300,9 @@ void Client::pkt_Leave(Packet &pkt)
 	m_players.erase(peer_id);
 
 	if (player) {
+		if (m_script)
+			m_script->onPlayerEvent("join", player);
+
 		GameEvent e(GameEvent::C2G_PLAYER_LEAVE);
 		e.player = player;
 		sendNewEvent(e);

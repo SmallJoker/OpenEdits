@@ -27,6 +27,7 @@ private:
 	static int hash(lua_State *L);
 
 	static int send_event(lua_State *L);
+	static int next_prn(lua_State *L);
 
 	// Physics / controls
 	static int get_pos(lua_State *L);
