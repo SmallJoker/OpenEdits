@@ -508,4 +508,7 @@ void Player::setGodMode(bool value)
 		// Trigger the current block once (e.g. spikes)
 		last_pos = blockpos_t(-1, -1);
 	}
+
+	if (m_script)
+		m_script->onPlayerEventB("godmode", this, godmode);
 }

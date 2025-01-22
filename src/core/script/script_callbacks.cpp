@@ -9,19 +9,31 @@ using namespace ScriptUtils;
 
 static Logger &logger = script_logger;
 
-void Script::runCb_0(int ref, const char *dbg)
+void Script::runCb_0(int ref, const char *dbg, int nargs)
 {
 	if (ref <= LUA_NOREF) {
-		logger(LL_DEBUG, "0 arg callback unavailable. name='%s'", dbg);
+		logger(LL_DEBUG, "callback '%s' = %d", dbg, ref);
 		return;
 	}
 
 	lua_State *L = m_lua;
 
-	int top = lua_gettop(L);
+	int top = lua_gettop(L) - nargs;
+	lua_rawgeti(L, LUA_REGISTRYINDEX, CUSTOM_RIDX_TRACEBACK);
+
 	lua_rawgeti(L, LUA_REGISTRYINDEX, ref);
 	luaL_checktype(L, -1, LUA_TFUNCTION);
-	if (lua_pcall(L, 0, 0, 0)) {
+	/*
+		Use the earlier pushed values as function args
+		-4 : optional arg 1
+		-3 : optional arg 2
+		-2 : traceback
+		-1 : function
+	*/
+	for (int i = 0; i < nargs; ++i)
+		lua_pushvalue(L, -2 - nargs);
+
+	if (lua_pcall(L, nargs, 0, (top + nargs) + 1)) {
 		logger(LL_ERROR, "%s failed: %s\n",
 			dbg,
 			lua_tostring(L, -1)

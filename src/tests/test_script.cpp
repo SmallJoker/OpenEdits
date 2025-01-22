@@ -227,9 +227,9 @@ void unittest_script()
 
 	// join/leave
 	{
-		script.onPlayerJoin(&p);
+		script.onPlayerEvent("join", &p);
 		CHECK(script.popTestFeedback() == "J_SRV;");
-		script.onPlayerLeave(&p);
+		script.onPlayerEvent("leave", &p);
 		CHECK(script.popTestFeedback() == "L_SRV;");
 	}
 

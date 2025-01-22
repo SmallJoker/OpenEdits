@@ -36,6 +36,10 @@ if env.test_mode:find("media") then
 	env.include("unittest_server.lua", "server")
 end
 
+env.on_player_event = function(event, arg)
+	print("[event]", env.player:get_name(), event, arg)
+end
+
 env.register_pack({
 	name = "action",
 	default_type = env.DRAW_TYPE_ACTION,

@@ -12,26 +12,21 @@ env.include("constants.lua")
 
 -------------- Client & server script
 
--- TODO: not implemented
 local GRAVITY    = 100.0 -- m/s² for use in callbacks
+-- TODO: not implemented
 local JUMP_SPEED =  30.0 -- m/s  for use in callbacks
 
-env.event_handlers[1] = function(...)
-	print("CALL", unpack({...}))
-end
-
 if env.server then
-	env.on_player_join = function()
-		print("JOIN", env.player:get_name())
-		local names = {}
-		for _, p in ipairs(env.server.get_players_in_world()) do
-			names[#names + 1] = p:get_name()
+	env.on_player_event = function(event)
+		print("event:" .. event, env.player:get_name())
+		if event == "join" then
+			local names = {}
+			for _, p in ipairs(env.server.get_players_in_world()) do
+				names[#names + 1] = p:get_name()
+			end
+			print("List of players: " .. table.concat(names, ", "))
+			return
 		end
-		print("List of players: " .. table.concat(names, ", "))
-	end
-
-	env.on_player_leave = function()
-		print("LEAVE", env.player:get_name())
 	end
 end
 

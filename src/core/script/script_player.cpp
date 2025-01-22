@@ -34,14 +34,17 @@ void Script::pushCurrentPlayerRef()
 	lua_pop(L, 1); // env
 }
 
-void Script::onPlayerJoin(Player *player)
+void Script::onPlayerEvent(const char *event, Player *player)
 {
 	setPlayer(player);
-	runCb_0(m_ref_on_player_join, "on_player_join");
+	lua_pushstring(m_lua, event);
+	runCb_0(m_ref_on_player_event, "on_player_event", 1);
 }
 
-void Script::onPlayerLeave(Player *player)
+void Script::onPlayerEventB(const char *event, Player *player, bool arg)
 {
 	setPlayer(player);
-	runCb_0(m_ref_on_player_leave, "on_player_leave");
+	lua_pushstring(m_lua, event);
+	lua_pushboolean(m_lua, arg);
+	runCb_0(m_ref_on_player_event, "on_player_event", 2);
 }

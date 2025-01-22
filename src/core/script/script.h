@@ -88,7 +88,7 @@ public:
 	/// Returns a valid value of BlockProperties::CollisionType
 	int onCollide(CollisionInfo ci);
 protected:
-	void runCb_0(int ref, const char *dbg);
+	void runCb_0(int ref, const char *dbg, int nargs);
 	void runBlockCb_0(int ref, const char *dbg);
 
 
@@ -121,8 +121,8 @@ public:
 		*m_player = nullptr;
 		m_world = world;
 	}
-	void onPlayerJoin(Player *player);
-	void onPlayerLeave(Player *player);
+	void onPlayerEvent(const char *event, Player *player);
+	void onPlayerEventB(const char *event, Player *player, bool arg);
 
 protected:
 	void pushCurrentPlayerRef();
@@ -144,6 +144,5 @@ protected:
 	bid_t m_last_block_id = Block::ID_INVALID;
 
 	int m_ref_on_step = -2; // LUA_NOREF
-	int m_ref_on_player_join = -2; // LUA_NOREF
-	int m_ref_on_player_leave = -2; // LUA_NOREF
+	int m_ref_on_player_event = -2; // LUA_NOREF
 };

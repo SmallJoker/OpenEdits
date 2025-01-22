@@ -5,17 +5,15 @@ Concept idea:
 2. use on_player_join / on_player_leave to send the data to all relevant locations
 ]]
 
+local old_event = env.on_player_event or (function() end)
+env.on_player_event = function(event, arg)
+	old_event(event, arg)
 
-local old_join = env.on_player_join or (function() end)
-env.on_player_join = function(...)
-	print("JOIN", env.player:get_name())
-	old_join(...)
-	feedback("J_SRV")
-end
-
-local old_leave = env.on_player_leave or (function() end)
-env.on_player_leave = function(...)
-	print("LEAVE", env.player:get_name())
-	old_leave(...)
-	feedback("L_SRV")
+	print("[server event]", env.player:get_name(), event, arg)
+	if event == "join" then
+		feedback("J_SRV")
+	end
+	if event == "leave" then
+		feedback("L_SRV")
+	end
 end

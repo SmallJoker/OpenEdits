@@ -106,10 +106,12 @@ A `userdata` object.
 
 Player-related callbacks in `env`:
 
- * `.on_player_join()`
+ * `.on_player_event(event, ...)`
     * Callback to overwrite at load time
- * `.on_player_leave()`
-    * Callback to overwrite at load time
+    * List of events (`event`) and payload (`...`):
+       * `"join"`
+       * `"leave"`
+       * `"godmode", status`
 
 
 ### Server API

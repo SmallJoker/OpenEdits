@@ -598,7 +598,7 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 	}
 
 	if (m_script)
-		m_script->onPlayerJoin(player);
+		m_script->onPlayerEvent("join", player);
 
 	// Notify about new player
 	auto make_join_packet = [](RemotePlayer *player, Packet &out) {
@@ -1043,7 +1043,7 @@ void Server::sendMsg(peer_t peer_id, const std::string &text)
 void Server::sendPlayerLeave(RemotePlayer *player)
 {
 	if (m_script)
-		m_script->onPlayerLeave(player);
+		m_script->onPlayerEvent("leave", player);
 
 	Packet out;
 	out.write(Packet2Client::Leave);
