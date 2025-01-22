@@ -17,7 +17,7 @@
 	#define SANITY_LOG(...) printf
 #endif
 
-
+// negative = towards camera
 static float ZINDEX_SMILEY[2] = {
 	0, // god off
 	-3
@@ -28,11 +28,14 @@ static float ZINDEX_LOOKUP[(int)BlockDrawType::Invalid] = {
 	-1, // Decoration
 	5, // Background
 };
+static float ZINDEX_SHADOW = 3;
 
-SceneWorldRender::SceneWorldRender(SceneGameplay* parent, Gui* gui)
+SceneWorldRender::SceneWorldRender(SceneGameplay *parent, Gui *gui)
 {
 	m_gameplay = parent;
 	m_gui = gui;
+
+	m_tex_shadow = gui->driver->getTexture("assets/textures/shadow.png");
 }
 
 SceneWorldRender::~SceneWorldRender()
@@ -317,10 +320,15 @@ void SceneWorldRender::drawBlocksInView()
 		} while (false);
 
 
-		do {
-			if (bdd.bulk && bdd.bulk->is_solid)
-				break; // solid above; no background needed
+		if (bdd.bulk && bdd.bulk->is_solid) {
+			// solid above; no background needed. Add shadow instead.
+			bdd.bulk = &bdd.bulk_map[SIZE_MAX];
+			if (!bdd.bulk->node) {
+				assignNewShadow(bdd);
+			}
 
+			bdd.bulk->node->addTile({x, -y});
+		} else {
 			bdd.bulk = &bdd.bulk_map[b.bg];
 			if (!bdd.bulk->node) {
 				// Yet not cached: Add.
@@ -328,7 +336,7 @@ void SceneWorldRender::drawBlocksInView()
 			}
 
 			bdd.bulk->node->addTile({x, -y});
-		} while (false);
+		}
 	}
 }
 
@@ -356,6 +364,20 @@ void SceneWorldRender::assignNewForeground(BlockDrawData &bdd)
 	bdd.bulk->is_solid = assignBlockTexture(tile, bdd.bulk->node);
 
 	//bdd.bulk->node->setDebugDataVisible(scene::EDS_BBOX);
+}
+
+void SceneWorldRender::assignNewShadow(BlockDrawData &bdd)
+{
+	bdd.bulk->node = new CBulkSceneNode(m_blocks_node, m_gui->scenemgr, -1,
+		core::vector3df(1.5f, -1.5f, ZINDEX_SHADOW),
+		DEFAULT_TILE_SIZE
+	);
+	bdd.bulk->node->drop();
+
+	auto &mat = bdd.bulk->node->getMaterial(0);
+	mat.ZWriteEnable = video::EZW_AUTO;
+	mat.MaterialType = video::EMT_TRANSPARENT_ALPHA_CHANNEL;
+	mat.setTexture(0, m_tex_shadow);
 }
 
 void SceneWorldRender::assignNewBackground(BlockDrawData &bdd)

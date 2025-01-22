@@ -57,6 +57,11 @@ static BP_STEP_CALLBACK(step_boost_down)
 
 // ------> Other specials
 
+static BP_COLLIDE_CALLBACK(onCollide_nop)
+{
+	return BlockProperties::CollisionType::None;
+}
+
 static BP_STEP_CALLBACK(step_portal)
 {
 	player.acc.Y = Player::GRAVITY_NORMAL;
@@ -308,13 +313,14 @@ void BlockManager::doPackRegistration()
 		props->color = 0x00000001; // forced 100% transparent
 
 		props = m_props[Block::ID_BLACKREAL];
-		props->setTiles({ BlockDrawType::Decoration });
+		props->setTiles({ BlockDrawType::Solid });
 		props->onCollide = onCollide_solid;
 
 		props = m_props[Block::ID_BLACKFAKE];
 		props->trigger_on_touch = true;
-		props->setTiles({ BlockDrawType::Action, BlockDrawType::Action });
+		props->setTiles({ BlockDrawType::Solid, BlockDrawType::Solid });
 		props->tiles[1].have_alpha = true;
+		props->onCollide = onCollide_nop;
 	}
 
 	{
