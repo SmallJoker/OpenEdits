@@ -1,5 +1,6 @@
 #include "unittest_internal.h"
 #include "core/world.h"
+#include "core/worldmeta.h"
 #include "server/database_world.h"
 
 void unittest_database()

@@ -1,6 +1,7 @@
 #include "unittest_internal.h"
 #include "core/eeo_converter.h"
 #include "core/world.h"
+#include "core/worldmeta.h"
 
 static void eeoc_write()
 {

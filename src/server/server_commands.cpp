@@ -6,6 +6,7 @@
 #include "core/player.h"
 #include "core/utils.h" // get_next_part
 #include "core/world.h"
+#include "core/worldmeta.h"
 #include "server/database_auth.h"
 #include "server/database_world.h"
 #include "server/remoteplayer.h" // RemotePlayerState

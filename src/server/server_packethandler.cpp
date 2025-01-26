@@ -12,6 +12,7 @@
 #include "core/packet.h"
 #include "core/utils.h"
 #include "core/world.h"
+#include "core/worldmeta.h"
 #include "core/script/scriptevent.h"
 #include <set>
 

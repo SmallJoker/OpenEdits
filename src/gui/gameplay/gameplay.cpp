@@ -2,6 +2,7 @@
 #include "client/client.h"
 #include "client/localplayer.h"
 #include "core/blockmanager.h"
+#include "core/worldmeta.h"
 #include "gui/sound.h"
 #include "blockselector.h"
 #include "minimap.h"

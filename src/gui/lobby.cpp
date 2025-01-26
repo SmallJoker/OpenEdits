@@ -1,5 +1,6 @@
 #include "lobby.h"
 #include "core/blockmanager.h" // populateTextures
+#include "core/worldmeta.h" // WorldMeta::Type
 #include "client/client.h"
 #include "client/localplayer.h"
 #include <IGUIButton.h>

@@ -5,6 +5,7 @@
 #include "core/packet.h"
 #include "core/player.h"
 #include "core/utils.h"
+#include "core/worldmeta.h"
 #include <fstream>
 
 GameCommands::GameCommands()

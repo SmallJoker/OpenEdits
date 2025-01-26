@@ -1,7 +1,7 @@
 #pragma once
 
 #include "database.h"
-#include "core/world.h" // WorldMeta
+#include "core/world.h" // LobbyWorld
 #include <vector>
 
 class DatabaseWorld : Database {

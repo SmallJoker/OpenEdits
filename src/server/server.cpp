@@ -9,6 +9,7 @@
 #include "core/network_enums.h"
 #include "core/packet.h"
 #include "core/world.h"
+#include "core/worldmeta.h"
 #include "core/script/scriptevent.h"
 #include "version.h"
 

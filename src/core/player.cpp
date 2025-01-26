@@ -6,6 +6,7 @@
 #include "script/scriptevent.h" // for .clear()
 #include "utils.h"
 #include "world.h"
+#include "worldmeta.h"
 #include <rect.h>
 
 constexpr float DISTANCE_STEP = 0.4f; // absolute max is 0.5f

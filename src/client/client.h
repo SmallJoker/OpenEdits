@@ -3,6 +3,7 @@
 #include "core/auth.h"
 #include "core/environment.h"
 #include "core/friends.h"
+#include "core/timer.h"
 #include "gameevent.h"
 #include <string>
 

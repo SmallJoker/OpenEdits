@@ -3,6 +3,7 @@
 
 #include "gui.h"
 #include "core/friends.h"
+#include "core/timer.h"
 #include <string>
 
 namespace irr {

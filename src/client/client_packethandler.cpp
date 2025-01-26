@@ -8,6 +8,7 @@
 #include "core/network_enums.h"
 #include "core/packet.h"
 #include "core/script/scriptevent.h"
+#include "core/worldmeta.h"
 
 #if 0
 	#define DEBUGLOG(...) printf(__VA_ARGS__)

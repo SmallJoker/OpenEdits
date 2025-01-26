@@ -4,6 +4,7 @@
 #include "core/script/playerref.h"
 #include "core/script/script_utils.h"
 #include "core/world.h"
+#include "core/worldmeta.h"
 
 using namespace ScriptUtils;
 

@@ -1,5 +1,6 @@
 #include "database_world.h"
 #include "core/packet.h"
+#include "core/worldmeta.h"
 #include <sqlite3.h>
 
 DatabaseWorld::~DatabaseWorld()

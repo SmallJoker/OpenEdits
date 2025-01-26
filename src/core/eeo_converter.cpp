@@ -5,6 +5,7 @@
 #include "core/compressor.h"
 #include "core/packet.h"
 #include "core/world.h"
+#include "core/worldmeta.h"
 #include <filesystem>
 #include <fstream>
 #include <map>

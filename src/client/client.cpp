@@ -10,6 +10,7 @@
 #include "core/packet.h"
 #include "core/utils.h" // to_player_name
 #include "core/script/scriptevent.h"
+#include "core/worldmeta.h"
 
 #if 0
 	#define DEBUGLOG(...) printf(__VA_ARGS__)
