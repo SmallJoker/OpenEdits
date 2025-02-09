@@ -68,12 +68,17 @@ Environment-related callbacks:
 
 #### Script events
 
+ * `env.register_event(event_id, nil, ...`)
+    * `event_id` (integer)
+    * `nil`: placeholder.
+    * `...`: pattern of the event data (count >= 0)
+        * Each index must be of `env.PARAMS_TYPE_*`
+        * Example: `env.PARAMS_TYPE_U8U8U8, env.PARAMS_TYPE_STR16`
  * `env.send_event(event_id, ...)`
     * `event_id` (integer)
-    * `...`: flat type + value list
-        * Example: `*_U8U8U8, 42, 32, 1, *_STR16, "test value"`,
-        * `typeN`: one of the accepted `env.PARAMS_TYPE_*`
-        * value N...: N values matching the specified type
+    * `...`: event data
+        * Must match the pattern specified by `env.register_event`.
+        * Example: `8, 5, 42, "test value"`
 * `env.event_handlers[event_id] = function(...)`
     * Counterpart for `env.send_event`, run on the other peer
     * `...`: flat value list but without types
@@ -105,6 +110,8 @@ A `userdata` object.
        * `jump` (bool)
        * `dir_x`, `dir_y` (number)
        * Note: `dir_(x|y)` may have any value range.
+ * `env.is_me()` -> bool
+    * Returns whether the controlled player is selected.
 
 Player-related callbacks in `env`:
 
@@ -124,7 +131,7 @@ Namespace: `env.server`. Only available for servers.
     * Returns a table of `PlayerRef` (ipairs).
 
 
-### GUI API
+### Client GUI API
 
 Namespace: `gui`. Only available for GUI clients.
 
@@ -196,7 +203,7 @@ Pack Definition: (table)
 
 Block Definition - regular fields:
 
- * `gui_def`: See [GUI API]
+ * `gui_def`: See [Client GUI API]
  * `params` (optional, number)
     * Defines what kind of data can be saved for this block.
     * Warning: Changing this type will truncate existing saved data.

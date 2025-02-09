@@ -13,16 +13,21 @@ public:
 	virtual void closeSpecifics() override;
 
 	void setClient(Client *cli) { m_client = cli; }
-	void setMyPlayer(const Player *player) { m_my_player = player; }
+	void setMyPlayer(Player *player) { m_my_player = player; }
+
+	bool isElevated() const override { return invoked_by_server; }
+	Player *getMyPlayer() const override { return m_my_player; }
 
 	bool invoked_by_server = false; /// server-sent events.
 
 protected:
+
+	static int l_is_me(lua_State *L);
+
 	int implWorldSetTile(PositionRange range, bid_t block_id, int tile) override;
 
 protected:
-	bool isMe() const { return *m_player == m_my_player; }
-	const Player *m_my_player = nullptr;
+	Player *m_my_player = nullptr;
 
 	Client *m_client = nullptr;
 };

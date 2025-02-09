@@ -45,6 +45,11 @@ do
 	w.ID_ERASE_BACKGROUND = 0x8000
 end
 
+do
+	-- scriptevent.h
+	env.SEF_HAVE_ACTOR = 0x8000
+end
+
 -- "env.gui": backwards compatibility
 gui = gui or env.gui or {}
 

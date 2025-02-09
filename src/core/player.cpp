@@ -36,7 +36,7 @@ void Player::setWorld(RefCnt<World> world)
 
 	{
 		on_touch_blocks = nullptr;
-		script_events.reset();
+		script_events_to_send.reset();
 	}
 
 	m_world = world;
@@ -74,9 +74,12 @@ void Player::readPhysics(Packet &pkt)
 	pkt.read<u32>(m_prng_state);
 	pkt.read<u8>(coins); // type safety!
 
-	m_controls.jump = pkt.read<u8>();
+	u8 flags = pkt.read<u8>();
+	m_controls.jump = flags & 1;
+
 	pkt.read(m_controls.dir.X);
 	pkt.read(m_controls.dir.Y);
+
 }
 
 void Player::writePhysics(Packet &pkt) const
@@ -97,7 +100,10 @@ void Player::writePhysics(Packet &pkt) const
 	pkt.write<u32>(m_prng_state);
 	pkt.write<u8>(coins);
 
-	pkt.write<u8>(m_controls.jump);
+	u8 flags = (m_controls.jump << 0);
+	// data_version < 9 used `jump = read<u8>()` !
+	pkt.write<u8>(pkt.data_version >= 9 ? flags : (flags & 1));
+
 	core::vector2df dir_normal = m_controls.dir;
 	dir_normal.normalize();
 	pkt.write(dir_normal.X);

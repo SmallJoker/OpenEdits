@@ -25,7 +25,7 @@ void BlockParams::set(BlockParams::Type type)
 			text = new std::string();
 			break;
 		case Type::U8:
-		case Type::Teleporter:
+		case Type::U8U8U8:
 			break;
 	}
 }
@@ -40,7 +40,7 @@ void BlockParams::reset()
 			delete text;
 			break;
 		case Type::U8:
-		case Type::Teleporter:
+		case Type::U8U8U8:
 			break;
 	}
 }

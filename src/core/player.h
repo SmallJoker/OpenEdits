@@ -1,22 +1,18 @@
 #pragma once
 
-#include "core/macros.h"
+#include "core/macros.h" // peer_t
 #include "core/playerflags.h"
+#include "core/script/scriptevent_fwd.h"
 #include "core/types.h"
-#include <map>
 #include <set>
 #include <string>
-#include <vector2d.h>
 
 using namespace irr;
 
-struct ScriptEvent;
 class Packet;
 class Script;
 class ScriptEventManager;
 class World;
-
-using ScriptEventList = std::set<ScriptEvent>;
 
 struct PlayerControls {
 	bool operator ==(const PlayerControls &o) const
@@ -70,8 +66,10 @@ public:
 	// For keys or killing blocks
 	std::set<blockpos_t> *on_touch_blocks = nullptr;
 
+	Script *getScript() const { return m_script; }
 	ScriptEventManager *getSEMgr() const;
-	std::unique_ptr<std::set<ScriptEvent>> script_events;
+
+	std::unique_ptr<ScriptEventMap> script_events_to_send;
 
 	void setGodMode(bool value);
 	bool godmode = false;

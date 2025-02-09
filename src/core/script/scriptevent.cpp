@@ -9,76 +9,7 @@ extern "C" {
 }
 
 static Logger logger("ScriptEvent", LL_INFO);
-#define logger_off(...) {}
 
-// -------------- ScriptEvent -------------
-
-ScriptEvent::ScriptEvent(u16 event_id)
-	: event_id(event_id)
-{
-	data = new Packet();
-}
-
-ScriptEvent::ScriptEvent(ScriptEvent &&other)
-{
-	event_id = other.event_id;
-	std::swap(data, other.data);
-}
-
-ScriptEvent::~ScriptEvent()
-{
-	delete data;
-}
-
-// -------------- ScriptEventManager helpers -------------
-
-static int read_tagged_pkt(lua_State *L, int idx, BlockParams::Type type, Packet &pkt)
-{
-	using Type = BlockParams::Type;
-	switch (type) {
-		case Type::STR16:
-			pkt.writeStr16(luaL_checkstring(L, ++idx));
-			return idx;
-		case Type::U8:
-			pkt.write<u8>(luaL_checkinteger(L, ++idx));
-			return idx;
-		case Type::U8U8U8:
-			pkt.write<u8>(luaL_checkinteger(L, ++idx));
-			pkt.write<u8>(luaL_checkinteger(L, ++idx));
-			pkt.write<u8>(luaL_checkinteger(L, ++idx));
-			return idx;
-		case Type::INVALID:
-		case Type::None:
-			break;
-		// DO NOT USE default CASE
-	}
-
-	throw std::exception();
-}
-
-static int write_tagged_pkt(lua_State *L, BlockParams::Type type, Packet &pkt)
-{
-	using Type = BlockParams::Type;
-	switch (type) {
-		case Type::STR16:
-			lua_pushstring(L, pkt.readStr16().c_str());
-			return 1;
-		case Type::U8:
-			lua_pushinteger(L, pkt.read<u8>());
-			return 1;
-		case Type::U8U8U8:
-			lua_pushinteger(L, pkt.read<u8>());
-			lua_pushinteger(L, pkt.read<u8>());
-			lua_pushinteger(L, pkt.read<u8>());
-			return 3;
-		case Type::INVALID:
-		case Type::None:
-			break;
-		// DO NOT USE default CASE
-	}
-
-	throw std::exception();
-}
 
 // -------------- ScriptEventManager impl -------------
 
@@ -116,30 +47,25 @@ ScriptEvent ScriptEventManager::readEventFromLua(int start_idx) const
 
 	const u16 event_id = luaL_checkinteger(L, start_idx);
 
-	auto def_it = m_event_defs.find(event_id);
-	if (def_it == m_event_defs.end())
-		throw std::runtime_error("unregistered event: " + std::to_string(event_id));
+	ScriptEvent se;
+	prepare(event_id, se);
 
-	ScriptEvent se(event_id);
-
-	const auto &def = def_it->second.types;
-	auto it = def.begin();
+	auto it = se.second.data.begin();
 	const int stack_max = lua_gettop(L);
 	// read linearly from function arguments
 	for (int idx = start_idx; idx < stack_max; (void)idx /*nop*/, ++it) {
-		if (it == def.end())
+		if (it == se.second.data.end())
 			goto error;
 
-		logger(LL_DEBUG, "%s: idx=%d, top_t=%d, want_t=%d, datalen=%zu",
-			__func__, idx + 1, lua_type(L, idx + 1),
-			(int)*it, se.data->size());
-		idx = read_tagged_pkt(L, idx, *it, *se.data);
+		logger(LL_DEBUG, "%s: idx=%d, top_t=%d, want_t=%d",
+			__func__, idx + 1, lua_type(L, idx + 1), (int)it->getType());
+		idx += Script::readBlockParams(L, idx + 1, *it);
 	}
 
-	if (it != def.end()) {
+	if (it != se.second.data.end()) {
 error:
 		logger(LL_ERROR, "%s: argument count mismatch. expected=%zu, got=%d",
-			__func__, def.size(), (stack_max - start_idx));
+			__func__, se.second.data.size(), (stack_max - start_idx));
 		throw std::exception();
 	}
 
@@ -155,24 +81,24 @@ void ScriptEventManager::runLuaEventCallback(const ScriptEvent &se) const
 
 	int top = lua_gettop(L);
 	lua_rawgeti(L, LUA_REGISTRYINDEX, m_ref_event_handlers);
-	lua_rawgeti(L, -1, se.event_id);
+	lua_rawgeti(L, -1, se.first);
 	if (lua_type(L, -1) != LUA_TFUNCTION) {
-		logger(LL_ERROR, "Invalid event_handler id=%d", se.event_id);
+		logger(LL_ERROR, "Invalid event_handler id=%d", se.first);
 		lua_settop(L, top);
 		return;
 	}
 
-	auto def = m_event_defs.find(se.event_id);
+	auto def = m_event_defs.find(se.first);
 	if (def == m_event_defs.end())
-		throw std::runtime_error("unregistered event: " + std::to_string(se.event_id));
+		throw std::runtime_error("unregistered event: " + std::to_string(se.first));
 
 	int nargs = 0;
-	for (const auto type : def->second.types)
-		nargs += write_tagged_pkt(L, type, *se.data);
+	for (auto &bp : se.second.data)
+		nargs += Script::writeBlockParams(L, bp);
 
 	if (lua_pcall(L, nargs, 0, 0)) {
 		logger(LL_ERROR, "event_handler id=%d failed: %s\n",
-			se.event_id,
+			se.first,
 			lua_tostring(L, -1)
 		);
 		// pop table + function + error msg
@@ -183,45 +109,54 @@ restore_stack:
 	lua_settop(L, top);
 }
 
-bool ScriptEventManager::runBatch(Packet &pkt, size_t &invocations) const
+bool ScriptEventManager::readNextEvent(Packet &pkt, bool with_peer_id, ScriptEvent &se) const
 {
-	while (pkt.getRemainingBytes()) {
-		u16 event_id = pkt.read<u16>();
-		if (event_id == UINT16_MAX)
-			break;
+	if (pkt.getRemainingBytes() == 0)
+		return false;
 
-		if (invocations == 0)
-			return false;
-		invocations--;
+	u16 event_id = pkt.read<u16>();
+	if (event_id == UINT16_MAX)
+		return false;
 
-		ScriptEvent se(event_id);
-		Packet *pkt_ptr = &pkt;
-		std::swap(se.data, pkt_ptr);
-		try {
-			runLuaEventCallback(se);
-			std::swap(se.data, pkt_ptr);
-		} catch (...) {
-			std::swap(se.data, pkt_ptr);
-			// The packet offset is invalid now. Abort.
-			throw;
-		}
-	}
+	prepare(event_id, se);
+
+	if (with_peer_id && (se.first & SEF_HAVE_ACTOR))
+		se.second.peer_id = pkt.read<peer_t>();
+
+	for (BlockParams &bp : se.second.data)
+		bp.read(pkt);
+
 	return true;
 }
 
-size_t ScriptEventManager::writeBatch(Packet &pkt, ScriptEventList *events_list) const
+size_t ScriptEventManager::writeBatchNT(Packet &pkt, bool with_peer_id, const ScriptEventMap *to_send) const
 {
-	size_t count = 0;
-	for (const auto &event : *events_list) {
-		pkt.write(event.event_id);
+	if (!to_send)
+		return 0;
 
-		const uint8_t *data;
-		size_t len = event.data->readRawNoCopy(&data, -1);
-		pkt.writeRaw(data, len);
-		count++;
+	for (auto &se : *to_send) {
+		pkt.write(se.first);
+
+		if (with_peer_id && (se.first & SEF_HAVE_ACTOR))
+			pkt.write<peer_t>(se.second.peer_id);
+
+		for (const BlockParams &bp : se.second.data)
+			bp.write(pkt);
 	}
-	pkt.write<u16>(UINT16_MAX); // terminator
+	return to_send->size();
+}
 
-	return count;
+void ScriptEventManager::prepare(event_id_t event_id, ScriptEvent &se) const
+{
+	auto def_it = m_event_defs.find(event_id);
+	if (def_it == m_event_defs.end())
+		throw std::runtime_error("unregistered event: " + std::to_string(event_id));
 
+	const auto &def = def_it->second.types;
+	se.second.data.clear();
+	se.second.data.reserve(def.size());
+	for (BlockParams::Type type : def)
+		se.second.data.emplace_back(type);
+
+	se.first = event_id;
 }

@@ -4,13 +4,16 @@
 #include "core/packet.h"
 #include "core/player.h"
 #include "core/world.h"
+#include "core/worldmeta.h"
 
 using namespace ScriptUtils;
 
 static Logger &logger = script_logger;
 
-void Script::get_position_range(lua_State *L, int idx, PositionRange &range)
+void Script::getPositionRange(int idx, PositionRange &range)
 {
+	lua_State *L = m_lua;
+
 	using O = PositionRange::Operator;
 	using T = PositionRange::Type;
 
@@ -21,9 +24,6 @@ void Script::get_position_range(lua_State *L, int idx, PositionRange &range)
 		luaL_error(L, "PRT out of range");
 	if (op >= O::PROP_MAX_INVALID)
 		luaL_error(L, "PROP out of range");
-
-	Script *script = get_script(L);
-	const Player *player = script->getCurrentPlayer();
 
 	auto read_pos = [&] (blockpos_t size, int iidx, blockpos_t *pos) {
 		float x = std::max<float>(0, luaL_checknumber(L, iidx + 0) + 0.5f);
@@ -41,12 +41,14 @@ void Script::get_position_range(lua_State *L, int idx, PositionRange &range)
 			range.minp.Y = luaL_checknumber(L, idx + 2) + 0.5f;
 			break;
 		case T::PRT_AREA: {
-			World *world = player->getWorld().get();
+			World *world = m_world;
+			ASSERT_FORCED(world, "no world");
 			read_pos(world->getSize(), idx + 1, &range.minp);
 			read_pos(world->getSize(), idx + 3, &range.maxp);
 		} break;
 		case T::PRT_CIRCLE: {
-			World *world = player->getWorld().get();
+			World *world = m_world;
+			ASSERT_FORCED(world, "no world");
 			read_pos(world->getSize(), idx + 1, &range.minp);
 			range.radius = luaL_checknumber(L, idx + 3);
 		} break;
@@ -59,10 +61,63 @@ void Script::get_position_range(lua_State *L, int idx, PositionRange &range)
 	}
 }
 
-int Script::readBlockParams(int idx, BlockParams &params)
+void Script::implSendEvent(EventDest edst, bool is_player)
 {
-	lua_State *L = m_lua;
+	Player *to_player = nullptr;
+	World *to_world = nullptr;
+	if (is_player) {
+		to_player = edst.player;
+		ASSERT_FORCED(to_player, "no player");
+	} else {
+		to_world = edst.world;
+		ASSERT_FORCED(to_world, "no world");
+	}
 
+	logger(LL_DEBUG, "%s(%d)", __func__, (int)is_player);
+
+	const bool IS_CLIENT = (m_scripttype == Script::ST_CLIENT);
+	if (IS_CLIENT) {
+		if (is_player)
+			throw std::runtime_error("for server only");
+
+		// Client: for simplicity, add everything to my Player
+		// Server: split between Player and World. Alternatively, implement "broadcast".
+		to_player = getMyPlayer();
+	}
+
+	ScriptEvent ev = m_emgr->readEventFromLua(is_player ? 2 : 1);
+	const bool is_player_specific = ev.first & SEF_HAVE_ACTOR;
+
+	// Allow
+	if (is_player && !is_player_specific)
+		throw std::runtime_error("wrong send_event used");
+
+	if (is_player_specific) {
+		// Add current player as actor
+		const Player *origin = getCurrentPlayer();
+		if (!origin)
+			throw std::runtime_error("missing origin player");
+
+		ev.second.peer_id = origin->peer_id;
+	}
+
+	std::unique_ptr<ScriptEventMap> *dst = nullptr;
+	if (to_player) {
+		// Client: only allow sending events to the current player
+		dst = &to_player->script_events_to_send;
+	} else {
+		dst = &to_world->getMeta().script_events_to_send;
+	}
+
+	if (!dst->get())
+		dst->reset(new ScriptEventMap());
+
+	// overwrite if exists
+	(*dst)->insert_or_assign(ev.first, std::move(ev.second));
+}
+
+int Script::readBlockParams(lua_State *L, int idx, BlockParams &params)
+{
 	using Type = BlockParams::Type;
 	switch (params.getType()) {
 		case Type::None:
@@ -91,7 +146,7 @@ int Script::readBlockParams(int idx, BlockParams &params)
 	return 0;
 }
 
-static int write_blockparams(lua_State *L, const BlockParams &params)
+int Script::writeBlockParams(lua_State *L, const BlockParams &params)
 {
 	using Type = BlockParams::Type;
 	switch (params.getType()) {
@@ -127,7 +182,7 @@ int Script::l_register_event(lua_State *L)
 	if (event_id_raw != event_id || event_id_raw == UINT16_MAX)
 		luaL_error(L, "event id=%d is out of range", event_id);
 
-	(void)luaL_checkinteger(L, 2); // flags (TODO)
+	// Index 2: placeholder.
 
 	auto &defs = script->m_emgr->getDefs();
 	auto [it, is_new] = defs.insert({ event_id, {} });
@@ -144,9 +199,7 @@ int Script::l_register_event(lua_State *L)
 		using Type = BlockParams::Type;
 		switch ((Type)type) {
 			case Type::STR16:
-				goto good;
 			case Type::U8:
-				goto good;
 			case Type::U8U8U8:
 				goto good;
 			case Type::None:
@@ -161,7 +214,7 @@ int Script::l_register_event(lua_State *L)
 		def.types.push_back((Type)type);
 	}
 
-	logger(LL_INFO, "%s: id=%d, cnt=%zu", __func__, event_id, def.types.size());
+	logger(LL_INFO, "%s: id=%d, #types=%zu", __func__, event_id, def.types.size());
 
 	// Return the event ID
 	lua_pushinteger(L, event_id);
@@ -171,15 +224,11 @@ int Script::l_register_event(lua_State *L)
 
 int Script::l_send_event(lua_State *L)
 {
+	// World-wide events
 	MESSY_CPP_EXCEPTIONS_START
 	Script *script = get_script(L);
-	Player *player = script->getCurrentPlayer();
 
-	ScriptEvent ev = script->m_emgr->readEventFromLua(1);
-	if (!player->script_events)
-		player->script_events.reset(new ScriptEventList());
-
-	player->script_events->emplace(std::move(ev));
+	script->implSendEvent({ .world = script->m_world }, false);
 	return 0;
 	MESSY_CPP_EXCEPTIONS_END
 }
@@ -188,7 +237,6 @@ int Script::l_world_get_block(lua_State *L)
 {
 	MESSY_CPP_EXCEPTIONS_START
 	Script *script = get_script(L);
-	Player *player = script->getCurrentPlayer();
 
 	blockpos_t pos;
 	if (!lua_isnil(L, 1)) {
@@ -196,12 +244,13 @@ int Script::l_world_get_block(lua_State *L)
 		pos.X = luaL_checknumber(L, 1) + 0.5f;
 		pos.Y = luaL_checknumber(L, 2) + 0.5f;
 	} else {
+		Player *player = script->getCurrentPlayer();
+		ASSERT_FORCED(player, "no player");
 		pos = player->getCurrentBlockPos();
 	}
 
-	World *world = player->getWorld().get();
-	if (!world)
-		luaL_error(L, "no world");
+	World *world = script->m_world;
+	ASSERT_FORCED(world, "no world");
 
 	Block b;
 	if (!world->getBlock(pos, &b))
@@ -219,8 +268,7 @@ int Script::l_world_get_blocks_in_range(lua_State *L)
 	MESSY_CPP_EXCEPTIONS_START
 	Script *script = get_script(L);
 	World *world = script->m_world;
-	if (!world)
-		luaL_error(L, "no world");
+	ASSERT_FORCED(world, "no world");
 
 	luaL_checktype(L, 1, LUA_TTABLE);
 	luaL_checktype(L, 2, LUA_TTABLE);
@@ -254,7 +302,7 @@ int Script::l_world_get_blocks_in_range(lua_State *L)
 
 	// Argument 3: Range
 	PositionRange range;
-	script->get_position_range(L, 3, range);
+	script->getPositionRange(3, range);
 
 	lua_createtable(L, 100, 0); // guessed average
 	const int value_count = 0
@@ -289,7 +337,7 @@ int Script::l_world_get_blocks_in_range(lua_State *L)
 		if (opt.return_params) {
 			auto params = world->getParamsPtr(pos);
 			if (params)
-				n += write_blockparams(L, *params);
+				n += Script::writeBlockParams(L, *params);
 		}
 
 		// Traverse the stack backwards to insert the pushed values
@@ -313,19 +361,17 @@ int Script::l_world_get_params(lua_State *L)
 {
 	Script *script = get_script(L);
 	World *world = script->m_world;
+	ASSERT_FORCED(world, "no world");
 
 	blockpos_t pos;
 	pos.X = luaL_checknumber(L, 1) + 0.5f;
 	pos.Y = luaL_checknumber(L, 2) + 0.5f;
 
-	if (!world)
-		luaL_error(L, "no world");
-
 	const BlockParams *params = world->getParamsPtr(pos);
 	if (!params)
 		return 0;
 
-	return write_blockparams(L, *params);
+	return Script::writeBlockParams(L, *params);
 }
 
 int Script::l_world_set_tile(lua_State *L)
@@ -339,7 +385,7 @@ int Script::l_world_set_tile(lua_State *L)
 		luaL_error(L, "block_id out of range");
 
 	PositionRange range;
-	script->get_position_range(L, 3, range);
+	script->getPositionRange(3, range);
 
 	return script->implWorldSetTile(range, block_id, tile);
 }

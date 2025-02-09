@@ -1,5 +1,11 @@
 #include "worldmeta.h"
 #include "packet.h"
+#include "script/scriptevent.h"
+
+WorldMeta::WorldMeta(const std::string &id) :
+	IWorldMeta(id)
+{
+}
 
 WorldMeta::Type WorldMeta::idToType(const std::string &id)
 {

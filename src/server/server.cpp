@@ -158,27 +158,35 @@ void Server::step(float dtime)
 	// Process script events
 	for (auto p : m_players) {
 		RemotePlayer *player = (RemotePlayer *)p.second;
+		auto world = player->getWorld();
 
-		if (!player->script_events)
-			continue; // no data
+		if (!world)
+			continue;
 
-		ScriptEventList events_list;
-		std::swap(*player->script_events.get(), events_list);
-		player->script_events.reset();
+		// Clear the Player data
+		std::unique_ptr<ScriptEventMap> player_se = std::move(player->script_events_to_send);
 
-		if (!player->getWorld())
-			continue; // already guarded by Player::setWorld
-
-		if (player->protocol_version < 8)
+		if (player->protocol_version < 9)
 			continue; // packet ID used differently. logs a warning.
+
+		const ScriptEventMap *world_se = world->getMeta().script_events_to_send.get();
+		if (!player_se && !world_se)
+			continue; // nothing to send
 
 		// See also: Client::stepPhysics
 		Packet pkt;
 		pkt.write(Packet2Client::ScriptEvent);
-		size_t count = m_script->getSEMgr()->writeBatch(pkt, &events_list);
+		size_t count = 0;
+		count += m_script->getSEMgr()->writeBatchNT(pkt, true, player_se.get());
+		count += m_script->getSEMgr()->writeBatchNT(pkt, true, world_se);
+		pkt.write<u16>(UINT16_MAX); // terminate batch
 		if (count > 0)
 			m_con->send(p.first, 1, pkt);
 	}
+
+	// Clear world-specific event send queue
+	for (auto &world : worlds)
+		world->getMeta().script_events_to_send.release();
 
 	if (m_script)
 		m_script->onStep((double)getTimeNowDIV() / TIME_RESOLUTION);

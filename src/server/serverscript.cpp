@@ -10,6 +10,10 @@ using namespace ScriptUtils;
 
 static Logger &logger = script_logger;
 
+static int l_nop_false(lua_State *L)
+{
+	return false;
+}
 
 void ServerScript::initSpecifics()
 {
@@ -21,6 +25,8 @@ void ServerScript::initSpecifics()
 
 	lua_getglobal(L, "env");
 	{
+		field_set_function(L, "is_me", l_nop_false);
+
 		lua_newtable(L);
 		field_set_function(L, "get_players_in_world", ServerScript::l_get_players_in_world);
 		lua_setfield(L, -2, "server");
@@ -82,7 +88,7 @@ int ServerScript::l_world_set_block(lua_State *L)
 		bu.setErase(true);
 	} else {
 		bu.set(block_id);
-		script->readBlockParams(4, bu.params);
+		Script::readBlockParams(L, 4, bu.params);
 	}
 
 	// See also: `Server::pkt_PlaceBlock`

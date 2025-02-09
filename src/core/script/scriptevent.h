@@ -1,16 +1,19 @@
 #pragma once
 
+#include "scriptevent_fwd.h"
 #include "core/blockparams.h"
 #include <irrTypes.h>
-#include <map>
+#include <memory> // unique_ptr
 #include <set>
 #include <vector>
+
+typedef uint32_t peer_t; // same as in ENetPeer
 
 using namespace irr;
 
 class Packet;
 class Script;
-
+class ScriptEventManager;
 
 /*
 Local:
@@ -23,29 +26,21 @@ Local:
 Peer:
 	5. Receive `Packet` (batch)
 	6. Execute the Lua event handler for each event of the batch
-
-TODO: Event deduplication?
 */
 
-struct ScriptEvent {
-	ScriptEvent(u16 event_id);
-	ScriptEvent(ScriptEvent &&other);
-	~ScriptEvent();
-
-	ScriptEvent &operator=(const ScriptEvent &other) = delete;
-
-	// For std::set
-	bool operator<(const ScriptEvent &rhs) const
-	{
-		return event_id < rhs.event_id && data < rhs.data;
-	}
-
-	u16 event_id;
-	// Pointer is stupid but I want to keep headers lightweight.
-	Packet *data = nullptr;
+// Part of `event_id_t`
+enum ScriptEventFlags : event_id_t {
+	// Attaches the `peer_id` to the event information
+	SEF_HAVE_ACTOR = 0x8000,
+	// world: normal event
+	// player: with peer-id
+	//SEF_IS_ATTRIBUTE = 0x4000,
 };
 
-using ScriptEventList = std::set<ScriptEvent>;
+struct ScriptEventData {
+	peer_t peer_id; // unused for attributes
+	std::vector<BlockParams> data;
+};
 
 class ScriptEventManager {
 public:
@@ -54,7 +49,7 @@ public:
 	};
 
 private:
-	std::map<u16, EventDef> m_event_defs;
+	std::map<event_id_t, EventDef> m_event_defs;
 	Script *m_script;
 	int m_ref_event_handlers = -2; // LUA_NOREF
 
@@ -68,7 +63,12 @@ public:
 	void runLuaEventCallback(const ScriptEvent &se) const;
 
 	/// @param invocations Remaining allowed Lua invocations (hard limit)
-	/// @return True if all ScriptEvents could be processed.
-	bool runBatch(Packet &pkt, size_t &invocations) const;
-	size_t writeBatch(Packet &pkt, ScriptEventList *events_list) const;
+	/// @return True on success
+	bool readNextEvent(Packet &pkt, bool with_peer_id, ScriptEvent &se) const;
+	/// Does NOT terminate the packet with UINT16_MAX after writing
+	size_t writeBatchNT(Packet &pkt, bool with_peer_id, const ScriptEventMap *to_send) const;
+
+private:
+	/// Throws an exception on error
+	void prepare(event_id_t event_id, ScriptEvent &se) const;
 };

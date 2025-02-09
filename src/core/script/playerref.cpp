@@ -1,4 +1,5 @@
 #include "playerref.h"
+#include "script.h"
 #include "script_utils.h"
 #include "scriptevent.h"
 #include "core/player.h"
@@ -166,20 +167,14 @@ int PlayerRef::hash(lua_State *L)
 
 int PlayerRef::send_event(lua_State *L)
 {
+	// Player-specific events
 	MESSY_CPP_EXCEPTIONS_START
 	Player *player = toPlayerRef(L, 1)->m_player;
 	if (!player)
 		return 0;
 
-	ScriptEventManager *smgr = player->getSEMgr();
-	if (!smgr)
-		luaL_error(L, "Missing ScriptEventManager");
-
-	ScriptEvent ev = smgr->readEventFromLua(2);
-	if (!player->script_events)
-		player->script_events.reset(new ScriptEventList());
-
-	player->script_events->emplace(std::move(ev));
+	Script *script = player->getScript();
+	script->implSendEvent({ .player = player }, true);
 	return 0;
 	MESSY_CPP_EXCEPTIONS_END
 }

@@ -7,6 +7,7 @@
 #include "utils.h" // strtrim
 #include "worldmeta.h"
 #include <cstring> // memset
+#include "script/scriptevent.h" // static_assert in std::unique_ptr
 
 bool BlockUpdate::set(bid_t block_id)
 {

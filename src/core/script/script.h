@@ -7,12 +7,9 @@
 struct BlockParams;
 struct BlockProperties;
 struct lua_State;
-struct ScriptEvent;
 class BlockManager;
 class MediaManager;
-class Packet;
 class Player;
-class PlayerRef;
 class ScriptEventManager;
 class World;
 
@@ -29,15 +26,18 @@ public:
 
 	bool init();
 	void close();
+
 	Type getScriptType() const { return m_scripttype; }
 	lua_State *getState() const { return m_lua; }
 	const BlockManager *getBlockMgr() const { return m_bmgr; }
 	ScriptEventManager *getSEMgr() const { return m_emgr; }
-	virtual void step(float dtime) {}
 
 	void setMediaMgr(MediaManager *media) { m_media = media; }
 	/// Safe file loader
 	bool loadFromAsset(const std::string &asset_name);
+
+	virtual bool isElevated() const = 0;
+	virtual Player *getMyPlayer() const = 0;
 
 protected:
 	virtual void initSpecifics() {}
@@ -94,12 +94,24 @@ protected:
 
 	// -------- World / events
 protected:
-	static void get_position_range(lua_State *L, int idx, PositionRange &range);
+	void getPositionRange(int idx, PositionRange &range);
+
+public:
+	union EventDest {
+		Player *player;
+		World *world;
+	};
+
+	/// `is_player == false`: provide `edst.world`. args start at #1.
+	/// `is_player == true`: provide `edst.player`. args start at #2.
+	void implSendEvent(EventDest edst, bool is_player);
 
 	/// returns how many values were read
-	int readBlockParams(int idx, BlockParams &params);
+	static int readBlockParams(lua_State *L, int idx, BlockParams &params);
+	/// returns the amount of pushed values
+	static int writeBlockParams(lua_State *L, const BlockParams &params);
 
-
+protected:
 	virtual int implWorldSetTile(PositionRange range, bid_t block_id, int tile) = 0;
 
 
@@ -126,7 +138,7 @@ public:
 
 protected:
 	void pushCurrentPlayerRef();
-	inline Player *getCurrentPlayer() const { return *m_player; }
+	inline Player *getCurrentPlayer() const { return m_player ? *m_player : nullptr; }
 	Player **m_player = nullptr;
 
 

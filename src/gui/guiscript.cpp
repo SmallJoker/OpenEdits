@@ -415,7 +415,7 @@ int GuiScript::l_gui_select_block(lua_State *L)
 			luaL_error(L, "invalid block_id=%d", block_id);
 	}
 
-	script->readBlockParams(2, bu->params);
+	Script::readBlockParams(L, 2, bu->params);
 	return 0;
 	MESSY_CPP_EXCEPTIONS_END
 }

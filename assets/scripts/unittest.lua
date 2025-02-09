@@ -132,7 +132,8 @@ local function ev_4_broadcast()
 	myplayerref:send_event(EV_4, "EV4.", EV_4_counter, 55, 77)
 end
 
-EV_4 = env.register_event(1004, 0, env.PARAMS_TYPE_STR16, env.PARAMS_TYPE_U8U8U8,
+EV_4 = env.register_event(1004 + env.SEF_HAVE_ACTOR, 0,
+	env.PARAMS_TYPE_STR16, env.PARAMS_TYPE_U8U8U8,
 	function(...)
 		print("got EV_4", dump({...}))
 		local s, u1, u2, u3 = unpack({...})

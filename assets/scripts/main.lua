@@ -6,7 +6,7 @@ if true then
 	return
 end
 
-assert(env.API_VERSION >= 3, "Script implementation is too old.")
+assert(env.API_VERSION >= 4, "Script implementation is too old.")
 
 env.include("constants.lua")
 
@@ -43,7 +43,9 @@ env.on_player_event = function(event, arg)
 
 	local id = env.player:hash()
 	if event == "join" then
-		player_data[id] = {}
+		player_data[id] = {
+			coins = 0
+		}
 	end
 	if event == "leave" then
 		player_data[id] = nil
@@ -84,6 +86,17 @@ function reg.change_blocks(block_defs)
 	for _, v in pairs(block_defs) do
 		env.change_block(v.id, v)
 	end
+end
+
+local last_event_id = 0x1000
+function reg.next_event_id(flags)
+	while last_event_id < 0x2000 do
+		last_event_id = last_event_id + 1
+		if not env.event_handlers[last_event_id] then
+			return last_event_id + flags
+		end
+	end
+	assert(false)
 end
 
 local table_to_pack_blocks = reg.table_to_pack_blocks

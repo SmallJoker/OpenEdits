@@ -12,7 +12,7 @@ Logger script_logger("Script", LL_INFO);
 static Logger &logger = script_logger;
 
 
-static const lua_Integer SCRIPT_API_VERSION = 3;
+static const lua_Integer SCRIPT_API_VERSION = 4;
 
 /*
 	Sandbox theory: http://lua-users.org/wiki/SandBoxes
@@ -24,6 +24,10 @@ static const lua_Integer SCRIPT_API_VERSION = 3;
 
 // -------------- Static Lua functions -------------
 
+static int l_nop(lua_State *L)
+{
+	return 0;
+}
 
 static int l_print(lua_State *L)
 {
@@ -199,6 +203,9 @@ bool Script::init()
 			lua_newtable(L);
 			lua_setfield(L, -2, "event_handlers");
 		}
+
+		lua_pushcfunction(L, l_nop);
+		lua_setfield(L, -2, "on_player_event");
 
 		lua_newtable(L);
 		{

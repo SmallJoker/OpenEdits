@@ -2,13 +2,13 @@
 
 #include "macros.h"
 #include "playerflags.h"
+#include "script/scriptevent_fwd.h"
 #include "timer.h"
 #include "world.h"
 
 // Per-world shared pointer to safely clear and set new world data (swap)
 struct WorldMeta : public IWorldMeta {
-	WorldMeta(const std::string &id) :
-		IWorldMeta(id) {}
+	WorldMeta(const std::string &id);
 
 	DISABLE_COPY(WorldMeta);
 
@@ -31,6 +31,8 @@ struct WorldMeta : public IWorldMeta {
 	// For database
 	void readPlayerFlags(Packet &pkt);
 	void writePlayerFlags(Packet &pkt) const;
+
+	std::unique_ptr<ScriptEventMap> script_events_to_send;
 
 	// Activated keys
 	Timer keys[3] = {};

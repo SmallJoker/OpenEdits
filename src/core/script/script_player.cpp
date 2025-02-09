@@ -12,6 +12,7 @@ namespace {
 
 static Logger &logger = script_logger;
 
+
 void Script::setPlayer(Player *player)
 {
 	*m_player = player;

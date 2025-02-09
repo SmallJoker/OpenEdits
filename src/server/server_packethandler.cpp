@@ -77,7 +77,11 @@ void Server::pkt_Hello(peer_t peer_id, Packet &pkt)
 	}
 
 	auto player = new RemotePlayer(peer_id, protocol_ver);
-	m_players.emplace(peer_id, player);
+	auto insertion = m_players.emplace(peer_id, player);
+	if (!insertion.second) {
+		delete player;
+		return;
+	}
 
 	player->name = name;
 	player->state = RemotePlayerState::Login;
@@ -871,13 +875,18 @@ void Server::pkt_ScriptEvent(peer_t peer_id, Packet &pkt)
 	if (player->rl_scriptevents.isActive())
 		return; // ignore packet
 
-	// Sent by `ScriptEventManager::writeBatch`
-	const size_t limit = player->rl_scriptevents.getSumLimit() + 1.0f;
-	size_t countdown = limit;
+	RateLimit &rl = player->rl_scriptevents;
+	auto *smgr = m_script->getSEMgr();
 	m_script->setPlayer(player);
-	m_script->getSEMgr()->runBatch(pkt, countdown);
+
+	ScriptEvent se;
+	while (smgr->readNextEvent(pkt, false, se)) {
+		if (rl.add(1))
+			break; // limit active. discard events.
+
+		smgr->runLuaEventCallback(se);
+	}
 	m_script->setPlayer(nullptr);
-	player->rl_scriptevents.add(limit - countdown);
 }
 
 void Server::pkt_GodMode(peer_t peer_id, Packet &pkt)

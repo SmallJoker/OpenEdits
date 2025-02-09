@@ -12,6 +12,9 @@ public:
 		m_server(server)
 	{}
 
+	bool isElevated() const override { return true; }
+	Player *getMyPlayer() const override { return nullptr; }
+
 protected:
 	void initSpecifics() override;
 

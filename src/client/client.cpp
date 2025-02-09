@@ -642,15 +642,17 @@ void Client::stepPhysics(float dtime)
 		}
 	}
 
-	if (m_script && player->script_events.get()) {
+	ScriptEventMap *se = player->script_events_to_send.get();
+	if (se && !se->empty()) {
 		// Read back by `Server::pkt_ScriptEvent`
 		Packet pkt;
 		pkt.write(Packet2Server::ScriptEvent);
-		size_t count = m_script->getSEMgr()->writeBatch(pkt, player->script_events.get());
+		size_t count = m_script->getSEMgr()->writeBatchNT(pkt, false, se);
+		pkt.write<u16>(UINT16_MAX); // end of batch
 		if (count > 0)
 			m_con->send(0, 1, pkt);
+		se->clear();
 	}
-	player->script_events.reset();
 	m_rl_scriptevents.step(dtime);
 
 	if (map_dirty) {

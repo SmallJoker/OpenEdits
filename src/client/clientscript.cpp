@@ -14,19 +14,27 @@ void ClientScript::initSpecifics()
 
 	PlayerRef::doRegister(L);
 	pushCurrentPlayerRef();
+
+	lua_getglobal(L, "env");
+	{
+		field_set_function(L, "is_me", ClientScript::l_is_me);
+	}
+	lua_pop(L, 1); // env
 }
 
 void ClientScript::closeSpecifics()
 {
 }
 
+int ClientScript::l_is_me(lua_State *L)
+{
+	ClientScript *script = (ClientScript *)get_script(L);
+	lua_pushboolean(L, script->getCurrentPlayer() == script->m_my_player);
+	return 1;
+}
+
 int ClientScript::implWorldSetTile(PositionRange range, bid_t block_id, int tile)
 {
-	if (!isMe()) {
-		logger(LL_WARN, "set_tile: player != me");
-		return 0; // no-op
-	}
-
 	lua_State *L = m_lua;
 	World *world = m_world;
 	if (!world)

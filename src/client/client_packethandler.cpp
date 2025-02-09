@@ -266,9 +266,9 @@ void Client::pkt_Join(Packet &pkt)
 
 	if (!player) {
 		// normal case. player should yet not exist!
-		m_players.emplace(peer_id, new LocalPlayer(peer_id));
+		player = new LocalPlayer(peer_id);
+		m_players.emplace(peer_id, player);
 	}
-	player = getPlayerNoLock(peer_id);
 	player->setWorld(getWorld());
 	player->setScript((Script *)m_script);
 
@@ -503,17 +503,42 @@ void Client::pkt_PlaceBlock(Packet &pkt)
 
 void Client::pkt_ScriptEvent(Packet &pkt)
 {
-	if (m_script && !m_rl_scriptevents.isActive()) {
-		const size_t limit = m_rl_scriptevents.getSumLimit() + 1.0f;
-		size_t countdown = limit;
-		try {
-			m_script->invoked_by_server = true;
-			m_script->getSEMgr()->runBatch(pkt, countdown);
-		} catch (...) {
-			m_script->invoked_by_server = false;
-			throw;
+	if (!m_script || m_rl_scriptevents.isActive())
+		return;
+	if (pkt.data_version < 9)
+		return; // incompatible
+
+	auto world = getMyPlayer()->getWorld();
+
+	// Similar to `Server::pkt_ScriptEvent` but with peer_id + Event
+	auto *smgr = m_script->getSEMgr();
+	ScriptEvent se;
+
+	try {
+		m_script->invoked_by_server = true;
+		while (smgr->readNextEvent(pkt, true, se)) {
+			if (m_rl_scriptevents.add(1))
+				break; // discard. rate limit reached.
+
+			if (se.first & SEF_HAVE_ACTOR) {
+				Player *p = getPlayerNoLock(se.second.peer_id);
+				if (!p)
+					continue;
+
+				m_script->setPlayer(p);
+			} else {
+				m_script->setWorld(world.get());
+			}
+
+			smgr->runLuaEventCallback(se);
 		}
-		m_rl_scriptevents.add(limit - countdown);
+
+		m_script->invoked_by_server = false;
+		m_script->setPlayer(nullptr);
+	} catch (...) {
+		m_script->invoked_by_server = false;
+		m_script->setPlayer(nullptr);
+		throw;
 	}
 }
 

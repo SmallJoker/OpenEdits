@@ -7,6 +7,7 @@
 #include "core/script/script_utils.h"
 #include "core/script/scriptevent.h"
 #include "core/world.h"
+#include "core/worldmeta.h"
 #include "server/remoteplayer.h"
 #include "server/serverscript.h"
 
@@ -91,12 +92,12 @@ static void test_playerref_scriptevents(Script &script, Player &p)
 		CHECK(props != nullptr);
 		script.onIntersectOnce({0 , 0}, props);
 		CHECK(script.popErrorCount() == 0);
-		CHECK(p.script_events.get());
-		std::unique_ptr<ScriptEventList> list(p.script_events.release());
-		CHECK(list->begin()->event_id == 1004);
+		CHECK(p.script_events_to_send);
+		ScriptEventMap list = std::move(*p.script_events_to_send);
+		CHECK(list.begin()->first == (1004 | SEF_HAVE_ACTOR));
 
 		// Process the added event
-		script.getSEMgr()->runLuaEventCallback(*list->begin());
+		script.getSEMgr()->runLuaEventCallback(*list.begin());
 		CHECK(script.popErrorCount() == 0);
 		CHECK(script.popTestFeedback() == "EV4.15577;");
 	}
@@ -205,25 +206,49 @@ void unittest_script()
 		CHECK(script.popErrorCount() == 0);
 	}
 
-	// script events
-	{
-		// make the player send an event
-		p.script_events.reset(new ScriptEventList());
-		auto &myevents = *p.script_events.get();
+	auto w = std::make_shared<World>(&bmgr, "scriptevent");
+	p.setWorld(w);
+	script.setPlayer(&p); // now with a world
 
+	// script events: out queue
+	{
+		auto *smgr = script.getSEMgr();
+
+		// make the player send an event
 		script.onIntersect(bmgr.getProps(4));
-		CHECK(myevents.size() == 1);
-		auto se = myevents.begin();
-		CHECK(se->event_id == 1003 && se->data->size() == 2 + 11 + 3);
+		auto myevents = w->getMeta().script_events_to_send.get();
+
+		CHECK(myevents && myevents->size() == 1);
+		auto se = myevents->begin();
+		CHECK(se->first == 1003 && se->second.data.size() == 2);
 
 		// run callback function
-		script.getSEMgr()->runLuaEventCallback(*myevents.begin());
+		smgr->runLuaEventCallback(*myevents->begin());
 		CHECK(script.popTestFeedback() == "hello world200103;");
 
-		p.script_events.reset();
+		{
+			// Serialize/deserialize
+			Packet pkt;
+			smgr->writeBatchNT(pkt, true, myevents);
+			pkt.write<u16>(UINT16_MAX);
+
+			ScriptEvent se;
+			size_t count = 0;
+			while (smgr->readNextEvent(pkt, true, se)) {
+				switch (count) {
+					case 1:
+						CHECK(se.first == 1003);
+						CHECK(se.second.data.size() == 2);
+					break;
+				}
+				count++;
+			}
+			CHECK(count == 1)
+		}
 	}
 
 	test_playerref_scriptevents(script, p);
+	p.setWorld(nullptr);
 
 	// join/leave
 	{
