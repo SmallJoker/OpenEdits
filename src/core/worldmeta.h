@@ -23,6 +23,10 @@ struct WorldMeta : public IWorldMeta {
 
 	static Type idToType(const std::string &id);
 
+	// For network only!
+	void readSpecific(Packet &pkt);
+	void writeSpecific(Packet &pkt) const;
+
 	/// Fields to keep on clear
 	PlayerFlags getPlayerFlags(const std::string &name) const;
 	void setPlayerFlags(const std::string &name, const PlayerFlags pf);
@@ -34,10 +38,11 @@ struct WorldMeta : public IWorldMeta {
 
 	std::unique_ptr<ScriptEventMap> script_events_to_send;
 
-	// Activated keys
-	Timer keys[3] = {};
+	Timer keys[3] = {}; // ID_KEY_*
+	bool switch_state = false; // ID_SWITCH
+	int spawn_index = -1; // ID_SPAWN
+
 	std::string edit_code;
-	int spawn_index = -1;
 
 	/// Removes the oldest history until nelements is reached
 	void trimChatHistory(size_t nelements);

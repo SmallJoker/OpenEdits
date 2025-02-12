@@ -853,6 +853,16 @@ void Server::pkt_TriggerBlocks(peer_t peer_id, Packet &pkt)
 					}
 				}
 				break;
+			case Block::ID_SWITCH:
+				{
+					meta.switch_state ^= true;
+					Packet out;
+					out.write(Packet2Client::ActivateBlock);
+					out.write(b.id);
+					out.write<u8>(meta.switch_state);
+					broadcastInWorld(player, 1, out);
+				}
+				break;
 			case Block::ID_CHECKPOINT:
 				player->checkpoint = pos;
 				break;

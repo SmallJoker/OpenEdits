@@ -226,6 +226,7 @@ void Client::pkt_WorldData(Packet &pkt)
 	}
 
 	world->getMeta().readCommon(pkt);
+	world->getMeta().readSpecific(pkt);
 	blockpos_t size;
 	pkt.read<u16>(size.X);
 	pkt.read<u16>(size.Y);
@@ -545,47 +546,57 @@ void Client::pkt_ScriptEvent(Packet &pkt)
 void Client::pkt_ActivateBlock(Packet &pkt)
 {
 	/*
-		TODO: In long term, key blocks (and others) should raise "events" from Lua-side.
-
-		@ Client
-		1. LocalPlayer physics
-		2. Lua callback (any)
-		3. Call to "event" sender function
-		@ Server
-		4. Event filtering (anti-spam, anti-cheat)
-		5. event handler Lua function (includes calls to `env.world.set_tile` etc)
-		6. Event packet sent to relevant players (or none)
-		@ Client (of all players)
-		7. event handler Lua function (same as server)
+		In long term, key blocks (and others) should raise "events" from Lua-side.
 	*/
+
 	auto player = getMyPlayer();
 
-	bid_t key_bid = pkt.read<bid_t>();
+	bid_t activated_id = pkt.read<bid_t>();
 	bool state = pkt.read<u8>();
 
-	switch (key_bid) {
+	bid_t bid_door,
+		bid_gate,
+		bid_aux = Block::ID_INVALID;
+
+	switch (activated_id) {
 		case Block::ID_KEY_R:
 		case Block::ID_KEY_G:
 		case Block::ID_KEY_B:
-			// good
-			break;
+		{
+
+			bid_t key_idx = activated_id - Block::ID_KEY_R;
+			bid_door = key_idx + Block::ID_DOOR_R;
+			bid_gate = key_idx + Block::ID_GATE_R;
+
+			auto &timer = player->getWorld()->getMeta().keys[key_idx];
+			if (timer.isActive() == state)
+				return; // nothing to do
+
+			timer.set(state); // 1.0f (active) or 0.0f (stopped)
+		}
+			break; // good, continue.
+		case Block::ID_SWITCH:
+		{
+			bool &val = player->getWorld()->getMeta().switch_state;
+			if (val == state)
+				return; // nothing to do
+
+			val = state;
+			bid_door = Block::ID_SWITCH_DOOR;
+			bid_gate = Block::ID_SWITCH_GATE;
+			bid_aux  = Block::ID_SWITCH;
+		}
+			break; // good, continue
 		default:
-			// what to do?
-			return;
+			return; // unknown, unhandled block
 	};
-
-	uint8_t key_idx = key_bid - Block::ID_KEY_R;
-	bid_t bid_door = key_idx + Block::ID_DOOR_R;
-	bid_t bid_gate = key_idx + Block::ID_GATE_R;
-
-	auto &timer = player->getWorld()->getMeta().keys[key_idx];
-	timer.set(state); // 1.0f (active) or 0.0f (stopped)
 
 	// Quick iterate
 	size_t n = 0;
 	auto world = player->getWorld();
 	for (Block *b = world->begin(); b < world->end(); ++b) {
-		if (b->id == bid_door || b->id == bid_gate) {
+		bid_t id = b->id;
+		if (id == bid_door || id == bid_gate || id == bid_aux) {
 			b->tile = state;
 			n++;
 		}

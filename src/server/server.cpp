@@ -500,6 +500,7 @@ void Server::writeWorldData(Packet &out, World &world, bool is_clear)
 	out.write<u8>(1 + is_clear); // 1: new data. 2: clear
 
 	world.getMeta().writeCommon(out);
+	world.getMeta().writeSpecific(out);
 	blockpos_t size = world.getSize();
 	out.write(size.X); // dimensions
 	out.write(size.Y);

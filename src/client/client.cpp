@@ -577,6 +577,10 @@ static bool send_on_touch_blocks(Client *cli, Player *player, Packet &pkt)
 					cli->sendNewEvent(e);
 				}
 				break;
+			case Block::ID_SWITCH:
+				pkt.write(bp.X);
+				pkt.write(bp.Y);
+			break;
 			case Block::ID_CHECKPOINT:
 				if (player->godmode)
 					break;
@@ -717,6 +721,10 @@ uint8_t Client::getBlockTile(const Player *player, const Block *b) const
 		case Block::ID_GATE_G:
 		case Block::ID_GATE_B:
 			return world->getMeta().keys[b->id - Block::ID_GATE_R].isActive();
+		case Block::ID_SWITCH:
+		case Block::ID_SWITCH_DOOR:
+		case Block::ID_SWITCH_GATE:
+			return world->getMeta().switch_state;
 		case Block::ID_TIMED_GATE_1:
 		case Block::ID_TIMED_GATE_2:
 			return (m_time / TIME_RESOLUTION) % 10;

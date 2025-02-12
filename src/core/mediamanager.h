@@ -52,7 +52,7 @@ public:
 	virtual bool requireAsset(const char *name);
 
 	/// @return non-NULL on success
-	virtual const char *getAssetPath(const char *name);
+	const char *getAssetPath(const char *name);
 
 	static const std::string ASSETS_DIR;
 

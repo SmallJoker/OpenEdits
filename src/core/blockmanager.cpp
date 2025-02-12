@@ -158,8 +158,11 @@ void BlockManager::populateTextures()
 			pack->imagepath = "pack_" + pack->name + ".png";
 
 		std::string real_path;
-		if (m_media)
-			real_path = m_media->getAssetPath(pack->imagepath.c_str());
+		if (m_media) {
+			const char *path = m_media->getAssetPath(pack->imagepath.c_str());
+			if (path)
+				real_path.assign(path);
+		}
 		if (real_path.empty()) // fallback
 			real_path = "assets/textures/" + pack->imagepath;
 

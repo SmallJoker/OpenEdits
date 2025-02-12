@@ -17,6 +17,40 @@ WorldMeta::Type WorldMeta::idToType(const std::string &id)
 	return WorldMeta::Type::MAX_INVALID;
 }
 
+void WorldMeta::readSpecific(Packet &pkt)
+{
+	ASSERT_FORCED(pkt.data_version != 0, "invalid proto ver");
+
+	if (pkt.data_version < 9)
+		return;
+
+	u16 flags = pkt.read<u16>();
+	// duplicate of Client::pkt_ActivateBlock
+	keys[0].set( !!(flags & (1 << 0))); // 1.0f (active) or 0.0f (stopped)
+	keys[1].set( !!(flags & (1 << 2)));
+	keys[2].set( !!(flags & (1 << 2)));
+	switch_state = (flags & (1 << 3));
+}
+
+void WorldMeta::writeSpecific(Packet &pkt) const
+{
+	ASSERT_FORCED(pkt.data_version != 0, "invalid proto ver");
+
+	if (pkt.data_version < 9)
+		return;
+
+	u16 flags = 0
+		+ (keys[0].isActive() << 0)
+		+ (keys[1].isActive() << 1)
+		+ (keys[2].isActive() << 2)
+		+ (switch_state       << 3)
+	;
+
+	pkt.write(flags);
+}
+
+
+
 PlayerFlags WorldMeta::getPlayerFlags(const std::string &name) const
 {
 	auto it = m_player_flags.find(name);

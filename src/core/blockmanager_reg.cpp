@@ -376,6 +376,23 @@ void BlockManager::doPackRegistration()
 	}
 
 	{
+		BlockPack *pack = new BlockPack("switches");
+		pack->default_type = BlockDrawType::Action;
+		pack->block_ids = { Block::ID_SWITCH, Block::ID_SWITCH_DOOR, Block::ID_SWITCH_GATE };
+		registerPack(pack);
+
+		auto props = m_props[Block::ID_SWITCH];
+		props->trigger_on_touch = true;
+		props->setTiles({ BlockDrawType::Action, BlockDrawType::Action });
+
+		props = m_props[Block::ID_SWITCH_DOOR];
+		props->setTiles({ BlockDrawType::Solid, BlockDrawType::Action });
+
+		props = m_props[Block::ID_SWITCH_GATE];
+		props->setTiles({ BlockDrawType::Action, BlockDrawType::Solid });
+	}
+
+	{
 		BlockPack *pack = new BlockPack("teleporter");
 		pack->default_type = BlockDrawType::Action;
 		pack->block_ids = { Block::ID_TELEPORTER };
