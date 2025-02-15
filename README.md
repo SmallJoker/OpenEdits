@@ -56,6 +56,7 @@ Permission/player flag examples:
 
  * `--version` outputs the current game version
  * `--unittest` runs the included tests to sanity check
+ * `--decompress FILEPATH` decompresses an EELVL file (for development purposes)
  * `--server` starts a server-only instance without GUI
  * `--setrole USERNAME ROLE`
      * `ROLE` can be one of: `normal`, `moderator`, `admin`.

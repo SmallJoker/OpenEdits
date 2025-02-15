@@ -6,6 +6,7 @@
 #include "core/packet.h"
 #include "core/world.h"
 #include "core/worldmeta.h"
+#include "version.h" // APPLICATION_NAME
 #include <filesystem>
 #include <fstream>
 #include <map>
@@ -33,23 +34,38 @@ struct EBlockParams {
 	};
 
 	s32 val_I[3] = { 0 };
-	//std::string val_S[4] = { };
+	std::string val_S[2] = { };
 
 	// --------- EBlockParams -> BlockParams conversion ---------
 
 	#define PARAM_CONV_IMPORT_REG(name) \
-		void (name)(bid_t id, BlockParams &params)
-	typedef PARAM_CONV_IMPORT_REG(EBlockParams::*ConvImporter);
+		void (name)(bid_t id, BlockParams &params) const
+	#define PARAM_CONV_EXPORT_REG(name) \
+		void (name)(bid_t id, const BlockParams &params)
 
-	static void registerImports();
-	static std::map<bid_t, ConvImporter> conv_import;
+	struct Converter {
+		typedef PARAM_CONV_IMPORT_REG(EBlockParams::*importer);
+		typedef PARAM_CONV_EXPORT_REG(EBlockParams::*exporter);
 
-	bool importParams(bid_t id, BlockParams &params);
+		importer from_eelvl;
+		exporter to_eelvl;
+	};
 
+	static void registerConvFuncs();
+	static std::map<bid_t, Converter> my_converter;
+
+	bool importParams(bid_t id, BlockParams &params) const;
+	bool exportParams(bid_t id, const BlockParams &params);
+
+private:
 	// BlockParams is initialized by BlockUpdate::set() based on BlockProperties::paramtypes
 	PARAM_CONV_IMPORT_REG(importSpike)
 	{
 		params.param_u8 = (val_I[0] + 3) % 4;
+	}
+	PARAM_CONV_EXPORT_REG(exportSpike)
+	{
+		val_I[0] = (params.param_u8 + 1) % 4;
 	}
 
 	PARAM_CONV_IMPORT_REG(importCoindoor)
@@ -58,6 +74,10 @@ struct EBlockParams {
 			fprintf(stderr, "Invalid coindoor value: %i\n", val_I[0]);
 		params.param_u8 = val_I[0];
 	}
+	PARAM_CONV_EXPORT_REG(exportCoindoor)
+	{
+		val_I[0] = params.param_u8;
+	}
 
 	PARAM_CONV_IMPORT_REG(importTeleporter)
 	{
@@ -65,9 +85,28 @@ struct EBlockParams {
 		params.teleporter.id = val_I[1];
 		params.teleporter.dst_id = val_I[2];
 	}
+	PARAM_CONV_EXPORT_REG(exportTeleporter)
+	{
+		val_I[0] = params.teleporter.rotation;
+		val_I[1] = params.teleporter.id;
+		val_I[2] = params.teleporter.dst_id;
+	}
+
+	PARAM_CONV_IMPORT_REG(importText)
+	{
+		*params.text = val_S[0];
+		// Ignored: string (color), int (wrap)
+	}
+	PARAM_CONV_EXPORT_REG(exportText)
+	{
+		val_S[0] = *params.text;
+		// Avoid black screen upon import
+		val_S[1] = "#FFFFFF"; // text colot
+		val_I[0] = 200; // pixels when to wrap the text
+	}
 };
 
-std::map<bid_t, EBlockParams::ConvImporter> EBlockParams::conv_import;
+std::map<bid_t, EBlockParams::Converter> EBlockParams::my_converter;
 
 static std::vector<EBlockParams::Type> BLOCK_TYPE_LUT; // Indexed by block ID
 
@@ -94,7 +133,7 @@ static void fill_block_types()
 		}
 	};
 
-	// Based on https://github.com/capashaa/EEOEditor/blob/e8204a2acb/EELVL/Block.cs#L38-L85
+	// Based on https://github.com/capashaa/EEOEditor/blob/c290c57dca/EELVL/Block.cs#L38-L85
 	static const u16 types_I[] = {
 		327, 328, 273, 440, 276, 277, 279, 280, 447, 449,
 		450, 451, 452, 456, 457, 458, 464, 465, 471, 477,
@@ -273,22 +312,49 @@ static void fill_block_translations()
 	}
 }
 
-void EBlockParams::registerImports()
+void EBlockParams::registerConvFuncs()
 {
+	using L = std::initializer_list<bid_t>;
+
 	for (bid_t id : { 1625, 1627, 1629, 1631, 1633, 1635 })
-		conv_import[id] = &EBlockParams::importSpike;
+		my_converter[id] = {
+			&EBlockParams::importSpike,
+			&EBlockParams::exportSpike
+		};
 	for (bid_t id : { Block::ID_COINDOOR, Block::ID_COINGATE, Block::ID_PIANO })
-		conv_import[id] = &EBlockParams::importCoindoor;
-	conv_import[Block::ID_TELEPORTER] = &EBlockParams::importTeleporter;
+		my_converter[id] = {
+			&EBlockParams::importCoindoor,
+			&EBlockParams::exportCoindoor
+		};
+	for (bid_t id : L{ Block::ID_TELEPORTER, 381 })
+		my_converter[id] = {
+			&EBlockParams::importTeleporter,
+			&EBlockParams::exportTeleporter
+		};
+
+	my_converter[Block::ID_TEXT] = {
+		&EBlockParams::importText,
+		&EBlockParams::exportText
+	};
 }
 
-bool EBlockParams::importParams(bid_t id, BlockParams &params)
+bool EBlockParams::importParams(bid_t id, BlockParams &params) const
 {
-	auto it = conv_import.find(id);
-	if (it == conv_import.end())
+	auto it = my_converter.find(id);
+	if (it == my_converter.end())
 		return false;
 
-	(this->*it->second)(id, params);
+	(this->*it->second.from_eelvl)(id, params);
+	return true;
+}
+
+bool EBlockParams::exportParams(bid_t id, const BlockParams &params)
+{
+	auto it = my_converter.find(id);
+	if (it == my_converter.end())
+		return false;
+
+	(this->*it->second.to_eelvl)(id, params);
 	return true;
 }
 
@@ -296,7 +362,7 @@ static void ensure_cache()
 {
 	fill_block_types();
 	fill_block_translations();
-	EBlockParams::registerImports();
+	EBlockParams::registerConvFuncs();
 }
 
 static void read_eelvl_header(Packet &zs, LobbyWorld &meta)
@@ -422,20 +488,18 @@ void EEOconverter::fromFile(const std::string &filename_)
 			case PType::None: break;
 			case PType::I:
 				params_in.val_I[0] = zs.read<s32>();
-				params_in.importParams(block_id, bu.params);
 				break;
 			case PType::III:
 				params_in.val_I[0] = zs.read<s32>();
 				params_in.val_I[1] = zs.read<s32>();
 				params_in.val_I[2] = zs.read<s32>();
-				params_in.importParams(block_id, bu.params);
 				break;
 			case PType::SI:
 				zs.readStr16();
 				zs.read<s32>();
-				break;
+				goto no_import;
 			case PType::SSI:
-				zs.readStr16();
+				params_in.val_S[0] = zs.readStr16();
 				zs.readStr16();
 				zs.read<s32>();
 				break;
@@ -444,8 +508,12 @@ void EEOconverter::fromFile(const std::string &filename_)
 				zs.readStr16();
 				zs.readStr16();
 				zs.readStr16();
-				break;
+				goto no_import;
 		}
+
+		params_in.importParams(block_id, bu.params);
+no_import:
+
 		/*for (size_t i = 0; i < pos_x.size(); ++i) {
 			if (pos_x[i] == 21 && pos_y[i] == 6)
 				printf("block: %d\n", block_id);
@@ -492,12 +560,18 @@ void EEOconverter::toFile(const std::string &filename_) const
 	zs.writeStr16(""); // crew name
 	zs.write<s32>(0); // crew status
 	zs.write<u8>(1); // minimap
-	zs.writeStr16("exported from OpenEdits"); // owner ID
+	{
+		char buf[100];
+		snprintf(buf, sizeof(buf), "Exported from %s", APPLICATION_NAME);
+		zs.writeStr16(buf); // owner ID
+	}
 
 	using posvec_t = std::vector<blockpos_t>;
 
 	// List block positions per ID
-	// TODO: What about coin doors, signs, portals?
+
+	// TODO: The export of BlockParams is imperfect. Only the first value is saved for all
+	// blocks of the same ID! The pos list needs to be divided into separate BlockParams hashes.
 	std::map<bid_t, posvec_t> fg_blocks, bg_blocks;
 	blockpos_t pos;
 	for (pos.Y = 0; pos.Y < size.Y; ++pos.Y)
@@ -520,7 +594,7 @@ void EEOconverter::toFile(const std::string &filename_) const
 	}
 
 	// Write block vectors to the file
-	auto write_array = [&](const posvec_t &posvec) {
+	auto write_array = [&zs](const posvec_t &posvec) {
 		zs.write<u32>(posvec.size() * sizeof(u16));
 		for (blockpos_t pos : posvec)
 			zs.write<u16>(pos.X);
@@ -530,31 +604,45 @@ void EEOconverter::toFile(const std::string &filename_) const
 			zs.write<u16>(pos.Y);
 	};
 
+	EBlockParams params_out;
+
 	using PType = EBlockParams::Type;
 	for (const auto &entry : fg_blocks) {
-		zs.write<s32>(entry.first); // block ID
+		const bid_t block_id = entry.first;
+		zs.write<s32>(block_id); // block ID
 		zs.write<s32>(0); // layer
 		write_array(entry.second);
 
-		switch (BLOCK_TYPE_LUT[entry.first]) {
+		// Get the data of the first entry
+		const BlockParams *params = m_world.getParamsPtr(entry.second[0]);
+		if (params && !params_out.exportParams(block_id, *params)) {
+			// Conversion failed
+			for (auto &v : params_out.val_I)
+				v = 0;
+
+			for (auto &v : params_out.val_S)
+				v.clear();
+		}
+
+		switch (BLOCK_TYPE_LUT[block_id]) {
 			case PType::None:
 				break;
 			case PType::I:
-				zs.write<s32>(0);
+				zs.write<s32>(params_out.val_I[0]);
 				break;
 			case PType::III:
-				zs.write<s32>(0);
-				zs.write<s32>(0);
-				zs.write<s32>(0);
+				zs.write<s32>(params_out.val_I[0]);
+				zs.write<s32>(params_out.val_I[1]);
+				zs.write<s32>(params_out.val_I[2]);
 				break;
 			case PType::SI:
-				zs.writeStr16("");
-				zs.write<s32>(0);
+				zs.writeStr16(params_out.val_S[0]);
+				zs.write<s32>(params_out.val_I[0]);
 				break;
 			case PType::SSI:
-				zs.writeStr16("");
-				zs.writeStr16("");
-				zs.write<s32>(0);
+				zs.writeStr16(params_out.val_S[0]);
+				zs.writeStr16(params_out.val_S[1]);
+				zs.write<s32>(params_out.val_I[0]);
 				break;
 			case PType::SSSS:
 				zs.writeStr16("");
@@ -586,8 +674,6 @@ void EEOconverter::toFile(const std::string &filename_) const
 
 void EEOconverter::inflate(const std::string &filename)
 {
-	ensure_cache();
-
 	const std::string outname(filename + ".inflated");
 	std::ofstream of(outname, std::ios_base::binary);
 

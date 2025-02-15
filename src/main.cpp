@@ -1,4 +1,5 @@
 #include "core/blockmanager.h"
+#include "core/eeo_converter.h" // EEOconverter::inflate
 #include "core/logger.h"
 #include "core/utils.h" // to_player_name
 #include "server/database_auth.h" // AuthAccount
@@ -137,6 +138,19 @@ static int parse_args(int argc, char *argv[])
 		g_blockmanager->doPackRegistration();
 		unittest();
 		return EXIT_SUCCESS;
+	}
+	if (strcmp(argv[1], "--decompress") == 0) {
+		if (argc != 3) {
+			fprintf(stderr, "%s--decompress FILEPATH\n", MISSING_ARGS);
+			return EXIT_FAILURE;
+		}
+		try {
+			EEOconverter::inflate(argv[2]);
+			return EXIT_SUCCESS;
+		} catch (std::runtime_error &e) {
+			fprintf(stderr, "%s\n", e.what());
+		}
+		return EXIT_FAILURE;
 	}
 	if (strcmp(argv[1], "--server") == 0) {
 		// Dedicated server
