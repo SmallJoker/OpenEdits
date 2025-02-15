@@ -569,15 +569,12 @@ void Client::pkt_ActivateBlock(Packet &pkt)
 			bid_gate = key_idx + Block::ID_GATE_R;
 
 			auto &timer = player->getWorld()->getMeta().keys[key_idx];
-			if (timer.isActive() == state)
-				return; // nothing to do
-
 			timer.set(state); // 1.0f (active) or 0.0f (stopped)
 		}
 			break; // good, continue.
 		case Block::ID_SWITCH:
 		{
-			bool &val = player->getWorld()->getMeta().switch_state;
+			u8 &val = player->getWorld()->getMeta().switch_state;
 			if (val == state)
 				return; // nothing to do
 

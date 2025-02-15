@@ -489,6 +489,9 @@ void Player::collideWith(float dtime, int x, int y)
 
 			// fall through
 		case CT::None:
+			if (on_touch_blocks && props->trigger_on_touch)
+				on_touch_blocks->emplace(bp);
+
 			break;
 	}
 }

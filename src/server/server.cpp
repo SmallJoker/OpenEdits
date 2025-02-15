@@ -487,6 +487,18 @@ void Server::stepWorldTick(World *world, float dtime)
 			}
 		}
 	}
+
+	// Compare new value vs old value
+	bool sw_old = meta.switch_state & 0x01;
+	bool sw_new = meta.switch_state & 0x80;
+	if (sw_new != sw_old) {
+		Packet out;
+		out.write(Packet2Client::ActivateBlock);
+		out.write<bid_t>(Block::ID_SWITCH);
+		out.write<u8>(sw_new);
+		broadcastInWorld(world, 1, out);
+	}
+	meta.switch_state = sw_new * 0x81;
 }
 
 bool Server::loadWorldNoLock(World *world)

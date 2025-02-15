@@ -39,7 +39,7 @@ struct WorldMeta : public IWorldMeta {
 	std::unique_ptr<ScriptEventMap> script_events_to_send;
 
 	Timer keys[3] = {}; // ID_KEY_*
-	bool switch_state = false; // ID_SWITCH
+	u8 switch_state = 0; // ID_SWITCH. server: 0x80 == new value
 	int spawn_index = -1; // ID_SPAWN
 
 	std::string edit_code;

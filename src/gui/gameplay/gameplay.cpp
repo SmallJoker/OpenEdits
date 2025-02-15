@@ -653,6 +653,7 @@ bool SceneGameplay::OnEvent(GameEvent &e)
 					who, e.player_chat->message.c_str()
 				);
 				printf("[Chat] %s", buf); // for logging
+				fflush(stdout); // printf does not flush without an \n in the format string.
 
 				std::wstring line;
 				utf8_to_wide(line, buf);

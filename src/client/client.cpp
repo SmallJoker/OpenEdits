@@ -544,6 +544,7 @@ static bool send_on_touch_blocks(Client *cli, Player *player, Packet &pkt)
 			{
 				int key_id = b.id - Block::ID_KEY_R;
 				auto &kdata = meta.keys[key_id];
+				// Use timer client-sided to avoid sending duplicates too often
 				if (kdata.set(-1.0f)) {
 					pkt.write(bp.X);
 					pkt.write(bp.Y);
@@ -696,7 +697,7 @@ uint8_t Client::getBlockTile(const Player *player, const Block *b) const
 {
 	auto world = player->getWorld();
 
-	auto get_params = [&] () {
+	auto get_params = [&world, b] () {
 		BlockParams params;
 		world->getParams(world->getBlockPos(b), &params);
 		return params;
