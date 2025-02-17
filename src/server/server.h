@@ -104,8 +104,9 @@ private:
 
 	// ----------- World imports -----------
 
+	std::vector<LobbyWorld> m_featured_worlds;
 	std::map<std::string, LobbyWorld> m_importable_worlds;
-	Timer m_importable_worlds_timer;
+	Timer m_static_lobby_worlds_timer;
 
 	// ----------- Chat commands -----------
 	void registerChatCommands();

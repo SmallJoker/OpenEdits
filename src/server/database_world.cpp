@@ -42,6 +42,10 @@ bool DatabaseWorld::tryOpen(const char *filepath)
 		"SELECT `id`, `width`, `height`, `title`, `plays`, `visibility` "
 		"FROM `worlds` WHERE `owner` = ?",
 		-1, &m_stmt_by_player, nullptr));
+	good &= ok("featured", sqlite3_prepare_v2(m_database,
+		"SELECT `id`, `width`, `height`, `title`, `plays`, `visibility`, `owner`, `data` "
+		"FROM `worlds` WHERE `visibility` >= 0 AND length(`data`) > 15 * sqrt(`width` * `height`)",
+		-1, &m_stmt_featured, nullptr));
 
 	return good;
 }
@@ -54,6 +58,7 @@ void DatabaseWorld::close()
 	ok("~read", sqlite3_finalize(m_stmt_read));
 	ok("~write", sqlite3_finalize(m_stmt_write));
 	ok("~by_player", sqlite3_finalize(m_stmt_by_player));
+	ok("~featured", sqlite3_finalize(m_stmt_featured));
 
 	Database::close();
 }
@@ -161,30 +166,62 @@ bool DatabaseWorld::save(const World *world)
 	return good;
 }
 
+static void read_world_header(LobbyWorld &meta, sqlite3_stmt *s)
+{
+	meta.id = (const char *)sqlite3_column_text(s, 0);
+	meta.size.X = sqlite3_column_int(s, 1);
+	meta.size.Y = sqlite3_column_int(s, 2);
+	meta.title = (const char *)sqlite3_column_text(s, 3);
+	meta.plays = sqlite3_column_int(s, 4);
+	meta.is_public = sqlite3_column_int(s, 5) == 1;
+}
+
 std::vector<LobbyWorld> DatabaseWorld::getByPlayer(const std::string &name) const
 {
-	std::vector<LobbyWorld> out;
 	if (!m_database)
-		return out;
+		return {};
 
 	auto s = m_stmt_by_player;
 	custom_bind_string(s, 1, name);
 
+	std::vector<LobbyWorld> out;
 	while (sqlite3_step(s) == SQLITE_ROW) {
 		LobbyWorld meta;
-		meta.id = (const char *)sqlite3_column_text(s, 0);
-		meta.size.X = sqlite3_column_int(s, 1);
-		meta.size.Y = sqlite3_column_int(s, 2);
-		meta.title = (const char *)sqlite3_column_text(s, 3);
+		read_world_header(meta, s);
 
 		meta.owner = name;
-		meta.plays = sqlite3_column_int(s, 4);
-		meta.is_public = sqlite3_column_int(s, 5) == 1;
-
 		out.emplace_back(meta);
 	}
 
 	ok("byPlayer", sqlite3_errcode(m_database));
+	sqlite3_reset(s);
+	return out;
+}
+
+std::vector<LobbyWorld> DatabaseWorld::getFeatured() const
+{
+	if (!m_database)
+		return {};
+
+	auto s = m_stmt_featured;
+
+	std::vector<LobbyWorld> out;
+	while (sqlite3_step(s) == SQLITE_ROW) {
+		const u8 *data = (u8 *)sqlite3_column_blob(s, 7);
+		const size_t length = sqlite3_column_bytes(s, 7);
+		// Skip non-compressed worlds (version < 5) --> do a fuzzy check.
+		// O E f w METHOD VER CK CK
+		if (length < 8 || data[5] < 5)
+			continue;
+
+		LobbyWorld meta;
+		read_world_header(meta, s);
+
+		meta.owner = (const char *)sqlite3_column_text(s, 6);
+		out.emplace_back(meta);
+	}
+
+	ok("featured", sqlite3_errcode(m_database));
 	sqlite3_reset(s);
 	return out;
 }

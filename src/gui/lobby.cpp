@@ -429,21 +429,24 @@ void SceneLobby::updateWorldList()
 		else if (!it.owner.empty())
 			os << " by " << it.owner;
 
+		bool added = false;
 		core::stringw textw;
 		core::multibyteToWString(textw, os.str().c_str());
 		if (is_mine) {
 			m_mylist->addItem(textw.c_str());
 			m_my_index_to_worldid.push_back(it.id);
+			added = true;
 		}
 
 		// Importable worlds
 		if (WorldMeta::idToType(it.id) == WorldMeta::Type::Readonly) {
 			m_importlist->addItem(textw.c_str());
 			m_import_index_to_worldid.push_back(it.id);
+			added = true;
 		}
 
 		// Public worlds (or player-specific private worlds)
-		if (it.online > 0) {
+		if (it.online > 0 || !added) {
 			m_publiclist->addItem(textw.c_str());
 			m_public_index_to_worldid.push_back(it.id);
 		}

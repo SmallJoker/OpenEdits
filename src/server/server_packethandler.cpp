@@ -353,8 +353,11 @@ void Server::pkt_MediaRequest(peer_t peer_id, Packet &pkt)
 
 void Server::pkt_GetLobby(peer_t peer_id, Packet &)
 {
-	Packet out;
-	out.write(Packet2Client::Lobby);
+	const RemotePlayer *player = getPlayerNoLock(peer_id);
+
+	Packet out = player->createPacket(Packet2Client::Lobby);
+
+	std::set<std::string> listed_world_ids;
 
 	std::set<RefCnt<World>> worlds;
 	for (auto p : m_players) {
@@ -366,6 +369,7 @@ void Server::pkt_GetLobby(peer_t peer_id, Packet &)
 	// Currently online worlds
 	for (auto world : worlds) {
 		const auto &meta = world->getMeta();
+		listed_world_ids.insert(meta.id);
 		if (!meta.is_public)
 			continue;
 
@@ -378,11 +382,20 @@ void Server::pkt_GetLobby(peer_t peer_id, Packet &)
 		out.write(size.Y);
 	}
 
-	// This player's worlds
-	if (m_world_db) {
-		RemotePlayer *player = getPlayerNoLock(peer_id);
-		auto found = m_world_db->getByPlayer(player->name);
-		for (const auto &meta : found) {
+	if (!m_static_lobby_worlds_timer.isActive()) {
+		m_static_lobby_worlds_timer.set(60);
+		EEOconverter::listImportableWorlds(m_importable_worlds);
+		if (m_world_db)
+			m_featured_worlds = m_world_db->getFeatured();
+	}
+
+	auto add_worlds_from_vector = [&listed_world_ids, &out] (const std::vector<LobbyWorld> &worlds) {
+		for (const auto &meta : worlds) {
+			auto it = listed_world_ids.find(meta.id);
+			if (it != listed_world_ids.end())
+				continue; // already sent
+
+			listed_world_ids.insert(meta.id);
 			out.write<u8>(true); // continue!
 
 			meta.writeCommon(out);
@@ -390,14 +403,19 @@ void Server::pkt_GetLobby(peer_t peer_id, Packet &)
 			out.write(meta.size.X);
 			out.write(meta.size.Y);
 		}
+	};
+
+	if (m_world_db) {
+		// This player's worlds
+		auto found = m_world_db->getByPlayer(player->name);
+		add_worlds_from_vector(found);
+
+		// Featured worlds
+		add_worlds_from_vector(m_featured_worlds);
 	}
 
 	// EELVL importable worlds
 	{
-		if (!m_importable_worlds_timer.isActive()) {
-			m_importable_worlds_timer.set(60);
-			EEOconverter::listImportableWorlds(m_importable_worlds);
-		}
 
 		for (const auto &[filename, meta] : m_importable_worlds) {
 			out.write<u8>(true); // continue!
@@ -412,8 +430,6 @@ void Server::pkt_GetLobby(peer_t peer_id, Packet &)
 
 	// Friends
 	if (m_auth_db) {
-		RemotePlayer *player = getPlayerNoLock(peer_id);
-
 		std::vector<AuthFriend> friends;
 		m_auth_db->listFriends(player->name, &friends);
 		for (const AuthFriend &f : friends) {

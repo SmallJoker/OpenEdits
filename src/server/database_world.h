@@ -16,10 +16,12 @@ public:
 	bool save(const World *world);
 
 	std::vector<LobbyWorld> getByPlayer(const std::string &name) const;
+	std::vector<LobbyWorld> getFeatured() const;
 
 private:
 	sqlite3_stmt *m_stmt_read = nullptr;
 	sqlite3_stmt *m_stmt_write = nullptr;
 
 	sqlite3_stmt *m_stmt_by_player = nullptr;
+	sqlite3_stmt *m_stmt_featured = nullptr;
 };

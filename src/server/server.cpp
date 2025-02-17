@@ -290,7 +290,7 @@ void Server::step(float dtime)
 			*m_shutdown_requested = true;
 	}
 
-	m_importable_worlds_timer.step(dtime);
+	m_static_lobby_worlds_timer.step(dtime);
 }
 
 // -------------- Utility functions --------------
