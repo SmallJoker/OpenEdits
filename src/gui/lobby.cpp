@@ -11,6 +11,7 @@
 #include <IGUIStaticText.h>
 #include <IGUITabControl.h>
 #include <IVideoDriver.h>
+#include <algorithm> // std::all_of
 #include <sstream>
 
 enum ElementId : int {
@@ -23,6 +24,10 @@ enum ElementId : int {
 	ID_BoxFriendName,
 	ID_SelFriendAction,
 	ID_BtnFriendExecute,
+	ID_TabSearch,
+	ID_ListSearch,
+	ID_BoxSearchQuery,
+	ID_BtnSearchClear,
 	ID_BoxWorldID,
 	ID_BtnJoin,
 	ID_BtnChangePass,
@@ -64,6 +69,7 @@ void SceneLobby::draw()
 
 	addWorldsTab(tc);
 	addFriendsTab(tc);
+	addSearchTab(tc);
 
 	const core::vector2di VSPACING(0, 35);
 	{
@@ -145,6 +151,8 @@ void SceneLobby::draw()
 void SceneLobby::step(float dtime)
 {
 	updateWorldList();
+	if (m_dirty_search)
+		updateSearchList();
 }
 
 bool SceneLobby::OnEvent(const SEvent &e)
@@ -210,6 +218,19 @@ bool SceneLobby::OnEvent(const SEvent &e)
 					wide_to_utf8(e.friend_action->player_name, b_name->getText());
 					m_gui->sendNewEvent(e);
 					return true;
+				}
+				if (caller_id == ID_BtnSearchClear) {
+					auto *b_query = root->getElementFromId(ID_BoxSearchQuery, true);
+					b_query->setText(L"");
+					m_gui->guienv->setFocus(b_query);
+					m_dirty_search = true;
+				}
+				break;
+			case gui::EGET_EDITBOX_CHANGED:
+				{
+					if (caller_id == ID_BoxSearchQuery) {
+						m_dirty_search = true;
+					}
 				}
 				break;
 			case gui::EGET_LISTBOX_CHANGED:
@@ -291,6 +312,17 @@ bool SceneLobby::OnEvent(const SEvent &e)
 				}
 				break;
 			default: break;
+		}
+	}
+	if (e.EventType == EET_KEY_INPUT_EVENT) {
+		if (e.KeyInput.PressedDown && e.KeyInput.Control && e.KeyInput.Key == KEY_KEY_F) {
+			// Focus search box
+			auto root = m_gui->guienv->getRootGUIElement();
+			auto *b_query = root->getElementFromId(ID_BoxSearchQuery, true);
+			auto *t_search = (gui::IGUITab *)root->getElementFromId(ID_TabSearch, true);
+			((gui::IGUITabControl *)t_search->getParent())->setActiveTab(t_search);
+
+			m_gui->guienv->setFocus(b_query);
 		}
 	}
 	return false;
@@ -391,6 +423,65 @@ void SceneLobby::addFriendsTab(gui::IGUITabControl *tc)
 	// Remove
 }
 
+void SceneLobby::addSearchTab(gui::IGUITabControl *tc)
+{
+	auto gui = m_gui->guienv;
+	auto tab = tc->addTab(L"Search", ID_TabSearch);
+	setup_tab(gui, tab);
+
+	auto list_rect = m_gui->getRect({2, 2}, {76, 45});
+	core::recti rect_box(
+		list_rect.UpperLeftCorner,
+		core::dimension2di(200, 30)
+	);
+
+	{
+		// Search input box
+		auto *t = gui->addStaticText(L"Query", rect_box, false, false, tab);
+		t->setTextAlignment(gui::EGUIA_UPPERLEFT, gui::EGUIA_CENTER);
+
+		rect_box += core::vector2di(70, 0);
+		gui->addEditBox(L"", rect_box, true, tab, ID_BoxSearchQuery);
+	}
+
+	{
+		// Clear filter button
+		rect_box.UpperLeftCorner += core::vector2di(rect_box.getWidth() + 10, 0);
+		rect_box.LowerRightCorner = rect_box.UpperLeftCorner + core::vector2di(40, 30);
+		gui->addButton(rect_box, tab, ID_BtnSearchClear, L"X");
+	}
+	{
+		// Results list
+		list_rect.UpperLeftCorner += core::vector2di(0, 40);
+		gui->addListBox(list_rect, tab, ID_ListSearch, true);
+	}
+}
+
+static std::pair<core::stringw, bool> world_to_list_text(const LobbyWorld &it, const Player *me)
+{
+	bool is_mine = me->name == it.owner;
+	auto size = it.size;
+
+	std::ostringstream os;
+	os << "[" << it.online << " online] ";
+	if (!it.title.empty())
+		os << it.title;
+	else
+		os << "(Untitled)";
+
+	os << " (id=" << it.id;
+	os << ", " << size.X << "x" << size.Y << ")";
+	if (is_mine)
+		os << (it.is_public ? " - public" : " - private");
+	else if (!it.owner.empty())
+		os << " by " << it.owner;
+
+	core::stringw textw;
+	core::multibyteToWString(textw, os.str().c_str());
+
+	return { textw, is_mine };
+}
+
 void SceneLobby::updateWorldList()
 {
 	if (!m_dirty_worldlist)
@@ -412,26 +503,9 @@ void SceneLobby::updateWorldList()
 	const auto &worlds = m_gui->getClient()->world_list;
 
 	for (const auto &it : worlds) {
-		bool is_mine = player->name == it.owner;
-		auto size = it.size;
-
-		std::ostringstream os;
-		os << "[" << it.online << " online] ";
-		if (!it.title.empty())
-			os << it.title;
-		else
-			os << "(Untitled)";
-
-		os << " (id=" << it.id;
-		os << ", " << size.X << "x" << size.Y << ")";
-		if (is_mine)
-			os << (it.is_public ? " - public" : " - private");
-		else if (!it.owner.empty())
-			os << " by " << it.owner;
+		auto [textw, is_mine] = world_to_list_text(it, player.ptr());
 
 		bool added = false;
-		core::stringw textw;
-		core::multibyteToWString(textw, os.str().c_str());
 		if (is_mine) {
 			m_mylist->addItem(textw.c_str());
 			m_my_index_to_worldid.push_back(it.id);
@@ -453,6 +527,7 @@ void SceneLobby::updateWorldList()
 	}
 
 	m_refreshbtn->setEnabled(true);
+	m_dirty_search = true;
 }
 
 void SceneLobby::updateFriendsList()
@@ -507,5 +582,72 @@ void SceneLobby::updateFriendsList()
 		m_friends.list->setItemOverrideColor(id, color);
 
 		m_friends.index_LUT.push_back(f);
+	}
+}
+
+void SceneLobby::updateSearchList()
+{
+	if (!m_dirty_search)
+		return;
+	m_dirty_search = false;
+
+	auto root = m_gui->guienv->getRootGUIElement();
+	auto filter_e = (gui::IGUIEditBox *)root->getElementFromId(ID_BoxSearchQuery, true);
+	if (!filter_e)
+		return;
+
+	auto list_e = (gui::IGUIListBox *)root->getElementFromId(ID_ListSearch, true);
+	list_e->clear();
+
+	std::vector<std::string> parts;
+	{
+		std::string filter_s;
+		wide_to_utf8(filter_s, filter_e->getText());
+
+		parts = strsplit(filter_s, ' ');
+	}
+
+	if (parts.empty())
+		return; // no filter -> keep list empty
+
+	struct Entry {
+		const LobbyWorld *meta = nullptr;
+		float weight = 0;
+	};
+	std::vector<Entry> matches;
+
+	// Get all worlds and fill in possible matches
+	auto player = m_gui->getClient()->getMyPlayer();
+	const auto &worlds = m_gui->getClient()->world_list;
+
+	for (const auto &meta : worlds) {
+		float weight = 0;
+		for (const std::string &part : parts) {
+			// Reward longer matches
+			float coeff = 1.0f + (part.size() / 10.0f);
+
+			if (strfindi(meta.title, part) != std::string::npos)
+				weight += 17 * coeff;
+			if (strfindi(meta.owner, part) != std::string::npos)
+				weight += 11 * coeff;
+			if (strfindi(meta.id, part) != std::string::npos)
+				weight += 7 * coeff;
+		}
+
+		if (weight == 0)
+			continue;
+
+		weight += meta.online; // promote worlds with online players
+
+		matches.emplace_back(Entry { &meta, weight });
+	}
+
+	std::sort(matches.begin(), matches.end(), [](const Entry &a, const Entry &b) -> bool {
+		return a.weight > b.weight;
+	});
+
+	for (const Entry e : matches) {
+		auto [textw, is_mine] = world_to_list_text(*e.meta, player.ptr());
+		list_e->addItem(textw.c_str());
 	}
 }

@@ -29,6 +29,7 @@ public:
 private:
 	void addWorldsTab(gui::IGUITabControl *tc);
 	void addFriendsTab(gui::IGUITabControl *tc);
+	void addSearchTab(gui::IGUITabControl *tc);
 
 	void updateWorldList();
 	bool m_dirty_worldlist = false;
@@ -50,4 +51,7 @@ private:
 
 		gui::IGUIListBox *list = nullptr;
 	} m_friends;
+
+	void updateSearchList();
+	bool m_dirty_search = false;
 };

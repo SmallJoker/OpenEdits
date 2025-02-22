@@ -7,6 +7,7 @@
 // ------------------ Strings ------------------
 
 bool strcmpi(const std::string &a, const std::string &b);
+std::string::size_type strfindi(const std::string &haystack, const std::string &needle);
 std::string strtrim(const std::string &str);
 std::string get_next_part(std::string &input);
 std::vector<std::string> strsplit(const std::string &input, char delim);

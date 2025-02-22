@@ -1,4 +1,5 @@
 #include "utils.h"
+#include <algorithm> // std::search
 #include <string.h>
 #ifdef _WIN32
 	// For string conversion
@@ -16,6 +17,20 @@ bool strcmpi(const std::string &a, const std::string &b)
 	}
 
 	return true;
+}
+
+std::string::size_type strfindi(const std::string &haystack, const std::string &needle)
+{
+	auto it = std::search(haystack.begin(), haystack.end(),
+		needle.begin(), needle.end(), [](char a, char b) -> bool {
+			return tolower(a) == tolower(b);
+		}
+	);
+
+	if (it == haystack.end())
+		return std::string::npos; // -1
+
+	return haystack.begin() - it;
 }
 
 std::string strtrim(const std::string &str)
