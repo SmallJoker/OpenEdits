@@ -1,6 +1,6 @@
 # OpenEdits
 
-![preview image v1.0.8-dev](screenshot.jpeg)
+![preview image v1.4.0](screenshot.jpeg)
 
 A 2D game block building inspired by Everybody Edits.
 Code structure inspired by Minetest practices.
@@ -37,6 +37,7 @@ The project direction can be found in [doc/DIRECTION.md](doc/DIRECTION.md).
  * G: Toggle god mode
  * M: Toggle minimap
  * F1: Toggle debug information
+ * Ctrl + F: Search worlds (lobby only)
 
 
 **Chat commands**
@@ -119,13 +120,17 @@ Dependency tree:
 	│   ├── libpng
 	│   │   └── zlib
 	│   └── zlib
+	├── lua(jit)
 	├── openal-soft (client, optional)
-	└── sqlite3
+	├── sqlite3
 	└── zlib
 
 Debian/Ubuntu:
 
-	sudo apt install libenet-dev libopenal-dev libsqlite3-dev zlib1g-dev
+	# For all builds
+	sudo apt install libenet-dev libluajit-5.1-dev libsqlite3-dev zlib1g-dev
+	# Client builds only
+	sudo apt install libjpeg-dev libpng-dev libopenal-dev
 
 Windows:
 

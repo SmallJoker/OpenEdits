@@ -8,10 +8,51 @@ DatabaseWorld::~DatabaseWorld()
 	close();
 }
 
+static int cb_get_boolean(void *have_sqrt, int count, char **values, char **labels)
+{
+	(void)count;
+	(void)labels;
+
+#if 0
+	for (int i = 0; i < count; ++i)
+		printf("%d | %s \t| %s\n", i, labels[i], values[i]);
+#endif
+
+	*(bool *)have_sqrt = (values[0][0] == '1');
+	return 0;
+}
+
+static void reg_sqrt(sqlite3_context *context, int argc, sqlite3_value **argv)
+{
+	float value;
+	if (argc < 1) {
+		sqlite3_result_null(context);
+		return;
+	}
+
+	value = sqlite3_value_double(argv[0]);
+	sqlite3_result_double(context, std::sqrt(value));
+}
+
 bool DatabaseWorld::tryOpen(const char *filepath)
 {
 	if (!Database::tryOpen(filepath))
 		return false;
+
+	// Additional compatibility for amalgamation builds when -DSQLITE_ENABLE_MATH_FUNCTIONS is
+	// not specified, and thus missing the 'sqrt' function.
+	bool have_sqrt = false;
+	sqlite3_exec(m_database,
+		// https://stackoverflow.com/a/62574590
+		"select exists(select 1 from pragma_function_list where name='sqrt');",
+		cb_get_boolean, &have_sqrt, nullptr);
+	if (!have_sqrt) {
+		fprintf(stderr, "Manual registration of sqlite3 function 'sqrt'.\n");
+		// Register the function
+		sqlite3_create_function(m_database, "sqrt", 1, SQLITE_UTF8,
+			nullptr, reg_sqrt, nullptr, nullptr);
+	}
+
 
 	// Thanks "DB Browser for SQLite"
 	bool good = ok("create", sqlite3_exec(m_database,

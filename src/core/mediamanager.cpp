@@ -62,6 +62,11 @@ bool MediaManager::File::cacheToRAM()
 
 void MediaManager::indexAssets()
 {
+	if (!fs::is_directory(ASSETS_DIR)) {
+		logger(LL_ERROR, "Directory '%s' is missing. Expect issues.", ASSETS_DIR.c_str());
+		return;
+	}
+
 	for (const auto &entry : fs::recursive_directory_iterator(ASSETS_DIR)) {
 		if (!entry.is_regular_file())
 			continue;

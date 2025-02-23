@@ -30,7 +30,8 @@ esac
 echo "--- Removing testing files"
 rm -vf "$GAMEDIR"/*.sqlite*
 rm -vf "$GAMEDIR/client_servers.txt"
-rm -vrf "$GAMEDIR/worlds"
+rm -vrf "$GAMEDIR/worlds/imports"
+rm -vrf "$GAMEDIR/worlds/exports"
 
 # zipping
 version=$(grep -Eoa "v[0-9]+\.[0-9]+\.[0-9]+[^ ]*" "$GAMEDIR/$binary")
