@@ -64,7 +64,7 @@ public:
 	{ return blockpos_t(pos.X + 0.5f, pos.Y + 0.5f); }
 
 	// For keys or killing blocks
-	std::set<blockpos_t> *on_touch_blocks = nullptr;
+	std::unique_ptr<std::set<blockpos_t>> on_touch_blocks;
 
 	Script *getScript() const { return m_script; }
 	ScriptEventManager *getSEMgr() const;

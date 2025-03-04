@@ -35,7 +35,7 @@ void Player::setWorld(RefCnt<World> world)
 		m_world->getMeta().online--;
 
 	{
-		on_touch_blocks = nullptr;
+		on_touch_blocks.reset();
 		script_events_to_send.reset();
 	}
 

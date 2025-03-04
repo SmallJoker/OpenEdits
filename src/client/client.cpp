@@ -526,13 +526,16 @@ static bool send_on_touch_blocks(Client *cli, Player *player, Packet &pkt)
 	if (!player || !player->on_touch_blocks)
 		throw std::runtime_error("null ptr");
 
+	// Clear the list
+	auto on_touch_blocks = std::move(player->on_touch_blocks);
+
 	bool map_dirty = false;
 	pkt.write(Packet2Server::OnTouchBlock);
 
 	const auto world = player->getWorld().get();
 	auto &meta = world->getMeta();
 
-	for (blockpos_t bp : *player->on_touch_blocks) {
+	for (blockpos_t bp : *on_touch_blocks) {
 		Block b;
 		if (!world->getBlock(bp, &b))
 			continue;
@@ -621,16 +624,12 @@ void Client::stepPhysics(float dtime)
 	if (!world.get())
 		return;
 
-	std::set<blockpos_t> on_touch_blocks;
 	SimpleLock lock(m_players_lock);
 
 	auto player = getPlayerNoLock(m_my_peer_id);
-	player->on_touch_blocks = &on_touch_blocks;
+	player->on_touch_blocks.reset(new std::set<blockpos_t>());
 
 	for (auto it : m_players) {
-		if (it.first != m_my_peer_id) {
-			it.second->on_touch_blocks = nullptr;
-		}
 		it.second->step(dtime);
 	}
 
