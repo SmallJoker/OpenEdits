@@ -171,10 +171,10 @@ void SceneConnect::step(float dtime)
 bool SceneConnect::OnEvent(const SEvent &e)
 {
 	if (e.EventType == EET_GUI_EVENT) {
+		s32 id = e.GUIEvent.Caller->getID();
 		switch (e.GUIEvent.EventType) {
 			case gui::EGET_BUTTON_CLICKED:
 				{
-					int id = e.GUIEvent.Caller->getID();
 					if (id == ID_BtnConnect || id == ID_BtnHost) {
 						onSubmit(id);
 						return true;
@@ -202,7 +202,7 @@ bool SceneConnect::OnEvent(const SEvent &e)
 				}
 				break;
 			case gui::EGET_LISTBOX_CHANGED:
-				if (e.GUIEvent.Caller->getID() == ID_ListServers) {
+				if (id == ID_ListServers) {
 					gui::IGUIListBox *listbox = (gui::IGUIListBox *)e.GUIEvent.Caller;
 
 					try {
@@ -214,6 +214,20 @@ bool SceneConnect::OnEvent(const SEvent &e)
 					} catch (std::exception &) {
 						break;
 					}
+				}
+				break;
+			case gui::EGET_EDITBOX_ENTER:
+				if (id == ID_BoxPassword) {
+					std::string out;
+					wide_to_utf8(out, e.GUIEvent.Caller->getText());
+					out = strtrim(out);
+					// Try to guess whether to host a server or connect to one.
+					// Hosting falls back to client mode, which is not nice but works well enough.
+					if (out.empty() || out == "127.0.0.1" || out == "localhost")
+						onSubmit(ID_BtnHost);
+					else
+						onSubmit(ID_BtnConnect);
+					break;
 				}
 				break;
 			default: break;
