@@ -41,7 +41,6 @@ void SceneConnect::draw()
 	using WRAP = guilayout::IGUIElementWrapper;
 
 	Table &root = *m_gui->layout;
-	root.clear();
 	root.setSize(3, 5);
 	root.col(0)->weight = 20; // left
 	root.col(2)->weight = 20; // right
@@ -60,7 +59,7 @@ void SceneConnect::draw()
 		auto *g_img = root.add<WRAP>(1, 1, i_img);
 		g_img->margin = { 1, 1, 1, 1 };
 		g_img->expand = { 0, 0 };
-		g_img->min_size = { (u16)dim.Width, (u16)dim.Height };
+		g_img->min_size = { (s16)dim.Width, (s16)dim.Height };
 		//ge->fixed_aspect_ratio = true;
 	}
 

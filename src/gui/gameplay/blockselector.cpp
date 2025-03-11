@@ -167,7 +167,7 @@ bool SceneBlockSelector::toggleScriptElements(const SEvent &e)
 
 	le_root->start({
 		2, 2,
-		(u16)(w - 2), (u16)(h - 2)
+		(s16)(w - 2), (s16)(h - 2)
 	});
 	return true;
 }

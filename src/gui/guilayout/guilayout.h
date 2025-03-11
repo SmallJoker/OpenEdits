@@ -11,9 +11,9 @@
 
 namespace guilayout {
 
-typedef uint16_t u16;
-typedef std::array<u16, 2> u16_x2;
-typedef std::array<u16, 4> u16_x4; // TODO: maybe change to s16?
+typedef int16_t s16;
+typedef std::array<s16, 2> s16_x2;
+typedef std::array<s16, 4> s16_x4;
 
 struct Element {
 	enum Direction {
@@ -35,44 +35,47 @@ struct Element {
 	virtual void clear() { m_children.clear(); }
 	void doRecursive(std::function<bool(Element *)> callback);
 
-	u16_x4 margin {}; //< outer springs to space/dock elements (U,R,D,L)
-	u16_x2 expand {10, 10}; //< inner springs to enlarge elements (x,y) = padding / 2
+	s16_x4 margin {}; //< outer springs to space/dock elements (L,U,R,D)
+	s16_x2 expand {10, 10}; //< inner springs to enlarge elements (x,y) = padding / 2
 
 	/// modify min_size && return true to skip box calcs
 	virtual void getMinSize(bool shrink_x, bool shrink_y) {}
-	u16_x2 min_size {}; //< dynamic size (margin, expand) is added atop if available
+	s16_x2 min_size {}; //< dynamic size (margin, expand) is added atop if available
 
 	/// For the current container: initiates the positioning mechanism
 	/// `pos_new` must be non-`nullptr` for the root element
-	virtual void start(const u16_x4 *pos_new) {}
+	virtual void start(const s16_x4 *pos_new);
 	/// Covenience function
-	void start(const u16_x4 pos_new) { start(&pos_new); }
+	void start(const s16_x4 pos_new) { start(&pos_new); }
 	// For containers
 	virtual void tryFitElements() {}
 
 	// Populated after tryFitElements()
-	u16_x4 pos {}; //< Minimal and maximal position (1 px overlap with neighbours)
+	s16_x4 pos {}; //< Minimal and maximal position (1 px overlap with neighbours)
 
 protected:
 	friend struct FlexBox; // to access m_wrapped_pos
 
 	Element() = default;
 
+	// Populated after getMinSize()
+	bool m_scrollbars[2] {}; //< whether the space is exhausted
+
 	// Populated after tryFitElements()
-	u16 m_wrapped_pos = 0; //< for FlexBox: next line position (X or Y)
+	s16 m_wrapped_pos = 0; //< for FlexBox: next line position (X or Y)
 
 	std::vector<std::unique_ptr<Element>> m_children;
 };
 
 struct Table : public Element {
 	struct CellInfo {
-		u16 weight = 10; //< column or row weight for table spreading
+		s16 weight = 10; //< column or row weight for table spreading
 
 	private:
 		friend struct Table;
 		friend struct IGUIElementWrapper;
-		u16 min_size = 0;  // after getMinSize()
-		u16_x2 pos_minmax; // {minp, maxp}, after tryFitElements()
+		s16 min_size = 0;  // after getMinSize()
+		s16_x2 pos_minmax; // {minp, maxp}, after tryFitElements()
 	};
 
 	virtual ~Table() = default;
@@ -84,15 +87,16 @@ struct Table : public Element {
 		m_cellinfo[SIZE_Y].clear();
 	}
 
-	void setSize(u16 x, u16 y)
+	void setSize(size_t x, size_t y)
 	{
+		clear(); // because x/y would no longer match
 		m_cellinfo[SIZE_X].resize(x);
 		m_cellinfo[SIZE_Y].resize(y);
 		m_children.resize(x * y);
 	}
 
 	template <typename T, typename ... Args>
-	T *add(u16 x, u16 y, Args &&... args)
+	T *add(size_t x, size_t y, Args &&... args)
 	{
 		checkDimensions(x, y);
 		auto &idx = m_children[y * m_cellinfo[SIZE_X].size() + x];
@@ -101,45 +105,42 @@ struct Table : public Element {
 		return dynamic_cast<T *>(idx.get());
 	}
 
-	std::unique_ptr<Element> &get(u16 x, u16 y)
+	std::unique_ptr<Element> &get(size_t x, size_t y)
 	{
 		checkDimensions(x, y);
 		return m_children[y * m_cellinfo[SIZE_X].size() + x];
 	}
 
-	CellInfo *col(u16 x)
+	CellInfo *col(size_t x)
 	{
 		checkDimensions(x, 0);
 		return &m_cellinfo[SIZE_X][x];
 	}
 
-	CellInfo *row(u16 y)
+	CellInfo *row(size_t y)
 	{
 		checkDimensions(0, y);
 		return &m_cellinfo[SIZE_Y][y];
 	}
 
-	void start(const u16_x4 *pos_new) override;
 	void tryFitElements() override;
 
 private:
 	friend struct IGUIElementWrapper;
 
-	void checkDimensions(u16 x, u16 y) const
+	void getMinSize(bool shrink_x, bool shrink_y) override;
+
+	void checkDimensions(size_t x, size_t y) const
 	{
 		ASSERT_FORCED(x < m_cellinfo[SIZE_X].size(), "X out of range");
 		ASSERT_FORCED(y < m_cellinfo[SIZE_Y].size(), "Y out of range");
 	}
 
-	void getMinSize(bool shrink_x, bool shrink_y) override;
-	void spreadTable(Size dim, u16 total_space);
-	void spreadCell(Element *prim, u16 num, Size dim);
+	void spreadTable(Size dim, s16 total_space);
+	void spreadCell(Element *prim, size_t num, Size dim);
 
 	std::vector<CellInfo> m_cellinfo[2];
-	u16 m_total_weight_cell[2]; // after getMinSize()
-
-	bool m_scrollbars[2] {};
-	u16 m_scroll_offset[2] {};
+	s16 m_total_weight_cell[2]; // after getMinSize()
 };
 
 struct FlexBox : public Element {
@@ -153,12 +154,11 @@ struct FlexBox : public Element {
 		return dynamic_cast<T *>(m_children.back().get());
 	}
 
-	Element *at(u16 i) const
+	Element *at(size_t i) const
 	{
 		return m_children.at(i).get();
 	}
 
-	void start(const u16_x4 *pos_new) override;
 	void tryFitElements() override;
 
 	Size box_axis = SIZE_X;
@@ -166,19 +166,18 @@ struct FlexBox : public Element {
 
 private:
 	struct SpreadData {
-		u16
-			fixed_space,  // reserved by min_size
-			fixed_offset, // starting position
-			dynamic_space, // for (weight_sum / total_sptrings)
-			total_springs,
+		s16
+			fixed_space,   //< == sum(min_size)
+			fixed_offset,  //< starting position
+			dynamic_space, //< for (weight_sum / total_sptrings)
+			total_springs, //< == sum(margin + size + margin)
 			weight_sum;
 	};
 
 	void getMinSize(bool shrink_x, bool shrink_y) override;
+	// Returns the line height
+	s16 getNextLine(SpreadData &d, decltype(m_children)::iterator &it);
 	void spread(Element &box, SpreadData &d, Size i_width);
-
-	bool m_scrollbars[2] {};
-	u16 m_scroll_offset[2] {};
 };
 
 } // namespace guilayout

@@ -178,8 +178,8 @@ void Gui::run()
 
 		if (is_new_screen) {
 			handler->draw();
-			((guilayout::Element *)layout)->start(
-				{0, 0, (u16)window_size.Width, (u16)window_size.Height}
+			layout->start(
+				{0, 0, (s16)window_size.Width, (s16)window_size.Height}
 			);
 		}
 

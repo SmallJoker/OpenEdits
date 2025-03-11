@@ -50,29 +50,19 @@ struct TestButton : public IGUIElementWrapper {
 		setSize({100, 70});
 	}
 
-	void setSize(u16_x2 size)
+	inline void setSize(s16_x2 size)
 	{
 		min_size = size;
-		m_element->setMinSize({
-			min_size[0], min_size[1]
-		});
 	}
 
-	void getMinSize(bool sx, bool sy) override
+	void updateText(u16 a, u16 b)
 	{
-		// min_size
-		if (index_pos[0] == 1 && index_pos[1] == 0) {
-			if (sx)
-				setSize({40, 100});
-			else if (sy)
-				setSize({100, 20});
-			else
-				setSize({100, 100});
-			DBG_TEST("Button shrink: X %i, Y %i\n", sx, sy);
-		}
+		char buf[20];
+		snprintf(buf, sizeof(buf), "[ %d , %d ]", a, b);
+		std::wstring wstr;
+		utf8_to_wide(wstr, buf);
+		m_element->setText(wstr.c_str());
 	}
-
-	u16_x2 index_pos;
 };
 
 // ------------------- GUI builders -------------------
@@ -89,7 +79,7 @@ static Element *setup_table_demo()
 	for (u16 xp = 0; xp < 4; ++xp) {
 		for (u16 yp = 0; yp < 4; ++yp) {
 			TestButton *b = root.add<TestButton>(xp, yp);
-			b->index_pos = { xp, yp };
+			b->updateText(xp, yp);
 
 			switch (xp) {
 				case 1: b->margin = {5,5,5,5}; break; // x center, y center
@@ -100,7 +90,7 @@ static Element *setup_table_demo()
 
 			switch (yp) {
 				case 1: b->setSize({150, 20}); break;
-				case 2: b->setSize({200, (u16)(60 + (xp == 2) * 60)}); break;
+				case 2: b->setSize({200, (s16)(60 + (xp == 2) * 60)}); break;
 				case 3: b->setSize({50, 60}); break;
 				default: break;
 			}
@@ -129,6 +119,7 @@ static Element *setup_box_demo()
 
 		for (int yp = 0; yp < 4; ++yp) {
 			TestButton *b = vbox->add<TestButton>();
+			b->updateText(xp, yp);
 
 			switch (xp) {
 				case 1: b->margin = {5,5,5,5}; break;
@@ -139,7 +130,7 @@ static Element *setup_box_demo()
 
 			switch (yp) {
 				case 1: b->setSize({200, 20}); break;
-				case 2: b->setSize({200, (u16)(60 + (xp == 2) * 60)}); break;
+				case 2: b->setSize({200, (s16)(60 + (xp == 2) * 60)}); break;
 				case 3: b->setSize({50, 60}); break;
 				default: break;
 			}
@@ -175,7 +166,7 @@ static Element *setup_tabcontrol()
 	auto size = device->getVideoDriver()->getScreenSize();
 	gui::IGUITabControl *tc = device->getGUIEnvironment()->addTabControl(norect);
 	IGUIElementWrapper *wrap = main.add<IGUIElementWrapper>(tc);
-	wrap->min_size = {200, (u16)(size.Height * 0.6f) };
+	wrap->min_size = {200, (s16)(size.Height * 0.6f) };
 	wrap->expand = { 1, 1 };
 	wrap->margin = { 1, 1, 1, 1 };
 	{
@@ -400,9 +391,9 @@ void unittest_gui_layout(int which)
 		if (is_new_screen && root) {
 			unittest_tic();
 			if (rect_override.getArea() == 0)
-				root->start({0, 0, (u16)window_size.Width, (u16)window_size.Height });
+				root->start({0, 0, (s16)window_size.Width, (s16)window_size.Height });
 			else
-				root->start({0, 0, (u16)rect_override.getWidth(), (u16)rect_override.getHeight() });
+				root->start({0, 0, (s16)rect_override.getWidth(), (s16)rect_override.getHeight() });
 			unittest_toc("root->start()");
 		}
 

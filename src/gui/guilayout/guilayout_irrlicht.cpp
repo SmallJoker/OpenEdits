@@ -82,7 +82,7 @@ void IGUIElementWrapper::setElement(gui::IGUIElement *elem)
 	}
 }
 
-void IGUIElementWrapper::start(const u16_x4 *pos_new)
+void IGUIElementWrapper::start(const s16_x4 *pos_new)
 {
 	if (!m_element)
 		return;
@@ -110,7 +110,6 @@ void IGUIElementWrapper::start(const u16_x4 *pos_new)
 #endif
 
 	// Sync with container
-	// FIXME: allow negative positions
 	m_element->setRelativePosition(rect);
 
 	// Deal nested elements
@@ -128,7 +127,7 @@ void IGUIElementWrapper::start(const u16_x4 *pos_new)
 
 				m_children[i]->start({
 					1, 1,
-					(u16)(crect.getWidth() - 2), (u16)(crect.getHeight() - 2)
+					(s16)(crect.getWidth() - 2), (s16)(crect.getHeight() - 2)
 				});
 			}
 		}
@@ -315,7 +314,7 @@ void IGUIElementWrapper::setTextlike(bool use_get_text)
 	if (use_get_text)
 		len = std::max<u16>(len, wcslen(m_element->getText()));
 
-	min_size = { (u16)(len * spacing), text_height };
+	min_size = { (s16)(len * spacing), (s16)text_height };
 }
 
 }

@@ -81,7 +81,7 @@ nomatch:
 
 
 /// `true` if OK
-static bool read_u16_array(lua_State *L, const char *field, u16 *ptr, size_t len)
+static bool read_s16_array(lua_State *L, const char *field, s16 *ptr, size_t len)
 {
 	u64 set_i = 0;
 	lua_getfield(L, -1, field);
@@ -235,8 +235,9 @@ int GuiScript::gui_read_element(lua_State *L)
 			Table *t = new Table();
 			e.reset(t);
 
-			u16 grid[2];
-			if (read_u16_array(L, "grid", grid, 2)) {
+			s16 grid[2];
+			if (read_s16_array(L, "grid", grid, 2)
+					&& grid[0] >= 1 && grid[1] >= 1) {
 				t->setSize(grid[0], grid[1]);
 			}
 
@@ -284,9 +285,9 @@ int GuiScript::gui_read_element(lua_State *L)
 		logger(LL_WARN, "Unknown element: %d", type);
 	}
 
-	read_u16_array(L, "margin", e->margin.data(), e->margin.size());
-	read_u16_array(L, "expand", e->expand.data(), e->expand.size());
-	read_u16_array(L, "min_size", e->min_size.data(), e->min_size.size());
+	read_s16_array(L, "margin", e->margin.data(), e->margin.size());
+	read_s16_array(L, "expand", e->expand.data(), e->expand.size());
+	read_s16_array(L, "min_size", e->min_size.data(), e->min_size.size());
 	return 0;
 	MESSY_CPP_EXCEPTIONS_END
 }
