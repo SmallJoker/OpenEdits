@@ -136,11 +136,10 @@ private:
 		ASSERT_FORCED(y < m_cellinfo[SIZE_Y].size(), "Y out of range");
 	}
 
-	void spreadTable(Size dim, s16 total_space);
+	void spreadTable(Size dim, s16 total_space, s16 total_weights);
 	void spreadCell(Element *prim, size_t num, Size dim);
 
 	std::vector<CellInfo> m_cellinfo[2];
-	s16 m_total_weight_cell[2]; // after getMinSize()
 };
 
 struct FlexBox : public Element {
@@ -169,8 +168,8 @@ private:
 		s16
 			fixed_space,   //< == sum(min_size)
 			fixed_offset,  //< starting position
-			dynamic_space, //< for (weight_sum / total_sptrings)
-			total_springs, //< == sum(margin + size + margin)
+			dynamic_space, //< for (weight_sum / total_weights)
+			total_weights, //< == sum(margin + size + margin)
 			weight_sum;
 	};
 

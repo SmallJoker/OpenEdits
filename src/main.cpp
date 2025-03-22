@@ -20,7 +20,7 @@
 #endif
 
 
-void unittest();
+void unittest(int gui_test_nr);
 
 extern BlockManager *g_blockmanager;
 
@@ -136,7 +136,10 @@ static int parse_args(int argc, char *argv[])
 	if (strcmp(argv[1], "--unittest") == 0) {
 		// Depends on BlockManager and ENet
 		g_blockmanager->doPackRegistration();
-		unittest();
+		int gui_test_nr = -1;
+		if (argc >= 3)
+			gui_test_nr = atoi(argv[2]);
+		unittest(gui_test_nr);
 		return EXIT_SUCCESS;
 	}
 	if (strcmp(argv[1], "--decompress") == 0) {

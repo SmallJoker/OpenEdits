@@ -42,19 +42,7 @@ SceneBlockSelector::SceneBlockSelector(SceneGameplay *parent, gui::IGUIEnvironme
 	m_gui = gui;
 	m_hotbar_ids = { 0, 9, 10, 2, 4, 48, 46, 67 };
 
-	using T = BlockParams::Type;
-
-	auto check = [](bid_t block_id, T type) -> bool {
-		auto props = g_blockmanager->getProps(block_id);
-		return !props || props->paramtypes == type;
-	};
-
-	m_legacy_compatible = true
-		&& check(Block::ID_COINDOOR, T::U8)
-		&& check(Block::ID_COINGATE, T::U8)
-		&& check(Block::ID_PIANO, T::U8)
-		&& check(Block::ID_TELEPORTER, T::Teleporter)
-		&& check(Block::ID_TEXT, T::Text);
+	m_legacy_compatible = g_blockmanager->isEElike();
 }
 
 SceneBlockSelector::~SceneBlockSelector()
@@ -158,7 +146,7 @@ bool SceneBlockSelector::toggleScriptElements(const SEvent &e)
 	le_root->getMinSize(false, false);
 
 	s32 w = le_root->min_size[0] * 1.1f + 4;
-	s32 h = le_root->min_size[1] * 1.1f + 4;
+	s32 h = le_root->min_size[1] * 1.2f + 4;
 	core::recti rect_tab(
 		core::vector2di((-w + BTN_SIZE.Width) / 2, BTN_SIZE.Height + 3),
 		core::dimension2di(w, h)
@@ -166,8 +154,9 @@ bool SceneBlockSelector::toggleScriptElements(const SEvent &e)
 	tab->setRelativePosition(rect_tab);
 
 	le_root->start({
-		2, 2,
-		(s16)(w - 2), (s16)(h - 2)
+		3, 2,
+		(s16)(w - 3),
+		(s16)(h - 2)
 	});
 	return true;
 }

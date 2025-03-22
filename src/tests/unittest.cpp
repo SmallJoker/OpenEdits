@@ -27,15 +27,15 @@ void unittest_toc(const char *name)
 	auto time_now = std::chrono::steady_clock::now();
 	double dtime = std::chrono::duration<double>(time_now - time_start).count();
 	if (dtime > 2E-3) {
-		printf("[%s] Timer took %.3f ms\n", name, dtime * 1E3);
+		printf("[%s] elapsed: %.2f ms\n", name, dtime * 1E3);
 	} else {
-		printf("[%s] Timer took %.3f us\n", name, dtime * 1E6);
+		printf("[%s] elapsed: %.2f us\n", name, dtime * 1E6);
 	}
 }
 
 //#define UNITTEST_CATCH_EX
 
-void unittest()
+void unittest(int gui_test_nr)
 {
 	puts("==> Start unittest");
 
@@ -43,7 +43,10 @@ void unittest()
 	try
 #endif
 	{
-		//unittest_gui_layout(4); return;
+		if (gui_test_nr >= 0) {
+			unittest_gui_layout(gui_test_nr);
+			return;
+		}
 		unittest_mediamanager();
 
 		unittest_auth();

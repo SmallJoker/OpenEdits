@@ -51,7 +51,6 @@ void Element::start(const s16_x4 *pos_new)
 
 	// 3. Determine whether we need space for scrollbars
 
-
 	// 4. Update the positions of the child elements
 	tryFitElements();
 
@@ -65,24 +64,15 @@ void Element::start(const s16_x4 *pos_new)
 
 void Table::getMinSize(bool shrink_x, bool shrink_y)
 {
-	for (size_t dim = 0; dim < 2; ++dim) {
-		s16 weight = 0;
-
-		for (CellInfo &ci : m_cellinfo[dim]) {
-			ci.min_size = 0;
-			weight += ci.weight;
-		}
-		if (weight == 0)
-			weight = 1;
-
-		m_total_weight_cell[dim] = weight;
-	}
-
+	// Find the minimal dimensions for each column and row by checking every cell
 	for (size_t y = 0; y < m_cellinfo[SIZE_Y].size(); ++y) {
 		CellInfo &row = m_cellinfo[SIZE_Y][y];
+		row.min_size = 0; // reset from previous calls
 
 		for (size_t x = 0; x < m_cellinfo[SIZE_X].size(); ++x) {
 			CellInfo &col = m_cellinfo[SIZE_X][x];
+			if (y == 0)
+				col.min_size = 0; // reset from previous calls
 
 			Element *e = m_children[y * m_cellinfo[SIZE_X].size() + x].get();
 			if (!e)
@@ -90,8 +80,8 @@ void Table::getMinSize(bool shrink_x, bool shrink_y)
 
 			e->getMinSize(shrink_x, shrink_y);
 
-			col.min_size = std::max<s16>(col.min_size, e->min_size[0]);
-			row.min_size = std::max<s16>(row.min_size, e->min_size[1]);
+			col.min_size = std::max<s16>(col.min_size, e->min_size[SIZE_X]);
+			row.min_size = std::max<s16>(row.min_size, e->min_size[SIZE_Y]);
 		}
 	}
 
@@ -109,23 +99,31 @@ void Table::getMinSize(bool shrink_x, bool shrink_y)
 
 void Table::tryFitElements()
 {
-
 	s16_x2 total_space {
 		(s16)(pos[DIR_RIGHT] - pos[DIR_LEFT]),
 		(s16)(pos[DIR_DOWN]  - pos[DIR_UP])
 	};
 
-	m_scrollbars[SIZE_X] = min_size[SIZE_X] > (total_space[SIZE_X] - SCROLLBAR_SIZE);
-	m_scrollbars[SIZE_Y] = min_size[SIZE_Y] > (total_space[SIZE_Y] - SCROLLBAR_SIZE);
+	m_scrollbars[SIZE_X] = min_size[SIZE_X] > total_space[SIZE_X];
+	m_scrollbars[SIZE_Y] = min_size[SIZE_Y] > total_space[SIZE_Y];
 
 	if (m_scrollbars[SIZE_X])
 		total_space[SIZE_Y] -= SCROLLBAR_SIZE; // X-axis needs Y space
 	if (m_scrollbars[SIZE_Y])
 		total_space[SIZE_X] -= SCROLLBAR_SIZE; // Y-axis needs X space
 
-	// Total space is now known: spread.
-	spreadTable(SIZE_X, total_space[SIZE_X]);
-	spreadTable(SIZE_Y, total_space[SIZE_Y]);
+	for (Size dim : { SIZE_X, SIZE_Y }) {
+		s16 total_weights = 0;
+		for (CellInfo &ci : m_cellinfo[dim]) {
+			total_weights += ci.weight;
+		}
+
+		if (total_weights == 0)
+			total_weights = 1;
+
+		// Total space and weights are now known: spread.
+		spreadTable(dim, total_space[dim], total_weights);
+	}
 
 	// Now center the cell contents
 	for (size_t y = 0; y < m_cellinfo[SIZE_Y].size(); ++y)
@@ -139,13 +137,12 @@ void Table::tryFitElements()
 	}
 }
 
-void Table::spreadTable(Size dim, s16 total_space)
+void Table::spreadTable(Size dim, s16 total_space, s16 total_weights)
 {
 	Direction dir_L = (dim == SIZE_X) ? DIR_LEFT : DIR_UP;
 
 	s16 fixed_offset = pos[dir_L]/*- m_scroll_offset[dim]*/;
 	s16 weight_sum = 0;
-	s16 total_springs = m_total_weight_cell[dim];
 	s16 dynamic_space = total_space;
 
 	for (CellInfo &ci : m_cellinfo[dim])
@@ -157,14 +154,14 @@ void Table::spreadTable(Size dim, s16 total_space)
 	for (CellInfo &ci : m_cellinfo[dim]) {
 		ci.pos_minmax[0] =
 			+ fixed_offset
-			+ dynamic_space * weight_sum / total_springs;
+			+ dynamic_space * weight_sum / total_weights;
 
 		weight_sum += ci.weight;
 		fixed_offset += ci.min_size;
 
 		ci.pos_minmax[1] =
 			+ fixed_offset
-			+ dynamic_space * weight_sum / total_springs;
+			+ dynamic_space * weight_sum / total_weights;
 	}
 }
 
@@ -178,12 +175,12 @@ void Table::spreadCell(Element *e, size_t num, Size dim)
 	Direction dir_R = (dim == SIZE_X) ? DIR_RIGHT : DIR_DOWN;
 
 	s16 weight_sum = e->margin[dir_L];
-	s16 total_springs =
+	s16 total_weights =
 		+ weight_sum
 		+ e->expand[dim] * 2
 		+ e->margin[dir_R];
-	if (total_springs == 0)
-		total_springs = 1;
+	if (total_weights == 0)
+		total_weights = 1;
 
 	CellInfo &ci = m_cellinfo[dim][num];
 	s16 fixed_offset = ci.pos_minmax[0];
@@ -195,14 +192,14 @@ void Table::spreadCell(Element *e, size_t num, Size dim)
 
 	e->pos[dir_L] =
 		+ fixed_offset // static offset
-		+ dynamic_space * weight_sum / total_springs;
+		+ dynamic_space * weight_sum / total_weights;
 
 	weight_sum += e->expand[dim] * 2;
 	fixed_offset += fixed_space;
 
 	e->pos[dir_R] =
 		+ fixed_offset // static offset
-		+ dynamic_space * weight_sum / total_springs;
+		+ dynamic_space * weight_sum / total_weights;
 }
 
 
@@ -228,8 +225,9 @@ void FlexBox::tryFitElements()
 
 	// FIXME: The wrap outcome depends on whether we need space for a scrollbar
 	// but we can only determine whether a scrollbar is needed after wrapping.
-	m_scrollbars[SIZE_X] = min_size[SIZE_X] > (total_space[SIZE_X] - SCROLLBAR_SIZE);
-	m_scrollbars[SIZE_Y] = min_size[SIZE_Y] > (total_space[SIZE_Y] - SCROLLBAR_SIZE);
+	// Compromise: require enough space beforehand. See `FlexBox::getMinSize`.
+	m_scrollbars[SIZE_X] = min_size[SIZE_X] > total_space[SIZE_X];
+	m_scrollbars[SIZE_Y] = min_size[SIZE_Y] > total_space[SIZE_Y];
 
 	if (m_scrollbars[SIZE_X])
 		total_space[SIZE_Y] -= SCROLLBAR_SIZE; // X-axis needs Y space
@@ -246,13 +244,13 @@ void FlexBox::tryFitElements()
 		SpreadData xs;
 		xs.fixed_space = 0;
 		xs.fixed_offset = pos[dir_L] /*- m_scroll_offset[box_axis]*/;
-		xs.total_springs = 0;
+		xs.total_weights = 0;
 
 		auto row_last = it;
 		const s16 line_height = getNextLine(xs, row_last);
 
-		if (xs.total_springs == 0)
-			xs.total_springs = 1; // avoid division by 0
+		if (xs.total_weights == 0)
+			xs.total_weights = 1; // avoid division by 0
 
 		// separate leftover space for dynamic placement
 		// and fixed space (added incrementally)
@@ -276,7 +274,7 @@ void FlexBox::tryFitElements()
 				SpreadData ys;
 				ys.fixed_space = 0;
 				ys.fixed_offset = pos[dir_U] /*- m_scroll_offset[box_axis_O]*/ + row_y;
-				ys.total_springs =
+				ys.total_weights =
 					+ e.margin[dir_U]
 					+ e.expand[box_axis_O] * 2
 					+ e.margin[dir_D];
@@ -290,8 +288,8 @@ void FlexBox::tryFitElements()
 					dyn = total_space[box_axis_O] - e.min_size[box_axis_O];
 				ys.dynamic_space = std::max<s16>(dyn, 0);
 
-				if (ys.total_springs == 0)
-					ys.total_springs = 1; // avoid division by 0
+				if (ys.total_weights == 0)
+					ys.total_weights = 1; // avoid division by 0
 
 				DBG_FLEXBOX("Y align @ i=%li, Y % 3i, Dyn % 3i\n",
 					e_it - m_children.begin(), ys.fixed_offset, ys.dynamic_space);
@@ -303,7 +301,7 @@ void FlexBox::tryFitElements()
 			// Check whether the position calculation is correct.
 			// This only works as long there's enough space for the elements.
 			ASSERT_FORCED(xs.fixed_space + xs.dynamic_space * xs.weight_sum
-				/ xs.total_springs == total_space[box_axis], "Weights do not sum up");
+				/ xs.total_weights == total_space[box_axis], "Weights do not sum up");
 		}
 
 		row_y += line_height;
@@ -361,8 +359,7 @@ s16 FlexBox::getNextLine(SpreadData &d, decltype(m_children)::iterator &it)
 		}
 
 		// weighting of the flexible space
-		// TODO: ONLY ONE PADDING IS NEEDED
-		d.total_springs +=
+		d.total_weights +=
 			+ e.margin[dir_L]
 			+ e.expand[box_axis] * 2
 			+ e.margin[dir_R];
@@ -393,7 +390,7 @@ void FlexBox::spread(Element &e, SpreadData &d, Size i_width)
 	e.pos[dir_L] =
 		+ d.fixed_offset // this element
 		+ d.fixed_space
-		+ d.dynamic_space * d.weight_sum / d.total_springs;
+		+ d.dynamic_space * d.weight_sum / d.total_weights;
 
 	d.weight_sum += e.expand[i_width] * 2;
 	d.fixed_space += e.min_size[i_width];
@@ -401,7 +398,7 @@ void FlexBox::spread(Element &e, SpreadData &d, Size i_width)
 	e.pos[dir_R] =
 		+ d.fixed_offset // this element
 		+ d.fixed_space
-		+ d.dynamic_space * d.weight_sum / d.total_springs;
+		+ d.dynamic_space * d.weight_sum / d.total_weights;
 
 	d.weight_sum += e.margin[dir_R];
 }

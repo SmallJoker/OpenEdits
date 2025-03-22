@@ -45,7 +45,9 @@ protected:
 
 private:
 	void setElement(gui::IGUIElement *elem);
-	void setTextlike(bool use_get_text);
+	/// @param use_get_text : Whether to use `->getText()` to calculate the size
+	/// @param margin : Element border in pixels (for surrounding decorations)
+	void setTextlike(bool use_get_text, int margin);
 
 	static bool draw_iguiw_wireframe(IGUIElementWrapper *e, video::IVideoDriver *driver, uint32_t color);
 	static bool draw_table_wireframe(Table *e, video::IVideoDriver *driver, uint32_t color);

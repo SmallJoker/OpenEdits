@@ -145,7 +145,7 @@ static Element *setup_box_demo()
 		//hbox->force_wrap = true;
 
 		auto label = hbox->add<TestButton>();
-		label->margin = {10,10,0,10};
+		label->margin = {10,10,5,10};
 		label->setSize({100, 30});
 
 		auto input = hbox->add<TestButton>();

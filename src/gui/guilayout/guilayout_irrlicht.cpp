@@ -65,14 +65,12 @@ void IGUIElementWrapper::setElement(gui::IGUIElement *elem)
 		case gui::EGUIET_EDIT_BOX:
 			margin = { 1, 1, 1, 1 };
 			expand = { 5, 1 };
-			setTextlike(type == gui::EGUIET_BUTTON);
-			if (type == gui::EGUIET_EDIT_BOX)
-				min_size[SIZE_Y] += 4;
+			setTextlike(type == gui::EGUIET_BUTTON, 4);
 			break;
 		case gui::EGUIET_STATIC_TEXT:
 			margin = { 0, 1, 1, 1 }; // left align
 			expand = { 0, 0 }; // no benefit from larger container
-			setTextlike(true);
+			setTextlike(true, 0);
 			{
 				gui::IGUIStaticText *e = (gui::IGUIStaticText *)m_element;
 				e->setTextAlignment(gui::EGUIA_UPPERLEFT, gui::EGUIA_CENTER);
@@ -299,22 +297,22 @@ void IGUIElementWrapper::draw_wireframe(Element *e, video::IVideoDriver *driver,
 	e->doRecursive(drawfunc);
 }
 
-void IGUIElementWrapper::setTextlike(bool use_get_text)
+void IGUIElementWrapper::setTextlike(bool use_get_text, int margin)
 {
-	static u16 text_height = 0;
-	static u16 spacing = 0;
-	if (text_height == 0) {
+	static u16 line_height = 0;
+	static u16 avg_letter_width = 0;
+	if (line_height == 0) {
 		auto font = ((Spoofed *)m_element)->getEnv()->getSkin()->getFont();
 		core::dimension2du size = font->getDimension(L"AZyq_m");
-		text_height = size.Height + 4;
-		spacing = (size.Width + 6 / 2) / 6;
+		line_height = size.Height + 4;
+		avg_letter_width = (size.Width + 6 / 2) / 6;
 	}
 
 	float len = 5;
 	if (use_get_text)
 		len = std::max<u16>(len, wcslen(m_element->getText()));
 
-	min_size = { (s16)(len * spacing), (s16)text_height };
+	min_size = { (s16)(len * avg_letter_width + margin), (s16)(line_height + margin) };
 }
 
 }
