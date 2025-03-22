@@ -46,7 +46,7 @@ BlockTile BlockProperties::getTile(const Block b) const
 
 BlockManager::BlockManager()
 {
-	m_props.resize(1100, nullptr);
+	m_props.resize(1100, nullptr); // 8.8 KB
 }
 
 BlockManager::~BlockManager()
@@ -111,6 +111,45 @@ static void split_texture(video::IVideoDriver *driver, BlockTile *tile, u8 textu
 
 void BlockManager::sanityCheck()
 {
+	{
+		// EE compatibility check
+		using T = BlockParams::Type;
+
+		const struct BlockToCheck {
+			bid_t block_id;
+			T type;
+		} special_blocks[] = {
+			// Must be ordered by ID
+			{ Block::ID_COINDOOR, T::U8 },
+			{ Block::ID_PIANO, T::U8 },
+			{ Block::ID_COINGATE, T::U8 },
+			{ Block::ID_TELEPORTER, T::Teleporter },
+			{ Block::ID_SPIKES, T::U8 },
+			{ Block::ID_TEXT, T::Text },
+			{ 0, T::None }
+		};
+		const BlockToCheck *to_check = special_blocks;
+
+		m_is_ee_like = true;
+		for (bid_t id = 0; id < m_props.size(); ++id) {
+			const auto prop = m_props[id];
+			if (!prop)
+				continue;
+
+			T expected = T::None;
+			if (to_check->block_id == id) {
+				expected = to_check->type;
+				to_check++;
+			}
+			if (prop->paramtypes != expected) {
+				logger(LL_INFO, "id=%d has EE-incompatible type %d (!= %d)\n", id,
+					(int)prop->paramtypes, (int)expected);
+				m_is_ee_like = false;
+				break;
+			}
+		}
+	}
+
 	for (auto pack : m_packs) {
 		for (bid_t id : pack->block_ids) {
 			auto prop = m_props[id];

@@ -3,6 +3,7 @@
 
 #include "core/blockmanager.h"
 #include "core/compressor.h"
+#include "core/logger.h"
 #include "core/packet.h"
 #include "core/world.h"
 #include "core/worldmeta.h"
@@ -19,6 +20,7 @@
 #endif
 #define ERRORLOG(...) fprintf(stderr, __VA_ARGS__)
 
+static Logger logger("EEOconverter", LL_INFO);
 
 const std::string EEOconverter::IMPORT_DIR = "worlds/imports";
 const std::string EEOconverter::EXPORT_DIR = "worlds/exports";
@@ -451,6 +453,9 @@ void EEOconverter::fromFile(const std::string &filename_)
 	m_world.createEmpty(meta.size);
 
 	auto blockmgr = m_world.getBlockMgr();
+	if (!blockmgr->isEElike()) {
+		logger(LL_WARN, "World %s may fail due to incompatibility!", "import");
+	}
 
 	std::string err;
 	EBlockParams params_in;
@@ -542,6 +547,13 @@ void EEOconverter::toFile(const std::string &filename_) const
 	std::ofstream os(filename, std::ios_base::binary);
 	if (!os.good())
 		throw std::runtime_error("Cannot write open file " + filename);
+
+	{
+		auto blockmgr = m_world.getBlockMgr();
+		if (!blockmgr->isEElike()) {
+			logger(LL_WARN, "World %s may fail due to incompatibility!", "export");
+		}
+	}
 
 	Packet zs;
 	zs.setBigEndian();

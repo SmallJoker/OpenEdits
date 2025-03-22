@@ -24,6 +24,12 @@ static void test_blockparams()
 	CHECK(pkt.read<uint8_t>() == 0);
 	CHECK(pkt.read<uint8_t>() == 10);
 	CHECK(pkt.read<uint8_t>() == 42);
+
+	p1 = BlockParams(BlockParams::Type::Teleporter);
+	p1.teleporter.rotation = 0;
+	p1.teleporter.id = 10;
+	p1.teleporter.dst_id = 42;
+	CHECK(p1 == p2);
 }
 
 static void test_repeated()

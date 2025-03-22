@@ -79,12 +79,10 @@ bool BlockParams::operator==(const BlockParams &other) const
 			return true;
 		case Type::STR16:
 			return *text == *other.text;
-		case Type::U8:
 			return param_u8 == other.param_u8;
+		case Type::U8:
 		case Type::Teleporter:
-			return teleporter.rotation == other.teleporter.rotation
-				&& teleporter.id == other.teleporter.id
-				&& teleporter.dst_id == other.teleporter.dst_id;
+			return memcmp(this, &other, sizeof(BlockParams)) == 0;
 	}
 	return false; // ERROR
 }

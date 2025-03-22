@@ -48,18 +48,6 @@ void ClientMedia::readMediaList(Packet &pkt)
 		file.file_size = size;
 		file.data_hash = data_hash;
 
-		// Check file in cache
-		file.file_path = file.getDiskFileName();
-		if (file.cacheToRAM() && file.data_hash == data_hash && file.file_size == size) {
-			// Delay file deletion
-			set_file_mtime(file.file_path.c_str(), time_now);
-			// overwrite path of the indexed local files
-			m_media_available[name] = file.file_path;
-			bytes_done += size;
-			logger(LL_DEBUG, "%s: file %s from cache\n", __func__, name.c_str());
-			continue;
-		}
-
 		// Check the local files to avoid unnecessary caching
 		auto it = local_media.find(name);
 		if (it != local_media.end()) {
@@ -72,6 +60,18 @@ void ClientMedia::readMediaList(Packet &pkt)
 				logger(LL_DEBUG, "%s: file %s from distr\n", __func__, name.c_str());
 				continue;
 			}
+		}
+
+		// Check file in cache
+		file.file_path = file.getDiskFileName();
+		if (file.cacheToRAM() && file.data_hash == data_hash && file.file_size == size) {
+			// Delay file deletion
+			set_file_mtime(file.file_path.c_str(), time_now);
+			// overwrite path of the indexed local files
+			m_media_available[name] = file.file_path;
+			bytes_done += size;
+			logger(LL_DEBUG, "%s: file %s from cache\n", __func__, name.c_str());
+			continue;
 		}
 
 		m_to_request.insert(name);

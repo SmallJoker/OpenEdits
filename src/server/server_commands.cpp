@@ -940,9 +940,6 @@ CHATCMD_FUNC(Server::chat_Save)
 
 CHATCMD_FUNC(Server::chat_Title)
 {
-	if (!m_world_db)
-		return;
-
 	auto world = player->getWorld();
 
 	if (!player->getFlags().check(PlayerFlags::PF_OWNER)) {

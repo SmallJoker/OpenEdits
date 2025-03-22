@@ -127,6 +127,8 @@ public:
 	void sanityCheck(); // to run after everything is initialized
 	void populateTextures();
 
+	bool isEElike() const { return m_is_ee_like; }
+
 	// Blocks
 	const BlockProperties *getProps(bid_t block_id) const;;
 	const std::vector<BlockProperties *> &getProps() const { return m_props; }
@@ -154,4 +156,5 @@ private:
 	std::vector<BlockProperties *> m_props;
 	std::vector<BlockPack *> m_packs;
 	bool m_populated = false;
+	bool m_is_ee_like = false;
 };
