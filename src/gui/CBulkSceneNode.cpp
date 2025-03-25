@@ -1,11 +1,14 @@
 #include "CBulkSceneNode.h"
-#include "IVideoDriver.h"
-#include "ISceneManager.h"
-#include "ICameraSceneNode.h"
+#include <IVideoDriver.h>
+#include <ISceneManager.h>
+#include <ICameraSceneNode.h>
 
 CBulkSceneNode::CBulkSceneNode(ISceneNode *parent, scene::ISceneManager *mgr, s32 id,
 	const core::vector3df &pos, const core::dimension2d<f32> &tile_size) :
 	scene::ISceneNode(parent, mgr, id, pos),
+#define M FLT_MAX
+	m_bbox_large({{M,M,M}, {-M,-M,-M}}),
+#undef M
 	m_buffer(new scene::SMeshBuffer())
 {
 	m_tile_size = tile_size;
@@ -31,11 +34,7 @@ void CBulkSceneNode::addTile(core::vector2di coord)
 	const f32 x = m_tile_size.Width * (coord.X - 0.5f);
 	const f32 y = m_tile_size.Height * (coord.Y - 0.5f);
 
-	if (m_tiles.size() == 1) {
-		m_bbox_large.reset(x, y, RelativeTranslation.Z);
-	} else {
-		m_bbox_large.addInternalPoint(x, y, RelativeTranslation.Z + 1);
-	}
+	m_bbox_large.addInternalPoint(x, y, RelativeTranslation.Z);
 	m_bbox_large.addInternalPoint(x + m_vertex_size.Width, y + m_vertex_size.Height, RelativeTranslation.Z + 1);
 }
 

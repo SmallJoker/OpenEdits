@@ -1,5 +1,6 @@
 #include "guilayout_irrlicht.h"
 #include <IGUIElement.h>
+#include <IGUIEnvironment.h>
 #include <IGUIFont.h>
 #include <IGUIStaticText.h>
 #include <IGUITabControl.h>

@@ -8,6 +8,7 @@
 // Irrlicht includes
 #include <IEventReceiver.h> // SEvent
 #include <IGUIEditBox.h>
+#include <IGUIEnvironment.h>
 #include <IGUIStaticText.h>
 
 using namespace guilayout;

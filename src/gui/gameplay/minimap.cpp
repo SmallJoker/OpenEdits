@@ -163,8 +163,14 @@ void SceneMinimap::updateMap()
 
 void SceneMinimap::updatePlayers(float dtime)
 {
-	if (!m_is_visible)
+	if (!m_is_visible) {
+		if (m_overlay_img) {
+			// Clear movement traces as they become outdated quickly.
+			m_overlay_img->drop();
+			m_overlay_img = nullptr;
+		}
 		return;
+	}
 
 	{
 		// Limit update rate
