@@ -137,18 +137,16 @@ int Script::onCollide(CollisionInfo ci)
 		-> This is perfectly fine.
 	*/
 
-	const BlockProperties *props = ci.props;
 	using CT = BlockProperties::CollisionType;
-	if (!props)
-		return (int)CT::None;
+
+	const BlockProperties *props = ci.props;
+	int collision_type = (BlockDrawType)ci.tiletype == BlockDrawType::Solid
+		? (int)CT::Position : (int)CT::None;
+
+	if (!props || !props->haveOnCollide())
+		return collision_type;
 
 	m_last_block_id = props->id;
-
-	if (!props->haveOnCollide()) {
-		ASSERT_FORCED(props->tiles[0].type != BlockDrawType::Solid,
-			"onCollide called on solid");
-		return (int)CT::None; // should not be returned: incorrect on solids
-	}
 
 	lua_State *L = m_lua;
 	int top = lua_gettop(L);
@@ -167,11 +165,8 @@ int Script::onCollide(CollisionInfo ci)
 		return (int)CT::None;
 	}
 
-	int collision_type = (int)CT::None;
 	if (lua_isnumber(L, -1))
 		collision_type = lua_tonumber(L, -1);
-	else
-		collision_type = -1; // invalid
 
 	switch (collision_type) {
 		case (int)CT::None:

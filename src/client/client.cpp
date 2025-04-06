@@ -287,7 +287,7 @@ bool Client::OnEvent(GameEvent &e)
 				pkt.write(Packet2Server::Join);
 				pkt.writeStr16("");
 				pkt.write<u8>(e.wc_data->mode);
-				blockpos_t size { 200, 200 };
+				blockpos_t size { 100, 100 };
 				pkt.write(size.X);
 				pkt.write(size.Y);
 				pkt.writeStr16(e.wc_data->title);
@@ -736,6 +736,12 @@ void Client::updateWorld()
 {
 	auto player = getPlayerNoLock(m_my_peer_id);
 	auto world = player->getWorld();
+
+	if (!m_bmgr->isHardcoded()) {
+		// defined by script; updated by script.
+		logger(LL_WARN, "%s: getBlockTile skipped.", __func__);
+		return;
+	}
 
 	// Restore visuals to Block::tile after new world data
 	for (Block *b = world->begin(); b < world->end(); ++b) {

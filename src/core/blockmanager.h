@@ -128,6 +128,7 @@ public:
 	void populateTextures();
 
 	bool isEElike() const { return m_is_ee_like; }
+	bool isHardcoded() const { return m_hardcoded_packs; }
 
 	// Blocks
 	const BlockProperties *getProps(bid_t block_id) const;;
@@ -155,6 +156,7 @@ private:
 
 	std::vector<BlockProperties *> m_props;
 	std::vector<BlockPack *> m_packs;
+	bool m_hardcoded_packs = false;
 	bool m_populated = false;
 	bool m_is_ee_like = false;
 };

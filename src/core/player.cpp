@@ -435,9 +435,10 @@ void Player::collideWith(float dtime, int x, int y)
 	if (!props)
 		return;
 
-	bool have_on_collide_script = props->haveOnCollide();
+	const bool have_on_collide_script = props->haveOnCollide();
+	const BlockDrawType tiletype = props->getTile(b).type;
 
-	if (props->getTile(b).type != BlockDrawType::Solid
+	if (tiletype != BlockDrawType::Solid
 			&& !(props->onCollide || have_on_collide_script))
 		return;
 
@@ -459,6 +460,7 @@ void Player::collideWith(float dtime, int x, int y)
 	if (have_on_collide_script) {
 		Script::CollisionInfo ci;
 		ci.props = props;
+		ci.tiletype = (int)tiletype;
 		ci.pos = bp;
 		ci.is_x = is_x;
 		type = (CT)m_script->onCollide(ci);

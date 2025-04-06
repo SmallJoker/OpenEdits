@@ -510,6 +510,9 @@ bool SceneWorldRender::assignBlockTexture(const BlockTile tile, scene::ISceneNod
 {
 	auto &mat = node->getMaterial(0);
 	mat.ZWriteEnable = video::EZW_AUTO;
+	// For EMT_TRANSPARENT_ALPHA_CHANNEL_REF : alpha threshold to clip
+	mat.MaterialTypeParam = 0.5f;
+
 	node->getMaterial(0).forEachTexture([](video::SMaterialLayer &layer) {
 		layer.MinFilter = video::ETMINF_LINEAR_MIPMAP_LINEAR;
 		layer.LODBias = -8; // slightly shaper edges
@@ -594,6 +597,7 @@ void SceneWorldRender::updatePlayerPositions(float dtime)
 		if (nf) {
 			nf->setPosition(nf_pos);
 		} else {
+			// Smiley
 			nf = smgr->addBillboardSceneNode(m_players_node,
 				core::dimension2d<f32>(15, 15),
 				nf_pos,
@@ -601,7 +605,7 @@ void SceneWorldRender::updatePlayerPositions(float dtime)
 			);
 			nf->forEachMaterial([](video::SMaterial &mat) {
 				mat.ZWriteEnable = video::EZW_AUTO;
-				mat.MaterialType = video::EMT_TRANSPARENT_ALPHA_CHANNEL_REF;
+				mat.MaterialType = video::EMT_TRANSPARENT_ALPHA_CHANNEL;
 			});
 			nf->getMaterial(0).forEachTexture([](video::SMaterialLayer &layer) {
 				layer.MinFilter = video::ETMINF_LINEAR_MIPMAP_LINEAR;

@@ -149,14 +149,6 @@ int Script::l_change_block(lua_State *L)
 	}
 	lua_pop(L, 1);
 
-	lua_getfield(L, 2, "tile_dependent_physics");
-	if (!lua_isnil(L, -1)) {
-		// Must be `true` if any Lua callback depends on the current block tile
-		// Otherwise the movement prediction fails for other players.
-		props->tile_dependent_physics = lua_toboolean(L, -1);
-	}
-	lua_pop(L, 1);
-
 	// ---------- Audiovisuals
 
 	lua_getfield(L, 2, "minimap_color");

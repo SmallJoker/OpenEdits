@@ -82,6 +82,7 @@ public:
 
 	struct CollisionInfo {
 		const BlockProperties *props = nullptr;
+		int tiletype;
 		blockpos_t pos;
 		bool is_x = false;
 	};

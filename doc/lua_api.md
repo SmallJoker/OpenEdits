@@ -204,6 +204,8 @@ Pack Definition: (table)
 Block Definition - regular fields:
 
  * `gui_def`: See [Client GUI API]
+ * `minimap_color` (optional, number)
+    * Color of the format `0xAARRGGBB`
  * `params` (optional, number)
     * Defines what kind of data can be saved for this block.
     * Warning: Changing this type will truncate existing saved data.
@@ -222,7 +224,7 @@ Block Definition - regular fields:
 
 Block Definition - callbacks:
 
- * `on_collide(bx, by, is_x)` <- `env.COLLISION_TYPE_*`
+ * `on_collide(bx, by, is_x)` <- `env.COLLISION_TYPE_*`/`nil`
     * Called when colliding with the block at position `(bx, by)`.
     * `is_x` (boolean): Indicates the direction of collision
  * `on_intersect()` <- `nil`

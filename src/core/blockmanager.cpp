@@ -126,7 +126,7 @@ void BlockManager::sanityCheck()
 			{ Block::ID_TELEPORTER, T::Teleporter },
 			{ Block::ID_SPIKES, T::U8 },
 			{ Block::ID_TEXT, T::Text },
-			{ 0, T::None }
+			{ Block::ID_INVALID, T::None }
 		};
 		const BlockToCheck *to_check = special_blocks;
 
@@ -136,13 +136,15 @@ void BlockManager::sanityCheck()
 			if (!prop)
 				continue;
 
-			T expected = T::None;
-			if (to_check->block_id == id) {
-				expected = to_check->type;
+			while (to_check->block_id < id)
 				to_check++;
-			}
+
+			T expected = T::None;
+			if (to_check->block_id == id)
+				expected = to_check->type;
+
 			if (prop->paramtypes != expected) {
-				logger(LL_INFO, "id=%d has EE-incompatible type %d (!= %d)\n", id,
+				logger(LL_INFO, "id=%d has EE-incompatible type %d (expected: %d)\n", id,
 					(int)prop->paramtypes, (int)expected);
 				m_is_ee_like = false;
 				break;

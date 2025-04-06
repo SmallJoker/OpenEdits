@@ -468,6 +468,20 @@ void Client::pkt_PlaceBlock(Packet &pkt)
 	auto player = getMyPlayer();
 	SimpleLock world_lock(world->mutex);
 
+	auto use_getBlockTile = [this]() -> bool {
+		static bool warned = false;
+
+		if (!m_bmgr->isHardcoded()) {
+			// defined by script; updated by script.
+			if (!warned) {
+				warned = true;
+				logger(LL_WARN, "%s: getBlockTile skipped.", __func__);
+			}
+			return false;
+		}
+		return true;
+	};
+
 	BlockUpdate bu(m_bmgr);
 	while (pkt.getRemainingBytes()) {
 		peer_t peer_id = pkt.read<peer_t>();
@@ -481,7 +495,7 @@ void Client::pkt_PlaceBlock(Packet &pkt)
 		if (!b)
 			continue;
 
-		if (!bu.isBackground())
+		if (!bu.isBackground() && use_getBlockTile())
 			b->tile = getBlockTile(player.ptr(), b);
 
 		placed_block_ids.insert(bu.getId());

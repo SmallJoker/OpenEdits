@@ -15,7 +15,7 @@ using namespace guilayout;
 using namespace ScriptUtils;
 using HET = HudElement::Type;
 
-static Logger logger("GuiScript", LL_DEBUG);
+static Logger logger("GuiScript", LL_INFO);
 
 enum GUIElementType {
 	ELMT_TABLE   = 1,

@@ -188,6 +188,8 @@ void BlockManager::doPackRegistration()
 	if (!m_packs.empty())
 		return;
 
+	m_hardcoded_packs = true;
+
 	{
 		BlockPack *pack = new BlockPack("basic");
 		pack->default_type = BlockDrawType::Solid;
@@ -274,8 +276,10 @@ void BlockManager::doPackRegistration()
 		pack->block_ids = { Block::ID_KEY_R, Block::ID_KEY_G, Block::ID_KEY_B };
 		registerPack(pack);
 
-		for (bid_t id : pack->block_ids)
+		for (bid_t id : pack->block_ids) {
 			m_props[id]->trigger_on_touch = true;
+			m_props[id]->tiles[0].have_alpha = true;
+		}
 	}
 
 	{
