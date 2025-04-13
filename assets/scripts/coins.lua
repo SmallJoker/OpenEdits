@@ -20,6 +20,9 @@ EV_COINS = env.register_event(100 + env.SEF_HAVE_ACTOR, 0, env.PARAMS_TYPE_U8,
 			-- Let the other players know
 			env.send_event(EV_COINS, count)
 		end
+		if env.is_me() then
+			env.world.update_tiles({43})
+		end
 	end
 )
 -- TODO: send EV_COINS to newly joined players via attributes
@@ -71,6 +74,10 @@ local blocks_coins = {
 			{ type = env.DRAW_TYPE_SOLID },
 			{ type = env.DRAW_TYPE_SOLID, alpha = true }
 		},
+		get_visuals = function(tile, coins)
+			local pd = player_data[player:hash()]
+			return pd.coins >= coins and 1 or 0
+		end,
 		on_collide = function(bx, by, is_x)
 			-- Called on every player! Do not check against the local `tile`.
 			local coins = world.get_params(bx, by)

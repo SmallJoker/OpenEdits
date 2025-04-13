@@ -39,7 +39,7 @@ void Script::onPlayerEvent(const char *event, Player *player)
 {
 	setPlayer(player);
 	lua_pushstring(m_lua, event);
-	runCb_0(m_ref_on_player_event, "on_player_event", 1);
+	callFunction(m_ref_on_player_event, 0, "on_player_event", 1);
 }
 
 void Script::onPlayerEventB(const char *event, Player *player, bool arg)
@@ -47,5 +47,5 @@ void Script::onPlayerEventB(const char *event, Player *player, bool arg)
 	setPlayer(player);
 	lua_pushstring(m_lua, event);
 	lua_pushboolean(m_lua, arg);
-	runCb_0(m_ref_on_player_event, "on_player_event", 2);
+	callFunction(m_ref_on_player_event, 0, "on_player_event", 2);
 }

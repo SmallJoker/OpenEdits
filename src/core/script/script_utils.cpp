@@ -55,6 +55,14 @@ void function_ref_from_field(lua_State *L, int idx, const char *field,
 	lua_pop(L, 1);
 }
 
+void check_field_type(lua_State *L, int idx, const char *field, int type)
+{
+	lua_getfield(L, idx, field);
+	if (!lua_isnil(L, -1))
+		luaL_checktype(L, -1, type);
+	lua_pop(L, 1);
+}
+
 const char *check_field_string(lua_State *L, int idx, const char *field)
 {
 	lua_getfield(L, idx, field);

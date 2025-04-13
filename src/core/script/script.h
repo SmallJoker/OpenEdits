@@ -74,9 +74,6 @@ public:
 
 	void onStep(double abstime);
 
-	void onBlockPlaced(bid_t block_id);
-	//void onBlockErased(bid_t block_id);
-
 	void onIntersect(const BlockProperties *props);
 	void onIntersectOnce(blockpos_t pos, const BlockProperties *props);
 
@@ -89,8 +86,10 @@ public:
 	/// Returns a valid value of BlockProperties::CollisionType
 	int onCollide(CollisionInfo ci);
 protected:
-	void runCb_0(int ref, const char *dbg, int nargs);
-	void runBlockCb_0(int ref, const char *dbg);
+	/// If `nres == 0`: stack is reset automatically
+	/// On success: returns the old top
+	/// On error: resets the stack and returns 0
+	int callFunction(int ref, int nres, const char *dbg, int nargs, bool is_block = false);
 
 
 	// -------- World / events

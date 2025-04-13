@@ -47,6 +47,10 @@ active player of the callback.
     * Return value: (table)
         * Key: integer-based
         * Value: `{ block_id [, x, y] [, tile] [, params ...] }`
+ * `update_tiles(block_ids)`
+    * Client only
+    * `block_ids` (table/number): affected Block IDs
+    * Calls to `blockdef.get_visuals`.
  * `set_block(x, y, ...)`
     * Server-side only
     * `...`: Block Parameters (variable)
@@ -224,6 +228,11 @@ Block Definition - regular fields:
 
 Block Definition - callbacks:
 
+ * `get_visuals(tile, ...)` -> `int`/`nil`
+    * Used by client only
+    * `tile` (number): current tile
+    * `...`: Block Parameters (variable)
+    * Must return the new tile number. Triggered by `env.world.update_tiles`.
  * `on_collide(bx, by, is_x)` <- `env.COLLISION_TYPE_*`/`nil`
     * Called when colliding with the block at position `(bx, by)`.
     * `is_x` (boolean): Indicates the direction of collision
@@ -232,6 +241,3 @@ Block Definition - callbacks:
  * `on_intersect_once(tile)` <- `nil`
     * Called once when entering the block.
     * `tile` (number): The tile index of the block
- * `on_placed()` <- `nil`
-    * TODO: IMPLEMENT
-    * Called when at least one such block was placed.

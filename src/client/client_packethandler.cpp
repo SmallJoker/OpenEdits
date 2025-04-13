@@ -60,7 +60,6 @@ void Client::pkt_Hello(Packet &pkt)
 	player->name = pkt.readStr16();
 	m_start_data.nickname = player->name; // for completeness' sake
 
-	player->setScript((Script *)m_script);
 	m_players.emplace(m_my_peer_id, player.release());
 
 	m_auth = Auth();
@@ -202,18 +201,15 @@ void Client::pkt_Lobby(Packet &pkt)
 
 void Client::pkt_WorldData(Packet &pkt)
 {
+	SimpleLock lock(m_players_lock);
+	LocalPlayer *player = getPlayerNoLock(m_my_peer_id);
+
 	u8 mode = pkt.read<u8>();
 	if (!mode) {
-		m_state = ClientState::LobbyIdle;
-
-		// back to lobby
-		GameEvent e(GameEvent::C2G_LEAVE);
-		sendNewEvent(e);
+		quitToLobby(player);
 		return;
 	}
 
-	SimpleLock lock(m_players_lock);
-	Player *player = getPlayerNoLock(m_my_peer_id);
 	ASSERT_FORCED(player, "LocalPlayer not initialized");
 	auto world_old = player->getWorld();
 
@@ -236,25 +232,15 @@ void Client::pkt_WorldData(Packet &pkt)
 		world->read(pkt);
 	} // else: clear
 
-	// World kept alive by at least one player
-	bool is_new_join = !world_old;
+	// World kept alive by at least one player (-> me)
 	for (auto it : m_players)
 		it.second->setWorld(world);
 
-	if (have_world_data)
-		updateWorld();
-
-	if (is_new_join) {
-		m_state = ClientState::WorldPlay;
-
-		GameEvent e(GameEvent::C2G_JOIN);
+	{
+		GameEvent e(GameEvent::C2G_META_UPDATE);
 		sendNewEvent(e);
-	} else {
-		GameEvent e(GameEvent::C2G_MAP_UPDATE);
-		sendNewEvent(e);
-		GameEvent e2(GameEvent::C2G_META_UPDATE);
-		sendNewEvent(e2);
 	}
+
 	DEBUGLOG("pkt_WorldData: done.\n");
 }
 
@@ -271,7 +257,6 @@ void Client::pkt_Join(Packet &pkt)
 		m_players.emplace(peer_id, player);
 	}
 	player->setWorld(getWorld());
-	player->setScript((Script *)m_script);
 
 	player->name = pkt.readStr16();
 	player->setGodMode(pkt.read<u8>());
@@ -282,8 +267,22 @@ void Client::pkt_Join(Packet &pkt)
 		player->updateCoinCount(true);
 	}
 
-	if (m_script)
+	if (m_script) {
+		player->setScript(m_script);
 		m_script->onPlayerEvent("join", player);
+	}
+
+	if (peer_id == m_my_peer_id) {
+		m_state = ClientState::WorldPlay;
+
+		GameEvent e(GameEvent::C2G_JOIN);
+		sendNewEvent(e);
+
+		updateWorld(false);
+
+		GameEvent e2(GameEvent::C2G_MAP_UPDATE);
+		sendNewEvent(e2);
+	}
 
 	{
 		GameEvent e(GameEvent::C2G_PLAYER_JOIN);
@@ -297,16 +296,17 @@ void Client::pkt_Leave(Packet &pkt)
 	SimpleLock lock(m_players_lock);
 
 	peer_t peer_id = pkt.read<peer_t>();
-	LocalPlayer *player = getPlayerNoLock(peer_id);
 
+	std::unique_ptr<LocalPlayer> player(getPlayerNoLock(peer_id));
+	player->setScript(nullptr);
 	m_players.erase(peer_id);
 
 	if (player) {
 		if (m_script)
-			m_script->onPlayerEvent("join", player);
+			m_script->onPlayerEvent("leave", player.get());
 
 		GameEvent e(GameEvent::C2G_PLAYER_LEAVE);
-		e.player = player;
+		e.player = player.get();
 		sendNewEvent(e);
 	}
 
@@ -318,23 +318,7 @@ void Client::pkt_Leave(Packet &pkt)
 		world = player->getWorld();
 
 	if (peer_id == m_my_peer_id) {
-		for (auto it : m_players) {
-			delete it.second;
-		}
-		m_players.clear();
-
-		// Keep myself in the list
-		if (player) {
-			m_players.emplace(peer_id, player);
-			player->setWorld(nullptr);
-		}
-
-		m_state = ClientState::LobbyIdle;
-
-		GameEvent e(GameEvent::C2G_LEAVE);
-		sendNewEvent(e);
-	} else {
-		delete player;
+		quitToLobby(player.release());
 	}
 }
 
@@ -362,28 +346,10 @@ void Client::pkt_SetPosition(Packet &pkt)
 			my_player_affected = true;
 	}
 
-	if (!reset_progress || !my_player_affected)
-		return;
+	if (reset_progress && my_player_affected) {
+		// semi-duplicate of Player::updateCoinCount
+		updateWorld(true);
 
-	LocalPlayer *player = getPlayerNoLock(m_my_peer_id);
-	auto world = player->getWorld();
-
-	// semi-duplicate of Player::updateCoinCount
-	bool need_update = false;
-	for (Block *b = world->begin(); b < world->end(); ++b) {
-		if (b->tile == 0)
-			continue;
-
-		auto new_tile = getBlockTile(player, b);
-		if (b->tile != new_tile) {
-			b->tile = new_tile;
-			need_update = true;
-		}
-	}
-
-	updateWorld();
-
-	if (need_update) {
 		GameEvent e(GameEvent::C2G_MAP_UPDATE);
 		sendNewEvent(e);
 	}
@@ -463,24 +429,11 @@ void Client::pkt_PlaceBlock(Packet &pkt)
 	if (!world)
 		throw std::runtime_error("pkt_PlaceBlock: world not ready");
 
-	std::set<bid_t> placed_block_ids;
-
 	auto player = getMyPlayer();
 	SimpleLock world_lock(world->mutex);
 
-	auto use_getBlockTile = [this]() -> bool {
-		static bool warned = false;
-
-		if (!m_bmgr->isHardcoded()) {
-			// defined by script; updated by script.
-			if (!warned) {
-				warned = true;
-				logger(LL_WARN, "%s: getBlockTile skipped.", __func__);
-			}
-			return false;
-		}
-		return true;
-	};
+	if (m_script)
+		m_script->setPlayer(player.ptr());
 
 	BlockUpdate bu(m_bmgr);
 	while (pkt.getRemainingBytes()) {
@@ -495,22 +448,14 @@ void Client::pkt_PlaceBlock(Packet &pkt)
 		if (!b)
 			continue;
 
-		if (!bu.isBackground() && use_getBlockTile())
+		if (!bu.isBackground())
 			b->tile = getBlockTile(player.ptr(), b);
-
-		placed_block_ids.insert(bu.getId());
 	}
 
 
 	world_lock.unlock();
 
 	player->updateCoinCount();
-	if (m_script) {
-		m_script->setWorld(world.get());
-		for (bid_t id : placed_block_ids)
-			m_script->onBlockPlaced(id);
-		m_script->setWorld(nullptr);
-	}
 
 	GameEvent e(GameEvent::C2G_MAP_UPDATE);
 	sendNewEvent(e);
@@ -633,7 +578,7 @@ void Client::pkt_GodMode(Packet &pkt)
 		player->setGodMode(state);
 		player->acc = core::vector2df();
 	}
-	if (peer_id == m_my_peer_id) {
+	if (peer_id == m_my_peer_id && m_bmgr->isHardcoded()) {
 		bool map_dirty = false;
 
 		auto bump_tile = [state](Block &b) -> bool {

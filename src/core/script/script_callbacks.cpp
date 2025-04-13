@@ -9,11 +9,11 @@ using namespace ScriptUtils;
 
 static Logger &logger = script_logger;
 
-void Script::runCb_0(int ref, const char *dbg, int nargs)
+int Script::callFunction(int ref, int nres, const char *dbg, int nargs, bool is_block)
 {
 	if (ref <= LUA_NOREF) {
 		logger(LL_DEBUG, "callback '%s' = %d", dbg, ref);
-		return;
+		return 0;
 	}
 
 	lua_State *L = m_lua;
@@ -33,51 +33,23 @@ void Script::runCb_0(int ref, const char *dbg, int nargs)
 	for (int i = 0; i < nargs; ++i)
 		lua_pushvalue(L, -2 - nargs);
 
-	if (lua_pcall(L, nargs, 0, (top + nargs) + 1)) {
-		logger(LL_ERROR, "%s failed: %s\n",
-			dbg,
-			lua_tostring(L, -1)
-		);
-		lua_settop(L, top); // function + error msg
-		return;
+	if (lua_pcall(L, nargs, nres, (top + nargs) + 1)) {
+		if (is_block) {
+			logger(LL_ERROR, "%s block=%d failed: %s\n",
+				dbg, m_last_block_id,
+				lua_tostring(L, -1)
+			);
+		} else {
+			logger(LL_ERROR, "%s failed: %s\n",
+				dbg,
+				lua_tostring(L, -1)
+			);
+		}
+		nres = 0; // pop function + error msg
 	}
-
-	lua_settop(L, top);
-}
-
-void Script::runBlockCb_0(int ref, const char *dbg)
-{
-	if (ref <= LUA_NOREF)
-		return;
-
-	lua_State *L = m_lua;
-
-	int top = lua_gettop(L);
-	// Function call prepration
-	// This is faster than calling a getter function
-	lua_rawgeti(L, LUA_REGISTRYINDEX, ref);
-	luaL_checktype(L, -1, LUA_TFUNCTION);
-	// Execute!
-	if (lua_pcall(L, 0, 0, 0)) {
-		logger(LL_ERROR, "%s block=%d failed: %s\n",
-			dbg, m_last_block_id,
-			lua_tostring(L, -1)
-		);
-		lua_settop(L, top); // function + error msg
-		return;
-	}
-
-	lua_settop(L, top);
-}
-
-void Script::onBlockPlaced(bid_t block_id)
-{
-	const BlockProperties *props = m_bmgr->getProps(block_id);
-	if (!props || !props->haveOnPlaced())
-		return;
-
-	m_last_block_id = block_id;
-	runBlockCb_0(props->ref_on_placed, "on_placed");
+	if (nres == 0)
+		lua_settop(L, top);
+	return top;
 }
 
 void Script::onIntersect(const BlockProperties *props)
@@ -88,7 +60,7 @@ void Script::onIntersect(const BlockProperties *props)
 	}
 
 	m_last_block_id = props->id;
-	runBlockCb_0(props->ref_on_intersect, "on_intersect");
+	callFunction(props->ref_on_intersect, 0, "on_intersect", 0, true);
 }
 
 void Script::onIntersectOnce(blockpos_t pos, const BlockProperties *props)
@@ -103,22 +75,8 @@ void Script::onIntersectOnce(blockpos_t pos, const BlockProperties *props)
 	if (m_world)
 		m_world->getBlock(pos, &block);
 
-	int top = lua_gettop(L);
-	lua_rawgeti(L, LUA_REGISTRYINDEX, props->ref_intersect_once);
-	luaL_checktype(L, -1, LUA_TFUNCTION);
 	lua_pushnumber(L, block.tile);
-
-	// Execute!
-	if (lua_pcall(L, 1, 0, 0)) {
-		logger(LL_ERROR, "on_intersect_once block=%d failed: %s\n",
-			props->id,
-			lua_tostring(L, -1)
-		);
-		lua_settop(L, top); // function + error msg
-		return;
-	}
-
-	lua_settop(L, top);
+	callFunction(props->ref_intersect_once, 0, "on_intersect_once", 1, true);
 }
 
 int Script::onCollide(CollisionInfo ci)

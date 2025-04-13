@@ -199,13 +199,12 @@ int Script::l_change_block(lua_State *L)
 	// ---------- GUI
 
 #if BUILD_CLIENT
-	function_ref_from_field(L, 2, "gui_def", props->ref_gui_def, LUA_TTABLE);
+	function_ref_from_field(L, 2, "get_visuals", props->ref_get_visuals);
+	function_ref_from_field(L, 2, "gui_def",     props->ref_gui_def, LUA_TTABLE);
 #endif
 	if (!BUILD_CLIENT) {
-		lua_getfield(L, 2, "gui_def");
-		if (!lua_isnil(L, -1))
-			luaL_checktype(L, -1, LUA_TTABLE);
-		lua_pop(L, 1);
+		check_field_type(L, 2, "get_visuals", LUA_TFUNCTION);
+		check_field_type(L, 2, "gui_def",     LUA_TTABLE);
 	}
 
 

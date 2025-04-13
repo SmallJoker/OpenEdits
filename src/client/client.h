@@ -59,6 +59,8 @@ public:
 	RefCnt<World> getWorld();
 	bool updateBlock(BlockUpdate bu);
 
+	void clearTileCacheFor(bid_t block_id);
+
 	std::vector<LobbyWorld> world_list;
 	std::vector<LobbyFriend> friend_list;
 
@@ -81,10 +83,12 @@ private:
 
 	void initScript();
 
-	uint8_t getBlockTile(const Player *player, const Block *b) const;
+	uint8_t getBlockTile(const Player *player, const Block *b);
 
-	// Prepare for rendering
-	void updateWorld();
+	/// Updates all tiles
+	void updateWorld(bool reset_tiles);
+
+	void quitToLobby(LocalPlayer *p_to_keep);
 
 	void pkt_Quack(Packet &pkt);
 	void pkt_Hello(Packet &pkt);
@@ -124,6 +128,9 @@ private:
 	std::string m_world_id = "foobar";
 	ClientStartData m_start_data;
 	peer_t m_my_peer_id = 0;
+
+	std::map<size_t, uint8_t> m_tiles_cache;
+	bool m_tiles_map_dirty = false;
 
 	Auth m_auth;
 	ClientMedia *m_media = nullptr;

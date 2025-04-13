@@ -181,28 +181,35 @@ void Client::step(float dtime)
 	if (m_script)
 		m_script->onStep((double)m_time / TIME_RESOLUTION);
 
+	bool send_map_update = false;
+
 	// Timed gates update
-	while (world.get()) { // run once
+	while (m_bmgr->isHardcoded() && world.get()) { // run once
 		uint8_t tile_new = (m_time      / TIME_RESOLUTION) % 10;
 		uint8_t tile_old = (m_time_prev / TIME_RESOLUTION) % 10;
 		if (tile_new == tile_old)
 			break;
 
 		// TODO: Sync with the server
-		bool updated = false;
 		for (Block *b = world->begin(); b < world->end(); ++b) {
 			if (b->id == Block::ID_TIMED_GATE_1
 					|| b->id == Block::ID_TIMED_GATE_2) {
 				b->tile = tile_new;
-				updated = true;
+				send_map_update = true;
 			}
 		}
-
-		if (updated) {
-			GameEvent e(GameEvent::C2G_MAP_UPDATE);
-			sendNewEvent(e);
-		}
 		break;
+	}
+
+	// Update tiles if triggered by Lua
+	if (m_tiles_map_dirty) {
+		m_tiles_map_dirty = false;
+		updateWorld(false);
+		send_map_update = true;
+	}
+	if (m_tiles_map_dirty || send_map_update) {
+		GameEvent e(GameEvent::C2G_MAP_UPDATE);
+		sendNewEvent(e);
 	}
 }
 
@@ -412,6 +419,23 @@ bool Client::updateBlock(BlockUpdate bu)
 	world->proc_queue.emplace(bu);
 	return true;
 }
+
+void Client::clearTileCacheFor(bid_t block_id)
+{
+	bool dirty = false;
+	for (auto it = m_tiles_cache.begin(); it != m_tiles_cache.end(); ) {
+		if ((it->first & 0xFFFF) == block_id) {
+			// delete
+			m_tiles_cache.erase(it++);
+			dirty = true;
+		} else {
+			// keep
+			++it;
+		}
+	}
+	m_tiles_map_dirty |= dirty;
+}
+
 
 // -------------- Utility functions -------------
 
@@ -692,7 +716,7 @@ error:
 }
 
 
-uint8_t Client::getBlockTile(const Player *player, const Block *b) const
+uint8_t Client::getBlockTile(const Player *player, const Block *b)
 {
 	auto world = player->getWorld();
 
@@ -701,6 +725,30 @@ uint8_t Client::getBlockTile(const Player *player, const Block *b) const
 		world->getParams(world->getBlockPos(b), &params);
 		return params;
 	};
+
+	if (!m_bmgr->isHardcoded()) {
+		auto props = m_bmgr->getProps(b->id);
+		if (!props || props->tiles.size() <= 1 || !props->haveGetVisuals())
+			return b->tile;
+
+		// Retrieve from script
+		BlockParams params = get_params();
+		Packet pkt;
+		params.write(pkt);
+		size_t hash = 0
+			| (size_t)(b->id)
+			| (size_t)(b->tile) << 16
+			| crc32_z(0, pkt.data(), pkt.size()) << 24;
+
+		auto it = m_tiles_cache.find(hash);
+		if (it != m_tiles_cache.end())
+			return it->second;
+
+		uint8_t tile = b->tile;
+		m_script->getVisuals(props, &tile, params);
+		m_tiles_cache.emplace(hash, tile);
+		return tile;
+	}
 
 	switch (b->id) {
 		case Block::ID_SPIKES:
@@ -732,20 +780,40 @@ uint8_t Client::getBlockTile(const Player *player, const Block *b) const
 	return 0;
 }
 
-void Client::updateWorld()
+void Client::updateWorld(bool reset_tiles)
 {
 	auto player = getPlayerNoLock(m_my_peer_id);
 	auto world = player->getWorld();
 
-	if (!m_bmgr->isHardcoded()) {
-		// defined by script; updated by script.
-		logger(LL_WARN, "%s: getBlockTile skipped.", __func__);
-		return;
-	}
+	if (m_script)
+		m_script->setPlayer(player);
 
 	// Restore visuals to Block::tile after new world data
 	for (Block *b = world->begin(); b < world->end(); ++b) {
+		if (reset_tiles)
+			b->tile = 0;
 		b->tile = getBlockTile(player, b);
 	}
+}
+
+void Client::quitToLobby(LocalPlayer *p_to_keep)
+{
+	const peer_t peer_ignored = p_to_keep->peer_id;
+	for (auto it : m_players) {
+		if (it.second->peer_id != peer_ignored)
+			delete it.second;
+	}
+	m_players.clear();
+
+	// Keep myself in the list
+	if (p_to_keep) {
+		m_players.emplace(peer_ignored, p_to_keep);
+		p_to_keep->setWorld(nullptr);
+	}
+
+	m_state = ClientState::LobbyIdle;
+
+	GameEvent e(GameEvent::C2G_LEAVE);
+	sendNewEvent(e);
 }
 

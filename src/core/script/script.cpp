@@ -228,6 +228,11 @@ bool Script::init()
 		lua_setglobal(L, "_G");
 	}
 
+	// luaopen_* each pushes one value to the stack
+	lua_settop(L, 0);
+	// start with 1 to get usable return values from `Script::callFunction`.
+	lua_pushnil(L);
+
 	logger(LL_PRINT, "init done\n");
 	return true;
 }
@@ -246,6 +251,10 @@ void Script::close()
 	for (BlockProperties *props : list) {
 		if (!props)
 			continue;
+#if BUILD_CLIENT
+		props->ref_get_visuals = LUA_REFNIL;
+		props->ref_gui_def = LUA_REFNIL;
+#endif
 		props->ref_on_placed = LUA_REFNIL;
 		props->ref_intersect_once = LUA_REFNIL;
 		props->ref_on_intersect = LUA_REFNIL;

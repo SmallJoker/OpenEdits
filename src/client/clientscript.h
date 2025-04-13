@@ -23,8 +23,14 @@ public:
 protected:
 
 	static int l_is_me(lua_State *L);
+	static int l_world_update_tiles(lua_State *L);
 
 	int implWorldSetTile(PositionRange range, bid_t block_id, int tile) override;
+
+	// -------- Callbacks
+public:
+	// Returns the tile number (for now)
+	void getVisuals(const BlockProperties *props, uint8_t *tile, const BlockParams &params);
 
 protected:
 	Player *m_my_player = nullptr;

@@ -1,4 +1,6 @@
 #include "localplayer.h"
+#include "core/blockmanager.h"
+#include "core/script/script.h"
 #include "core/world.h"
 
 s32 LocalPlayer::gui_smiley_counter = -9999;
@@ -25,6 +27,9 @@ bool LocalPlayer::updateCoinCount(bool force)
 
 	if (coins == old_coins && !force)
 		return false;
+
+	if (m_script && !m_script->getBlockMgr()->isHardcoded())
+		return false; // to be done by script
 
 	int my_coins = coins; // move to stack
 	for (Block *b = m_world->begin(); b != m_world->end(); ++b) {

@@ -427,8 +427,6 @@ void Server::stepSendBlockUpdates(World *world)
 	if (queue.empty())
 		return;
 
-	std::set<bid_t> placed_block_ids;
-
 	Packet out;
 	out.write(Packet2Client::PlaceBlock);
 
@@ -445,8 +443,6 @@ void Server::stepSendBlockUpdates(World *world)
 		// Write BlockUpdate
 		it->write(out);
 
-		placed_block_ids.insert(it->getId());
-
 		DEBUGLOG("Server: sending block x=%d,y=%d,id=%d\n",
 			it->pos.X, it->pos.Y, it->getId());
 	}
@@ -455,13 +451,6 @@ void Server::stepSendBlockUpdates(World *world)
 	world_lock.unlock();
 
 	broadcastInWorld(world, 0, out);
-
-	if (m_script) {
-		m_script->setWorld(world);
-		for (bid_t id : placed_block_ids)
-			m_script->onBlockPlaced(id);
-		m_script->setWorld(nullptr);
-	}
 }
 
 void Server::stepWorldTick(World *world, float dtime)

@@ -7,6 +7,15 @@ local function set_tile_to_1(bx, by)
 	end
 end
 
+local old_event = env.on_player_event or (function() end)
+env.on_player_event = function(event, arg)
+	old_event(event, arg)
+
+	if event == "godmode" and env.world.update_tiles then
+		env.world.update_tiles({50})
+	end
+end
+
 local blocks_hidden = {
 	{
 		id = 50, -- ID_SECRET
@@ -16,6 +25,10 @@ local blocks_hidden = {
 			{ type = env.DRAW_TYPE_SOLID }
 		},
 		on_collide = set_tile_to_1,
+		get_visuals = function(tile)
+			-- Bad example; should be updated using env.world.set_tile
+			return player_data[env.player:hash()].godmode and 1 or 0
+		end,
 	},
 	{
 		id = 44, -- ID_BLACKREAL
