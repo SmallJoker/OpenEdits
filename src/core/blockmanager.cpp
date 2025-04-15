@@ -129,8 +129,8 @@ void BlockManager::sanityCheck()
 			{ Block::ID_INVALID, T::None }
 		};
 		const BlockToCheck *to_check = special_blocks;
-
 		m_is_ee_like = true;
+
 		for (bid_t id = 0; id < m_props.size(); ++id) {
 			const auto prop = m_props[id];
 			if (!prop)

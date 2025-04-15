@@ -38,6 +38,9 @@ local blocks_teleporter = {
 			{ type = env.DRAW_TYPE_ACTION },
 			{ type = env.DRAW_TYPE_ACTION }
 		},
+		get_visuals = function(tile, rot, _, _)
+			return rot
+		end,
 		on_intersect_once = function(_)
 			if player_data[player:hash()].godmode then
 				return -- no effect

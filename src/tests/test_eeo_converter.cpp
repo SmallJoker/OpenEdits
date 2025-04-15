@@ -70,11 +70,6 @@ static void eeoc_read_check()
 
 void unittest_eeo_converter()
 {
-	puts("EEOconverter is not available");
-	// Compile the functions regardless
-
-	{
-		eeoc_write();
-		eeoc_read_check();
-	}
+	eeoc_write();
+	eeoc_read_check();
 }

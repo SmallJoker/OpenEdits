@@ -811,6 +811,8 @@ void Client::quitToLobby(LocalPlayer *p_to_keep)
 		p_to_keep->setWorld(nullptr);
 	}
 
+	m_tiles_cache.clear();
+
 	m_state = ClientState::LobbyIdle;
 
 	GameEvent e(GameEvent::C2G_LEAVE);

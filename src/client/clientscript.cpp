@@ -103,6 +103,5 @@ void ClientScript::getVisuals(const BlockProperties *props, uint8_t *tile, const
 	}
 
 	lua_settop(L, top);
-	return;
 }
 

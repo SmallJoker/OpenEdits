@@ -136,6 +136,7 @@ static int parse_args(int argc, char *argv[])
 	if (strcmp(argv[1], "--unittest") == 0) {
 		// Depends on BlockManager and ENet
 		g_blockmanager->doPackRegistration();
+		g_blockmanager->sanityCheck();
 		int gui_test_nr = -1;
 		if (argc >= 3)
 			gui_test_nr = atoi(argv[2]);

@@ -44,6 +44,10 @@ void Player::setWorld(RefCnt<World> world)
 	if (m_world.get())
 		m_world->getMeta().online++;
 
+	// Avoid sending "godmode" events or similar
+	if (!world)
+		setScript(nullptr);
+
 	controls_enabled = true;
 	if (!keep_progress) {
 		setPosition({0, 0}, true);
