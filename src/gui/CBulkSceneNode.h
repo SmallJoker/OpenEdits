@@ -1,7 +1,7 @@
 #pragma once
 
 #include <IBillboardSceneNode.h>
-#include <SMeshBuffer.h>
+#include <CMeshBuffer.h>
 #include <vector>
 
 using namespace irr;

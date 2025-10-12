@@ -28,9 +28,7 @@ IGUIElementWrapper::IGUIElementWrapper(gui::IGUIElement *elem)
 		PRINT_DBG("+ IGUIElement (nullptr)\n");
 		return;
 	}
-	core::stringc dst;
-	core::wStringToUTF8(dst, m_element->getTypeName());
-	PRINT_DBG("+ IGUIElement %s\n", dst.c_str());
+	PRINT_DBG("+ IGUIElement %s\n", typeid(*m_element).name());
 }
 
 IGUIElementWrapper::~IGUIElementWrapper()
@@ -44,9 +42,7 @@ IGUIElementWrapper::~IGUIElementWrapper()
 	// ->drop() and ->remove() are not needed because
 	// Irrlicht automatically frees its children.
 
-	core::stringc dst;
-	core::wStringToUTF8(dst, m_element->getTypeName());
-	PRINT_DBG("- IGUIElement %s\n", dst.c_str());
+	PRINT_DBG("- IGUIElement %s\n", typeid(*m_element).name());
 
 	m_element->drop();
 }
