@@ -3,10 +3,12 @@
 #include "core/operators.h" // PositionRange
 #include "core/types.h" // bid_t
 #include <string>
+#include <vector>
 
 struct BlockParams;
 struct BlockProperties;
 struct lua_State;
+struct SmileyDef;
 class BlockManager;
 class MediaManager;
 class Player;
@@ -63,8 +65,15 @@ protected:
 	/// Includes another script file (asset from cache or disk)
 	static int l_include(lua_State *L);
 	static int l_require_asset(lua_State *L);
+	static int l_register_smileys(lua_State *L);
 	static int l_register_pack(lua_State *L);
 	static int l_change_block(lua_State *L);
+
+public:
+	/// May return an empty vector in case no smileys were registered.
+	const std::vector<SmileyDef> &getSmileys() const { return m_smileys; }
+private:
+	std::vector<SmileyDef> m_smileys;
 
 	int m_private_include_depth = 0;
 
@@ -157,4 +166,6 @@ protected:
 
 	int m_ref_on_step = -2; // LUA_NOREF
 	int m_ref_on_player_event = -2; // LUA_NOREF
+
+	bool m_loading_complete = false;
 };

@@ -7,6 +7,7 @@
 #include <rect.h>
 #include <list>
 #include <map>
+#include <vector>
 
 namespace irr {
 	class IrrlichtDevice;
@@ -32,11 +33,14 @@ namespace guilayout {
 
 using namespace irr;
 
+class BlockManager;
 class Client;
-struct ClientStartData;
 class Server;
 
 class GuiScript;
+
+struct ClientStartData;
+struct SmileyDef;
 
 class SceneHandler;
 class SceneConnect;
@@ -97,6 +101,9 @@ public:
 	gui::IGUIFont *font = nullptr;
 	video::IVideoDriver *driver = nullptr; // 2D images
 	core::dimension2du window_size;
+
+	// For use in SceneSmileySelector
+	std::vector<SmileyDef> smileys;
 
 	static constexpr u32 COLOR_ON_BG { 0xFFFFFFFF };
 private:

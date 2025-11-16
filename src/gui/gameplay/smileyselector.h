@@ -17,10 +17,11 @@ namespace irr {
 }
 
 class Gui;
+class SceneGameplay;
 
 class SceneSmileySelector : public IEventReceiver {
 public:
-	SceneSmileySelector(Gui *gui);
+	SceneSmileySelector(SceneGameplay *gameplay);
 	~SceneSmileySelector();
 
 	void setSelectorPos(const core::position2di &pos) { m_selector_pos = pos; }
@@ -33,8 +34,8 @@ private:
 	void drawSelector();
 	void selectSmiley(int smiley_id);
 
+	SceneGameplay *m_gameplay = nullptr;
 	Gui *m_gui = nullptr;
-	video::ITexture *m_texture = nullptr;
 
 	core::position2di m_selector_pos;
 

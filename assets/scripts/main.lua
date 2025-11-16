@@ -9,6 +9,7 @@ end
 assert(env.API_VERSION >= 4, "Script implementation is too old.")
 
 env.include("constants.lua")
+env.include("smileys.lua")
 
 -------------- Client & server script
 

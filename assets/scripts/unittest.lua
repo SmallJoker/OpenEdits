@@ -222,3 +222,15 @@ env.change_block(103, {
 		end,
 	}
 })
+
+-- C++: test_with_script
+if env.test_mode:find("media") then
+	env.register_smileys({
+		{
+			description = "Normal"
+		},
+		{
+			description = "Y2000 Glasses"
+		}
+	})
+end

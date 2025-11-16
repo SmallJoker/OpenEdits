@@ -2,7 +2,9 @@
 #include "client/client.h"
 #include "client/localplayer.h"
 #include "core/blockmanager.h"
+#include "core/smileydef.h"
 #include "core/worldmeta.h"
+#include "gui/guiscript.h" // getSmileys
 #include "gui/sound.h"
 #include "blockselector.h"
 #include "minimap.h"
@@ -45,21 +47,6 @@ SceneGameplay::~SceneGameplay()
 	delete m_soundplayer;
 }
 
-#if 0
-static std::string dump_val(const core::vector2df vec)
-{
-	return "x=" + std::to_string(vec.X)
-		+ ", y=" + std::to_string(vec.Y);
-}
-
-static std::string dump_val(const core::vector3df vec)
-{
-	return "x=" + std::to_string(vec.X)
-		+ ", y=" + std::to_string(vec.Y)
-		+ ", z=" + std::to_string(vec.Z);
-}
-#endif
-
 // -------------- Public members -------------
 
 void SceneGameplay::OnOpen()
@@ -71,10 +58,31 @@ void SceneGameplay::OnOpen()
 
 	if (!m_soundplayer)
 		m_soundplayer = new SoundPlayer(false);
+
+	{
+
+		GameEvent e(GameEvent::G2C_GET_ASSET_PATH);
+		e.asset_path.input = "smileys.png";
+
+		const char *&path = e.asset_path.output;
+		if (!m_gui->sendNewEvent(e) || !path)
+			path = "assets/textures/smileys.png"; // fall-back
+		smiley_texture = m_gui->driver->getTexture(path);
+
+		auto &smileys = m_gui->script->getSmileys();
+		const auto img_dim = smiley_texture->getOriginalSize();
+		smiley_count = img_dim.Width / img_dim.Height;
+		if (!smileys.empty())
+			smiley_count = std::min<int>(smiley_count, smileys.size());
+		// else: Assume the entire texture can be used.
+	}
 }
 
 void SceneGameplay::OnClose()
 {
+	m_gui->driver->removeTexture(smiley_texture);
+	smiley_texture = nullptr;
+
 	m_chat_history_text.clear();
 	m_chat_input_history.clear();
 	m_chat_input_index = -1;
@@ -242,7 +250,7 @@ void SceneGameplay::draw()
 
 	{
 		if (!m_smileyselector)
-			m_smileyselector = new SceneSmileySelector(m_gui);
+			m_smileyselector = new SceneSmileySelector(this);
 
 		m_smileyselector->setSelectorPos(
 			core::vector2di(SMILEY_POS, y_pos)

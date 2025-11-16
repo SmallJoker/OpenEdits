@@ -1,5 +1,9 @@
 #include "smileyselector.h"
+#include "gui/gameplay/gameplay.h"
 #include "gui/gui.h"
+#include "gui/guiscript.h"
+
+#include "core/smileydef.h"
 
 #include <IGUIButton.h>
 #include <IGUIEditBox.h>
@@ -19,12 +23,10 @@ enum ElementId : int {
 static const core::dimension2di BTN_SIZE(35, 30);
 static const core::dimension2di PADDING(5, 5);
 
-SceneSmileySelector::SceneSmileySelector(Gui *gui)
+SceneSmileySelector::SceneSmileySelector(SceneGameplay *gameplay)
 {
-	m_gui = gui;
-
-	// TODO FIXME: Split into separate files
-	m_texture = gui->driver->getTexture("assets/textures/smileys.png");
+	m_gameplay = gameplay;
+	m_gui = gameplay->getGUI();
 }
 
 SceneSmileySelector::~SceneSmileySelector()
@@ -41,7 +43,7 @@ void SceneSmileySelector::draw()
 	auto gui = m_gui->guienv;
 
 	m_button = gui->addButton(rect, nullptr, ID_BUTTON, L":)");
-	m_button->setToolTipText(L"Toogle smiley picker");
+	m_button->setToolTipText(L"Toggle smiley picker");
 
 	drawSelector();
 }
@@ -81,16 +83,21 @@ void SceneSmileySelector::drawSelector()
 	}
 	m_button->setText(L"-");
 
-	core::vector2di size(4, 0); // Size of the selector (smiley grid)
-	auto img_dim = m_texture->getOriginalSize();
-	const int total_count = img_dim.Width / img_dim.Height;
-	size.Y = std::ceil((float)total_count / size.X);
+	auto &smileys = m_gui->script->getSmileys();
 
+	// Calculate the grid size of the smiley selector
+	const auto texture = m_gameplay->smiley_texture;
+	const int total_count = m_gameplay->smiley_count;
+	const auto img_dim = texture->getOriginalSize();
+	core::dimension2di grid(4, 0);
+	grid.Height = std::ceil((float)total_count / grid.Width);
+
+	// Rectangle to contain all buttons
 	core::recti rect_tab(
 		core::vector2di(),
 		core::dimension2di(
-			size.X * BTN_SIZE.Width  + PADDING.Width * 2,
-			size.Y * BTN_SIZE.Height + PADDING.Height * 2
+			grid.Width  * BTN_SIZE.Width  + PADDING.Width * 2,
+			grid.Height * BTN_SIZE.Height + PADDING.Height * 2
 		)
 	);
 	rect_tab -= core::vector2di(rect_tab.getWidth() / 2, rect_tab.getHeight() + 5);
@@ -106,8 +113,8 @@ void SceneSmileySelector::drawSelector()
 	tab->setNotClipped(true);
 
 	for (int index = 0; index < total_count; ++index) {
-		int y = index / size.X;
-		int x = index - y * size.X;
+		int y = index / grid.Width;
+		int x = index - y * grid.Width;
 
 		core::recti rect_btn(
 			core::vector2di(
@@ -123,8 +130,14 @@ void SceneSmileySelector::drawSelector()
 			core::vector2di(img_dim.Height * index, 0),
 			core::dimension2di(img_dim.Height, img_dim.Height)
 		);
-		e->setImage(m_texture, rect);
+		e->setImage(texture, rect);
 		e->setUseAlphaChannel(true);
+
+		if (index < (int)smileys.size()) {
+			std::wstring tooltip_w;
+			utf8_to_wide(tooltip_w, smileys[index].description.c_str());
+			e->setToolTipText(tooltip_w.c_str());
+		}
 	}
 
 }

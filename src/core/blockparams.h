@@ -36,6 +36,14 @@ struct BlockParams {
 	void read(Packet &pkt);
 	void write(Packet &pkt) const;
 
+	// TODO: Implementation in src/script/xxx.cpp
+	void pushToLua();
+	void readFromLua();
+
+	// TODO: Use an array to be more generic
+	// u32 types = 0xDDCCBBAA;
+	// Entry data[4];
+
 	union {
 		std::string *text;
 		uint8_t param_u8;

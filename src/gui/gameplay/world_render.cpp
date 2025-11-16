@@ -546,11 +546,14 @@ bool SceneWorldRender::assignBlockTexture(const BlockTile tile, scene::ISceneNod
 void SceneWorldRender::updatePlayerPositions(float dtime)
 {
 	auto smgr = m_world_smgr;
-	auto smiley_texture = m_gui->driver->getTexture("assets/textures/smileys.png");
 	auto godmode_texture = m_gui->driver->getTexture("assets/textures/god_aura.png");
 
-	auto dim = smiley_texture->getOriginalSize();
-	int texture_tiles = dim.Width / dim.Height;
+	// Smiley "units" of the full texture - needed for correct proportions.
+	u32 smiley_texture_width;
+	{
+		const auto img_dim = m_gameplay->smiley_texture->getOriginalSize();
+		smiley_texture_width = img_dim.Width / img_dim.Height;
+	}
 
 	do {
 		if (m_nametag_force_show) {
@@ -611,7 +614,7 @@ void SceneWorldRender::updatePlayerPositions(float dtime)
 				layer.MinFilter = video::ETMINF_LINEAR_MIPMAP_LINEAR;
 				layer.MagFilter = video::ETMAGF_LINEAR;
 			});
-			nf->getMaterial(0).setTexture(0, smiley_texture);
+			nf->getMaterial(0).setTexture(0, m_gameplay->smiley_texture);
 
 			// Add nametag
 			auto nt_texture = m_gameplay->generateTexture(it.second->name);
@@ -628,11 +631,11 @@ void SceneWorldRender::updatePlayerPositions(float dtime)
 			nt->getMaterial(0).setTexture(0, nt_texture);
 		}
 
-		if (player->smiley_id < texture_tiles) {
+		if (player->smiley_id < m_gameplay->smiley_count) {
 			// Assign smiley texture offset
 			auto &mat = nf->getMaterial(0).getTextureMatrix(0);
-			mat.setTextureTranslate(player->smiley_id / (float)texture_tiles, 0);
-			mat.setTextureScale(1.0f / texture_tiles, 1);
+			mat.setTextureTranslate(player->smiley_id / (float)smiley_texture_width, 0);
+			mat.setTextureScale(1.0f / smiley_texture_width, 1);
 		}
 
 		scene::ISceneNode *ga = nullptr;

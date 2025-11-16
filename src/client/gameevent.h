@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/world.h"
+#include "core/types.h"
 #include <cstdint>
 #include <string>
 
@@ -25,7 +25,8 @@ struct GameEvent {
 		G2C_LEAVE,
 		G2C_CHAT,
 		G2C_GODMODE,
-		G2C_SMILEY
+		G2C_SMILEY,
+		G2C_GET_ASSET_PATH
 	} type_g2c = G2C_INVALID;
 
 	// Client --> GUI
@@ -86,6 +87,9 @@ struct GameEvent {
 		WorldCreationData *wc_data;
 		BlockData *block;
 		PasswordChangeData *password;
+		struct {
+			const char *input, *output;
+		} asset_path;
 		int intval;
 	};
 };

@@ -27,8 +27,7 @@ typedef std::unique_ptr<guilayout::Element> EPtr;
 
 class GuiScript : public ClientScript {
 public:
-	GuiScript(BlockManager *bmgr, gui::IGUIEnvironment *env) :
-		ClientScript(bmgr), m_guienv(env) {}
+	GuiScript(BlockManager *bmgr, gui::IGUIEnvironment *env);
 
 	void initSpecifics() override;
 	void closeSpecifics() override;
@@ -64,5 +63,5 @@ private:
 
 	// Until the GUI is closed
 	const BlockProperties *m_props = nullptr;
-	EPtr m_le_root = nullptr; //< currently open element
+	EPtr m_le_root; //< currently open element
 };

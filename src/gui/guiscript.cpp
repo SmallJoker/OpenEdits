@@ -24,6 +24,11 @@ enum GUIElementType {
 	ELMT_INPUT   = 6,
 };
 
+GuiScript::GuiScript(BlockManager *bmgr, gui::IGUIEnvironment *env) :
+	ClientScript(bmgr), m_guienv(env)
+{
+}
+
 void GuiScript::initSpecifics()
 {
 	ClientScript::initSpecifics();

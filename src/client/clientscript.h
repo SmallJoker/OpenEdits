@@ -9,8 +9,8 @@ public:
 	ClientScript(BlockManager *bmgr) :
 		Script(bmgr, ST_CLIENT) {}
 
-	virtual void initSpecifics() override;
-	virtual void closeSpecifics() override;
+	void initSpecifics() override;
+	void closeSpecifics() override;
 
 	void setClient(Client *cli) { m_client = cli; }
 	void setMyPlayer(Player *player) { m_my_player = player; }
@@ -21,7 +21,6 @@ public:
 	bool invoked_by_server = false; /// server-sent events.
 
 protected:
-
 	static int l_is_me(lua_State *L);
 	static int l_world_update_tiles(lua_State *L);
 

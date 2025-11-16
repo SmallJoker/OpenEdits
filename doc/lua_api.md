@@ -147,7 +147,6 @@ Namespace: `gui`. Only available for GUI clients.
     * `...`: Block Parameters (variable)
     * Generally to be used in the `gui_def.on_place` callback
 
-
 Block Definition field `gui_def`:
 
  * (GUI Element Definition)
@@ -182,6 +181,10 @@ These functions must be run at load time.
  * `env.require_asset(asset_name)`
     * To use for dynamically used assets, such as audio playback.
     * `asset_name` (string): file name without extension
+ * `env.register_smileys({ def1, def2, ... })`
+    * Registers the smileys as provided by `smileys.png`
+    * `def` (table): One entry per smiley. Fields:
+       * `description` (string): Human-readable name
 
 
 #### Packs

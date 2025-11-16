@@ -4,6 +4,7 @@
 #include "core/environment.h"
 #include "core/friends.h"
 #include "core/timer.h"
+#include "core/world.h" // LobbyWorld
 #include "gameevent.h"
 #include <string>
 
@@ -52,6 +53,8 @@ public:
 	/// Main purpose: client-sided information display
 	std::string getDebugInfo();
 	const ClientStartData &getStartData() { return m_start_data; }
+
+	ClientMedia *getMedia() const { return m_media; }
 
 	PtrLock<LocalPlayer> getMyPlayer();
 	peer_t getMyPeerId() { return m_my_peer_id; }

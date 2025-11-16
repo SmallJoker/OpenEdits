@@ -57,6 +57,7 @@ GameEvent::~GameEvent()
 		case G::G2C_LEAVE:
 		case G::G2C_GODMODE:
 		case G::G2C_SMILEY:
+		case G::G2C_GET_ASSET_PATH:
 			break;
 	}
 }

@@ -3,6 +3,7 @@
 #include "server/server.h"
 #include "core/blockmanager.h"
 #include "core/macros.h"
+#include "core/smileydef.h"
 #include "guilayout/guilayout_irrlicht.h"
 #include "guiscript.h"
 #include <chrono>

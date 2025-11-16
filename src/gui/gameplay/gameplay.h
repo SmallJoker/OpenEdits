@@ -2,6 +2,7 @@
 
 #include "gui/game_commands.h"
 #include "gui/gui.h"
+#include "core/world.h" // BlockUpdate
 #include <list>
 #include <string>
 
@@ -43,6 +44,10 @@ public:
 	/// returns true on success
 	static bool pianoParamToNote(u8 param, std::string *note_out);
 	static bool pianoNoteToParam(const char *note, u8 *param_out);
+
+	// For SceneSmileySelector and SceneWorldRender
+	int smiley_count = 0;
+	video::ITexture *smiley_texture = nullptr;
 
 private:
 	bool initChatHistory();

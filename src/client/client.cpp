@@ -333,7 +333,7 @@ bool Client::OnEvent(GameEvent &e)
 				pkt.write<u8>(e.intval);
 				m_con->send(0, 1, pkt);
 			}
-			break;
+			return true;
 		case E::G2C_SMILEY:
 			{
 				Packet pkt;
@@ -341,7 +341,13 @@ bool Client::OnEvent(GameEvent &e)
 				pkt.write<u8>(e.intval);
 				m_con->send(0, 1, pkt);
 			}
-			break;
+			return true;
+		case E::G2C_GET_ASSET_PATH:
+			if (!m_media)
+				return false;
+
+			e.asset_path.output = m_media->getAssetPath(e.asset_path.input);
+			return true;
 	}
 	return false;
 }

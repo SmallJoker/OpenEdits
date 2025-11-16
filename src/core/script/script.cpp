@@ -4,6 +4,7 @@
 #include "core/blockmanager.h"
 #include "core/macros.h"
 #include "core/mediamanager.h"
+#include "core/smileydef.h"
 #include <fstream>
 
 using namespace ScriptUtils;
@@ -195,6 +196,7 @@ bool Script::init()
 		lua_setfield(L, -2, "API_VERSION");
 		FIELD_SET_FUNC(/**/, include);
 		FIELD_SET_FUNC(/**/, require_asset);
+		FIELD_SET_FUNC(/**/, register_smileys);
 		FIELD_SET_FUNC(/**/, load_hardcoded_packs);
 		FIELD_SET_FUNC(/**/, register_pack);
 		FIELD_SET_FUNC(/**/, change_block);
@@ -357,6 +359,8 @@ void Script::onScriptsLoaded()
 	function_ref_from_field(L, -1, "on_step", m_ref_on_step);
 	function_ref_from_field(L, -1, "on_player_event", m_ref_on_player_event);
 	lua_pop(L, 1); // env
+
+	m_loading_complete = true;
 }
 
 void Script::setTestMode(const std::string &value)
@@ -395,9 +399,38 @@ int Script::l_require_asset(lua_State *L)
 	Script *script = get_script(L);
 	const char *asset_name = luaL_checkstring(L, 1);
 
+	if (!script->m_media)
+		luaL_error(L, "MediaManager unavailable");
 	if (!script->m_media->requireAsset(asset_name))
-		luaL_error(L, "not found");
+		luaL_error(L, "asset not found");
 
+	return 0;
+}
+
+int Script::l_register_smileys(lua_State *L)
+{
+	Script *script = get_script(L);
+	if (script->m_loading_complete)
+		luaL_error(L, "invalid usage");
+	if (!script->m_media)
+		luaL_error(L, "MediaManager unavailable");
+	if (!script->m_media->requireAsset("smileys.png"))
+		luaL_error(L, "asset not found");
+
+	for (lua_pushnil(L); lua_next(L, 1); lua_pop(L, 1)) {
+		// key @ -2, value @ -1
+		SmileyDef &def = script->m_smileys.emplace_back();
+
+		lua_getfield(L, -1, "description");
+		{
+			const char *desc = lua_tostring(L, -1);
+			if (desc)
+				def.description = desc;
+		}
+		lua_pop(L, 1);
+	}
+
+	logger(LL_DEBUG, "%d smileys registered", (int)script->m_smileys.size());
 	return 0;
 }
 
