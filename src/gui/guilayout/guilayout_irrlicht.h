@@ -2,6 +2,8 @@
 #include "guilayout.h"
 
 namespace irr {
+	class IrrlichtDevice;
+
 	namespace gui {
 		class IGUIElement;
 	}
@@ -22,7 +24,7 @@ struct IGUIElementWrapper : public Element {
 	void start(const s16_x4 *pos_new) override;
 
 	static IGUIElementWrapper *find_wrapper(Element *e, const gui::IGUIElement *ie);
-	static void draw_wireframe(Element *e, video::IVideoDriver *driver, uint32_t color);
+	static void draw_wireframe(Element *e, IrrlichtDevice *device, uint32_t color);
 
 	// Same as `FlexBox::add`
 	template <typename T, typename ... Args>
@@ -49,8 +51,8 @@ private:
 	/// @param margin : Element border in pixels (for surrounding decorations)
 	void setTextlike(bool use_get_text, int margin);
 
-	static bool draw_iguiw_wireframe(IGUIElementWrapper *e, video::IVideoDriver *driver, uint32_t color);
-	static bool draw_table_wireframe(Table *e, video::IVideoDriver *driver, uint32_t color);
+	static bool draw_iguiw_wireframe(IGUIElementWrapper *e, IrrlichtDevice *device, uint32_t color);
+	static bool draw_table_wireframe(Table *e, IrrlichtDevice *device, uint32_t color);
 };
 
 }

@@ -113,16 +113,8 @@ void Table::tryFitElements()
 		total_space[SIZE_X] -= SCROLLBAR_SIZE; // Y-axis needs X space
 
 	for (Size dim : { SIZE_X, SIZE_Y }) {
-		s16 total_weights = 0;
-		for (CellInfo &ci : m_cellinfo[dim]) {
-			total_weights += ci.weight;
-		}
-
-		if (total_weights == 0)
-			total_weights = 1;
-
 		// Total space and weights are now known: spread.
-		spreadTable(dim, total_space[dim], total_weights);
+		spreadTable(dim, total_space[dim]);
 	}
 
 	// Now center the cell contents
@@ -137,19 +129,32 @@ void Table::tryFitElements()
 	}
 }
 
-void Table::spreadTable(Size dim, s16 total_space, s16 total_weights)
+void Table::spreadTable(Size dim, s16 total_space)
 {
-	Direction dir_L = (dim == SIZE_X) ? DIR_LEFT : DIR_UP;
+	const Direction dir_L = (dim == SIZE_X) ? DIR_LEFT : DIR_UP;
+
+	s16 total_weights = 0;
+	s16 dynamic_space = total_space;
+
+	{
+		s16 weights_all = 0;
+		for (CellInfo &ci : m_cellinfo[dim])
+			weights_all += ci.weight;
+		weights_all = std::max<s16>(1, weights_all);
+
+		for (CellInfo &ci : m_cellinfo[dim]) {
+			total_weights += ci.weight;
+			dynamic_space -= ci.min_size;
+		}
+
+		// Use new weights that take content fitting into account
+		total_weights = std::max<s16>(1, total_weights);
+		// < 0 means the available space is insufficient
+		dynamic_space = std::max<s16>(0, dynamic_space);
+	}
 
 	s16 fixed_offset = pos[dir_L]/*- m_scroll_offset[dim]*/;
 	s16 weight_sum = 0;
-	s16 dynamic_space = total_space;
-
-	for (CellInfo &ci : m_cellinfo[dim])
-		dynamic_space -= ci.min_size;
-
-	if (dynamic_space < 0)
-		dynamic_space = 0;
 
 	for (CellInfo &ci : m_cellinfo[dim]) {
 		ci.pos_minmax[0] =

@@ -4,6 +4,7 @@
 #include <IGUIFont.h>
 #include <IGUIStaticText.h>
 #include <IGUITabControl.h>
+#include <IrrlichtDevice.h>
 #include <IVideoDriver.h>
 
 #if 0
@@ -154,7 +155,7 @@ IGUIElementWrapper *IGUIElementWrapper::find_wrapper(Element *e, const gui::IGUI
 
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(arr[0]))
 
-bool IGUIElementWrapper::draw_iguiw_wireframe(IGUIElementWrapper *e, video::IVideoDriver *driver, uint32_t color)
+bool IGUIElementWrapper::draw_iguiw_wireframe(IGUIElementWrapper *e, IrrlichtDevice *device, uint32_t color)
 {
 	if (!e->m_element)
 		return true; // maybe a child element is drawable ...?
@@ -196,6 +197,7 @@ bool IGUIElementWrapper::draw_iguiw_wireframe(IGUIElementWrapper *e, video::IVid
 		vertices[7] = video::S3DVertex(p00.X, p11.Y, 0, 0,0,0, color2, 0,0);
 	}
 
+	auto driver = device->getVideoDriver();
 	driver->draw2DVertexPrimitiveList(
 		vertices, ARRAY_SIZE(vertices),
 		indices, ARRAY_SIZE(indices),
@@ -205,10 +207,12 @@ bool IGUIElementWrapper::draw_iguiw_wireframe(IGUIElementWrapper *e, video::IVid
 }
 
 // FIXME: This function does not take IGUIElement parent offsets into account :(
-bool IGUIElementWrapper::draw_table_wireframe(Table *e, video::IVideoDriver *driver, uint32_t color)
+bool IGUIElementWrapper::draw_table_wireframe(Table *e, IrrlichtDevice *device, uint32_t color)
 {
 	if (e->m_children.empty())
 		return false; // value does not matter.
+
+	gui::IGUIFont *font = device->getGUIEnvironment()->getBuiltInFont();
 
 	std::vector<video::S3DVertex> vertices;
 	std::vector<u16> indices;
@@ -245,6 +249,16 @@ bool IGUIElementWrapper::draw_table_wireframe(Table *e, video::IVideoDriver *dri
 
 	// add column separators (X values)
 	for (size_t i = 0; i < cells_w; ++i) {
+		// Label
+		{
+			Table::CellInfo &c = e->m_cellinfo[SIZE_X][i];
+			const std::wstring v = std::to_wstring(c.weight);
+			font->draw(v, core::recti(
+				core::vector2di((c.pos_minmax[0] + c.pos_minmax[1]) / 2, e->pos[DIR_UP] + 2),
+				core::dimension2di(100, 100)
+			), 0xFFFFFFFF);
+		}
+
 		indices.insert(indices.end(), {
 			(u16)(i * 2 + 1), (u16)(i * 2 + 2)
 		});
@@ -252,11 +266,22 @@ bool IGUIElementWrapper::draw_table_wireframe(Table *e, video::IVideoDriver *dri
 
 	// add row separators (Y values)
 	for (size_t i = 0; i < cells_h; ++i) {
+		// Label
+		{
+			Table::CellInfo &c = e->m_cellinfo[SIZE_Y][i];
+			const std::wstring v = std::to_wstring(c.weight);
+			font->draw(v, core::recti(
+				core::vector2di(e->pos[DIR_LEFT] + 3, (c.pos_minmax[0] + c.pos_minmax[1]) / 2),
+				core::dimension2di(100, 100)
+			), 0xFFFFFFFF);
+		}
+
 		indices.insert(indices.end(), {
 			(u16)(i * 2 + index_y), (u16)(i * 2 + 1 + index_y)
 		});
 	}
 
+	auto driver = device->getVideoDriver();
 	driver->draw2DVertexPrimitiveList(
 		vertices.data(), vertices.size(),
 		indices.data(), indices.size() / 2,
@@ -265,22 +290,24 @@ bool IGUIElementWrapper::draw_table_wireframe(Table *e, video::IVideoDriver *dri
 	return true;
 }
 
-void IGUIElementWrapper::draw_wireframe(Element *e, video::IVideoDriver *driver, uint32_t color)
+void IGUIElementWrapper::draw_wireframe(Element *e, IrrlichtDevice *device, uint32_t color)
 {
+	auto driver = device->getVideoDriver();
+
 	// Needed for the OpenGL 3+ driver
 	driver->setMaterial(driver->getMaterial2D());
 
-	auto drawfunc = [driver, &color] (Element *e_raw) -> bool {
+	auto drawfunc = [device, &color] (Element *e_raw) -> bool {
 		bool ok = true;
 
 		do {
 			if (auto e = dynamic_cast<Table *>(e_raw)) {
-				ok = draw_table_wireframe(e, driver, color);
+				ok = draw_table_wireframe(e, device, color);
 				break;
 			}
 
 			if (auto e = dynamic_cast<IGUIElementWrapper *>(e_raw)) {
-				ok = draw_iguiw_wireframe(e, driver, color);
+				ok = draw_iguiw_wireframe(e, device, color);
 				break;
 			}
 

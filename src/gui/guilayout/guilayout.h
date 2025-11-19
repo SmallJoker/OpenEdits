@@ -136,7 +136,7 @@ private:
 		ASSERT_FORCED(y < m_cellinfo[SIZE_Y].size(), "Y out of range");
 	}
 
-	void spreadTable(Size dim, s16 total_space, s16 total_weights);
+	void spreadTable(Size dim, s16 total_space);
 	void spreadCell(Element *prim, size_t num, Size dim);
 
 	std::vector<CellInfo> m_cellinfo[2];

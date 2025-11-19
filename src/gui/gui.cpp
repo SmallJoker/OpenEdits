@@ -189,7 +189,7 @@ void Gui::run()
 		guienv->drawAll();
 
 		if (m_show_debug)
-			guilayout::IGUIElementWrapper::draw_wireframe(layout, driver, 0xFFFF0000);
+			guilayout::IGUIElementWrapper::draw_wireframe(layout, m_device, 0xFFFF0000);
 
 		drawFPS();
 		drawPopup(dtime);

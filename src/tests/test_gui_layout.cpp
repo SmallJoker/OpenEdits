@@ -73,7 +73,7 @@ static Element *setup_table_demo()
 	root.setSize(5, 4);
 	root.col(4)->weight = 40;
 	root.row(0)->weight = 0;
-	root.row(3)->weight = 100;
+	root.row(3)->weight = 30;
 	root.margin = {10, 1, 10, 1};
 
 	for (u16 xp = 0; xp < 4; ++xp) {
@@ -401,9 +401,9 @@ void unittest_gui_layout(int which)
 
 		guienv->drawAll();
 
-		if (which == 3) {
-			// red rectangle to highlight area
-			IGUIElementWrapper::draw_wireframe(root, device->getVideoDriver(), 0xFFFF0000);
+		if (true) {
+			// Debug information. "root" is outlined in red.
+			IGUIElementWrapper::draw_wireframe(root, device, 0xFFFF0000);
 		}
 
 		driver->endScene();
