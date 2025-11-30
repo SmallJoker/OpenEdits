@@ -142,6 +142,7 @@ public:
 		*m_player = nullptr;
 		m_world = world;
 	}
+	void removePlayer(Player *player);
 	void onPlayerEvent(const char *event, Player *player);
 	void onPlayerEventB(const char *event, Player *player, bool arg);
 

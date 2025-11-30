@@ -74,15 +74,16 @@ BlockParams &BlockParams::operator=(const BlockParams &other)
 bool BlockParams::operator==(const BlockParams &other) const
 {
 	switch (m_type) {
-		case Type::INVALID:
 		case Type::None:
 			return true;
 		case Type::STR16:
 			return *text == *other.text;
-			return param_u8 == other.param_u8;
 		case Type::U8:
+			return param_u8 == other.param_u8;
 		case Type::Teleporter:
 			return memcmp(this, &other, sizeof(BlockParams)) == 0;
+		case Type::INVALID:
+			break;
 	}
 	return false; // ERROR
 }

@@ -9,9 +9,10 @@
 #include <string>
 
 class ClientMedia;
+class ClientScript;
 class Connection;
 class LocalPlayer;
-class ClientScript;
+class Player;
 
 struct ClientPacketHandler;
 enum class Packet2Server : uint16_t;
@@ -58,7 +59,7 @@ public:
 
 	PtrLock<LocalPlayer> getMyPlayer();
 	peer_t getMyPeerId() { return m_my_peer_id; }
-	PtrLock<decltype(m_players)> getPlayerList();
+	PtrLock<map_peer_player_t> getPlayerList();
 	RefCnt<World> getWorld();
 	bool updateBlock(BlockUpdate bu);
 
@@ -91,7 +92,7 @@ private:
 	/// Updates all tiles
 	void updateWorld(bool reset_tiles);
 
-	void quitToLobby(LocalPlayer *p_to_keep);
+	void quitToLobby(Player *p_to_keep);
 
 	void pkt_Quack(Packet &pkt);
 	void pkt_Hello(Packet &pkt);

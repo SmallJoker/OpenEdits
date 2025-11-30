@@ -55,9 +55,6 @@ Client::~Client()
 	{
 		// In case a packet is being processed
 		SimpleLock lock(m_players_lock);
-
-		for (auto it : m_players)
-			delete it.second;
 		m_players.clear();
 	}
 
@@ -398,10 +395,10 @@ PtrLock<LocalPlayer> Client::getMyPlayer()
 	return PtrLock<LocalPlayer>(m_players_lock, getPlayerNoLock(m_my_peer_id));
 }
 
-PtrLock<decltype(Client::m_players)> Client::getPlayerList()
+PtrLock<map_peer_player_t> Client::getPlayerList()
 {
 	m_players_lock.lock();
-	return PtrLock<decltype(m_players)>(m_players_lock, &m_players);
+	return PtrLock<map_peer_player_t>(m_players_lock, &m_players);
 }
 
 RefCnt<World> Client::getWorld()
@@ -449,7 +446,9 @@ LocalPlayer *Client::getPlayerNoLock(peer_t peer_id)
 {
 	// It's not really a "peer" ID but player ID
 	auto it = m_players.find(peer_id);
-	return it != m_players.end() ? dynamic_cast<LocalPlayer *>(it->second) : nullptr;
+	return it != m_players.end()
+		? (LocalPlayer *)it->second.get()
+		: nullptr;
 }
 
 // -------------- Networking -------------
@@ -659,8 +658,8 @@ void Client::stepPhysics(float dtime)
 	auto player = getPlayerNoLock(m_my_peer_id);
 	player->on_touch_blocks.reset(new std::set<blockpos_t>());
 
-	for (auto it : m_players) {
-		it.second->step(dtime);
+	FOR_PLAYERS(, player, m_players) {
+		player->step(dtime);
 	}
 
 	// Process node events
@@ -802,12 +801,13 @@ void Client::updateWorld(bool reset_tiles)
 	}
 }
 
-void Client::quitToLobby(LocalPlayer *p_to_keep)
+void Client::quitToLobby(Player *p_to_keep)
 {
 	const peer_t peer_ignored = p_to_keep->peer_id;
-	for (auto it : m_players) {
-		if (it.second->peer_id != peer_ignored)
-			delete it.second;
+	for (auto &p : m_players) {
+		if (p.second.get() == p_to_keep) {
+			p.second.release(); // do NOT free myself
+		}
 	}
 	m_players.clear();
 

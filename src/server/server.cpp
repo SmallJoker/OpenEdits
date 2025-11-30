@@ -110,9 +110,6 @@ Server::~Server()
 	{
 		// In case a packet is being processed
 		SimpleLock lock(m_players_lock);
-
-		for (auto it : m_players)
-			delete it.second;
 		m_players.clear();
 	}
 
@@ -140,9 +137,9 @@ void Server::step(float dtime)
 	// always player lock first, world lock after.
 	SimpleLock players_lock(m_players_lock);
 	std::set<RefCnt<World>> worlds;
-	for (auto p : m_players) {
-		RemotePlayer *player = (RemotePlayer *)p.second;
-		auto world = p.second->getWorld();
+	for (auto &p : m_players) {
+		RemotePlayer *player = (RemotePlayer *)p.second.get();
+		auto world = player->getWorld();
 		if (world) {
 			player->rl_blocks.step(dtime);
 			player->rl_chat.step(dtime);
@@ -156,8 +153,8 @@ void Server::step(float dtime)
 	}
 
 	// Process script events
-	for (auto p : m_players) {
-		RemotePlayer *player = (RemotePlayer *)p.second;
+	for (auto &p : m_players) {
+		RemotePlayer *player = (RemotePlayer *)p.second.get();
 		auto world = player->getWorld();
 
 		if (!world)
@@ -264,10 +261,10 @@ void Server::step(float dtime)
 		snprintf(mbuf, sizeof(mbuf), "Server will shut down in %s. Save your changes!", tbuf);
 
 		// Send to all connected players
-		for (auto p : m_players) {
+		for (auto &p : m_players) {
 			sendMsg(p.first, mbuf);
 			if (p.second->getWorld())
-				systemChatSend(p.second, mbuf);
+				systemChatSend(p.second.get(), mbuf);
 		}
 
 		// Reload countdown timer if needed
@@ -295,16 +292,18 @@ void Server::step(float dtime)
 
 // -------------- Utility functions --------------
 
-RemotePlayer *Server::getPlayerNoLock(peer_t peer_id)
+RemotePlayer *Server::getPlayerNoLock(peer_t peer_id) const
 {
 	auto it = m_players.find(peer_id);
-	return it != m_players.end() ? dynamic_cast<RemotePlayer *>(it->second) : nullptr;
+	return it != m_players.end()
+		? (RemotePlayer *)it->second.get()
+		: nullptr;
 }
 
-RefCnt<World> Server::getWorldNoLock(const std::string &id)
+RefCnt<World> Server::getWorldNoLock(const std::string &id) const
 {
-	for (auto p : m_players) {
-		auto world = p.second->getWorld();
+	for (auto &p : m_players) {
+		const auto world = p.second->getWorld();
 		if (!world)
 			continue;
 
@@ -314,19 +313,18 @@ RefCnt<World> Server::getWorldNoLock(const std::string &id)
 	return nullptr;
 }
 
-std::vector<Player *> Server::getPlayersNoLock(const World *world)
+std::vector<Player *> Server::getPlayersNoLock(const World *world) const
 {
 	std::vector<Player *> ret;
-	for (auto p : m_players) {
-		auto w = p.second->getWorld();
-		if (w.get() != world)
+	for (auto &p : m_players) {
+		RemotePlayer *rp = (RemotePlayer *)p.second.get();
+		if (rp->getWorld().get() != world)
 			continue;
 
-		RemotePlayer *rp = (RemotePlayer *)p.second;
 		if (rp->state != RemotePlayerState::WorldPlay)
 			continue;
 
-		ret.push_back(p.second);
+		ret.push_back(rp);
 	}
 	return ret;
 }
@@ -347,16 +345,21 @@ void Server::onPeerDisconnected(peer_t peer_id)
 {
 	SimpleLock lock(m_players_lock);
 
-	auto player = getPlayerNoLock(peer_id);
-	if (!player)
-		return;
-
+	std::unique_ptr<Player> player;
+	{
+		auto it = m_players.find(peer_id);
+		if (it == m_players.end())
+			return; // not found
+		player = std::move(it->second);
+	}
+	assert(player);
 	logger(LL_DEBUG, "Player %s disconnected\n", player->name.c_str());
 
-	sendPlayerLeave(player);
-	m_players.erase(peer_id);
+	sendPlayerLeave((RemotePlayer *)player.get());
 
-	delete player;
+	m_players.erase(peer_id);
+	if (m_script)
+		m_script->removePlayer(player.get());
 }
 
 void Server::processPacket(peer_t peer_id, Packet &pkt)
@@ -468,12 +471,7 @@ void Server::stepWorldTick(World *world, float dtime)
 			out.write(block_id);
 			out.write<u8>(false);
 
-			for (auto it : m_players) {
-				if (it.second->getWorld().get() != world)
-					continue;
-
-				m_con->send(it.first, 0, out);
-			}
+			broadcastInWorld(world, 0, out);
 		}
 	}
 

@@ -88,7 +88,7 @@ bool Server::checkTitle(std::string &out, std::string &title)
 
 // -------------- Chat commands -------------
 
-void Server::systemChatSend(Player *player, const std::string &msg, bool broadcast)
+void Server::systemChatSend(Player *player, const std::string &msg, bool broadcast) const
 {
 	Packet pkt;
 	pkt.write(Packet2Client::Chat);
@@ -97,17 +97,17 @@ void Server::systemChatSend(Player *player, const std::string &msg, bool broadca
 	m_con->send(player->peer_id, 0, pkt);
 }
 
-Player *Server::findPlayer(const World *world, std::string name, bool any_world)
+Player *Server::findPlayer(const World *world, std::string name, bool any_world) const
 {
 	to_player_name(name);
 
-	for (auto p : m_players) {
-		if (!any_world && p.second->getWorld().get() != world)
+	FOR_PLAYERS(, player, m_players) {
+		if (!any_world && player->getWorld().get() != world)
 			continue;
-		if (p.second->name != name)
+		if (player->name != name)
 			continue;
 
-		return p.second;
+		return player;
 	}
 	return nullptr;
 }
@@ -287,14 +287,14 @@ CHATCMD_FUNC(Server::chat_SetCode)
 		return changed;
 	};
 
-	for (auto it : m_players) {
-		if (it.second->getWorld() != world)
+	FOR_PLAYERS(, player, m_players) {
+		if (player->getWorld() != world)
 			continue;
 
-		auto pf = it.second->getFlags();
+		auto pf = player->getFlags();
 		if (try_revoke(pf)) {
-			world->getMeta().setPlayerFlags(it.second->name, pf);
-			handlePlayerFlagsChange(it.second, to_revoke);
+			world->getMeta().setPlayerFlags(player->name, pf);
+			handlePlayerFlagsChange(player, to_revoke);
 		}
 	}
 }
@@ -477,7 +477,7 @@ CHATCMD_FUNC(Server::chat_FFilter)
 	systemChatSend(player, output);
 }
 
-playerflags_t Server::mayManipulatePlayer(Player *actor, Player *target)
+playerflags_t Server::mayManipulatePlayer(Player *actor, Player *target) const
 {
 	if (!actor || !target)
 		return 0;
@@ -605,9 +605,9 @@ CHATCMD_FUNC(Server::chat_Respawn)
 	const auto world = player->getWorld();
 
 	if (who == "*") {
-		for (auto it : m_players) {
-			if (it.second->getWorld() == world) {
-				respawnPlayer(it.second, true);
+		FOR_PLAYERS(, player, m_players) {
+			if (player->getWorld() == world) {
+				respawnPlayer(player, true);
 			}
 		}
 		return;
@@ -738,9 +738,9 @@ CHATCMD_FUNC(Server::chat_Clear)
 		return;
 	}
 
-	for (auto it : m_players) {
-		if (it.second->getWorld() == old_world)
-			it.second->setWorld(world);
+	FOR_PLAYERS(, player, m_players) {
+		if (player->getWorld() == old_world)
+			player->setWorld(world);
 	}
 
 	broadcastInWorld(player, RemotePlayerState::WorldJoin, 0, SERVER_PKT_CB {
@@ -784,18 +784,18 @@ CHATCMD_FUNC(Server::chat_Import)
 		return;
 	}
 
-	for (auto it : m_players) {
-		if (it.second->getWorld() == old_world)
-			it.second->setWorld(world);
+	FOR_PLAYERS(, player, m_players) {
+		if (player->getWorld() == old_world)
+			player->setWorld(world);
 	}
 
 	broadcastInWorld(player, RemotePlayerState::WorldJoin, 0, SERVER_PKT_CB {
 		writeWorldData(out, *world.get(), false);
 	});
 
-	for (auto it : m_players) {
-		if (it.second->getWorld() == world)
-			respawnPlayer(it.second, true);
+	FOR_PLAYERS(, player, m_players) {
+		if (player->getWorld() == world)
+			respawnPlayer(player, true);
 	}
 
 	systemChatSend(player, "Imported!");
@@ -811,30 +811,30 @@ void Server::sendPlayerFlags(const World *world)
 
 	Packet pkt_god;
 	pkt_god.write(Packet2Client::GodMode);
-	for (auto it : m_players) {
-		if (it.second->getWorld().get() != world)
+	FOR_PLAYERS(, player, m_players) {
+		if (player->getWorld().get() != world)
 			continue;
 
-		auto pf = meta.getPlayerFlags(it.second->name);
-		DEBUGLOG("sendPlayerFlags: name=%s, flags=%08X\n", it.second->name.c_str(), pf.flags);
+		auto pf = meta.getPlayerFlags(player->name);
+		DEBUGLOG("sendPlayerFlags: name=%s, flags=%08X\n", player->name.c_str(), pf.flags);
 		{
 			// Relevant to other players
-			it.second->writeFlags(pkt_pf, PlayerFlags::PF_MASK_SEND_OTHERS);
+			player->writeFlags(pkt_pf, PlayerFlags::PF_MASK_SEND_OTHERS);
 		}
 
 		{
 			// Player-specific relevant flags
 			Packet pkt_prv;
 			pkt_prv.write(Packet2Client::PlayerFlags);
-			it.second->writeFlags(pkt_prv, PlayerFlags::PF_MASK_SEND_PLAYER);
+			player->writeFlags(pkt_prv, PlayerFlags::PF_MASK_SEND_PLAYER);
 			// Channel 0 like the block data
-			m_con->send(it.first, 0, pkt_prv);
+			m_con->send(player->peer_id, 0, pkt_prv);
 		}
 
-		if (it.second->godmode && !pf.check(PlayerFlags::PF_GODMODE)) {
-			it.second->godmode = false;
+		if (player->godmode && !pf.check(PlayerFlags::PF_GODMODE)) {
+			player->godmode = false;
 
-			pkt_god.write<peer_t>(it.first);
+			pkt_god.write<peer_t>(player->peer_id);
 			pkt_god.write<uint8_t>(false);
 		}
 	}
@@ -860,9 +860,9 @@ CHATCMD_FUNC(Server::chat_Load)
 		return;
 	}
 
-	for (auto it : m_players) {
-		if (it.second->getWorld() == old_world)
-			it.second->setWorld(world);
+	FOR_PLAYERS(, player, m_players) {
+		if (player->getWorld() == old_world)
+			player->setWorld(world);
 	}
 
 	// TODO: The client does not receive the correct world data!
@@ -872,9 +872,9 @@ CHATCMD_FUNC(Server::chat_Load)
 
 	old_world.reset();
 
-	for (auto it : m_players) {
-		if (it.second->getWorld() == world)
-			setDefaultPlayerFlags(it.second);
+	FOR_PLAYERS(, player, m_players) {
+		if (player->getWorld() == world)
+			setDefaultPlayerFlags(player);
 	}
 
 	{
@@ -888,10 +888,9 @@ CHATCMD_FUNC(Server::chat_Load)
 	sendPlayerFlags(world.get());
 
 	// TODO: this is inefficient
-	for (auto it : m_players) {
-		if (it.second->getWorld() == world) {
-			respawnPlayer(it.second, true);
-		}
+	FOR_PLAYERS(, player, m_players) {
+		if (player->getWorld() == world)
+			respawnPlayer(player, true);
 	}
 }
 

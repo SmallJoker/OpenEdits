@@ -35,6 +35,11 @@ void Script::pushCurrentPlayerRef()
 	lua_pop(L, 1); // env
 }
 
+void Script::removePlayer(Player *player)
+{
+	PlayerRef::invalidate(m_lua, player);
+}
+
 void Script::onPlayerEvent(const char *event, Player *player)
 {
 	setPlayer(player);

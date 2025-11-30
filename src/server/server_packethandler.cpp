@@ -360,7 +360,7 @@ void Server::pkt_GetLobby(peer_t peer_id, Packet &)
 	std::set<std::string> listed_world_ids;
 
 	std::set<RefCnt<World>> worlds;
-	for (auto p : m_players) {
+	for (auto &p : m_players) {
 		auto world = p.second->getWorld();
 		if (world)
 			worlds.insert(world);
@@ -593,7 +593,7 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 
 	{
 		// Allow only one of each account per world
-		for (auto p : m_players) {
+		for (auto &p : m_players) {
 			if (p.second->name != player->name)
 				continue;
 
@@ -637,15 +637,14 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 	});
 
 	// Announce all existing players to the current player
-	for (auto it : m_players) {
-		auto *p = it.second;
-		if (p == player)
+	for (auto &it : m_players) {
+		RemotePlayer *p2 = (RemotePlayer *)it.second.get();
+		if (p2 == player)
 			continue; // already sent
-		if (p->getWorld() != world)
+		if (p2->getWorld() != world)
 			continue;
 
 		// Notify new player about existing ones
-		RemotePlayer *p2 = (RemotePlayer *)it.second;
 
 		Packet out;
 		out.data_version = p2->protocol_version;
@@ -679,15 +678,15 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 		Packet out;
 		out.write(Packet2Client::PlayerFlags);
 		// Send all flags to the player
-		for (auto it : m_players) {
-			if (it.second->getWorld() != world)
+		for (auto &p : m_players) {
+			if (p.second->getWorld() != world)
 				continue;
 
 			// Notify existing players
-			m_con->send(it.first, 0, pkt_new);
+			m_con->send(p.first, 0, pkt_new);
 
 			// Append for new player
-			it.second->writeFlags(out, PlayerFlags::PF_MASK_SEND_PLAYER);
+			p.second->writeFlags(out, PlayerFlags::PF_MASK_SEND_PLAYER);
 		}
 
 		if (out.size() > 2)
@@ -1098,11 +1097,11 @@ void Server::broadcastInWorld(const World *world, int flags, Packet &pkt)
 		return;
 
 	// Send to all players within this world
-	for (auto it : m_players) {
-		if (it.second->getWorld().get() != world)
+	for (auto &p : m_players) {
+		if (p.second->getWorld().get() != world)
 			continue;
 
-		m_con->send(it.first, flags, pkt);
+		m_con->send(p.first, flags, pkt);
 	}
 }
 
@@ -1119,12 +1118,12 @@ void Server::broadcastInWorld(Player *player, RemotePlayerState min_state,
 	std::map<u16, Packet> compat;
 
 	// Send to all players within this world
-	for (auto it : m_players) {
-		if (it.second->getWorld() != world)
+	for (auto &it : m_players) {
+		auto p = (RemotePlayer *)it.second.get();
+		if (p->getWorld() != world)
 			continue;
 
 		// Player is yet not ready
-		auto p = (RemotePlayer *)it.second;
 		if ((int)p->state < (int)min_state)
 			continue;
 

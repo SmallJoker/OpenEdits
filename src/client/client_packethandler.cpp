@@ -233,8 +233,8 @@ void Client::pkt_WorldData(Packet &pkt)
 	} // else: clear
 
 	// World kept alive by at least one player (-> me)
-	for (auto it : m_players)
-		it.second->setWorld(world);
+	for (auto &p : m_players)
+		p.second->setWorld(world);
 
 	{
 		GameEvent e(GameEvent::C2G_META_UPDATE);
@@ -295,31 +295,40 @@ void Client::pkt_Leave(Packet &pkt)
 {
 	SimpleLock lock(m_players_lock);
 
-	peer_t peer_id = pkt.read<peer_t>();
+	const peer_t peer_id = pkt.read<peer_t>();
 
-	std::unique_ptr<LocalPlayer> player(getPlayerNoLock(peer_id));
+	std::unique_ptr<Player> player;
+	{
+		auto it = m_players.find(peer_id);
+		if (it == m_players.end())
+			return; // not found
+		player = std::move(it->second);
+	}
+	assert(player);
 	player->setScript(nullptr);
 	m_players.erase(peer_id);
 
-	if (player) {
-		if (m_script)
-			m_script->onPlayerEvent("leave", player.get());
+	if (m_script)
+		m_script->onPlayerEvent("leave", player.get());
 
+	{
 		GameEvent e(GameEvent::C2G_PLAYER_LEAVE);
 		e.player = player.get();
 		sendNewEvent(e);
 	}
 
+	if (m_script)
+		m_script->removePlayer(player.get());
+
 	// HACK: keep alive until the function finishes !
 	// gameplay.cpp might access the World object at the same time,
 	// which somehow results in a double-free ??
-	RefCnt<World> world;
-	if (player)
-		world = player->getWorld();
+	RefCnt<World> world(player->getWorld());
 
-	if (peer_id == m_my_peer_id) {
+	if (peer_id == m_my_peer_id)
 		quitToLobby(player.release());
-	}
+
+	player.reset(); // explicit free
 }
 
 void Client::pkt_SetPosition(Packet &pkt)

@@ -40,9 +40,13 @@ struct BlockParams {
 	void pushToLua();
 	void readFromLua();
 
-	// TODO: Use an array to be more generic
+	// Approach 1: Use an array to be more generic
 	// u32 types = 0xDDCCBBAA;
 	// Entry data[4];
+
+	// Approach 2: Reuse `Packet` and keep only the payload:
+	// u16 length;
+	// u8[??] data_from_lua;
 
 	union {
 		std::string *text;

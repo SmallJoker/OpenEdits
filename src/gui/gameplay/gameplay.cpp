@@ -793,14 +793,14 @@ bool SceneGameplay::handleChatInput(const SEvent &e)
 		wide_to_utf8(last_word, &text[word_start]);
 		to_player_name(last_word);
 
-		auto players = m_gui->getClient()->getPlayerList();
+		const auto players = m_gui->getClient()->getPlayerList();
 		std::string playername;
-		for (auto p : *players.ptr()) {
-			if (p.second->name.rfind(last_word, 0) == 0) {
+		FOR_PLAYERS(const, player, *players.ptr()) {
+			if (player->name.rfind(last_word, 0) == 0) {
 				if (!playername.empty())
 					return false; // Ambigious
 
-				playername = p.second->name;
+				playername = player->name;
 			}
 		}
 		if (playername.empty())
@@ -1024,7 +1024,7 @@ void SceneGameplay::updatePlayerlist()
 
 	auto e = gui->addListBox(rect, nullptr, ID_ListPlayers);
 
-	auto list = m_gui->getClient()->getPlayerList();
+	const auto list = m_gui->getClient()->getPlayerList();
 
 	// TODO FIXME: rank sorting first, alphabetical sorting after.
 	for (auto &it : *list.ptr()) {

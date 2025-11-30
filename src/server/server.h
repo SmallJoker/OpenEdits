@@ -25,10 +25,10 @@ public:
 	void step(float dtime) override;
 
 	// ----------- Utility functions -----------
-	RemotePlayer *getPlayerNoLock(peer_t peer_id);
-	RefCnt<World> getWorldNoLock(const std::string &id);
+	RemotePlayer *getPlayerNoLock(peer_t peer_id) const;
+	RefCnt<World> getWorldNoLock(const std::string &id) const;
 
-	std::vector<Player *> getPlayersNoLock(const World *world) override;
+	std::vector<Player *> getPlayersNoLock(const World *world) const override;
 
 	// ----------- Networking -----------
 	void onPeerConnected(peer_t peer_id) override;
@@ -110,10 +110,10 @@ private:
 
 	// ----------- Chat commands -----------
 	void registerChatCommands();
-	void systemChatSend(Player *player, const std::string &msg, bool broadcast = false);
+	void systemChatSend(Player *player, const std::string &msg, bool broadcast = false) const;
 	/// We might pass "world == nullptr" by accident, thus
 	/// have a separate "any_world" option is safer.
-	Player *findPlayer(const World *world, std::string name, bool any_world = false);
+	Player *findPlayer(const World *world, std::string name, bool any_world = false) const;
 
 	CHATCMD_FUNC(chat_Help);
 	CHATCMD_FUNC(chat_Shutdown);
@@ -125,7 +125,7 @@ private:
 	CHATCMD_FUNC(chat_Flags);
 	CHATCMD_FUNC(chat_FFilter);
 	/// Which flags that "actor" may change on "target"
-	playerflags_t mayManipulatePlayer(Player *actor, Player *target);
+	playerflags_t mayManipulatePlayer(Player *actor, Player *target) const;
 	bool changePlayerFlags(Player *player, std::string msg, bool do_add);
 	void handlePlayerFlagsChange(Player *player, playerflags_t flags_mask);
 	CHATCMD_FUNC(chat_FSet);

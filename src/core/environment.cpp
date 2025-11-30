@@ -2,15 +2,15 @@
 #include "player.h"
 #include <chrono>
 
-std::vector<Player *> Environment::getPlayersNoLock(const World *world)
+Environment::Environment(BlockManager *bmgr) : m_bmgr(bmgr) {}
+Environment::~Environment() {}
+
+std::vector<Player *> Environment::getPlayersNoLock(const World *world) const
 {
 	std::vector<Player *> ret;
-	for (auto p : m_players) {
-		auto w = p.second->getWorld();
-		if (w.get() != world)
-			continue;
-
-		ret.push_back(p.second);
+	FOR_PLAYERS(, player, m_players) {
+		if (player->getWorld().get() == world)
+			ret.push_back(player);
 	}
 	return ret;
 }

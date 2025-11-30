@@ -574,9 +574,9 @@ void SceneWorldRender::updatePlayerPositions(float dtime)
 	} while (0);
 
 	std::list<scene::ISceneNode *> children = m_players_node->getChildren();
-	auto players = m_gui->getClient()->getPlayerList();
-	for (auto it : *players.ptr()) {
-		auto player = dynamic_cast<LocalPlayer *>(it.second);
+	const auto players = m_gui->getClient()->getPlayerList();
+	for (auto &p_it : *players.ptr()) {
+		auto player = dynamic_cast<LocalPlayer *>(p_it.second.get());
 
 		core::vector2di bp(player->pos.X + 0.5f, player->pos.Y + 0.5f);
 		if (!m_drawn_blocks.isPointInside(bp))
@@ -617,7 +617,7 @@ void SceneWorldRender::updatePlayerPositions(float dtime)
 			nf->getMaterial(0).setTexture(0, m_gameplay->smiley_texture);
 
 			// Add nametag
-			auto nt_texture = m_gameplay->generateTexture(it.second->name);
+			auto nt_texture = m_gameplay->generateTexture(player->name);
 			auto nt_size = nt_texture->getOriginalSize();
 			auto nt = smgr->addBillboardSceneNode(nf,
 				core::dimension2d<f32>(nt_size.Width * 0.4f, nt_size.Height * 0.4f),

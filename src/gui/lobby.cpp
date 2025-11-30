@@ -502,7 +502,7 @@ void SceneLobby::updateWorldList()
 	auto player = m_gui->getClient()->getMyPlayer();
 	const auto &worlds = m_gui->getClient()->world_list;
 
-	for (const auto &it : worlds) {
+	for (auto &it : worlds) {
 		auto [textw, is_mine] = world_to_list_text(it, player.ptr());
 
 		bool added = false;

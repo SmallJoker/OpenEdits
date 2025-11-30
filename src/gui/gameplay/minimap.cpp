@@ -201,13 +201,13 @@ void SceneMinimap::updatePlayers(float dtime)
 		}
 	}
 
-	auto myself = m_gui->getClient()->getMyPeerId();
-	auto players = m_gui->getClient()->getPlayerList();
-	for (auto player : *players.ptr()) {
-		auto pos = player.second->pos;
+	const peer_t myself = m_gui->getClient()->getMyPeerId();
+	const auto players = m_gui->getClient()->getPlayerList();
+	FOR_PLAYERS(const, player, *players.ptr()) {
+		auto pos = player->pos;
 
 		video::SColor color(0xFFFFFFFF); // default white
-		if (player.second->peer_id == myself)
+		if (player->peer_id == myself)
 			color = 0xFF44FF44; // green highlight
 
 		int cx = std::round(pos.X) + BORDER;
