@@ -632,7 +632,6 @@ bool SceneGameplay::OnEvent(GameEvent &e)
 			m_dirty_playerlist = true;
 			break;
 		case E::C2G_MAP_UPDATE:
-			m_world_render->markDirty();
 			m_dirty_world = true;
 
 			if (m_minimap)

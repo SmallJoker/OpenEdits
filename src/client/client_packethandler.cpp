@@ -278,10 +278,7 @@ void Client::pkt_Join(Packet &pkt)
 		GameEvent e(GameEvent::C2G_JOIN);
 		sendNewEvent(e);
 
-		updateWorld(false);
-
-		GameEvent e2(GameEvent::C2G_MAP_UPDATE);
-		sendNewEvent(e2);
+		updateAllBlockTiles(false);
 	}
 
 	{
@@ -357,10 +354,7 @@ void Client::pkt_SetPosition(Packet &pkt)
 
 	if (reset_progress && my_player_affected) {
 		// semi-duplicate of Player::updateCoinCount
-		updateWorld(true);
-
-		GameEvent e(GameEvent::C2G_MAP_UPDATE);
-		sendNewEvent(e);
+		updateAllBlockTiles(true);
 	}
 }
 
@@ -464,10 +458,7 @@ void Client::pkt_PlaceBlock(Packet &pkt)
 
 	world_lock.unlock();
 
-	player->updateCoinCount();
-
-	GameEvent e(GameEvent::C2G_MAP_UPDATE);
-	sendNewEvent(e);
+	player->updateCoinCount(false);
 }
 
 void Client::pkt_ScriptEvent(Packet &pkt)
@@ -568,8 +559,7 @@ void Client::pkt_ActivateBlock(Packet &pkt)
 	}
 
 	if (n > 0) {
-		GameEvent e(GameEvent::C2G_MAP_UPDATE);
-		sendNewEvent(e);
+		world->markAllModified();
 	}
 }
 
@@ -588,7 +578,7 @@ void Client::pkt_GodMode(Packet &pkt)
 		player->acc = core::vector2df();
 	}
 	if (peer_id == m_my_peer_id && m_bmgr->isHardcoded()) {
-		bool map_dirty = false;
+		RefCnt<World> world = player->getWorld();
 
 		auto bump_tile = [state](Block &b) -> bool {
 			if (state)
@@ -600,18 +590,13 @@ void Client::pkt_GodMode(Packet &pkt)
 			return true;
 		};
 
-		auto out = player->getWorld()->getBlocks(Block::ID_SECRET, bump_tile);
+		auto out = world->getBlocks(Block::ID_SECRET, bump_tile);
 		if (!out.empty())
-			map_dirty = true;
+			world->markAllModified();
 
-		out = player->getWorld()->getBlocks(Block::ID_BLACKFAKE, bump_tile);
+		out = world->getBlocks(Block::ID_BLACKFAKE, bump_tile);
 		if (!out.empty())
-			map_dirty = true;
-
-		if (map_dirty) {
-			GameEvent e(GameEvent::C2G_MAP_UPDATE);
-			sendNewEvent(e);
-		}
+			world->markAllModified();
 	}
 
 	// Allow multiple changes per packet

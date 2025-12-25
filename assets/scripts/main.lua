@@ -110,11 +110,6 @@ env.register_pack({
 	blocks = { 9, 10, 11, 12, 13, 14, 15 }
 })
 
-env.change_block(10, {
-	-- blue block
-	minimap_color = 0xFFFFFFFF,  -- AARRGGBB, white
-})
-
 env.include("keys_doors.lua")
 env.register_pack({
 	name = "doors",
@@ -135,6 +130,7 @@ local blocks_action = {
 	-- Cannot use indices: unordered `pairs` iteration.
 	{
 		id = 0,
+		minimap_color = 0xFF000000,
 		on_intersect = function()
 			player:set_acc(0, GRAVITY)
 		end,

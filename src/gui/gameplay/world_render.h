@@ -37,7 +37,7 @@ public:
 
 	f32 zoom_factor = 2.0f;
 
-	void markDirty() { m_dirty_worldmesh = true; }
+	void forceRedraw();
 	inline void forceShowNametags(bool v) { m_nametag_force_show = v; }
 
 private:
@@ -61,8 +61,7 @@ private:
 	CBulkSceneNode *drawBottomLeftText(video::ITexture *texture);
 
 	bool assignBlockTexture(const BlockTile tile, scene::ISceneNode *node);
-	bool m_dirty_worldmesh = false;
-	core::recti m_drawn_blocks; // excess area, more drawn than needed
+	core::recti m_drawn_rect; // excess area, more drawn than needed
 	video::ITexture *m_tex_shadow = nullptr;
 
 	void updatePlayerPositions(float dtime);

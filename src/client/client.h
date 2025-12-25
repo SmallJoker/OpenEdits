@@ -90,7 +90,7 @@ private:
 	uint8_t getBlockTile(const Player *player, const Block *b);
 
 	/// Updates all tiles
-	void updateWorld(bool reset_tiles);
+	void updateAllBlockTiles(bool reset_tiles);
 
 	void quitToLobby(Player *p_to_keep);
 

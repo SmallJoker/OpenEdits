@@ -353,11 +353,11 @@ void Server::onPeerDisconnected(peer_t peer_id)
 		player = std::move(it->second);
 	}
 	assert(player);
-	logger(LL_DEBUG, "Player %s disconnected\n", player->name.c_str());
+	m_players.erase(peer_id);
 
+	logger(LL_DEBUG, "Player %s disconnected\n", player->name.c_str());
 	sendPlayerLeave((RemotePlayer *)player.get());
 
-	m_players.erase(peer_id);
 	if (m_script)
 		m_script->removePlayer(player.get());
 }

@@ -13,7 +13,7 @@ public:
 	int smiley_id = 0;
 
 	// Executa only on the own player!
-	bool updateCoinCount(bool force = false);
+	void updateCoinCount(bool force);
 
 	blockpos_t last_sent_pos;
 

@@ -11,11 +11,19 @@
 #include <IVideoDriver.h>
 #include <SViewFrustum.h>
 
-#if 1
-	#define SANITY_LOG(...) do {} while (0)
+#if 0
+	#define SANITY_LOG(...) printf(__VA_ARGS__)
 #else
-	#define SANITY_LOG(...) printf
+	#define SANITY_LOG(...) do {} while (0)
 #endif
+
+#if 0
+	#define DEBUG_LOG(...) printf(__VA_ARGS__)
+#else
+	#define DEBUG_LOG(...) do {} while (0)
+#endif
+
+
 
 // negative = towards camera
 static float ZINDEX_SMILEY[2] = {
@@ -84,7 +92,7 @@ void SceneWorldRender::draw()
 
 	// TODO: Upon resize, the world sometimes blacks out, even though
 	// the world scene nodes are added... ?!
-	m_dirty_worldmesh = true;
+	forceRedraw();
 }
 
 void SceneWorldRender::step(float dtime)
@@ -155,6 +163,18 @@ core::line3df SceneWorldRender::getShootLine(core::vector2di mousepos)
 	return shootline;
 }
 
+static core::recti rect_u16_to_recti(core::rect<u16> inp)
+{
+	return core::recti(
+		inp.UpperLeftCorner.X,  inp.UpperLeftCorner.Y,
+		inp.LowerRightCorner.X, inp.LowerRightCorner.Y
+	);
+}
+
+void SceneWorldRender::forceRedraw()
+{
+	m_drawn_rect = core::recti(0,0,0,0);
+}
 
 void SceneWorldRender::setCamera(core::vector3df pos)
 {
@@ -226,43 +246,55 @@ void SceneWorldRender::drawBlocksInView()
 
 	SimpleLock lock(world->mutex);
 	const auto world_size = world->getSize();
-	core::recti world_border(
+	const core::recti world_border(
 		core::vector2di(0, 0),
 		core::vector2di(world_size.X, world_size.Y)
 	);
 
+	/// Whether we rendered enough in the last iteration
+	bool all_visible;
 	{
-		bool modified = world->was_modified;
-		world->was_modified = false;
-		m_dirty_worldmesh |= modified;
-	}
-
-	if (!m_dirty_worldmesh) {
-		// Figure out whether we need to redraw
-		core::recti required_area(
+		core::recti visible_rect(
 			core::vector2di(x_center - x_extent, y_center - y_extent),
 			core::vector2di(x_center + x_extent, y_center + y_extent)
 		);
-		required_area.clipAgainst(world_border);
+		visible_rect.clipAgainst(world_border);
 
-		core::recti clipped = m_drawn_blocks;
-		clipped.clipAgainst(required_area); // overlapping area
+		core::recti clipped = m_drawn_rect;
+		clipped.clipAgainst(visible_rect); // overlapping area
 
-		if (clipped.getArea() >= required_area.getArea())
-			return;
+		all_visible = clipped.getArea() >= visible_rect.getArea();
 	}
-	m_dirty_worldmesh = false;
+
+	/// Whether the rendered blocks changed
+	bool blocks_modified = world->modified_rect.isValid();
+	if (blocks_modified) {
+		core::recti modified = rect_u16_to_recti(world->modified_rect);
+		world->modified_rect = World::make_rect_not_modified();
+		DEBUG_LOG("rect: %d,%d,%d,%d\n",
+			modified.UpperLeftCorner.X, modified.UpperLeftCorner.Y,
+			modified.LowerRightCorner.X, modified.LowerRightCorner.Y
+		);
+
+		blocks_modified = modified.isRectCollided(m_drawn_rect);
+	}
+
+	DEBUG_LOG("draw: modified=%d, all_visible=%d\n", blocks_modified, all_visible);
+	if (!blocks_modified && all_visible)
+		return;
 
 	m_blocks_node->removeAll();
 
 	// Draw more than necessary to skip on render steps when moving only slightly
-	m_drawn_blocks = core::recti(
+	m_drawn_rect = core::recti(
 		core::vector2di(x_center - x_extent - 2, y_center - y_extent - 2),
 		core::vector2di(x_center + x_extent + 2, y_center + y_extent + 2)
 	);
-	m_drawn_blocks.clipAgainst(world_border);
-	const auto upperleft = m_drawn_blocks.UpperLeftCorner; // move to stack
-	const auto lowerright = m_drawn_blocks.LowerRightCorner;
+	m_drawn_rect.clipAgainst(world_border);
+	const auto upperleft = m_drawn_rect.UpperLeftCorner; // move to stack
+	const auto lowerright = m_drawn_rect.LowerRightCorner;
+
+	const bool is_hardcoded = g_blockmanager->isHardcoded();
 
 	BlockDrawData bdd;
 	bdd.player = player.ptr();
@@ -288,24 +320,26 @@ void SceneWorldRender::drawBlocksInView()
 			// Unique ID for each appearance type
 			size_t tile_hash = b.tile;
 
-			if (b.id == Block::ID_SECRET && b.tile == 0)
-				break;
-
-			if (b.id == Block::ID_BLACKFAKE && b.tile == 0) {
-				bdd.b.id = Block::ID_BLACKREAL;
-				tile_hash = 0;
-			}
-
-			if (b.id == Block::ID_TEXT) {
-				tile_hash = 0;
-				BlockParams params;
-				world->getParams(bp, &params);
-				if (params != BlockParams::Type::Text)
+			if (is_hardcoded) {
+				if (b.id == Block::ID_SECRET && b.tile == 0)
 					break;
 
-				Packet pkt;
-				params.write(pkt);
-				tile_hash = crc32_z(0, pkt.data(), pkt.size());
+				if (b.id == Block::ID_BLACKFAKE && b.tile == 0) {
+					bdd.b.id = Block::ID_BLACKREAL;
+					tile_hash = 0;
+				}
+
+				if (b.id == Block::ID_TEXT) {
+					tile_hash = 0;
+					BlockParams params;
+					world->getParams(bp, &params);
+					if (params != BlockParams::Type::Text)
+						break;
+
+					Packet pkt;
+					params.write(pkt);
+					tile_hash = crc32_z(0, pkt.data(), pkt.size());
+				}
 			}
 
 			size_t hash_node_id = BlockDrawData::hash(bdd.b.id, tile_hash);
@@ -315,6 +349,7 @@ void SceneWorldRender::drawBlocksInView()
 				assignNewForeground(bdd);
 			}
 
+			// TODO: Draw by Script-defined appearance!!
 			drawBlockParams(bdd);
 
 			bdd.bulk->node->addTile({x, -y});
@@ -579,7 +614,7 @@ void SceneWorldRender::updatePlayerPositions(float dtime)
 		auto player = dynamic_cast<LocalPlayer *>(p_it.second.get());
 
 		core::vector2di bp(player->pos.X + 0.5f, player->pos.Y + 0.5f);
-		if (!m_drawn_blocks.isPointInside(bp))
+		if (!m_drawn_rect.isPointInside(bp))
 			continue;
 
 		core::vector3df nf_pos(

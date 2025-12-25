@@ -729,7 +729,7 @@ CHATCMD_FUNC(Server::chat_Clear)
 		return;
 	}
 
-	auto world = std::make_shared<World>(old_world.get());
+	auto world = old_world->copyNewSkeleton();
 
 	try {
 		world->createEmpty(size);
@@ -772,7 +772,7 @@ CHATCMD_FUNC(Server::chat_Import)
 
 	auto old_world = player->getWorld();
 
-	auto world = std::make_shared<World>(old_world.get());
+	auto world = old_world->copyNewSkeleton();
 	EEOconverter conv(*world.get());
 
 	try {
@@ -854,7 +854,7 @@ CHATCMD_FUNC(Server::chat_Load)
 	}
 
 	auto old_world = player->getWorld();
-	auto world = std::make_shared<World>(old_world.get());
+	auto world = old_world->copyNewSkeleton();
 	if (!loadWorldNoLock(world.get())) {
 		systemChatSend(player, "Failed to load world from database");
 		return;

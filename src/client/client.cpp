@@ -178,8 +178,6 @@ void Client::step(float dtime)
 	if (m_script)
 		m_script->onStep((double)m_time / TIME_RESOLUTION);
 
-	bool send_map_update = false;
-
 	// Timed gates update
 	while (m_bmgr->isHardcoded() && world.get()) { // run once
 		uint8_t tile_new = (m_time      / TIME_RESOLUTION) % 10;
@@ -188,23 +186,16 @@ void Client::step(float dtime)
 			break;
 
 		// TODO: Sync with the server
-		for (Block *b = world->begin(); b < world->end(); ++b) {
-			if (b->id == Block::ID_TIMED_GATE_1
-					|| b->id == Block::ID_TIMED_GATE_2) {
-				b->tile = tile_new;
-				send_map_update = true;
-			}
-		}
+		PositionRange pr;
+		pr.op = PositionRange::PROP_SET;
+		pr.type = PositionRange::PRT_ENTIRE_WORLD;
+		world->setBlockTiles(pr, Block::ID_TIMED_GATE_1, tile_new);
+		world->setBlockTiles(pr, Block::ID_TIMED_GATE_2, tile_new);
 		break;
 	}
 
 	// Update tiles if triggered by Lua
-	if (m_tiles_map_dirty) {
-		m_tiles_map_dirty = false;
-		updateWorld(false);
-		send_map_update = true;
-	}
-	if (m_tiles_map_dirty || send_map_update) {
+	if (world && world->modified_rect.isValid()) {
 		GameEvent e(GameEvent::C2G_MAP_UPDATE);
 		sendNewEvent(e);
 	}
@@ -425,18 +416,19 @@ bool Client::updateBlock(BlockUpdate bu)
 
 void Client::clearTileCacheFor(bid_t block_id)
 {
-	bool dirty = false;
+	const size_t size_before = m_tiles_cache.size();
 	for (auto it = m_tiles_cache.begin(); it != m_tiles_cache.end(); ) {
 		if ((it->first & 0xFFFF) == block_id) {
 			// delete
 			m_tiles_cache.erase(it++);
-			dirty = true;
 		} else {
 			// keep
 			++it;
 		}
 	}
-	m_tiles_map_dirty |= dirty;
+
+	if (m_tiles_cache.size() != size_before)
+		getWorld()->markAllModified();
 }
 
 
@@ -549,16 +541,21 @@ void Client::processPacket(peer_t peer_id, Packet &pkt)
 	}
 }
 
-/// @return: map dirty
-static bool send_on_touch_blocks(Client *cli, Player *player, Packet &pkt)
+using blockdata_t = GameEvent::BlockData;
+using blockdata_v_t = std::vector<blockdata_t>;
+
+static blockdata_v_t send_on_touch_blocks(LocalPlayer *player, Packet &pkt)
 {
 	if (!player || !player->on_touch_blocks)
 		throw std::runtime_error("null ptr");
 
 	// Clear the list
 	auto on_touch_blocks = std::move(player->on_touch_blocks);
+	blockdata_v_t gameevents;
+	gameevents.reserve(on_touch_blocks->size());
 
-	bool map_dirty = false;
+	bool needs_coins_update = false;
+
 	pkt.write(Packet2Server::OnTouchBlock);
 
 	const auto world = player->getWorld().get();
@@ -591,24 +588,14 @@ static bool send_on_touch_blocks(Client *cli, Player *player, Packet &pkt)
 
 				b.tile = 1;
 				world->setBlock(bp, b);
-				map_dirty = true;
 
 				if (b.id == Block::ID_COIN) {
-					GameEvent e(GameEvent::C2G_ON_TOUCH_BLOCK);
-					e.block = new GameEvent::BlockData();
-					e.block->b = b;
-					e.block->pos = bp;
-					cli->sendNewEvent(e);
+					needs_coins_update = true;
+					gameevents.emplace_back(blockdata_t {bp, b});
 				}
 			break;
 			case Block::ID_PIANO:
-				{
-					GameEvent e(GameEvent::C2G_ON_TOUCH_BLOCK);
-					e.block = new GameEvent::BlockData();
-					e.block->b = b;
-					e.block->pos = bp;
-					cli->sendNewEvent(e);
-				}
+				gameevents.emplace_back(blockdata_t {bp, b});
 				break;
 			case Block::ID_SWITCH:
 				pkt.write(bp.X);
@@ -631,7 +618,6 @@ static bool send_on_touch_blocks(Client *cli, Player *player, Packet &pkt)
 					player->checkpoint = bp;
 					b.tile = 1;
 					world->setBlock(player->checkpoint, b);
-					map_dirty = true;
 				}
 				// fall-through
 			case Block::ID_SPIKES:
@@ -644,7 +630,11 @@ static bool send_on_touch_blocks(Client *cli, Player *player, Packet &pkt)
 			break;
 		}
 	} // for
-	return map_dirty;
+
+	if (needs_coins_update)
+		player->updateCoinCount(false);
+
+	return gameevents;
 }
 
 void Client::stepPhysics(float dtime)
@@ -662,17 +652,22 @@ void Client::stepPhysics(float dtime)
 		player->step(dtime);
 	}
 
-	// Process node events
-	bool map_dirty = false;
+	// Process touch events. Should be used for hardcoded only.
+	blockdata_v_t gameevents;
 	{
 		Packet pkt;
-		map_dirty |= send_on_touch_blocks(this, player, pkt);
+		gameevents = send_on_touch_blocks(player, pkt);
 
 		if (pkt.size() > 2) {
 			pkt.write(BLOCKPOS_INVALID); // terminating position
 
 			m_con->send(0, 1, pkt);
 		}
+	}
+	for (const blockdata_t bd : gameevents) {
+		GameEvent e(GameEvent::C2G_ON_TOUCH_BLOCK);
+		e.block = new blockdata_t(bd);
+		sendNewEvent(e);
 	}
 
 	ScriptEventMap *se = player->script_events_to_send.get();
@@ -687,14 +682,6 @@ void Client::stepPhysics(float dtime)
 		se->clear();
 	}
 	m_rl_scriptevents.step(dtime);
-
-	if (map_dirty) {
-		// Triggering an event anyway. Update coin doors.
-		player->updateCoinCount();
-
-		GameEvent e(GameEvent::C2G_MAP_UPDATE);
-		sendNewEvent(e);
-	}
 }
 
 void Client::initScript()
@@ -785,7 +772,7 @@ uint8_t Client::getBlockTile(const Player *player, const Block *b)
 	return 0;
 }
 
-void Client::updateWorld(bool reset_tiles)
+void Client::updateAllBlockTiles(bool reset_tiles)
 {
 	auto player = getPlayerNoLock(m_my_peer_id);
 	auto world = player->getWorld();
@@ -799,6 +786,7 @@ void Client::updateWorld(bool reset_tiles)
 			b->tile = 0;
 		b->tile = getBlockTile(player, b);
 	}
+	world->markAllModified();
 }
 
 void Client::quitToLobby(Player *p_to_keep)

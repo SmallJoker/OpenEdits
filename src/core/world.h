@@ -3,6 +3,7 @@
 #include "core/blockparams.h"
 #include "core/macros.h"
 #include "core/types.h"
+#include <rect.h>
 #include <string>
 #include <map>
 #include <unordered_set>
@@ -95,8 +96,9 @@ constexpr u16 PROTOCOL_VERSION_FAKE_DISK = UINT16_MAX;
 
 class World {
 public:
-	World(World *copy_from);
 	World(const BlockManager *bmgr, const std::string &id);
+	/// The block data is NOT copied!
+	std::shared_ptr<World> copyNewSkeleton() const;
 	~World();
 
 	enum class Method : u8 {
@@ -120,7 +122,6 @@ public:
 			&& y >= 0 && y < m_size.Y;
 	}
 
-	Block *getBlockPtr(blockpos_t pos) const;
 	bool getBlock(blockpos_t pos, Block *block) const;
 	bool setBlock(blockpos_t pos, const Block block);
 	blockpos_t getBlockPos(const Block *b) const;
@@ -147,7 +148,16 @@ public:
 	mutable std::mutex mutex; // used by Server/Client
 	std::unordered_set<BlockUpdate, BlockUpdateHash> proc_queue; // for networking
 
-	bool was_modified = false; //< used by clients to re-render the world
+	static core::rect<u16> make_rect_not_modified()
+	{
+		// Negative width, height
+		return core::rect<u16>(UINT16_MAX, UINT16_MAX, 0, 0);
+	}
+	void markAllModified()
+	{
+		modified_rect = core::rect<u16>(0, 0, UINT16_MAX, UINT16_MAX);
+	}
+	core::rect<u16> modified_rect; //< used by clients to re-render the world
 
 protected:
 	inline Block &getBlockRefNoCheck(const blockpos_t pos) const

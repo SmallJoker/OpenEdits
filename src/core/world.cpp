@@ -1,6 +1,7 @@
 #include "world.h"
 #include "blockmanager.h"
 #include "compressor.h"
+#include "logger.h"
 #include "macros.h"
 #include "operators.h" // PositionRange
 #include "packet.h"
@@ -8,6 +9,8 @@
 #include "worldmeta.h"
 #include <cstring> // memset
 #include "script/scriptevent.h" // static_assert in std::unique_ptr
+
+static Logger logger("World", LL_INFO);
 
 bool BlockUpdate::set(bid_t block_id)
 {
@@ -94,7 +97,7 @@ void IWorldMeta::readCommon(Packet &pkt)
 {
 	uint8_t version = pkt.read<uint8_t>();
 	if (version < 1) {
-		fprintf(stderr, "Invalid IWorldMeta version: %i\n", (int)version);
+		logger(LL_ERROR, "Invalid IWorldMeta version: %i", (int)version);
 		return;
 	}
 
@@ -117,24 +120,24 @@ void IWorldMeta::writeCommon(Packet &pkt) const
 
 // -------------- World class -------------
 
-World::World(World *copy_from) :
-	m_bmgr(copy_from->m_bmgr),
-	m_meta(copy_from->m_meta)
+std::shared_ptr<World> World::copyNewSkeleton() const
 {
-	ASSERT_FORCED(m_bmgr, "BlockManager is required");
-	printf("World: Create %s\n", m_meta->id.c_str());
+	auto world = std::make_shared<World>(m_bmgr, m_meta->id);
+	world->m_meta = m_meta;
+	return world;
 }
 
 World::World(const BlockManager *bmgr, const std::string &id) :
 	m_bmgr(bmgr)
 {
+	modified_rect = make_rect_not_modified();
 	m_meta = std::make_shared<WorldMeta>(id);
-	printf("World: Create %s\n", m_meta->id.c_str());
+	logger(LL_INFO, "Create %s", m_meta->id.c_str());
 }
 
 World::~World()
 {
-	printf("World: Delete %s\n", m_meta->id.c_str());
+	logger(LL_INFO, "Delete %s", m_meta->id.c_str());
 	delete[] m_data;
 }
 
@@ -145,12 +148,12 @@ void World::createEmpty(blockpos_t size)
 	if (m_data)
 		delete[] m_data;
 
+	markAllModified();
 	m_size = size;
 
 	const size_t length = m_size.X * m_size.Y;
 	m_data = new Block[length];
 
-	// Prevents the warning -Wclass-memaccess
 	memset((void *)m_data, 0, length);
 }
 
@@ -179,6 +182,7 @@ void World::read(Packet &pkt)
 		throw std::runtime_error("World signature mismatch");
 
 	Method method = (Method)pkt.read<u8>();
+	logger(LL_DEBUG, "%s method=%d", "read", (int)method);
 
 	switch (method) {
 		case Method::Dummy: break;
@@ -192,6 +196,7 @@ void World::read(Packet &pkt)
 	if (pkt.read<u16>() != VALIDATION)
 		throw std::runtime_error("EOF validation mismatch");
 
+	markAllModified();
 	// good. done
 }
 
@@ -201,6 +206,7 @@ void World::write(Packet &pkt, Method method) const
 
 	pkt.write<u32>(SIGNATURE);
 	pkt.write((u8)method);
+	logger(LL_DEBUG, "%s method=%d", "write", (int)method);
 
 	switch (method) {
 		case Method::Dummy: break;
@@ -346,14 +352,6 @@ void World::writePlain(Packet &pkt_out) const
 	}
 }
 
-Block *World::getBlockPtr(blockpos_t pos) const
-{
-	if (pos.X >= m_size.X || pos.Y >= m_size.Y)
-		return nullptr;
-
-	return &getBlockRefNoCheck(pos);
-}
-
 bool World::getBlock(blockpos_t pos, Block *block) const
 {
 	if (pos.X >= m_size.X || pos.Y >= m_size.Y)
@@ -371,6 +369,7 @@ bool World::setBlock(blockpos_t pos, const Block block)
 		return false;
 
 	getBlockRefNoCheck(pos) = block;
+	modified_rect.addInternalPoint(pos);
 	return true;
 }
 
@@ -428,6 +427,7 @@ Block *World::updateBlock(BlockUpdate bu)
 		if (bu.params != BlockParams::Type::None)
 			m_params.emplace(bu.pos, bu.params);
 	}
+	modified_rect.addInternalPoint(bu.pos);
 
 	return &ref;
 }
@@ -437,9 +437,8 @@ bool World::setBlockTiles(PositionRange &range, bid_t block_id, int tile)
 	using O = PositionRange::Operator;
 
 	const O op = range.op;
-	int sum;
 
-	bool modified = false;
+	core::rect<u16> rect = make_rect_not_modified();
 	blockpos_t pos;
 
 	if (range.type == PositionRange::PRT_ENTIRE_WORLD && op == O::PROP_SET) {
@@ -447,7 +446,7 @@ bool World::setBlockTiles(PositionRange &range, bid_t block_id, int tile)
 		for (Block *b = begin(); b != end(); ++b) {
 			if (b->id == block_id) {
 				b->tile = tile;
-				modified = true;
+				rect.addInternalPoint(getBlockPos(b));
 			}
 		}
 		goto done;
@@ -458,6 +457,7 @@ bool World::setBlockTiles(PositionRange &range, bid_t block_id, int tile)
 		if (b.id != block_id)
 			continue;
 
+		int sum;
 		switch (op) {
 			case O::PROP_SET:
 				b.tile = tile;
@@ -471,12 +471,16 @@ bool World::setBlockTiles(PositionRange &range, bid_t block_id, int tile)
 			default:
 				goto done; // invalid
 		}
-		modified = true;
+		rect.addInternalPoint(pos);
 	}
 
 done:
-	this->was_modified |= modified;
-	return modified;
+	if (!rect.isValid())
+		return false;
+
+	modified_rect.addInternalPoint(rect.UpperLeftCorner);
+	modified_rect.addInternalPoint(rect.LowerRightCorner);
+	return true;
 }
 
 
