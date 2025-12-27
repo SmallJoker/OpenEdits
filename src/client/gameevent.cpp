@@ -1,7 +1,7 @@
 #include "gameevent.h"
 #include "core/logger.h"
 
-static Logger logger("GameEvent", LL_DEBUG);
+static Logger logger("GameEvent", LL_INFO);
 
 GameEvent::~GameEvent()
 {

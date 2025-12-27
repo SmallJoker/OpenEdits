@@ -172,22 +172,34 @@ int Script::l_change_block(lua_State *L)
 			size_t i = luaL_checkint(L, -2) - 1;
 			if (i >= tiles.size())
 				tiles.resize(i + 1);
-			tiles.at(i).is_known_tile = true;
+
+			BlockTile &tile = tiles.at(i);
+			tile.is_known_tile = true;
 
 			{
 				lua_getfield(L, -1, "type");
 				if (!lua_isnil(L, -1))
-					tiles[i].type = read_block_drawtype(L, -1);
-				else if (tiles[i].type == BlockDrawType::Invalid)
-					tiles[i].type = props->pack->default_type;
+					tile.type = read_block_drawtype(L, -1);
+				else if (tile.type == BlockDrawType::Invalid)
+					tile.type = props->pack->default_type;
 				lua_pop(L, 1); // type
 			}
 
 			{
 				lua_getfield(L, -1, "alpha");
 				if (!lua_isnil(L, -1))
-					tiles[i].have_alpha = lua_toboolean(L, -1);
+					tile.have_alpha = lua_toboolean(L, -1);
 				lua_pop(L, 1); // alpha
+			}
+
+			{
+				lua_getfield(L, -1, "override");
+				if (!lua_isnil(L, -1)) {
+					tile.visual_override.enabled = true;
+					tile.visual_override.id = pull_blockid(L, -1).id;
+					tile.visual_override.tile = check_field_int(L, -1, "tile");
+				}
+				lua_pop(L, 1); // override
 			}
 
 			lua_pop(L, 1); // value

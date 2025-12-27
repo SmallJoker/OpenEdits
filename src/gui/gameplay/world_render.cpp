@@ -11,7 +11,7 @@
 #include <IVideoDriver.h>
 #include <SViewFrustum.h>
 
-#if 0
+#if 1
 	#define SANITY_LOG(...) printf(__VA_ARGS__)
 #else
 	#define SANITY_LOG(...) do {} while (0)
@@ -304,19 +304,17 @@ void SceneWorldRender::drawBlocksInView()
 	// also camera->setFar(-camera_pos.Z + 0.1) does not filter them out (bug?)
 	for (int y = upperleft.Y; y <= lowerright.Y; y++)
 	for (int x = upperleft.X; x <= lowerright.X; x++) {
-		Block b;
-		blockpos_t bp(x, y);
-		if (!world->getBlock(bp, &b))
+		bdd.pos = blockpos_t(x, y);
+		if (!world->getBlock(bdd.pos, &bdd.b))
 			continue;
 
-		bdd.pos = blockpos_t(x, y);
-		bdd.b = b;
+		// Let's hope those two get "optimized away"
+		blockpos_t &bp = bdd.pos;
+		Block &b = bdd.b;
+
 		bdd.bulk = nullptr;
 
 		do {
-			if (b.id == 0)
-				break;
-
 			// Unique ID for each appearance type
 			size_t tile_hash = b.tile;
 
@@ -340,7 +338,22 @@ void SceneWorldRender::drawBlocksInView()
 					params.write(pkt);
 					tile_hash = crc32_z(0, pkt.data(), pkt.size());
 				}
+			} else {
+				// Apply visual override
+				const auto props = g_blockmanager->getProps(b.id);
+				if (props) {
+					const auto vo = props->getTile(b).visual_override;
+					if (vo.enabled) {
+						//printf("apply override id=%d tile=%d\n", b.id, b.tile);
+						b.id = vo.id;
+						b.tile = vo.tile;
+						tile_hash = vo.tile;
+					}
+				}
 			}
+
+			if (b.id == 0)
+				break;
 
 			size_t hash_node_id = BlockDrawData::hash(bdd.b.id, tile_hash);
 			bdd.bulk = &bdd.bulk_map[hash_node_id];
@@ -440,11 +453,16 @@ void SceneWorldRender::assignNewBackground(BlockDrawData &bdd)
 
 void SceneWorldRender::drawBlockParams(BlockDrawData &bdd)
 {
+	if (!g_blockmanager->isHardcoded()) {
+		// TODO: Use lookup table
+		return;
+	}
+
 	BlockParams params;
 	switch (bdd.b.id) {
 		case Block::ID_PIANO:
 			if (!bdd.world->getParams(bdd.pos, &params) || params != BlockParams::Type::U8) {
-				SANITY_LOG("Invalid Piano note at pos=(%i,%i)\n", bdd.pos.X, bdd.pos.Y);
+				SANITY_LOG("Invalid %s at pos=(%i,%i)\n", "Piano note", bdd.pos.X, bdd.pos.Y);
 				break;
 			}
 
@@ -469,7 +487,7 @@ void SceneWorldRender::drawBlockParams(BlockDrawData &bdd)
 			if (bdd.b.tile != 0)
 				break;
 			if (!bdd.world->getParams(bdd.pos, &params) || params != BlockParams::Type::U8) {
-				SANITY_LOG("Invalid coin door/gate at pos=(%i,%i)\n", bdd.pos.X, bdd.pos.Y);
+				SANITY_LOG("Invalid %s at pos=(%i,%i)\n", "coin door/gate", bdd.pos.X, bdd.pos.Y);
 				break;
 			}
 
@@ -489,7 +507,7 @@ void SceneWorldRender::drawBlockParams(BlockDrawData &bdd)
 			break;
 		case Block::ID_TELEPORTER:
 			if (!bdd.world->getParams(bdd.pos, &params) || params != BlockParams::Type::Teleporter) {
-				SANITY_LOG("Invalid teleporter at pos=(%i,%i)\n", bdd.pos.X, bdd.pos.Y);
+				SANITY_LOG("Invalid %s at pos=(%i,%i)\n", "teleporter", bdd.pos.X, bdd.pos.Y);
 				break;
 			}
 
@@ -508,6 +526,11 @@ void SceneWorldRender::drawBlockParams(BlockDrawData &bdd)
 			break;
 		case Block::ID_TEXT: {
 			bdd.world->getParams(bdd.pos, &params);
+			if (params != BlockParams::Type::Text) {
+				SANITY_LOG("Invalid %s at pos=(%i,%i)\n", "text", bdd.pos.X, bdd.pos.Y);
+				break;
+			}
+
 			video::ITexture *txt = m_gameplay->generateTexture(*params.text, 0xFFFFFFFF, 0x77000000);
 			auto dim = txt->getOriginalSize();
 

@@ -21,7 +21,7 @@ local blocks_hidden = {
 		id = 50, -- ID_SECRET
 		minimap_color = 0x00000001,
 		tiles = {
-			{ type = env.DRAW_TYPE_SOLID, alpha = true },
+			{ type = env.DRAW_TYPE_SOLID, alpha = true, override = { id = 0, tile = 0} },
 			{ type = env.DRAW_TYPE_SOLID }
 		},
 		on_collide = set_tile_to_1(50),
@@ -37,7 +37,7 @@ local blocks_hidden = {
 		id = 243, -- ID_BLACKFAKE
 		minimap_color = 0xFF000000,
 		tiles = {
-			{ type = env.DRAW_TYPE_ACTION },
+			{ type = env.DRAW_TYPE_ACTION, override = { id = 44, tile = 0} },
 			{ type = env.DRAW_TYPE_ACTION }
 		},
 		on_collide = set_tile_to_1(243),

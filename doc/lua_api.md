@@ -208,11 +208,27 @@ Pack Definition: (table)
  * `env.change_block(id, Block Definition)`
     * The block must first be registered by `env.register_pack`.
 
+**Block Draw Types**
+
+| `DRAW_TYPE_*` | Collides? [1] | alpha OFF [2] | alpha ON [2] | Z [3] |
+|---------------|---------------|---------------|--------------|-------|
+| `*SOLID`      | Yes           | Opaque        | 1 bit        |  2    |
+| `*ACTION`     | No            | 1 bit         | 8 bits       |  2    |
+| `*DECORATION` | No            | 1 bit         | N/A          | -1    |
+| `*BACKGROUND` | Never         | Opaque        | N/A          |  5    |
+
+Notes:
+
+ * [1]: By default. Can be overwritten by `on_collide` except for `*BACKGROUND`.
+ * [2]: Render mode of the tile texture. Value of `(Tile Definition).alpha`.
+ * [3]: Z-Index. Positive = away from the camera.
+   The player is at `0` (default) or `-3` (godmode). (C++: `ZINDEX_LOOKUP`)
+
 Block Definition - regular fields:
 
  * `gui_def`: See [Client GUI API]
  * `minimap_color` (optional, number)
-    * Color of the format `0xAARRGGBB`
+    * Color in the format `0xAARRGGBB`
  * `params` (optional, number)
     * Defines what kind of data can be saved for this block.
     * Warning: Changing this type will truncate existing saved data.
@@ -223,6 +239,8 @@ Block Definition - regular fields:
           Defaults to the draw type specified by the pack.
         * `alpha` (optional, boolean): whether to force-draw the alpha channel.
           By default, this is inherited from the draw type of the tile.
+        * `override` (optional, table): format `{ id = Block ID, tile = number }`
+          Replaces the appearance of the block with the tile of another block.
     * Tile limit: 8.
     * Only foreground blocks (`type != env.DRAW_TYPE_BACKGROUND`) can have >= 1 tile.
  * `viscosity` (optional, number)
@@ -244,3 +262,17 @@ Block Definition - callbacks:
  * `on_intersect_once(tile)` <- `nil`
     * Called once when entering the block.
     * `tile` (number): The tile index of the block
+
+**Guideline for tile changes**
+
+If a block has multiple tiles, the following cases exist:
+
+1. All tiles have the same *physical properties*, e.g. the player never collides.
+2. The *physical properties* are different on at least one tile, i.e. the physics
+   depend on the shown tile.
+
+The *physical properties* depend on `(Tile Definition).type` and `on_collide`.
+Hence, the following rule of thumb exists:
+
+1. The same: The tiles may be changed freely by the client. (`env.world.set_tile`)
+2. Differing: Tile changes must be initiated by the server. ([Script events])

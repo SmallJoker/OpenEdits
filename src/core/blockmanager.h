@@ -50,6 +50,13 @@ struct BlockTile {
 	video::ITexture *texture = nullptr;
 	bool is_known_tile = false; // true when registered by registerPack()
 	bool have_alpha = false; // false: use BlockDrawType
+
+	struct VisualOverride {
+		bid_t id;
+		uint8_t tile;
+		bool enabled = false;
+	};
+	VisualOverride visual_override; // to use the tile of any block
 };
 
 /// Properties of a single block

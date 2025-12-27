@@ -159,7 +159,7 @@ void BlockManager::sanityCheck()
 			if (m_media) {
 				bool ok = m_media->requireAsset(("pack_" + pack->name + ".png").c_str());
 				if (!ok)
-					logger(LL_ERROR, "BlockManager: pack texture '%s' not found\n", pack->name.c_str());
+					logger(LL_ERROR, "Pack texture '%s' not found", pack->name.c_str());
 			}
 
 			if (prop->tile_dependent_physics == -1) {
@@ -177,6 +177,25 @@ void BlockManager::sanityCheck()
 		}
 	}
 
+	// Check visual overrides
+	for (BlockProperties *prop : m_props) {
+		if (!prop)
+			continue;
+
+		for (BlockTile &tile : prop->tiles) {
+			if (!tile.visual_override.enabled)
+				continue;
+
+			const BlockProperties *srcprops = getProps(tile.visual_override.id);
+			if (srcprops && srcprops->tiles.size() > tile.visual_override.tile)
+				continue; // good
+
+			logger(LL_ERROR, "Override source of id=%d, tile=%ld not found",
+				prop->id, &tile - &prop->tiles[0]
+			);
+			tile.visual_override.enabled = false;
+		}
+	}
 }
 
 void BlockManager::populateTextures()
