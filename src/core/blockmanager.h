@@ -42,6 +42,12 @@ struct BlockPack {
 	std::vector<bid_t> block_ids;
 };
 
+enum class TileOverlayType {
+	Text_BottomRight,
+	Invalid
+};
+
+
 /// One of the many possible tiles for a single block
 struct BlockTile {
 	/// Defines the rendering mode of this tile
@@ -51,6 +57,7 @@ struct BlockTile {
 	bool is_known_tile = false; // true when registered by registerPack()
 	bool have_alpha = false; // false: use BlockDrawType
 
+	TileOverlayType overlay = TileOverlayType::Invalid; // optional
 	struct VisualOverride {
 		bid_t id;
 		uint8_t tile;

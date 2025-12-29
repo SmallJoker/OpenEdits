@@ -122,13 +122,27 @@ void SceneMinimap::updateMap()
 
 			auto props = g_blockmanager->getProps(b.id);
 			video::SColor color(0xFFFF0000); // default red
-			if (props) {
-				auto tile = props->getTile(b);
-				if (tile.type != BlockDrawType::Solid)
-					break;
-				color = props->color;
+			BlockTile tile;
+			if (!props)
+				goto set_pixel;
+
+			tile = props->getTile(b);
+			if (tile.type != BlockDrawType::Solid)
+				break;
+
+			{
+				// Apply visual override
+				const auto vo = tile.visual_override;
+				if (vo.enabled) {
+					b.id = vo.id;
+					b.tile = vo.tile;
+					props = g_blockmanager->getProps(b.id);
+					tile = props->getTile(b);
+				}
 			}
 
+			color = props->color;
+set_pixel:
 			img->setPixel(x, y, color);
 			have_solid_above = true;
 		} while (0);

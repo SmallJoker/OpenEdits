@@ -6,6 +6,7 @@
 #include "core/timer.h"
 #include "core/world.h" // LobbyWorld
 #include "gameevent.h"
+#include "tilecache.h"
 #include <string>
 
 class ClientMedia;
@@ -133,8 +134,7 @@ private:
 	ClientStartData m_start_data;
 	peer_t m_my_peer_id = 0;
 
-	std::map<size_t, uint8_t> m_tiles_cache;
-	bool m_tiles_map_dirty = false;
+	TileCacheManager m_tile_cache_mgr;
 
 	Auth m_auth;
 	ClientMedia *m_media = nullptr;

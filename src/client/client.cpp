@@ -102,6 +102,8 @@ void Client::prepareScript(ClientScript *script, bool need_audiovisuals)
 	m_script->setMediaMgr(m_media);
 	m_script->setClient(this);
 	ASSERT_FORCED(m_script->init(), "No future.");
+
+	m_tile_cache_mgr.init(m_script);
 }
 
 void Client::connect()
@@ -416,19 +418,7 @@ bool Client::updateBlock(BlockUpdate bu)
 
 void Client::clearTileCacheFor(bid_t block_id)
 {
-	const size_t size_before = m_tiles_cache.size();
-	for (auto it = m_tiles_cache.begin(); it != m_tiles_cache.end(); ) {
-		if ((it->first & 0xFFFF) == block_id) {
-			// delete
-			m_tiles_cache.erase(it++);
-		} else {
-			// keep
-			++it;
-		}
-	}
-
-	if (m_tiles_cache.size() != size_before)
-		getWorld()->markAllModified();
+	m_tile_cache_mgr.clearCacheFor(getWorld().get(), block_id);
 }
 
 
@@ -710,6 +700,10 @@ error:
 
 uint8_t Client::getBlockTile(const Player *player, const Block *b)
 {
+	if (!m_bmgr->isHardcoded()) {
+		return m_tile_cache_mgr.getOrCache(player, b).tile;
+	}
+
 	auto world = player->getWorld();
 
 	auto get_params = [&world, b] () {
@@ -717,30 +711,6 @@ uint8_t Client::getBlockTile(const Player *player, const Block *b)
 		world->getParams(world->getBlockPos(b), &params);
 		return params;
 	};
-
-	if (!m_bmgr->isHardcoded()) {
-		auto props = m_bmgr->getProps(b->id);
-		if (!props || props->tiles.size() <= 1 || !props->haveGetVisuals())
-			return b->tile;
-
-		// Retrieve from script
-		BlockParams params = get_params();
-		Packet pkt;
-		params.write(pkt);
-		size_t hash = 0
-			| (size_t)(b->id)
-			| (size_t)(b->tile) << 16
-			| crc32_z(0, pkt.data(), pkt.size()) << 24;
-
-		auto it = m_tiles_cache.find(hash);
-		if (it != m_tiles_cache.end())
-			return it->second;
-
-		uint8_t tile = b->tile;
-		m_script->getVisuals(props, &tile, params);
-		m_tiles_cache.emplace(hash, tile);
-		return tile;
-	}
 
 	switch (b->id) {
 		case Block::ID_SPIKES:
@@ -780,6 +750,9 @@ void Client::updateAllBlockTiles(bool reset_tiles)
 	if (m_script)
 		m_script->setPlayer(player);
 
+	if (reset_tiles)
+		m_tile_cache_mgr.clearAll();
+
 	// Restore visuals to Block::tile after new world data
 	for (Block *b = world->begin(); b < world->end(); ++b) {
 		if (reset_tiles)
@@ -805,7 +778,7 @@ void Client::quitToLobby(Player *p_to_keep)
 		p_to_keep->setWorld(nullptr);
 	}
 
-	m_tiles_cache.clear();
+	m_tile_cache_mgr.clearAll();
 
 	m_state = ClientState::LobbyIdle;
 

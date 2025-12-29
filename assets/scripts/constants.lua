@@ -62,6 +62,9 @@ if gui then
 	gui.ELMT_TABLE   = 1
 	gui.ELMT_TEXT    = 5
 	gui.ELMT_INPUT   = 6
+
+	-- blockmanager.h / TileOverlayType
+	gui.TOVT_TEXT_BR = 0
 end
 
 local old_register = env.register_event

@@ -1,5 +1,6 @@
 #include "clientscript.h"
 #include "client.h" // for clearTileCacheFor
+#include "tilecache.h"
 #include "core/script/playerref.h"
 #include "core/script/script_utils.h"
 #include "core/blockmanager.h"
@@ -77,30 +78,48 @@ int ClientScript::implWorldSetTile(PositionRange range, bid_t block_id, int tile
 	return 1;
 }
 
-void ClientScript::getVisuals(const BlockProperties *props, uint8_t *tile, const BlockParams &params)
+void ClientScript::getVisuals(const BlockProperties *props, const BlockParams &params,
+	TileCacheEntry *tce)
 {
-	if (!props || !tile)
+	if (!props || !tce)
 		return;
-
-	if (props->tile_dependent_physics) {
-		// must be updated by the server!
-		logger(LL_WARN, "%s: not allowed for id=%d", __func__, props->id);
+	if (props->ref_get_visuals == LUA_NOREF)
 		return;
-	}
 
 	lua_State *L = m_lua;
 	m_last_block_id = props->id;
 
-	lua_pushinteger(L, *tile);
+	lua_pushinteger(L, tce->tile);
 	int nargs = 1 + writeBlockParams(m_lua, params);
-	int top = callFunction(props->ref_get_visuals, 1, "get_visuals", nargs, true);
+	int top = callFunction(props->ref_get_visuals, 2, "get_visuals", nargs, true);
 	if (!top)
 		return;
 
+	int new_tile = tce->tile;
+
 	if (lua_isnumber(L, -1)) {
-		*tile = lua_tonumber(L, -1);
-		logger(LL_DEBUG, "%s: id=%d -> tile=%d\n", __func__, props->id, *tile);
+		new_tile = lua_tonumber(L, -1);
 	}
+	if (!lua_isnil(L, -2)) {
+		std::string str = lua_tostring(L, -2);
+		if (str.size() > 200) {
+			logger(LL_WARN, "%s: overlay str too long for id=%d", __func__, props->id);
+			str = str.substr(0, 200);
+		}
+		tce->overlay = std::move(str);
+	}
+
+	if (new_tile != tce->tile) {
+		if (props->tile_dependent_physics) {
+			// tile must be changed by the server!
+			luaL_error(L, "Block tile change must be initiated by server");
+		}
+
+		tce->tile = new_tile;
+	}
+
+	logger(LL_DEBUG, "%s: id=%d -> tile=%d, str=%s", __func__,
+		props->id, tce->tile, tce->overlay.c_str());
 
 	lua_settop(L, top);
 }

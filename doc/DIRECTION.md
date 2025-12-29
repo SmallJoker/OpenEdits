@@ -12,13 +12,14 @@ To-do:
     * The return value is sent in an ACK-like packet when `pkt[1] != 0`
     * Useful for chat commands, bot programming and saner client communication
  * Private worlds
- * Achievements: death counter, timer
- * Modding:
-    * `on_trigger` server-side callbacks
+ * Achievements: death counter, timer (Lua side)
+ * Modding API (Lua)
+    * Events with more than 1 payload
+    * Per-player and per-world states (shared on join)
     * Player-specific gravity and speed modifiers
-    * Ensure correct client-side prediction
-    * Preserve unknown blocks + data
+    * Ensure correct client-side prediction by sanity checks (physics dependent tile)
     * Movable objects, e.g. for mobs.
+    * HUD API: Text, blocks, other items. (e.g. to show collectibles)
  * Moderator tools in the main menu
     * Event logger + "Inbox"
     * IP/user bans or mutes
@@ -31,7 +32,7 @@ To-do:
  * Anti-Cheat
     * Opt-in by chat commands
     * Confirmation by server-side physics simulation
-    * Abort simulation near modified blocks
+    * Abort simulation near modified blocks (tile number)
 
 Maybe:
 
@@ -40,7 +41,7 @@ Maybe:
 
 ### Code structure
 
-1. No GUI dependencies in `Client` (use `GameEvent`)
+1. No dependencies from GUI to `Client` (use `GameEvent`)
 2. No dependencies between `Client` and `Server`
 
 Server-only build:
@@ -50,7 +51,7 @@ Server-only build:
 
 ### Graphics
 
-1. >= 32x32 px textures
+1. \>= 32x32 px textures
 2. Where it matters, use [color-blind friendly colors](https://jfly.uni-koeln.de/html/manuals/pdf/color_blind.pdf)
 
 Helpful GIMP tools for texture creation:

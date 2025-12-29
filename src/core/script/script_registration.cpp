@@ -40,6 +40,14 @@ static BlockDrawType read_block_drawtype(lua_State *L, int idx)
 	return (BlockDrawType)type;
 }
 
+static TileOverlayType read_tile_overlay_type(lua_State *L, int idx)
+{
+	int type = luaL_checkint(L, idx);
+	if (type < 0 || type >= (int)TileOverlayType::Invalid)
+		luaL_error(L, "Invalid TileOverlayType value");
+	return (TileOverlayType)type;
+}
+
 // -------------- Script class functions -------------
 
 int Script::l_include(lua_State *L)
@@ -195,11 +203,19 @@ int Script::l_change_block(lua_State *L)
 			{
 				lua_getfield(L, -1, "override");
 				if (!lua_isnil(L, -1)) {
+					luaL_checktype(L, -1, LUA_TTABLE);
 					tile.visual_override.enabled = true;
 					tile.visual_override.id = pull_blockid(L, -1).id;
 					tile.visual_override.tile = check_field_int(L, -1, "tile");
 				}
 				lua_pop(L, 1); // override
+			}
+
+			{
+				lua_getfield(L, -1, "overlay");
+				if (!lua_isnil(L, -1))
+					tile.overlay = read_tile_overlay_type(L, -1);
+				lua_pop(L, 1); // overlay
 			}
 
 			lua_pop(L, 1); // value

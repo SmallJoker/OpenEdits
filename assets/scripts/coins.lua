@@ -71,12 +71,21 @@ local blocks_coins = {
 		},
 		params = env.PARAMS_TYPE_U8,
 		tiles = {
-			{ type = env.DRAW_TYPE_SOLID },
+			{
+				type = env.DRAW_TYPE_SOLID,
+				--params_mask = 0x000000FF, -- "Which unique params are needed?"
+				overlay = gui.TOVT_TEXT_BR
+			},
 			{ type = env.DRAW_TYPE_SOLID, alpha = true }
 		},
 		get_visuals = function(tile, coins)
+			-- Only called when coming into visible range and there is nothing cached
+			-- The returned tile can only be changed if they're not "physics dependent"
 			local pd = player_data[player:hash()]
-			return pd.coins >= coins and 1 or 0
+			if pd.coins >= coins then
+				return 1
+			end
+			return 0, coins - pd.coins
 		end,
 		on_collide = function(bx, by, is_x)
 			-- Called on every player! Do not check against the local `tile`.

@@ -3,6 +3,7 @@
 #include "core/script/script.h"
 
 class Client;
+struct TileCacheEntry;
 
 class ClientScript : public Script {
 public:
@@ -29,7 +30,8 @@ protected:
 	// -------- Callbacks
 public:
 	// Returns the tile number (for now)
-	void getVisuals(const BlockProperties *props, uint8_t *tile, const BlockParams &params);
+	void getVisuals(const BlockProperties *props, const BlockParams &params,
+		TileCacheEntry *tce);
 
 protected:
 	Player *m_my_player = nullptr;
