@@ -278,6 +278,8 @@ void Client::pkt_Join(Packet &pkt)
 		GameEvent e(GameEvent::C2G_JOIN);
 		sendNewEvent(e);
 
+		// Force update all
+		m_tile_cache_mgr.removed_caches_counter = -1;
 		updateAllBlockTiles(false);
 	}
 

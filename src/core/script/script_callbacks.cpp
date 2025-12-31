@@ -9,7 +9,7 @@ using namespace ScriptUtils;
 
 static Logger &logger = script_logger;
 
-int Script::callFunction(int ref, int nres, const char *dbg, int nargs, bool is_block)
+bool Script::callFunction(int ref, int nres, const char *dbg, int nargs, bool is_block)
 {
 	if (ref <= LUA_NOREF) {
 		logger(LL_DEBUG, "callback '%s' = %d", dbg, ref);
@@ -20,6 +20,7 @@ int Script::callFunction(int ref, int nres, const char *dbg, int nargs, bool is_
 
 	int top = lua_gettop(L) - nargs;
 	lua_rawgeti(L, LUA_REGISTRYINDEX, CUSTOM_RIDX_TRACEBACK);
+	// `lua_insert` could be used here but might be less efficient.
 
 	lua_rawgeti(L, LUA_REGISTRYINDEX, ref);
 	luaL_checktype(L, -1, LUA_TFUNCTION);
@@ -27,13 +28,14 @@ int Script::callFunction(int ref, int nres, const char *dbg, int nargs, bool is_
 		Use the earlier pushed values as function args
 		-4 : optional arg 1
 		-3 : optional arg 2
-		-2 : traceback
-		-1 : function
+		-2 : traceback function
+		-1 : function to call
 	*/
 	for (int i = 0; i < nargs; ++i)
 		lua_pushvalue(L, -2 - nargs);
 
-	if (lua_pcall(L, nargs, nres, (top + nargs) + 1)) {
+	bool success = (lua_pcall(L, nargs, nres, (top + nargs) + 1) == LUA_OK);
+	if (!success) {
 		if (is_block) {
 			logger(LL_ERROR, "%s block=%d failed: %s\n",
 				dbg, m_last_block_id,
@@ -45,11 +47,11 @@ int Script::callFunction(int ref, int nres, const char *dbg, int nargs, bool is_
 				lua_tostring(L, -1)
 			);
 		}
-		nres = 0; // pop function + error msg
+		nres = 0; // to pop all arguments and returned values
 	}
 	if (nres == 0)
 		lua_settop(L, top);
-	return top;
+	return success;
 }
 
 void Script::onIntersect(const BlockProperties *props)

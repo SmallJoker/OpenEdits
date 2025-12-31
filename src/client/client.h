@@ -90,9 +90,11 @@ private:
 
 	uint8_t getBlockTile(const Player *player, const Block *b);
 
+public:
 	/// Updates all tiles
 	void updateAllBlockTiles(bool reset_tiles);
 
+private:
 	void quitToLobby(Player *p_to_keep);
 
 	void pkt_Quack(Packet &pkt);

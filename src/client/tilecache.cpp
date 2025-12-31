@@ -59,6 +59,8 @@ TileCacheEntry TileCacheManager::getOrCache(const Player *player, const Block *b
 	if (it != m_cache.end())
 		return it->second;
 
+	this->cache_miss_counter++,
+
 	// Add to cache
 	it = m_cache.emplace(hash, TileCacheEntry()).first;
 
@@ -81,6 +83,8 @@ void TileCacheManager::clearCacheFor(World *world, bid_t block_id)
 		}
 	}
 
-	if (m_cache.size() != size_before)
+	if (m_cache.size() != size_before) {
+		removed_caches_counter += size_before - m_cache.size();
 		world->markAllModified();
+	}
 }

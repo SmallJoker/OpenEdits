@@ -717,9 +717,13 @@ uint8_t Client::getBlockTile(const Player *player, const Block *b)
 			return get_params().param_u8;
 		case Block::ID_SECRET:
 		case Block::ID_BLACKFAKE:
+			if (uint8_t tile = b->tile)
+				return tile;
 			return player->godmode;
 		case Block::ID_TELEPORTER:
 			return get_params().teleporter.rotation;
+		case Block::ID_COIN:
+			return b->tile;
 		case Block::ID_COINDOOR:
 		case Block::ID_COINGATE:
 			return player->coins >= get_params().param_u8;
@@ -744,8 +748,12 @@ uint8_t Client::getBlockTile(const Player *player, const Block *b)
 
 void Client::updateAllBlockTiles(bool reset_tiles)
 {
+	const bool is_hardcoded = m_bmgr->isHardcoded();
+
 	auto player = getPlayerNoLock(m_my_peer_id);
 	auto world = player->getWorld();
+
+	SimpleLock lock(world->mutex);
 
 	if (m_script)
 		m_script->setPlayer(player);
@@ -753,13 +761,21 @@ void Client::updateAllBlockTiles(bool reset_tiles)
 	if (reset_tiles)
 		m_tile_cache_mgr.clearAll();
 
+	if (!is_hardcoded && m_tile_cache_mgr.removed_caches_counter == 0)
+		return; // nothing to update
+
+	m_tile_cache_mgr.cache_miss_counter = 0;
+	m_tile_cache_mgr.removed_caches_counter = 0;
+
 	// Restore visuals to Block::tile after new world data
 	for (Block *b = world->begin(); b < world->end(); ++b) {
 		if (reset_tiles)
 			b->tile = 0;
 		b->tile = getBlockTile(player, b);
 	}
-	world->markAllModified();
+	if (is_hardcoded || m_tile_cache_mgr.cache_miss_counter > 0) {
+		world->markAllModified();
+	}
 }
 
 void Client::quitToLobby(Player *p_to_keep)

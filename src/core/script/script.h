@@ -95,10 +95,10 @@ public:
 	/// Returns a valid value of BlockProperties::CollisionType
 	int onCollide(CollisionInfo ci);
 protected:
-	/// If `nres == 0`: stack is reset automatically
-	/// On success: returns the old top
-	/// On error: resets the stack and returns 0
-	int callFunction(int ref, int nres, const char *dbg, int nargs, bool is_block = false);
+	/// Returns `true` on success
+	/// On success with `nargs > 0`, `lua_settop` must be called manually.
+	/// The returned arguments are at -nargs, -nargs+1, -nargs+2, ...
+	bool callFunction(int ref, int nres, const char *dbg, int nargs, bool is_block = false);
 
 
 	// -------- World / events

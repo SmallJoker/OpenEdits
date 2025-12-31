@@ -28,7 +28,15 @@ public:
 
 	TileCacheEntry getOrCache(const Player *player, const Block *b);
 	void clearCacheFor(World *world, bid_t block_id);
-	void clearAll() { m_cache.clear(); }
+	void clearAll() {
+		removed_caches_counter += m_cache.size();
+		m_cache.clear();
+	}
+
+	/// How many tiles that had to be re-cached (0 = world not modified)
+	size_t cache_miss_counter = 0;
+	/// How many cache entries that were removed on purpose
+	size_t removed_caches_counter = 0;
 
 private:
 	ClientScript *m_script = nullptr;

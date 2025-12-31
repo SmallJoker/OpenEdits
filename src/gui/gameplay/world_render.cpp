@@ -208,7 +208,8 @@ struct BlockDrawData {
 
 void SceneWorldRender::drawBlocksInView()
 {
-	auto world = m_gui->getClient()->getWorld();
+	Client *client = m_gui->getClient();
+	auto world = client->getWorld();
 	if (!world)
 		return;
 
@@ -240,9 +241,9 @@ void SceneWorldRender::drawBlocksInView()
 
 	//printf("center: %i, %i, %i, %i\n", x_center, y_center, x_extent, y_extent);
 
-	auto player = m_gui->getClient()->getMyPlayer();
-	if (!player)
-		return;
+	// TODO: It is only necessary to update Block IDs that were invalidated by
+	// 'env.world.update_tiles'. That will pay out in large worlds.
+	client->updateAllBlockTiles(false);
 
 	SimpleLock lock(world->mutex);
 	const auto world_size = world->getSize();
@@ -297,7 +298,7 @@ void SceneWorldRender::drawBlocksInView()
 	const bool is_hardcoded = g_blockmanager->isHardcoded();
 
 	BlockDrawData bdd;
-	bdd.player = player.ptr();
+	bdd.player = client->getMyPlayer().ptr();
 	bdd.world = world.get();
 
 	// This is very slow. Isn't there a faster way to draw stuff?

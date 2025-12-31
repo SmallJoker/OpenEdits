@@ -90,18 +90,20 @@ void ClientScript::getVisuals(const BlockProperties *props, const BlockParams &p
 	m_last_block_id = props->id;
 
 	lua_pushinteger(L, tce->tile);
-	int nargs = 1 + writeBlockParams(m_lua, params);
+	int nargs = 1 + writeBlockParams(L, params);
 	int top = callFunction(props->ref_get_visuals, 2, "get_visuals", nargs, true);
 	if (!top)
 		return;
 
 	int new_tile = tce->tile;
 
-	if (lua_isnumber(L, -1)) {
-		new_tile = lua_tonumber(L, -1);
+	// First return value @ -2
+	if (lua_isnumber(L, -2)) {
+		new_tile = lua_tonumber(L, -2);
 	}
-	if (!lua_isnil(L, -2)) {
-		std::string str = lua_tostring(L, -2);
+	// Second return value @ -1
+	if (!lua_isnil(L, -1)) {
+		std::string str = lua_tostring(L, -1);
 		if (str.size() > 200) {
 			logger(LL_WARN, "%s: overlay str too long for id=%d", __func__, props->id);
 			str = str.substr(0, 200);

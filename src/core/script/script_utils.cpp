@@ -117,7 +117,8 @@ void dump_args(lua_State *L, FILE *file, bool details)
 			fprintf(file, "\t%s", str);
 	}
 	if (!details)
-		puts("");
+		fputc('\n', file);
+	fflush(file);
 }
 
 } // namespace

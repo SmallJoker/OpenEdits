@@ -8,7 +8,7 @@ EV_COINS = env.register_event(100 + env.SEF_HAVE_ACTOR, 0, env.PARAMS_TYPE_U8,
 	function(count)
 		if not env.is_me() then
 			-- Client: do not let the server overwrite our data
-			player_data[env.player:hash()].coins = count
+			player_data[player:hash()].coins = count
 		end
 		print(("@%s | coins of %s: %d"):format(
 			(env.server and "server" or "client"),
