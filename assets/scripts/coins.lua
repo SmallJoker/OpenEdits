@@ -70,11 +70,15 @@ local blocks_coins = {
 			end,
 		},
 		params = env.PARAMS_TYPE_U8,
+		overlay = {
+			type = gui.TOVT_TEXT_BR,
+			fg_color = 0xFF000000,
+			bg_color = 0xFFEECC00,
+		},
 		tiles = {
 			{
 				type = env.DRAW_TYPE_SOLID,
 				--params_mask = 0x000000FF, -- "Which unique params are needed?"
-				overlay = gui.TOVT_TEXT_BR
 			},
 			{ type = env.DRAW_TYPE_SOLID, alpha = true }
 		},

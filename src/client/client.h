@@ -94,6 +94,9 @@ public:
 	/// Updates all tiles
 	void updateAllBlockTiles(bool reset_tiles);
 
+	TileCacheManager &getTileCacheMgr()
+	{ return m_tile_cache_mgr; }
+
 private:
 	void quitToLobby(Player *p_to_keep);
 

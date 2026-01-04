@@ -125,6 +125,7 @@ public:
 	bool getBlock(blockpos_t pos, Block *block) const;
 	bool setBlock(blockpos_t pos, const Block block);
 	blockpos_t getBlockPos(const Block *b) const;
+	const Block *getBlockPtr(blockpos_t pos) const;
 
 	bool checkUpdateBlockNeeded(BlockUpdate &bu);
 	Block *updateBlock(BlockUpdate bu);

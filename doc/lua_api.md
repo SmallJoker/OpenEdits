@@ -243,23 +243,32 @@ Block Definition - regular fields:
           Replaces the appearance of the block with the tile of another block.
     * Tile limit: 8.
     * Only foreground blocks (`type != env.DRAW_TYPE_BACKGROUND`) can have >= 1 tile.
+ * `overlay` (optional, table)
+    * Defines the appearance of the overlay value returned by `get_visuals`.
+    * Fields:
+        * `type` (number): one of `gui.TOVT_*` (TODO)
+        * `fg_color` (optional, number): foreground color of the text
+        * `bg_color` (optional, number): background color of the text
  * `viscosity` (optional, number)
     * Higher values slow the player down more
     * Default: `1.0`
 
 Block Definition - callbacks:
 
- * `get_visuals(tile, ...)` -> `int`/`nil`
-    * Used by client only
+ * `get_visuals(tile, ...)` -> (multiple)
+    * Used by client only. This may be trigged by `env.world.update_tiles` and
+      the world rendering functions.
     * `tile` (number): current tile
     * `...`: Block Parameters (variable)
-    * Must return the new tile number. Triggered by `env.world.update_tiles`.
- * `on_collide(bx, by, is_x)` <- `env.COLLISION_TYPE_*`/`nil`
+    * Return values:
+        * (int): New tile number. See [Guideline for tile changes] below.
+        * (optional, string|int): Overlay value of the tile
+ * `on_collide(bx, by, is_x)` -> `env.COLLISION_TYPE_*`/`nil`
     * Called when colliding with the block at position `(bx, by)`.
     * `is_x` (boolean): Indicates the direction of collision
- * `on_intersect()` <- `nil`
+ * `on_intersect()` -> `nil`
     * Called while the player's center position is within the block.
- * `on_intersect_once(tile)` <- `nil`
+ * `on_intersect_once(tile)` -> `nil`
     * Called once when entering the block.
     * `tile` (number): The tile index of the block
 

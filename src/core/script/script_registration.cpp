@@ -211,17 +211,30 @@ int Script::l_change_block(lua_State *L)
 				lua_pop(L, 1); // override
 			}
 
-			{
-				lua_getfield(L, -1, "overlay");
-				if (!lua_isnil(L, -1))
-					tile.overlay = read_tile_overlay_type(L, -1);
-				lua_pop(L, 1); // overlay
-			}
-
 			lua_pop(L, 1); // value
 		}
 	} // else: 1 tile with default type
 	lua_pop(L, 1);
+
+	lua_getfield(L, -1, "overlay");
+	if (!lua_isnil(L, -1)) {
+		luaL_checktype(L, -1, LUA_TTABLE);
+
+		lua_getfield(L, -1, "type");
+		props->overlay.type = read_tile_overlay_type(L, -1);
+		lua_pop(L, 1);
+
+		lua_getfield(L, -1, "fg_color");
+		if (!lua_isnil(L, -1))
+			props->overlay.fg_color = luaL_checkinteger(L, -1);
+		lua_pop(L, 1);
+
+		lua_getfield(L, -1, "bg_color");
+		if (!lua_isnil(L, -1))
+			props->overlay.bg_color = luaL_checkinteger(L, -1);
+		lua_pop(L, 1);
+	}
+	lua_pop(L, 1); // overlay
 
 
 	// ---------- GUI

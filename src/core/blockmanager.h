@@ -57,7 +57,6 @@ struct BlockTile {
 	bool is_known_tile = false; // true when registered by registerPack()
 	bool have_alpha = false; // false: use BlockDrawType
 
-	TileOverlayType overlay = TileOverlayType::Invalid; // optional
 	struct VisualOverride {
 		bid_t id;
 		uint8_t tile;
@@ -86,6 +85,14 @@ struct BlockProperties {
 	void setTiles(std::vector<BlockDrawType> types);
 	BlockTile getTile(const Block b) const;
 	bool isBackground() const { return tiles[0].type == BlockDrawType::Background; }
+
+	struct Overlay {
+		TileOverlayType type = TileOverlayType::Invalid; // optional
+		// Colors: 0xAARRGGBB
+		uint32_t fg_color = 0xFFFFFFFF;
+		uint32_t bg_color = 0xFF000000;
+	};
+	Overlay overlay;
 
 	// -------------- Physics -------------
 

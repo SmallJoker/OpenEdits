@@ -363,10 +363,9 @@ void SceneWorldRender::drawBlocksInView()
 				assignNewForeground(bdd);
 			}
 
-			// TODO: Draw by Script-defined appearance!!
-			drawBlockParams(bdd);
-
 			bdd.bulk->node->addTile({x, -y});
+
+			drawBlockParams(bdd);
 		} while (false);
 
 
@@ -455,7 +454,33 @@ void SceneWorldRender::assignNewBackground(BlockDrawData &bdd)
 void SceneWorldRender::drawBlockParams(BlockDrawData &bdd)
 {
 	if (!g_blockmanager->isHardcoded()) {
-		// TODO: Use lookup table
+		TileCacheManager &tcache = m_gui->getClient()->getTileCacheMgr();
+		const Block *b = bdd.world->getBlockPtr(bdd.pos);
+
+		const TileCacheEntry entry = tcache.getOrCache(b);
+		if (entry.overlay.empty())
+			return;
+
+		DEBUG_LOG("ADD OVERLAY @ %d,%d str=%s\n",
+			bdd.pos.X, bdd.pos.Y, entry.overlay.c_str()
+		);
+
+		const size_t upper_hash = 0
+			| (size_t)0xFF // any tile
+			| std::hash<std::string>{}(entry.overlay) << 8;
+		const size_t hash_node_id = BlockDrawData::hash(bdd.b.id, upper_hash);
+
+		auto overlay = &bdd.bulk_map[hash_node_id];
+		if (!overlay->node) {
+			const BlockProperties *props = g_blockmanager->getProps(bdd.b.id);
+			auto texture = m_gameplay->generateTexture(
+				entry.overlay.c_str(),
+				props->overlay.fg_color,
+				props->overlay.bg_color
+			);
+			overlay->node = drawBottomLeftText(texture);
+		}
+		overlay->node->addTile({bdd.pos.X, -bdd.pos.Y});
 		return;
 	}
 

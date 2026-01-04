@@ -385,6 +385,13 @@ blockpos_t World::getBlockPos(const Block *b) const
 	return pos;
 }
 
+const Block *World::getBlockPtr(blockpos_t pos) const
+{
+	if (pos.X >= m_size.X || pos.Y >= m_size.Y)
+		return nullptr;
+	return &getBlockRefNoCheck(pos);
+}
+
 bool World::checkUpdateBlockNeeded(BlockUpdate &bu)
 {
 	if (bu.pos.X >= m_size.X || bu.pos.Y >= m_size.Y)

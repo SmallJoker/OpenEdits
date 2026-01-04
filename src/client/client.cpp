@@ -102,8 +102,6 @@ void Client::prepareScript(ClientScript *script, bool need_audiovisuals)
 	m_script->setMediaMgr(m_media);
 	m_script->setClient(this);
 	ASSERT_FORCED(m_script->init(), "No future.");
-
-	m_tile_cache_mgr.init(m_script);
 }
 
 void Client::connect()
@@ -418,7 +416,7 @@ bool Client::updateBlock(BlockUpdate bu)
 
 void Client::clearTileCacheFor(bid_t block_id)
 {
-	m_tile_cache_mgr.clearCacheFor(getWorld().get(), block_id);
+	m_tile_cache_mgr.clearCacheFor(block_id);
 }
 
 
@@ -701,7 +699,7 @@ error:
 uint8_t Client::getBlockTile(const Player *player, const Block *b)
 {
 	if (!m_bmgr->isHardcoded()) {
-		return m_tile_cache_mgr.getOrCache(player, b).tile;
+		return m_tile_cache_mgr.getOrCache(b).tile;
 	}
 
 	auto world = player->getWorld();
@@ -794,7 +792,7 @@ void Client::quitToLobby(Player *p_to_keep)
 		p_to_keep->setWorld(nullptr);
 	}
 
-	m_tile_cache_mgr.clearAll();
+	m_tile_cache_mgr.reset();
 
 	m_state = ClientState::LobbyIdle;
 

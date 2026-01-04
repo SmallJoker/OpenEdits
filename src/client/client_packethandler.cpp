@@ -235,6 +235,7 @@ void Client::pkt_WorldData(Packet &pkt)
 	// World kept alive by at least one player (-> me)
 	for (auto &p : m_players)
 		p.second->setWorld(world);
+	m_tile_cache_mgr.init(m_script, world);
 
 	{
 		GameEvent e(GameEvent::C2G_META_UPDATE);
@@ -457,9 +458,6 @@ void Client::pkt_PlaceBlock(Packet &pkt)
 			b->tile = getBlockTile(player.ptr(), b);
 	}
 
-
-	world_lock.unlock();
-
 	player->updateCoinCount(false);
 }
 
@@ -471,6 +469,9 @@ void Client::pkt_ScriptEvent(Packet &pkt)
 		return; // incompatible
 
 	auto world = getMyPlayer()->getWorld();
+	SimpleLock world_lock(world->mutex);
+
+	// TODO: Use a script lock because this runs in a separate thread.
 
 	// Similar to `Server::pkt_ScriptEvent` but with peer_id + Event
 	auto *smgr = m_script->getSEMgr();

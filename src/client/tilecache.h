@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/types.h" // bid_t
+#include "core/types.h" // bid_t, blockpos_t
 #include <map>
 #include <stdint.h>
 #include <string>
@@ -11,6 +11,7 @@ class ClientScript;
 class Player;
 class World;
 struct Block;
+struct BlockParams;
 
 struct TileCacheEntry {
 	TileCacheEntry() {}
@@ -21,16 +22,22 @@ struct TileCacheEntry {
 	std::string overlay;
 };
 
+using paramshash_t = uint32_t;
+
 class TileCacheManager {
 public:
 	TileCacheManager() {}
-	void init(ClientScript *script);
+	void init(ClientScript *script, RefCnt<World> world);
+	void reset();
 
-	TileCacheEntry getOrCache(const Player *player, const Block *b);
-	void clearCacheFor(World *world, bid_t block_id);
+	TileCacheEntry getOrCache(const Block *b);
+	void clearCacheFor(bid_t block_id);
 	void clearAll() {
 		removed_caches_counter += m_cache.size();
 		m_cache.clear();
+
+		m_params_hashes.clear();
+		params_hash_cache_eff = 0;
 	}
 
 	/// How many tiles that had to be re-cached (0 = world not modified)
@@ -38,9 +45,17 @@ public:
 	/// How many cache entries that were removed on purpose
 	size_t removed_caches_counter = 0;
 
+	/// Positive = the cache is useful.
+	int64_t params_hash_cache_eff = 0;
+
 private:
+	/// Intended to skip BlockParams hashing. size=(width * height)
+	std::vector<paramshash_t> m_params_hashes;
+	bool getParamsHash(const Block *b, BlockParams &params, paramshash_t *hash_out);
+
 	ClientScript *m_script = nullptr;
 	const BlockManager *m_bmgr = nullptr;
+	RefCnt<World> m_world;
 
 	// TODO: Perform a periodic cleanup
 
