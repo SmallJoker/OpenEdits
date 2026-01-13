@@ -129,6 +129,8 @@ public:
 
 	bool checkUpdateBlockNeeded(BlockUpdate &bu);
 	Block *updateBlock(BlockUpdate bu);
+	/// IMPORTANT! 'checkUpdateBlockNeeded' must guard this call!
+	Block &updateBlockNoCheck(BlockUpdate bu);
 	bool setBlockTiles(PositionRange &range, bid_t block_id, int tile);
 
 	// BlockParams must be changed with updateBlock to ensure correct types

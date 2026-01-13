@@ -37,7 +37,7 @@ void ClientScript::closeSpecifics()
 int ClientScript::l_is_me(lua_State *L)
 {
 	ClientScript *script = (ClientScript *)get_script(L);
-	lua_pushboolean(L, script->getCurrentPlayer() == script->m_my_player);
+	lua_pushboolean(L, script->isMe());
 	return 1;
 }
 
@@ -45,8 +45,8 @@ int ClientScript::l_world_update_tiles(lua_State *L)
 {
 	MESSY_CPP_EXCEPTIONS_START
 	ClientScript *script = (ClientScript *)get_script(L);
-	if (script->getCurrentPlayer() != script->m_my_player)
-		return 0; // invalid player
+	if (!script->isMe())
+		luaL_error(L, "wrong player");
 
 	for (lua_pushnil(L); lua_next(L, 1); lua_pop(L, 1)) {
 		// key @ -2, value @ -1

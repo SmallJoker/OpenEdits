@@ -31,6 +31,13 @@ if env.server then
 	end
 end
 
+--[[
+env.on_block_place = function(x, y, id)
+	local old_fg, _, old_bg = env.world.get_block(x, y)
+end
+]]
+
+
 if env.server then
 	env.on_step = function(abstime) end
 end

@@ -296,6 +296,21 @@ static void test_script_world_interop(BlockManager *bmgr, Script *script, Remote
 	}
 	CHECK(script->popErrorCount() == 0);
 
+	// env.on_block_place
+	{
+		BlockUpdate bu(bmgr);
+		bu.pos = blockpos_t(7, 5);
+		bu.set(104);
+
+		w->setBlock(bu.pos, Block(12));
+
+		CHECK(script->onBlockPlace(bu) == true);
+		CHECK(script->popTestFeedback() == p.name + ":12:0;");
+		w->updateBlock(bu);
+
+		bu.set(107);
+		CHECK(script->onBlockPlace(bu) == false);
+	}
 	p.setWorld(nullptr);
 }
 

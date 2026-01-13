@@ -357,6 +357,7 @@ void Script::onScriptsLoaded()
 
 	lua_getglobal(L, "env");
 	function_ref_from_field(L, -1, "on_step", m_ref_on_step);
+	function_ref_from_field(L, -1, "on_block_place", m_ref_on_block_place);
 	function_ref_from_field(L, -1, "on_player_event", m_ref_on_player_event);
 	lua_pop(L, 1); // env
 

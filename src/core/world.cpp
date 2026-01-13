@@ -424,6 +424,11 @@ Block *World::updateBlock(BlockUpdate bu)
 	if (!checkUpdateBlockNeeded(bu))
 		return nullptr;
 
+	return &updateBlockNoCheck(bu);
+}
+
+Block &World::updateBlockNoCheck(BlockUpdate bu)
+{
 	Block &ref = getBlockRefNoCheck(bu.pos);
 	if (bu.isBackground()) {
 		ref.bg = bu.getId();
@@ -436,7 +441,7 @@ Block *World::updateBlock(BlockUpdate bu)
 	}
 	modified_rect.addInternalPoint(bu.pos);
 
-	return &ref;
+	return ref;
 }
 
 bool World::setBlockTiles(PositionRange &range, bid_t block_id, int tile)

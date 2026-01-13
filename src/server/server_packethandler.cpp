@@ -812,6 +812,9 @@ void Server::pkt_PlaceBlock(peer_t peer_id, Packet &pkt)
 	auto world = player->getWorld();
 	SimpleLock lock(world->mutex);
 
+	if (m_script)
+		m_script->setPlayer(player);
+
 	BlockUpdate bu(world->getBlockMgr());
 	while (pkt.getRemainingBytes()) {
 		bool is_ok = pkt.read<u8>();
@@ -824,12 +827,16 @@ void Server::pkt_PlaceBlock(peer_t peer_id, Packet &pkt)
 		bu.peer_id = peer_id;
 		bu.read(pkt);
 
-		const Block *ok = world->updateBlock(bu);
-		if (!ok) {
-			// out of range?
+		if (!world->checkUpdateBlockNeeded(bu))
 			continue;
+
+		if (m_script) {
+			// Block placement rejected by script
+			if (!m_script->onBlockPlace(bu))
+				continue;
 		}
 
+		(void)world->updateBlockNoCheck(bu);
 		// Put into queue to keep the world lock as short as possible
 		world->proc_queue.insert(bu);
 	}

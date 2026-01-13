@@ -7,6 +7,7 @@
 
 struct BlockParams;
 struct BlockProperties;
+struct BlockUpdate;
 struct lua_State;
 struct SmileyDef;
 class BlockManager;
@@ -128,6 +129,10 @@ protected:
 	static int l_register_event(lua_State *L);
 	static int l_send_event(lua_State *L);
 
+public:
+	/// Player-placed blocks. Does not include world load, clear or equivalent.
+	bool onBlockPlace(const BlockUpdate &bi);
+protected:
 	static int l_world_get_block(lua_State *L);
 	static int l_world_get_blocks_in_range(lua_State *L);
 	static int l_world_get_params(lua_State *L);
@@ -166,6 +171,7 @@ protected:
 	bid_t m_last_block_id = Block::ID_INVALID;
 
 	int m_ref_on_step = -2; // LUA_NOREF
+	int m_ref_on_block_place = -2; // LUA_NOREF
 	int m_ref_on_player_event = -2; // LUA_NOREF
 
 	bool m_loading_complete = false;

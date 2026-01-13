@@ -431,31 +431,43 @@ void Client::pkt_ChatReplay(Packet &pkt)
 // Similar to Server::stepSendBlockUpdates
 void Client::pkt_PlaceBlock(Packet &pkt)
 {
-	auto world = getWorld();
+	SimpleLock players_lock(m_players_lock);
+	LocalPlayer *player = getPlayerNoLock(m_my_peer_id);
+	if (!player)
+		return;
+
+	auto world = player->getWorld();
 	if (!world)
 		throw std::runtime_error("pkt_PlaceBlock: world not ready");
 
-	auto player = getMyPlayer();
 	SimpleLock world_lock(world->mutex);
 
+	peer_t prev_peer_id = 0;
+	// peer ID == 0 --> placed by server.
 	if (m_script)
-		m_script->setPlayer(player.ptr());
+		m_script->setPlayer(nullptr);
 
 	BlockUpdate bu(m_bmgr);
 	while (pkt.getRemainingBytes()) {
 		peer_t peer_id = pkt.read<peer_t>();
-		if (!peer_id)
-			break;
 
-		bu.peer_id = peer_id; // ... nothing to do with this?
+		bu.peer_id = peer_id;
 		bu.read(pkt);
 
-		Block *b = world->updateBlock(bu);
-		if (!b)
+		if (!world->checkUpdateBlockNeeded(bu))
 			continue;
 
+		if (m_script) {
+			if (peer_id != prev_peer_id) {
+				prev_peer_id = peer_id;
+				m_script->setPlayer(getPlayerNoLock(peer_id));
+			}
+			(void)m_script->onBlockPlace(bu);
+		}
+
+		Block &b = world->updateBlockNoCheck(bu);
 		if (!bu.isBackground())
-			b->tile = getBlockTile(player.ptr(), b);
+			b.tile = getBlockTile(player, &b);
 	}
 
 	player->updateCoinCount(false);

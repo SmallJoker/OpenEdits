@@ -442,7 +442,8 @@ void Server::stepSendBlockUpdates(World *world)
 
 		// Distribute valid changes to players
 
-		out.write(it->peer_id); // continue
+		// Note: clients <= 1.4.2 (protocol version 9) did 'break' on peer_id == 0 (server).
+		out.write(it->peer_id);
 		// Write BlockUpdate
 		it->write(out);
 

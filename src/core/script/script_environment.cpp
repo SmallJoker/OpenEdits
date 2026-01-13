@@ -233,6 +233,37 @@ int Script::l_send_event(lua_State *L)
 	MESSY_CPP_EXCEPTIONS_END
 }
 
+bool Script::onBlockPlace(const BlockUpdate &bu)
+{
+	bool ret = true;
+
+	if (m_ref_on_block_place < 0)
+		return ret; // not defined
+
+	lua_State *L = m_lua;
+
+	const blockpos_t pos = bu.pos;
+	const bid_t id = bu.getId();
+	lua_pushinteger(L, pos.X);
+	lua_pushinteger(L, pos.Y);
+	lua_pushinteger(L, id);
+	int top = callFunction(m_ref_on_block_place, 1, "on_block_place", 3, true);
+	if (!top)
+		return ret;
+
+	logger(LL_DEBUG, "%s: (%d,%d) id=%d", __func__, pos.X, pos.Y, id);
+
+	// First return value @ -1
+	if (!lua_isnil(L, -1)) {
+		if (m_scripttype == Script::ST_CLIENT)
+			luaL_error(L, "disallowed return value");
+		ret = lua_toboolean(L, -1);
+	}
+
+	lua_settop(L, top);
+	return ret;
+}
+
 int Script::l_world_get_block(lua_State *L)
 {
 	MESSY_CPP_EXCEPTIONS_START

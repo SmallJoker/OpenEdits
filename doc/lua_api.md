@@ -64,10 +64,13 @@ active player of the callback.
         * arg 1: one of `env.world.PRT_*`. May be combined with `env.world.PROP_*`.
         * arg 2+: see `script_environment.cpp` / `Script::get_position_range`
 
-Environment-related callbacks:
+Environment-related callbacks in `env`:
 
  * `.on_step(abstime)`
     * `abstime` (number), absolute timestamp
+ * `.on_block_place(x, y, id)`
+    * Called *before* the block is placed at coordinates `x`, `y`.
+    * The server may return `false` to disallow placement.
 
 
 #### Script events

@@ -138,7 +138,7 @@ static void test_positionrange_world
 	unittest_toc("setBlockTiles"); // 800-900 us for 400 * 400 tiles
 	CHECK(w.getBlock({1, 2}, &b) && b.id == 100 && b.tile == tile);
 
-	bool modified_2 = w.setBlockTiles(range, 100, tile);
+	bool modified_2 = w.setBlockTiles(range, 101, tile);
 	CHECK(modified_1 && !modified_2);
 }
 
