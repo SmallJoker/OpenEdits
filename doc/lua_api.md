@@ -34,6 +34,7 @@ active player of the callback.
     * Server only
  * `select(id)` -> boolean
     * Server only
+ * `get_size()` -> `width, height`
  * `get_block(x, y)` -> `fg, tile, bg`
     * `x, y` (optional): if set to `nil`, the current player position is used.
  * `get_blocks_in_range(options, block_ids, PositionRange ...)`
@@ -63,6 +64,8 @@ active player of the callback.
     * `PositionRange` (optional): defines which blocks that are affected
         * arg 1: one of `env.world.PRT_*`. May be combined with `env.world.PROP_*`.
         * arg 2+: see `script_environment.cpp` / `Script::get_position_range`
+ * `get_players()`
+    * Returns a table of `PlayerRef` (ipairs).
 
 Environment-related callbacks in `env`:
 
@@ -71,6 +74,10 @@ Environment-related callbacks in `env`:
  * `.on_block_place(x, y, id)`
     * Called *before* the block is placed at coordinates `x`, `y`.
     * The server may return `false` to disallow placement.
+ * `.on_world_data()`
+    * Called after new world data has been loaded.
+    * Client: called before assigning the tiles (`get_visuals`) but not on join.
+    * `env.player` is unassigned.
 
 
 #### Script events
@@ -134,9 +141,7 @@ Player-related callbacks in `env`:
 
 Namespace: `env.server`. Only available for servers.
 
- * `.get_players_in_world()`
-    * Returns a table of `PlayerRef` (ipairs).
-
+ * none
 
 ### Client GUI API
 

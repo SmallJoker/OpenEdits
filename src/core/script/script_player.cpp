@@ -1,5 +1,6 @@
 #include "script.h"
 #include "script_utils.h"
+#include "core/environment.h"
 #include "core/player.h"
 #include "playerref.h"
 
@@ -53,4 +54,22 @@ void Script::onPlayerEventB(const char *event, Player *player, bool arg)
 	lua_pushstring(m_lua, event);
 	lua_pushboolean(m_lua, arg);
 	callFunction(m_ref_on_player_event, 0, "on_player_event", 2);
+}
+
+int Script::l_world_get_players(lua_State *L)
+{
+	Script *script = (Script *)ScriptUtils::get_script(L);
+	Environment *env = script->getEnv();
+
+	if (!env)
+		luaL_error(L, "no env");
+
+	auto players = env->getPlayersNoLock(script->m_world);
+	lua_createtable(L, players.size(), 0);
+	size_t i = 0;
+	for (Player *p : players) {
+		PlayerRef::push(L, p);
+		lua_rawseti(L, -2, ++i);
+	}
+	return 1;
 }

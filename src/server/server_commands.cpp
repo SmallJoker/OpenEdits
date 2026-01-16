@@ -10,6 +10,7 @@
 #include "server/database_auth.h"
 #include "server/database_world.h"
 #include "server/remoteplayer.h" // RemotePlayerState
+#include "server/serverscript.h"
 #include "version.h"
 
 #if 0
@@ -110,6 +111,20 @@ Player *Server::findPlayer(const World *world, std::string name, bool any_world)
 		return player;
 	}
 	return nullptr;
+}
+
+void Server::changeWorldOfAllPlayers(const RefCnt<World> before, RefCnt<World> after,
+	bool is_clear)
+{
+	FOR_PLAYERS(, player, m_players) {
+		if (player->getWorld() == before) {
+			player->setWorld(after);
+		}
+	}
+
+	broadcastInWorld(after.get(), RemotePlayerState::WorldJoin, 0, SERVER_PKT_CB {
+		writeWorldData(out, *after.get(), is_clear);
+	});
 }
 
 
@@ -738,16 +753,11 @@ CHATCMD_FUNC(Server::chat_Clear)
 		return;
 	}
 
-	FOR_PLAYERS(, player, m_players) {
-		if (player->getWorld() == old_world)
-			player->setWorld(world);
-	}
-
-	broadcastInWorld(player, RemotePlayerState::WorldJoin, 0, SERVER_PKT_CB {
-		writeWorldData(out, *world.get(), true);
-	});
-
+	changeWorldOfAllPlayers(old_world, world, true);
 	old_world.reset();
+
+	if (m_script)
+		m_script->onWorldData(world.get());
 
 	systemChatSend(player, "Cleared!");
 }
@@ -784,19 +794,11 @@ CHATCMD_FUNC(Server::chat_Import)
 		return;
 	}
 
-	FOR_PLAYERS(, player, m_players) {
-		if (player->getWorld() == old_world)
-			player->setWorld(world);
-	}
+	changeWorldOfAllPlayers(old_world, world, false);
+	old_world.reset();
 
-	broadcastInWorld(player, RemotePlayerState::WorldJoin, 0, SERVER_PKT_CB {
-		writeWorldData(out, *world.get(), false);
-	});
-
-	FOR_PLAYERS(, player, m_players) {
-		if (player->getWorld() == world)
-			respawnPlayer(player, true);
-	}
+	if (m_script)
+		m_script->onWorldData(world.get());
 
 	systemChatSend(player, "Imported!");
 }
@@ -860,16 +862,7 @@ CHATCMD_FUNC(Server::chat_Load)
 		return;
 	}
 
-	FOR_PLAYERS(, player, m_players) {
-		if (player->getWorld() == old_world)
-			player->setWorld(world);
-	}
-
-	// TODO: The client does not receive the correct world data!
-	broadcastInWorld(player, RemotePlayerState::WorldJoin, 0, SERVER_PKT_CB {
-		writeWorldData(out, *world.get(), false);
-	});
-
+	changeWorldOfAllPlayers(old_world, world, false);
 	old_world.reset();
 
 	FOR_PLAYERS(, player, m_players) {
@@ -892,6 +885,9 @@ CHATCMD_FUNC(Server::chat_Load)
 		if (player->getWorld() == world)
 			respawnPlayer(player, true);
 	}
+
+	if (m_script)
+		m_script->onWorldData(world.get());
 }
 
 CHATCMD_FUNC(Server::chat_Save)

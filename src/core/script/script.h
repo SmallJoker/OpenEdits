@@ -11,6 +11,7 @@ struct BlockUpdate;
 struct lua_State;
 struct SmileyDef;
 class BlockManager;
+class Environment;
 class MediaManager;
 class Player;
 class ScriptEventManager;
@@ -45,6 +46,7 @@ public:
 protected:
 	virtual void initSpecifics() {}
 	virtual void closeSpecifics() {}
+	virtual Environment *getEnv() { return nullptr; }
 
 	// -------- For unittests
 public:
@@ -132,7 +134,10 @@ protected:
 public:
 	/// Player-placed blocks. Does not include world load, clear or equivalent.
 	bool onBlockPlace(const BlockUpdate &bi);
+	/// World load, clear
+	void onWorldData(World *world);
 protected:
+	static int l_world_get_size(lua_State *L);
 	static int l_world_get_block(lua_State *L);
 	static int l_world_get_blocks_in_range(lua_State *L);
 	static int l_world_get_params(lua_State *L);
@@ -154,6 +159,9 @@ public:
 protected:
 	void pushCurrentPlayerRef();
 	inline Player *getCurrentPlayer() const { return m_player ? *m_player : nullptr; }
+
+	static int l_world_get_players(lua_State *L);
+
 	Player **m_player = nullptr;
 
 
@@ -170,9 +178,10 @@ protected:
 
 	bid_t m_last_block_id = Block::ID_INVALID;
 
-	int m_ref_on_step = -2; // LUA_NOREF
-	int m_ref_on_block_place = -2; // LUA_NOREF
-	int m_ref_on_player_event = -2; // LUA_NOREF
+	int m_ref_on_step = -2, // LUA_NOREF
+		m_ref_on_block_place = -2,
+		m_ref_on_world_data = -2,
+		m_ref_on_player_event = -2;
 
 	bool m_loading_complete = false;
 };

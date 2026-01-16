@@ -237,6 +237,12 @@ void Client::pkt_WorldData(Packet &pkt)
 		p.second->setWorld(world);
 	m_tile_cache_mgr.init(m_script, world);
 
+	if (m_state == ClientState::WorldPlay) {
+		// On join, this packet arrives too early.
+		if (m_script)
+			m_script->onWorldData(world.get());
+	}
+
 	{
 		GameEvent e(GameEvent::C2G_META_UPDATE);
 		sendNewEvent(e);
@@ -249,8 +255,9 @@ void Client::pkt_Join(Packet &pkt)
 {
 	SimpleLock lock(m_players_lock);
 
-	peer_t peer_id = pkt.read<peer_t>();
+	const peer_t peer_id = pkt.read<peer_t>();
 	LocalPlayer *player = getPlayerNoLock(peer_id);
+	const bool is_me = (peer_id == m_my_peer_id);
 
 	if (!player) {
 		// normal case. player should yet not exist!
@@ -263,7 +270,7 @@ void Client::pkt_Join(Packet &pkt)
 	player->setGodMode(pkt.read<u8>());
 	player->smiley_id = pkt.read<u8>();
 	player->readPhysics(pkt);
-	if (peer_id == m_my_peer_id) {
+	if (is_me) {
 		SimpleLock lock(getWorld()->mutex);
 		player->updateCoinCount(true);
 	}

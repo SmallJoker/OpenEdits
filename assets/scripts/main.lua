@@ -8,6 +8,11 @@ end
 
 assert(env.API_VERSION >= 4, "Script implementation is too old.")
 
+if env.server and env.API_VERSION < 5 then
+	-- v1.4.2 backwards compat
+	env.world.get_players = env.server.get_players_in_world
+end
+
 env.include("constants.lua")
 env.include("smileys.lua")
 
@@ -19,10 +24,9 @@ local JUMP_SPEED =  30.0 -- m/s  for use in callbacks
 
 if env.server then
 	env.on_player_event = function(event)
-		print("event:" .. event, env.player:get_name())
 		if event == "join" then
 			local names = {}
-			for _, p in ipairs(env.server.get_players_in_world()) do
+			for _, p in ipairs(env.world.get_players()) do
 				names[#names + 1] = p:get_name()
 			end
 			print("List of players: " .. table.concat(names, ", "))
@@ -30,13 +34,6 @@ if env.server then
 		end
 	end
 end
-
---[[
-env.on_block_place = function(x, y, id)
-	local old_fg, _, old_bg = env.world.get_block(x, y)
-end
-]]
-
 
 if env.server then
 	env.on_step = function(abstime) end
@@ -48,6 +45,7 @@ player_data = {}
 local old_event = env.on_player_event or (function() end)
 env.on_player_event = function(event, arg)
 	old_event(event, arg)
+	print((env.server and "Server" or "Client"), "event:" .. event, env.player:get_name())
 
 	local id = env.player:hash()
 	if event == "join" then

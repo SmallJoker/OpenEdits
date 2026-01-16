@@ -13,7 +13,7 @@ Logger script_logger("Script", LL_INFO);
 static Logger &logger = script_logger;
 
 
-static const lua_Integer SCRIPT_API_VERSION = 4;
+static const lua_Integer SCRIPT_API_VERSION = 5;
 
 /*
 	Sandbox theory: http://lua-users.org/wiki/SandBoxes
@@ -215,6 +215,7 @@ bool Script::init()
 			FIELD_SET_FUNC(world_, get_blocks_in_range);
 			FIELD_SET_FUNC(world_, get_params);
 			FIELD_SET_FUNC(world_, set_tile);
+			FIELD_SET_FUNC(world_, get_players);
 		}
 		lua_setfield(L, -2, "world");
 		FIELD_SET_FUNC(/**/, register_event);
@@ -358,6 +359,7 @@ void Script::onScriptsLoaded()
 	lua_getglobal(L, "env");
 	function_ref_from_field(L, -1, "on_step", m_ref_on_step);
 	function_ref_from_field(L, -1, "on_block_place", m_ref_on_block_place);
+	function_ref_from_field(L, -1, "on_world_data", m_ref_on_world_data);
 	function_ref_from_field(L, -1, "on_player_event", m_ref_on_player_event);
 	lua_pop(L, 1); // env
 

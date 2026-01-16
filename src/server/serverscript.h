@@ -17,6 +17,7 @@ public:
 
 protected:
 	void initSpecifics() override;
+	Environment *getEnv() override;
 
 public:
 	void onScriptsLoaded() override;
@@ -33,8 +34,6 @@ protected:
 
 	// -------- Player API
 protected:
-	static int l_get_players_in_world(lua_State *L);
-
 	Server *m_server = nullptr;
 
 };

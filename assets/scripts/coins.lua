@@ -28,6 +28,23 @@ EV_COINS = env.register_event(100 + env.SEF_HAVE_ACTOR, 0, env.PARAMS_TYPE_U8,
 -- TODO: send EV_COINS to newly joined players via attributes
 -- TODO: update count on block place/remove
 
+env.on_block_place = function(x, y, id)
+	local old_id, old_tile, _ = env.world.get_block(x, y)
+	if old_id == 100 and old_tile > 0 then
+		-- TODO
+		env.world.update_tiles({43})
+	end
+end
+
+env.on_world_data = function()
+	for _, p in ipairs(env.world.get_players()) do
+		print("reset for " .. p:get_name())
+		player_data[p:hash()].coins = 0
+	end
+	--env.world.get_blocks_in_range({}, {100}, env.world.PRT_ENTIRE_WORLD)
+end
+
+
 local blocks_coins = {
 	{
 		id = 100,

@@ -22,6 +22,8 @@ public:
 	bool invoked_by_server = false; /// server-sent events.
 
 protected:
+	Environment *getEnv() override;
+
 	inline bool isMe() const { return getCurrentPlayer() == m_my_player; }
 
 	static int l_is_me(lua_State *L);

@@ -244,6 +244,8 @@ bool Script::onBlockPlace(const BlockUpdate &bu)
 
 	const blockpos_t pos = bu.pos;
 	const bid_t id = bu.getId();
+	m_last_block_id = id;
+
 	lua_pushinteger(L, pos.X);
 	lua_pushinteger(L, pos.Y);
 	lua_pushinteger(L, id);
@@ -262,6 +264,37 @@ bool Script::onBlockPlace(const BlockUpdate &bu)
 
 	lua_settop(L, top);
 	return ret;
+}
+
+void Script::onWorldData(World *world)
+{
+	if (m_ref_on_world_data < 0)
+		return;
+
+	setWorld(world);
+
+	int top = callFunction(m_ref_on_world_data, 0, "on_world_data", 0, false);
+	if (!top)
+		return;
+
+	lua_settop(m_lua, top);
+	return;
+}
+
+int Script::l_world_get_size(lua_State *L)
+{
+	MESSY_CPP_EXCEPTIONS_START
+	Script *script = get_script(L);
+
+	World *world = script->m_world;
+	ASSERT_FORCED(world, "no world");
+
+	blockpos_t size = world->getSize();
+	lua_pushinteger(L, size.X);
+	lua_pushinteger(L, size.Y);
+
+	MESSY_CPP_EXCEPTIONS_END
+	return 2;
 }
 
 int Script::l_world_get_block(lua_State *L)

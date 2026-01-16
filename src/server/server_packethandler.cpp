@@ -632,7 +632,7 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 	};
 
 	// Announce this player to all those who already joined
-	broadcastInWorld(player, RemotePlayerState::WorldPlay, 0, SERVER_PKT_CB {
+	broadcastInWorld(world.get(), RemotePlayerState::WorldPlay, 0, SERVER_PKT_CB {
 		make_join_packet(player, out);
 	});
 
@@ -727,7 +727,8 @@ void Server::pkt_Move(peer_t peer_id, Packet &pkt)
 	player->time_since_move_pkt = 0;
 
 	// broadcast to connected players
-	broadcastInWorld(player, RemotePlayerState::WorldPlay, 1 | Connection::FLAG_UNRELIABLE,
+	broadcastInWorld(player->getWorld().get(),
+			RemotePlayerState::WorldPlay, 1 | Connection::FLAG_UNRELIABLE,
 			SERVER_PKT_CB {
 		out.write(Packet2Client::Move);
 
@@ -1112,13 +1113,9 @@ void Server::broadcastInWorld(const World *world, int flags, Packet &pkt)
 	}
 }
 
-void Server::broadcastInWorld(Player *player, RemotePlayerState min_state,
+void Server::broadcastInWorld(const World *world, RemotePlayerState min_state,
 	int flags, std::function<void(Packet &)> cb)
 {
-	if (!player)
-		return;
-
-	auto world = player->getWorld();
 	if (!world)
 		return;
 
@@ -1127,7 +1124,7 @@ void Server::broadcastInWorld(Player *player, RemotePlayerState min_state,
 	// Send to all players within this world
 	for (auto &it : m_players) {
 		auto p = (RemotePlayer *)it.second.get();
-		if (p->getWorld() != world)
+		if (p->getWorld().get() != world)
 			continue;
 
 		// Player is yet not ready
@@ -1159,8 +1156,8 @@ void Server::broadcastInWorld(Player *player, RemotePlayerState min_state,
 #if 0
 	// EXAMPLE
 
-	broadcastInWorld(player, RemotePlayerState::WorldJoin, 1, SERVER_PKT_CB {
-		if (proto_ver < 4)
+	broadcastInWorld(world, RemotePlayerState::WorldJoin, 1, SERVER_PKT_CB {
+		if (pkt.data_version < 4)
 			return;
 
 		out.write<u16>(4324);

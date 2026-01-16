@@ -28,7 +28,7 @@ void ServerScript::initSpecifics()
 		field_set_function(L, "is_me", l_nop_false);
 
 		lua_newtable(L);
-		field_set_function(L, "get_players_in_world", ServerScript::l_get_players_in_world);
+		// yet no functions
 		lua_setfield(L, -2, "server");
 	}
 	{
@@ -39,6 +39,11 @@ void ServerScript::initSpecifics()
 		lua_pop(L, 1); // world
 	}
 	lua_pop(L, 1); // env
+}
+
+Environment *ServerScript::getEnv()
+{
+	return m_server;
 }
 
 void ServerScript::onScriptsLoaded()
@@ -110,21 +115,3 @@ int ServerScript::implWorldSetTile(PositionRange range, bid_t block_id, int tile
 	lua_pushboolean(L, modified);
 	return 1;
 }
-
-int ServerScript::l_get_players_in_world(lua_State *L)
-{
-	ServerScript *script = (ServerScript *)get_script(L);
-
-	if (!script->m_server)
-		luaL_error(L, "no server");
-
-	auto players = script->m_server->getPlayersNoLock(script->m_world);
-	lua_createtable(L, players.size(), 0);
-	size_t i = 0;
-	for (Player *p : players) {
-		PlayerRef::push(L, p);
-		lua_rawseti(L, -2, ++i);
-	}
-	return 1;
-}
-

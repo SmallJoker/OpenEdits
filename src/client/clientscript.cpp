@@ -34,6 +34,11 @@ void ClientScript::closeSpecifics()
 {
 }
 
+Environment *ClientScript::getEnv()
+{
+	return m_client;
+}
+
 int ClientScript::l_is_me(lua_State *L)
 {
 	ClientScript *script = (ClientScript *)get_script(L);

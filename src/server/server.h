@@ -61,7 +61,7 @@ private:
 	void broadcastInWorld(const World *world, int flags, Packet &pkt);
 
 	#define SERVER_PKT_CB [&](Packet &out) -> void
-	void broadcastInWorld(Player *player, RemotePlayerState min_state,
+	void broadcastInWorld(const World *world, RemotePlayerState min_state,
 		int flags, std::function<void(Packet &)> cb);
 
 	static const ServerPacketHandler packet_actions[];
@@ -114,6 +114,7 @@ private:
 	/// We might pass "world == nullptr" by accident, thus
 	/// have a separate "any_world" option is safer.
 	Player *findPlayer(const World *world, std::string name, bool any_world = false) const;
+	void changeWorldOfAllPlayers(const RefCnt<World> before, RefCnt<World> after, bool is_clear);
 
 	CHATCMD_FUNC(chat_Help);
 	CHATCMD_FUNC(chat_Shutdown);
