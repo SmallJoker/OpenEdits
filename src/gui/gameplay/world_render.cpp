@@ -245,7 +245,10 @@ void SceneWorldRender::drawBlocksInView()
 	// 'env.world.update_tiles'. That will pay out in large worlds.
 	client->updateAllBlockTiles(false);
 
+	// Prevent cute little deadlock with incoming packets: player first, world after.
+	PtrLock<LocalPlayer> player = client->getMyPlayer();
 	SimpleLock lock(world->mutex);
+
 	const auto world_size = world->getSize();
 	const core::recti world_border(
 		core::vector2di(0, 0),
@@ -298,7 +301,7 @@ void SceneWorldRender::drawBlocksInView()
 	const bool is_hardcoded = g_blockmanager->isHardcoded();
 
 	BlockDrawData bdd;
-	bdd.player = client->getMyPlayer().ptr();
+	bdd.player = player.ptr();
 	bdd.world = world.get();
 
 	// This is very slow. Isn't there a faster way to draw stuff?

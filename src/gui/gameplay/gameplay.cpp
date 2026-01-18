@@ -217,8 +217,7 @@ void SceneGameplay::draw()
 		if (m_chat_history_text.empty())
 			initChatHistory();
 
-		std::wstring text = joinChatHistoryText();
-		auto e = gui->addEditBox(text.c_str(), rect_ch, true);
+		auto e = gui->addEditBox(L"", rect_ch, true);
 		e->setAutoScroll(true);
 		e->setMultiLine(true);
 		e->setWordWrap(true);
@@ -227,6 +226,7 @@ void SceneGameplay::draw()
 		e->setTextAlignment(gui::EGUIA_UPPERLEFT, gui::EGUIA_LOWERRIGHT);
 		e->setOverrideColor(0xFFCCCCCC);
 		m_chathistory = e;
+		m_chat_history_dirty = true;
 	}
 
 	{
@@ -294,6 +294,11 @@ void SceneGameplay::step(float dtime)
 		m_chathistory->setText(text.c_str());
 	}
 
+	if (m_drag_draw_cooldown > dtime)
+		m_drag_draw_cooldown -= dtime;
+	else
+		m_drag_draw_cooldown = 0;
+
 	do {
 		auto player = m_gui->getClient()->getMyPlayer();
 		if (!player)
@@ -314,7 +319,7 @@ void SceneGameplay::step(float dtime)
 
 }
 
-static bool editbox_move_to_end(gui::IGUIEnvironment *guienv, wchar_t charval = L'\0')
+static bool editbox_move_to_end(gui::IGUIEnvironment *guienv)
 {
 	auto root = guienv->getRootGUIElement();
 	auto element = root->getElementFromId(ID_BoxChat);
@@ -324,10 +329,9 @@ static bool editbox_move_to_end(gui::IGUIEnvironment *guienv, wchar_t charval = 
 	element->setVisible(true);
 	root->bringToFront(element);
 
-	SEvent ev;
+	SEvent ev {};
 	ev.EventType = EET_KEY_INPUT_EVENT;
 	ev.KeyInput.PressedDown = true;
-	ev.KeyInput.Char = charval;
 	ev.KeyInput.Key = KEY_END;
 	element->OnEvent(ev);
 
@@ -477,8 +481,11 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 						m_blockselector->setParamsFromBlock(block_id, params);
 						break;
 					}
-					if (!((m_may_drag_draw && m_drag_draw_block.getId() != Block::ID_INVALID)
-							|| l_pressed || r_pressed))
+
+					bool can_drag_draw = (m_may_drag_draw || m_drag_draw_cooldown == 0.0f)
+						&& (m_drag_draw_block.getId() != Block::ID_INVALID);
+
+					if (!(can_drag_draw || l_pressed || r_pressed))
 						break;
 
 					blockpos_t bp;
@@ -516,7 +523,7 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 						bu.setErase(m_drag_draw_block.isBackground());
 
 					if (!m_may_drag_draw)
-						m_drag_draw_block.set(Block::ID_INVALID);
+						m_drag_draw_cooldown = 0.15f;
 
 					// Avoid movement keys to leak into GUI elements
 					m_gui->guienv->setFocus(nullptr);
@@ -655,7 +662,7 @@ bool SceneGameplay::OnEvent(GameEvent &e)
 				if (e.player_chat->player)
 					who = e.player_chat->player->name.c_str();
 
-				char buf[200];
+				char buf[500];
 				snprintf(buf, sizeof(buf), "%s: %s\n",
 					who, e.player_chat->message.c_str()
 				);
@@ -822,12 +829,15 @@ bool SceneGameplay::handleChatInput(const SEvent &e)
 	if (!focused) {
 		if (e.KeyInput.Char == L'/' || (key == KEY_KEY_T && !down)) {
 			// Focus chat window
-			if (editbox_move_to_end(m_gui->guienv, e.KeyInput.Char))
+			if (e.KeyInput.Char == L'/')
+				element->setText(L"/");
+
+			if (editbox_move_to_end(m_gui->guienv))
 				return true;
 		}
 		if (key == KEY_RETURN && down) {
 			// Focus chat window
-			if (editbox_move_to_end(m_gui->guienv, L'\0'))
+			if (editbox_move_to_end(m_gui->guienv))
 				return true;
 		}
 	}

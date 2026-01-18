@@ -45,12 +45,14 @@ private:
 
 class RateLimit {
 public:
-	/// @param units_per_second Higher = allow a larger sum per second
+	/// @param seconds_per_unit Lower = allow more per second
 	/// @param seconds_limit    Burst tolerance. Hard-limit after which a cooldown must happen.
-	RateLimit(float units_per_second, float seconds_limit) :
-		m_weight(1.0f / units_per_second),
+	RateLimit(float seconds_per_unit, float seconds_limit) :
+		m_weight(seconds_per_unit),
 		m_limit(seconds_limit)
 	{}
+
+	inline void setWeight(float seconds_per_unit) { m_weight = seconds_per_unit; }
 
 	void step(float dtime)
 	{
@@ -67,8 +69,10 @@ public:
 		return isActive();
 	}
 
+	/// Accumulated units
 	inline float getSum() const { return m_timer / m_weight; }
 	inline float getSumLimit() const { return m_limit / m_weight; }
+	/// Whether the limit is active/triggered
 	inline bool isActive() const { return m_timer > m_limit; }
 
 private:

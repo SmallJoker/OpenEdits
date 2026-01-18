@@ -27,7 +27,7 @@ static const float POSITION_SEND_INTERVAL = 5.0f;
 
 Client::Client(ClientStartData &init) :
 	Environment(g_blockmanager),
-	m_rl_scriptevents(20, 2),
+	m_rl_scriptevents(1 / 20.0f, 2),
 	m_start_data(std::move(init)) // eaten
 {
 	logger(LL_PRINT, "Startup ...");

@@ -807,8 +807,11 @@ void Server::pkt_PlaceBlock(peer_t peer_id, Packet &pkt)
 		return; // Missing permissions
 
 	// Cooldown for block placement, especially for players without draw
-	float value = pflags.check(PlayerFlags::PF_EDIT_DRAW) ?
-		1.0f : 5.0f;
+	player->rl_blocks.setWeight(
+		pflags.check(PlayerFlags::PF_EDIT_DRAW)
+			? (1 / 60.0f) // 60 blocks per second
+			: (1 / 10.0f) // 10 blocks per second
+	);
 
 	auto world = player->getWorld();
 	SimpleLock lock(world->mutex);
@@ -822,7 +825,7 @@ void Server::pkt_PlaceBlock(peer_t peer_id, Packet &pkt)
 		if (!is_ok)
 			break;
 
-		if (player->rl_blocks.add(value))
+		if (player->rl_blocks.add(1.0f))
 			return; // WARNING: Remaining data in pkt!
 
 		bu.peer_id = peer_id;

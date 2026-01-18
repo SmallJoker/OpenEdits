@@ -73,6 +73,7 @@ private:
 
 	// Status indicators for mouse inputs
 	bool m_may_drag_draw = true;   // permission: free drawing
+	float m_drag_draw_cooldown = 0; //< seconds until the next block may be drag-drawn
 	BlockUpdate m_drag_draw_block; // drawing mode
 	bool m_erase_mode = false;     // removes the pointed block : shift down
 

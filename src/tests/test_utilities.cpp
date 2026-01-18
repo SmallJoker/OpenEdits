@@ -84,7 +84,7 @@ static void test_timer()
 
 static void test_rate_limit()
 {
-	RateLimit rl(20, 2);
+	RateLimit rl(1 / 20.0f, 2);
 	CHECK(!rl.isActive());
 	rl.add(39);
 	CHECK(!rl.isActive());
