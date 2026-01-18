@@ -41,6 +41,7 @@ void GuiScript::initSpecifics()
 	FIELD_SET_FUNC(gui_, change_hud);
 	FIELD_SET_FUNC(gui_, play_sound);
 	FIELD_SET_FUNC(gui_, select_block);
+	FIELD_SET_FUNC(gui_, set_hotbar);
 	lua_setglobal(L, "gui");
 
 #undef FIELD_SET_FUNC
@@ -423,6 +424,28 @@ int GuiScript::l_gui_select_block(lua_State *L)
 	}
 
 	Script::readBlockParams(L, 2, bu->params);
+	return 0;
+	MESSY_CPP_EXCEPTIONS_END
+}
+
+int GuiScript::l_gui_set_hotbar(lua_State *L)
+{
+	MESSY_CPP_EXCEPTIONS_START
+	GuiScript *script = static_cast<GuiScript *>(get_script(L));
+	auto &list = script->hotbar_blocks;
+	list.clear();
+
+	for (lua_pushnil(L); lua_next(L, 1); lua_pop(L, 1)) {
+		// key @ -2, value @ -1
+		bid_t block_id = lua_tonumber(L, -1); // downcast
+		list.emplace_back(block_id);
+	}
+
+	if (list.size() > 20) {
+		logger(LL_WARN, "Too many hotbar blocks (n=%zu)", list.size());
+		list.resize(20);
+	}
+
 	return 0;
 	MESSY_CPP_EXCEPTIONS_END
 }

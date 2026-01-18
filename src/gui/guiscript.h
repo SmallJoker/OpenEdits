@@ -44,7 +44,9 @@ private:
 	void onInput(const char *k, const char *v);
 public:
 	bool onPlace(blockpos_t pos);
+	std::vector<bid_t> hotbar_blocks;
 private:
+
 	void updateInputValue(gui::IGUIElement *ie);
 	// from Lua stack, possibly recursive.
 	static int gui_read_element(lua_State *L);
@@ -52,6 +54,7 @@ private:
 	static int l_gui_change_hud(lua_State *L);
 	static int l_gui_play_sound(lua_State *L);
 	static int l_gui_select_block(lua_State *L);
+	static int l_gui_set_hotbar(lua_State *L);
 
 	gui::IGUIEnvironment *m_guienv;
 	BlockUpdate *m_block_update = nullptr;

@@ -40,7 +40,6 @@ SceneBlockSelector::SceneBlockSelector(SceneGameplay *parent, gui::IGUIEnvironme
 {
 	m_gameplay = parent;
 	m_gui = gui;
-	m_hotbar_ids = { 0, 9, 10, 2, 4, 48, 46, 67 };
 
 	m_legacy_compatible = g_blockmanager->isEElike();
 }
@@ -54,6 +53,15 @@ void SceneBlockSelector::draw()
 	m_enabled = m_do_enable;
 	if (!m_enabled)
 		return;
+
+	if (m_hotbar_ids.empty()) {
+		GuiScript *script = m_gameplay->getGUI()->script;
+		if (script)
+			m_hotbar_ids = script->hotbar_blocks;
+
+		if (m_hotbar_ids.empty())
+			m_hotbar_ids = { 0, 9, 10, 2, 4, 48, 46, 67 };
+	}
 
 	core::recti rect(
 		m_hotbar_pos,
@@ -77,6 +85,11 @@ void SceneBlockSelector::draw()
 	m_highlight->setImage(m_gui->getVideoDriver()->getTexture("assets/textures/selected_30px.png"));
 	m_highlight->setScaleImage(true);
 	selectBlockId(m_selected.getId(), false);
+
+	m_dragged_img = m_gui->addImage(core::recti(0, 0, 0, 0));
+	m_dragged_img->setScaleImage(true);
+	m_dragged_img->setUseAlphaChannel(true);
+	m_dragged_img->setVisible(false);
 }
 
 static void editbox_move_to_end(gui::IGUIElement *element)
@@ -342,6 +355,9 @@ bool SceneBlockSelector::OnEvent(const SEvent &e)
 	}
 
 	if (e.EventType == EET_MOUSE_INPUT_EVENT) {
+		m_mouse_pos = core::vector2di{ e.MouseInput.X, e.MouseInput.Y };
+		updateDraggedImg();
+
 		switch (e.MouseInput.Event) {
 			case EMIE_LMOUSE_PRESSED_DOWN:
 			{
@@ -351,6 +367,7 @@ bool SceneBlockSelector::OnEvent(const SEvent &e)
 				s32 id = element ? element->getID() : 0;
 				if (id >= ID_SELECTOR_0 && id < ID_SELECTOR_MAX) {
 					m_dragged_bid = id - ID_SELECTOR_0;
+					m_dragged_start = pos;
 				}
 			}
 			break;
@@ -360,6 +377,7 @@ bool SceneBlockSelector::OnEvent(const SEvent &e)
 					break;
 				bid_t dragged_bid = m_dragged_bid;
 				m_dragged_bid = Block::ID_INVALID;
+				updateDraggedImg();
 
 				// Copy dragged block to hotbar
 				core::vector2di pos(e.MouseInput.X, e.MouseInput.Y);
@@ -729,6 +747,39 @@ bool SceneBlockSelector::selectBlockId(int what, bool is_element_id)
 		m_selected.set(selected);
 	return true;
 }
+
+void SceneBlockSelector::updateDraggedImg()
+{
+	if (!m_dragged_img)
+		return;
+
+	const bool was_visible = m_dragged_img->isVisible();
+	bool visible = (m_dragged_bid != Block::ID_INVALID);
+	s32 diff_sq = m_dragged_start.getDistanceFromSQ(m_mouse_pos);
+
+	visible &= (diff_sq > 5 * 5);
+
+	m_dragged_img->setVisible(visible);
+	if (!visible)
+		return;
+
+	m_dragged_img->setRelativePosition(core::recti(
+		m_mouse_pos - (BTN_SIZE / 2),
+		BTN_SIZE
+	));
+
+	if (was_visible)
+		return;
+
+	auto props = g_blockmanager->getProps(m_dragged_bid);
+	video::ITexture *tex = props
+		? props->tiles[0].texture
+		: g_blockmanager->getMissingTexture();
+
+	m_dragged_img->setImage(tex);
+	m_gui->getRootGUIElement()->bringToFront(m_dragged_img);
+}
+
 
 void SceneBlockSelector::convertBUToLegacy()
 {

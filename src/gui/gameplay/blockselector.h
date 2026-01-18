@@ -58,6 +58,7 @@ private:
 	bool drawBlockButton(bid_t bid, const core::recti &rect, gui::IGUIElement *parent, int id);
 	void drawBlockSelector();
 	bool selectBlockId(int what, bool is_element_id);
+	void updateDraggedImg();
 
 	SceneGameplay *m_gameplay = nullptr;
 	gui::IGUIEnvironment *m_gui = nullptr;
@@ -70,8 +71,12 @@ private:
 	/// starting position of the N quick access blocks
 	core::position2di m_hotbar_pos;
 
+	core::vector2di m_mouse_pos;
+
 	bool m_show_selector = false;
 	bid_t m_dragged_bid = Block::ID_INVALID; //< dragged to hotbar
+	core::vector2di m_dragged_start; //< initial Press Down position
+	gui::IGUIImage *m_dragged_img = nullptr;
 	gui::IGUIElement *m_showmore = nullptr;
 	gui::IGUIImage *m_highlight = nullptr;
 

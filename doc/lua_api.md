@@ -154,6 +154,8 @@ Namespace: `gui`. Only available for GUI clients.
     * `block_id` (nil/number): Block ID to select
     * `...`: Block Parameters (variable)
     * Generally to be used in the `gui_def.on_place` callback
+* `set_hotbar({ block_id_1, ... })`
+    * Sets the initial block hotbar.
 
 Block Definition field `gui_def`:
 

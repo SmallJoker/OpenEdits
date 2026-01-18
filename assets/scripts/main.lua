@@ -205,3 +205,11 @@ env.register_pack({
 	default_type = env.DRAW_TYPE_BACKGROUND,
 	blocks = { 500, 501, 502, 503, 504, 505, 506 }
 })
+
+
+---------- Finish
+
+
+if gui.set_hotbar then
+	gui.set_hotbar({ 0, 4, 2, 10, 11, 12, 13, 65 })
+end
