@@ -162,7 +162,7 @@ protected:
 
 	static int l_world_get_players(lua_State *L);
 
-	Player **m_player = nullptr;
+	Player **m_player = nullptr; //< this sits inside a PlayerRef
 
 
 	// -------- Members

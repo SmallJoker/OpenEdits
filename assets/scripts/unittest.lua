@@ -36,8 +36,27 @@ if env.test_mode:find("media") then
 	env.include("unittest_server.lua", "server")
 end
 
+-- C++: test_player_callbacks
 env.on_player_event = function(event, arg)
 	print("[event]", env.player:get_name(), event, arg)
+
+	if event == "join" then
+		feedback("J_SRV")
+		if env.test_mode:find("wdata") then
+			env.player:get_wdata().foobar_key = 1
+		end
+	end
+	if event == "leave" then
+		feedback("L_SRV")
+	end
+	if event == "test_check_wdata" then
+		local wd = env.player:get_wdata()
+		if not wd then
+			feedback("NIL")
+		else
+			feedback((next(wd)) and ">0" or "=0")
+		end
+	end
 end
 
 -- C++: test_script_world_interop
@@ -142,8 +161,8 @@ local EV_4_counter = 0
 -- Ping pong events
 local function ev_4_broadcast()
 	EV_4_counter = EV_4_counter + 1
-	print("send EV_4 #" .. EV_4_counter .. " to " .. myplayerref:get_name())
-	myplayerref:send_event(EV_4, "EV4.", EV_4_counter, 55, 77)
+	print("send EV_4 #" .. EV_4_counter .. " to " .. env.player:get_name())
+	env.player:send_event(EV_4, "EV4.", EV_4_counter, 55, 77)
 end
 
 EV_4 = env.register_event(1004 + env.SEF_HAVE_ACTOR, 0,

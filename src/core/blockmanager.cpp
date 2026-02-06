@@ -190,8 +190,8 @@ void BlockManager::sanityCheck()
 			if (srcprops && srcprops->tiles.size() > tile.visual_override.tile)
 				continue; // good
 
-			logger(LL_ERROR, "Override source of id=%d, tile=%ld not found",
-				prop->id, &tile - &prop->tiles[0]
+			logger(LL_ERROR, "Override source of id=%d, tile=%d not found",
+				prop->id, (int)(&tile - &prop->tiles[0])
 			);
 			tile.visual_override.enabled = false;
 		}

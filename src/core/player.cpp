@@ -45,8 +45,7 @@ void Player::setWorld(RefCnt<World> world)
 		m_world->getMeta().online++;
 
 	// Avoid sending "godmode" events or similar
-	if (!world)
-		setScript(nullptr);
+	m_script = world ? m_script_backup : nullptr;
 
 	controls_enabled = true;
 	if (!keep_progress) {
@@ -59,6 +58,13 @@ RefCnt<World> Player::getWorld() const
 {
 	return m_world;
 }
+
+void Player::setScript(Script *script)
+{
+	m_script_backup = script;
+	m_script = m_world ? script : nullptr;
+}
+
 
 void Player::readPhysics(Packet &pkt)
 {

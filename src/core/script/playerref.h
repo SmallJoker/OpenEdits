@@ -13,6 +13,9 @@ public:
 	/// Cleanup by C++ (empty container)
 	static bool invalidate(lua_State *L, Player *player);
 
+	/// @param is_present `true` creates the table, `false` removes it,
+	static bool set_wdata(lua_State *L, Player *player, bool is_present);
+
 	inline Player **ptrRef() { return &m_player; }
 
 	static PlayerRef *toPlayerRef(lua_State *L, int idx);
@@ -25,6 +28,7 @@ private:
 
 	static int get_name(lua_State *L);
 	static int hash(lua_State *L);
+	static int get_wdata(lua_State *L);
 
 	static int send_event(lua_State *L);
 	static int next_prn(lua_State *L);
@@ -38,6 +42,8 @@ private:
 	static int set_acc(lua_State *L);
 	static int get_controls(lua_State *L);
 
+	// TODO: Cannot have more members here because 'env.player' is a different
+	// instance than e.g. returned by a getter function.
 	Player *m_player;
 };
 

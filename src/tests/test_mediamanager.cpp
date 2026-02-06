@@ -65,8 +65,9 @@ static void test_with_script()
 
 	script.init();
 	script.setMediaMgr(&media);
-	script.setTestMode("const media");
+	script.setTestMode("const media smiley");
 	CHECK(script.loadFromAsset("unittest.lua"));
+	CHECK(script.popTestFeedback() == ""); // NOT "unittest_server"!
 }
 
 

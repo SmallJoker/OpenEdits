@@ -18,6 +18,16 @@ static int testprint(lua_State *L)
 	return 0;
 }
 
+static bool run_script(lua_State *L, const char *text, int line)
+{
+	int status = luaL_dostring(L, text);
+	if (status != 0) {
+		printf("Error @ line %d: %s", line, lua_tostring(L, -1));
+		return false;
+	}
+	return true;
+}
+
 static void test_playerref()
 {
 	lua_State *L = lua_open();
@@ -40,7 +50,7 @@ static void test_playerref()
 		lua_setglobal(L, "player");
 	}
 
-	int status = luaL_dostring(L, R"EOF(
+	bool ok = run_script(L, R"EOF(
 		t = getmetatable(player)
 		--rawset(t, "__gc", "test") -- does not affect PlayerRef::garbagecollect
 		for k, v in pairs(t) do
@@ -49,11 +59,8 @@ static void test_playerref()
 		i = rawget(t, "__index")
 		assert(i == nil, "index leak")
 		print(player:get_name())
-	)EOF");
-	if (status != 0) {
-		puts(lua_tostring(L, -1));
-		CHECK(0);
-	}
+	)EOF", __LINE__);
+	CHECK(ok);
 
 	CHECK(PlayerRef::invalidate(L, &p));  // invalidated and removed
 	CHECK(!PlayerRef::invalidate(L, &p)); // nothing to do
@@ -65,13 +72,10 @@ static void test_playerref()
 		lua_gc(L, LUA_GCCOLLECT, 0);
 	}
 
-	status = luaL_dostring(L, R"EOF(
+	ok = run_script(L, R"EOF(
 		assert(player:get_name() == nil)
-	)EOF");
-	if (status != 0) {
-		puts(lua_tostring(L, -1));
-		CHECK(0);
-	}
+	)EOF", __LINE__);
+	CHECK(ok);
 
 	// done
 	lua_close(L);
@@ -229,13 +233,7 @@ static void test_basic_scriptevents(Script &script, Player &p)
 
 static void test_playerref_scriptevents(Script &script, Player &p)
 {
-	lua_State *L = script.getState();
 	const BlockManager *bmgr = script.getBlockMgr();
-	PlayerRef::doRegister(L);
-
-	PlayerRef::push(L, &p);
-	lua_setglobal(L, "myplayerref");
-	p.setScript(&script);
 
 	{
 		auto props = bmgr->getProps(4);
@@ -251,19 +249,47 @@ static void test_playerref_scriptevents(Script &script, Player &p)
 		CHECK(script.popErrorCount() == 0);
 		CHECK(script.popTestFeedback() == "EV4.15577;");
 	}
-
-	p.setScript(nullptr);
-	PlayerRef::invalidate(L, &p);
 }
 
-static void test_script_world_interop(BlockManager *bmgr, Script *script, RemotePlayer &p)
+static void test_player_callbacks(BlockManager *bmgr, Script &script, RemotePlayer &p)
+{
+	auto w = std::make_shared<World>(bmgr, "wcallbacks");
+	p.setWorld(w);
+	CHECK(p.getScript());
+
+	// join/leave
+	{
+		script.onPlayerEvent("join", &p);
+		CHECK(script.popTestFeedback() == "J_SRV;");
+		script.onPlayerEvent("leave", &p);
+		CHECK(script.popTestFeedback() == "L_SRV;");
+	}
+
+	script.setTestMode("wdata");
+	{
+		script.onPlayerEvent("test_check_wdata", &p);
+		CHECK(script.popTestFeedback() == "NIL;");
+
+		script.onPlayerEvent("join", &p);
+		script.onPlayerEvent("test_check_wdata", &p);
+		CHECK(script.popTestFeedback() == "J_SRV;>0;"); // "foobar_key"
+
+		script.onPlayerEvent("leave", &p);
+		script.onPlayerEvent("test_check_wdata", &p);
+		CHECK(script.popTestFeedback() == "L_SRV;NIL;");
+	}
+
+	p.setWorld(nullptr);
+}
+
+static void test_block_placement(BlockManager *bmgr, Script *script, RemotePlayer &p)
 {
 	auto w = std::make_shared<World>(bmgr, "interop");
 	w->createEmpty({ 10, 7 });
 	w->setBlock({ 5, 6 }, Block(101)); // center bottom
 
-	p.setScript(script);
 	p.setWorld(w);
+	CHECK(p.getScript());
 
 	// env.world.set_tile
 	{
@@ -328,12 +354,14 @@ void unittest_script()
 	CHECK(script.loadFromFile("assets/scripts/constants.lua"));
 	CHECK(script.loadFromFile("assets/scripts/unittest.lua"));
 	CHECK(script.getScriptType() == Script::ST_SERVER);
-	CHECK(script.loadFromFile("assets/scripts/unittest_server.lua"));
 	script.onScriptsLoaded();
 
 	RemotePlayer p(12345, PROTOCOL_VERSION_MAX);
 	p.name = "MCFOOBAR";
 	script.setPlayer(&p);
+
+	p.setScript(&script);
+	CHECK(p.getScript() == nullptr); // until a world is assigned
 
 	test_player_physics(script, p);
 
@@ -349,15 +377,9 @@ void unittest_script()
 		p.setWorld(nullptr);
 	}
 
-	// join/leave
-	{
-		script.onPlayerEvent("join", &p);
-		CHECK(script.popTestFeedback() == "J_SRV;");
-		script.onPlayerEvent("leave", &p);
-		CHECK(script.popTestFeedback() == "L_SRV;");
-	}
+	test_player_callbacks(&bmgr, script, p);
 
-	test_script_world_interop(&bmgr, &script, p);
+	test_block_placement(&bmgr, &script, p);
 
 	script.close();
 }

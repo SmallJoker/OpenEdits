@@ -108,6 +108,9 @@ A `userdata` object.
  * `:get_name()` -> string
  * `:hash()` -> (undefined)
     * Unique identifier (per connection) for faster array access
+ * `:get_wdata()` -> table/nil
+    * Table is created on world `"join"` and removed after `"leave"`.
+    * The key `"ref_removed"` is reserved. It is set to `true` on removal.
  * `:send_event()`
     * See `env.send_event`. For servers only.
  * `:next_prn()` -> integer

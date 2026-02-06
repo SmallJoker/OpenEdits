@@ -31,7 +31,7 @@ public:
 	void setWorld(RefCnt<World> world);
 	RefCnt<World> getWorld() const;
 
-	void setScript(Script *script) { m_script = script; }
+	void setScript(Script *script);
 
 	void readPhysics(Packet &pkt);
 	void writePhysics(Packet &pkt) const;
@@ -66,10 +66,12 @@ public:
 	// For keys or killing blocks
 	std::unique_ptr<std::set<blockpos_t>> on_touch_blocks;
 
+	/// Returns `nullptr` when not playing in a world.
 	Script *getScript() const { return m_script; }
 	ScriptEventManager *getSEMgr() const;
 
 	std::unique_ptr<ScriptEventMap> script_events_to_send;
+	int ref_wdata = -2; // LUA_NOREF
 
 	void setGodMode(bool value);
 	bool godmode = false;
@@ -96,7 +98,9 @@ protected:
 	RefCnt<World> m_world;
 
 	// For callbacks
-	Script *m_script = nullptr;
+	Script *m_script = nullptr; //< nullptr when not in a world
+	// Note: This should perform better than a boolean (but needs more RAM)
+	Script *m_script_backup = nullptr;
 
 	PlayerControls m_controls;
 	core::vector2d<s8> m_collision;
