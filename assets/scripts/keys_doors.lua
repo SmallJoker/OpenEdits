@@ -1,5 +1,4 @@
 local world = env.world
-local player = env.player
 
 local tiles_door = {
 	{ type = env.DRAW_TYPE_SOLID },
@@ -61,8 +60,10 @@ if env.server then
 		end
 	end
 
-	local old_on_step = env.on_step
+	local old_on_step = env.on_step or (function() end)
 	env.on_step = function(abstime)
+		old_on_step(abstime)
+
 		last_time = abstime
 		for key_id, kdata in pairs(key_data) do
 			for world_id, offtime in pairs(kdata.cooldowns) do

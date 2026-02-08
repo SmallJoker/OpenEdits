@@ -38,7 +38,6 @@ void Script::pushCurrentPlayerRef()
 
 void Script::removePlayer(Player *player)
 {
-	PlayerRef::set_wdata(m_lua, player, false);
 	PlayerRef::invalidate(m_lua, player);
 }
 
@@ -46,14 +45,8 @@ void Script::onPlayerEvent(const char *event, Player *player)
 {
 	setPlayer(player);
 
-	if (event == std::string("join"))
-		PlayerRef::set_wdata(m_lua, player, true);
-
 	lua_pushstring(m_lua, event);
 	callFunction(m_ref_on_player_event, 0, "on_player_event", 1);
-
-	if (event == std::string("leave"))
-		PlayerRef::set_wdata(m_lua, player, false);
 }
 
 void Script::onPlayerEventB(const char *event, Player *player, bool arg)

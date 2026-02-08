@@ -1,5 +1,6 @@
 local world = env.world
 local player = env.player
+local get_pwdata = reg.get_pwdata
 
 env.require_asset("coin.mp3")
 
@@ -8,7 +9,7 @@ EV_COINS = env.register_event(100 + env.SEF_HAVE_ACTOR, 0, env.PARAMS_TYPE_U8,
 	function(count)
 		if not env.is_me() then
 			-- Client: do not let the server overwrite our data
-			player_data[player:hash()].coins = count
+			get_pwdata(player).coins = count
 		end
 		print(("@%s | coins of %s: %d"):format(
 			(env.server and "server" or "client"),
@@ -39,7 +40,7 @@ end
 env.on_world_data = function()
 	for _, p in ipairs(env.world.get_players()) do
 		print("reset for " .. p:get_name())
-		player_data[p:hash()].coins = 0
+		get_pwdata(p).coins = 0
 	end
 	--env.world.get_blocks_in_range({}, {100}, env.world.PRT_ENTIRE_WORLD)
 end
@@ -57,7 +58,7 @@ local blocks_coins = {
 			local px, py = player:get_pos()
 			world.set_tile(100, 1, world.PRT_ONE_BLOCK, px, py)
 
-			local pd = player_data[player:hash()]
+			local pd = get_pwdata(player)
 			pd.coins = pd.coins + 1
 			env.send_event(EV_COINS, pd.coins)
 
@@ -102,18 +103,18 @@ local blocks_coins = {
 		get_visuals = function(tile, coins)
 			-- Only called when coming into visible range and there is nothing cached
 			-- The returned tile can only be changed if they're not "physics dependent"
-			local pd = player_data[player:hash()]
-			if pd.coins >= coins then
+			local p_coins = get_pwdata(player).coins
+			if p_coins >= coins then
 				return 1
 			end
-			return 0, coins - pd.coins
+			return 0, coins - p_coins
 		end,
 		on_collide = function(bx, by, is_x)
 			-- Called on every player! Do not check against the local `tile`.
 			local coins = world.get_params(bx, by)
-			local pd = player_data[player:hash()]
+			local p_coins = get_pwdata(player).coins
 
-			return (pd.coins >= coins
+			return (p_coins >= coins
 				and env.COLLISION_TYPE_NONE
 				or env.COLLISION_TYPE_POSITION)
 		end,

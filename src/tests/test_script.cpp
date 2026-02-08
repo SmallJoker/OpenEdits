@@ -353,6 +353,7 @@ void unittest_script()
 	script.setTestMode("init");
 	CHECK(script.loadFromFile("assets/scripts/constants.lua"));
 	CHECK(script.loadFromFile("assets/scripts/unittest.lua"));
+	CHECK(script.loadFromFile("assets/scripts/player_data.lua"));
 	CHECK(script.getScriptType() == Script::ST_SERVER);
 	script.onScriptsLoaded();
 
@@ -367,7 +368,7 @@ void unittest_script()
 
 	// script events
 	{
-		auto w = std::make_shared<World>(&bmgr, "scriptevent");
+		auto w = std::make_shared<World>(&bmgr, "wscriptevent");
 		p.setWorld(w);
 		script.setPlayer(&p); // now with a world
 

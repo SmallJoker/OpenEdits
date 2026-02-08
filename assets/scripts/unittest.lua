@@ -20,6 +20,13 @@ local function dump(what, depth, seen)
 	return table.concat(out, "\n")
 end
 
+reg = {}
+-- Per-world player data. Created on join, removed on leave
+reg._player_data = {}
+local function get_pwdata(player)
+	return reg._player_data[player:hash()]
+end
+
 ----------- STARTUP -----------
 
 env.test_feedback = ""
@@ -43,14 +50,14 @@ env.on_player_event = function(event, arg)
 	if event == "join" then
 		feedback("J_SRV")
 		if env.test_mode:find("wdata") then
-			env.player:get_wdata().foobar_key = 1
+			get_pwdata(env.player).foobar_key = 1
 		end
 	end
 	if event == "leave" then
 		feedback("L_SRV")
 	end
 	if event == "test_check_wdata" then
-		local wd = env.player:get_wdata()
+		local wd = get_pwdata(env.player)
 		if not wd then
 			feedback("NIL")
 		else
@@ -124,7 +131,7 @@ env.change_block(2, {
 			or env.COLLISION_TYPE_NONE
 	end,
 	on_intersect = function()
-		local px, py = env.player:get_pos()
+		local _, py = env.player:get_pos()
 		if env.test_mode == "py set -1" then
 			py = py + 1
 			env.player:set_pos(nil, py)
@@ -135,7 +142,7 @@ env.change_block(2, {
 	on_intersect_once = function(tile)
 		print("on_intersect_once: tile=" .. tile)
 		if env.test_mode == "py set +1" then
-			local px, py = env.player:get_pos()
+			local _, py = env.player:get_pos()
 			env.player:set_pos(nil, py + 1)
 			return
 		end
@@ -201,7 +208,8 @@ env.change_block(101, {
 	},
 	on_collide = function(bx, by)
 		print("collide with 101 at ", bx, by)
-		local fg, tile, bg = env.world.get_block(bx, by)
+		local fg, tile, _ = env.world.get_block(bx, by)
+		assert(fg == 101)
 		if tile == 0 then
 			assert(env.world.set_tile(101, 1, env.world.PRT_ONE_BLOCK, bx, by) == true)
 		end

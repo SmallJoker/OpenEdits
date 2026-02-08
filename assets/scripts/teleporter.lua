@@ -20,7 +20,8 @@ local blocks_teleporter = {
 				values[k] = v
 			end,
 			on_place = function(values, x, y)
-				local fg, tile, bg = env.world.get_block(x, y)
+				local _
+				local fg = env.world.get_block(x, y)
 				local rot = 0
 				if fg == ID_TELEPORTER then
 					-- inherit rotation + 1
@@ -42,7 +43,7 @@ local blocks_teleporter = {
 			return rot
 		end,
 		on_intersect_once = function(_)
-			if player_data[player:hash()].godmode then
+			if reg.get_pwdata(player).godmode then
 				return -- no effect
 			end
 
@@ -56,6 +57,7 @@ local blocks_teleporter = {
 
 			local options = {}
 			for i, v in ipairs(list) do
+				-- luacheck: ignore 211
 				local _, x2, y2, rot2, id2, dst2 = unpack(v)
 				if dst == id2 then
 					table.insert(options, i)

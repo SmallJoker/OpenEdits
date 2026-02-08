@@ -1,6 +1,6 @@
 local world = env.world
 
-local function set_tile_to_1(fg, bx, by)
+local function set_tile_to_1(fg)
 	return function(bx, by)
 		world.set_tile(fg, 1, world.PRT_ONE_BLOCK, bx, by)
 	end

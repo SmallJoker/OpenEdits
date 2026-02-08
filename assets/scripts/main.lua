@@ -19,8 +19,6 @@ env.include("smileys.lua")
 -------------- Client & server script
 
 local GRAVITY    = 100.0 -- m/s² for use in callbacks
--- TODO: not implemented
-local JUMP_SPEED =  30.0 -- m/s  for use in callbacks
 
 if env.server then
 	env.on_player_event = function(event)
@@ -39,31 +37,8 @@ if env.server then
 	env.on_step = function(abstime) end
 end
 
--- Keep track of player data
-player_data = {}
-
-local old_event = env.on_player_event or (function() end)
 env.on_player_event = function(event, arg)
-	old_event(event, arg)
-	print((env.server and "Server" or "Client"), "event:" .. event, env.player:get_name())
-
-	local id = env.player:hash()
-	if event == "join" then
-		player_data[id] = {
-			coins = 0
-		}
-	end
-	if event == "leave" then
-		player_data[id] = nil
-	end
-
-	if not player_data[id] then
-		-- godmode may be called too early
-		return
-	end
-	if event == "godmode" then
-		player_data[id].godmode = arg
-	end
+	-- nothing
 end
 
 --[[
@@ -80,6 +55,13 @@ end
 
 reg = {}
 
+-- Per-world player data. Created on join, removed on leave
+reg._player_data = {}
+reg.get_pwdata = function(player)
+	return reg._player_data[player:hash()]
+end
+
+-- Block registration utility functions
 function reg.table_to_pack_blocks(block_defs)
 	local t = {}
 	for _, v in pairs(block_defs) do
@@ -130,7 +112,6 @@ env.include("candy.lua")
 
 
 local player = env.player
-local world = env.world
 local blocks_action = {
 	-- Cannot use indices: unordered `pairs` iteration.
 	{
@@ -209,6 +190,7 @@ env.register_pack({
 
 ---------- Finish
 
+env.include("player_data.lua")
 
 if gui.set_hotbar then
 	gui.set_hotbar({ 0, 4, 2, 10, 11, 12, 13, 65 })

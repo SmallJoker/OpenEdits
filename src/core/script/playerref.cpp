@@ -42,7 +42,6 @@ void PlayerRef::doRegister(lua_State *L)
 	static const luaL_Reg classtable_fn[] = {
 		{"get_name", get_name},
 		{"hash", hash},
-		{"get_wdata", get_wdata},
 		{"send_event", send_event},
 		{"next_prn", next_prn},
 		{"get_pos", get_pos},
@@ -128,36 +127,6 @@ bool PlayerRef::invalidate(lua_State *L, Player *player)
 	return removed;
 }
 
-bool PlayerRef::set_wdata(lua_State *L, Player *player, bool is_present)
-{
-	logger(LL_DEBUG, "%s (%d)", __func__, (int)is_present);
-
-	bool success = false;
-	const int top = lua_gettop(L);
-	int &ref = player->ref_wdata;
-
-	// Clear if existent
-	if (ref >= 0) {
-		lua_rawgeti(L, LUA_REGISTRYINDEX, ref);
-		// In case this table is still referenced outside this instance.
-		lua_pushboolean(L, true);
-		lua_setfield(L, -2, "ref_removed");
-		luaL_unref(L, LUA_REGISTRYINDEX, ref);
-		ref = LUA_NOREF;
-	}
-
-	if (is_present) {
-		lua_newtable(L);
-		ref = luaL_ref(L, LUA_REGISTRYINDEX);
-		success = (ref >= 0);
-	} else {
-		success = true;
-	}
-
-	lua_settop(L, top);
-	return success;
-}
-
 // -------------- Lua API functions -------------
 
 
@@ -193,20 +162,6 @@ int PlayerRef::hash(lua_State *L)
 		return 0;
 
 	lua_pushinteger(L, player->peer_id);
-	return 1;
-}
-
-int PlayerRef::get_wdata(lua_State *L)
-{
-	Player *player = toPlayerRef(L, 1)->m_player;
-	if (!player)
-		return 0;
-
-	const int ref = player->ref_wdata;
-	if (ref < 0)
-		return 0;
-
-	lua_rawgeti(L, LUA_REGISTRYINDEX, ref);
 	return 1;
 }
 

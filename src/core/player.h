@@ -71,7 +71,6 @@ public:
 	ScriptEventManager *getSEMgr() const;
 
 	std::unique_ptr<ScriptEventMap> script_events_to_send;
-	int ref_wdata = -2; // LUA_NOREF
 
 	void setGodMode(bool value);
 	bool godmode = false;

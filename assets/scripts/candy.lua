@@ -1,3 +1,5 @@
+local player = env.player
+
 local function make_oneway_block(id)
 	return {
 		id = id,
