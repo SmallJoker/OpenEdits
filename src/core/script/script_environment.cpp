@@ -423,6 +423,8 @@ int Script::l_world_get_blocks_in_range(lua_State *L)
 
 int Script::l_world_get_params(lua_State *L)
 {
+	logger(LL_DEBUG, "-> call %s\n", __func__);
+
 	Script *script = get_script(L);
 	World *world = script->m_world;
 	ASSERT_FORCED(world, "no world");
@@ -440,6 +442,8 @@ int Script::l_world_get_params(lua_State *L)
 
 int Script::l_world_set_tile(lua_State *L)
 {
+	logger(LL_DEBUG, "-> call %s\n", __func__);
+
 	Script *script = get_script(L);
 
 	int block_id = luaL_checkinteger(L, 1);

@@ -473,8 +473,10 @@ void Client::pkt_PlaceBlock(Packet &pkt)
 		}
 
 		Block &b = world->updateBlockNoCheck(bu);
-		if (!bu.isBackground())
+		if (!bu.isBackground()) {
+			m_tile_cache_mgr.clearCacheAt(&b);
 			b.tile = getBlockTile(player, &b);
+		}
 	}
 
 	player->updateCoinCount(false);

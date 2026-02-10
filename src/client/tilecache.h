@@ -31,6 +31,7 @@ public:
 	void reset();
 
 	TileCacheEntry getOrCache(const Block *b);
+	void clearCacheAt(const Block *b);
 	void clearCacheFor(bid_t block_id);
 	void clearAll() {
 		removed_caches_counter += m_cache.size();

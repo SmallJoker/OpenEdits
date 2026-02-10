@@ -458,21 +458,29 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 					// Place bid=0
 					bool r_pressed = e.MouseInput.Event == EMIE_RMOUSE_PRESSED_DOWN;
 
+					bool is_defined = m_drag_draw_block.getId() != Block::ID_INVALID;
+					bool can_drag_draw = (m_may_drag_draw || m_drag_draw_cooldown == 0.0f)
+						&& is_defined;
+
+					if (!(can_drag_draw || l_pressed || r_pressed))
+						break;
+
+					blockpos_t bp;
+					if (!getBlockFromPixel(e.MouseInput.X, e.MouseInput.Y, bp))
+						break;
+
+					Block block;
+					if (!world->getBlock(bp, &block))
+						break;
+
 					if (r_pressed && e.MouseInput.Control) {
 						// Copy block
-						blockpos_t bp;
-						if (!getBlockFromPixel(e.MouseInput.X, e.MouseInput.Y, bp))
-							break;
-
 						bid_t block_id;
-						Block b;
 						BlockParams params;
-						if (!world->getBlock(bp, &b))
-							break;
 
-						block_id = b.id;
+						block_id = block.id;
 						if (block_id == 0)
-							block_id = b.bg;
+							block_id = block.bg;
 						else
 							world->getParams(bp, &params);
 
@@ -482,39 +490,20 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 						break;
 					}
 
-					bool can_drag_draw = (m_may_drag_draw || m_drag_draw_cooldown == 0.0f)
-						&& (m_drag_draw_block.getId() != Block::ID_INVALID);
-
-					if (!(can_drag_draw || l_pressed || r_pressed))
-						break;
-
-					blockpos_t bp;
-					if (!getBlockFromPixel(e.MouseInput.X, e.MouseInput.Y, bp))
-						break;
-
-					bool guess_layer = false;
-					if (l_pressed) {
+					if (l_pressed && !is_defined) {
 						bool handled = m_blockselector->getBlockUpdate(bp, m_drag_draw_block);
-						if (m_drag_draw_block.getId() == 0) {
-							guess_layer = true;
-						} else if (!handled) {
-							Block bt;
-							world->getBlock(bp, &bt);
-							if (bt.id == Block::ID_SPIKES)
-								m_drag_draw_block.params.param_u8 = (bt.tile + 1) % 4;
-							if (bt.id == Block::ID_TELEPORTER)
-								m_drag_draw_block.params.teleporter.rotation = (bt.tile + 1) % 4;
+						if (!handled && g_blockmanager->isEElike()) {
+							if (block.id == Block::ID_SPIKES)
+								m_drag_draw_block.params.param_u8 = (block.tile + 1) % 4;
+							if (block.id == Block::ID_TELEPORTER)
+								m_drag_draw_block.params.teleporter.rotation = (block.tile + 1) % 4;
 						}
 					}
 
-					if (r_pressed || guess_layer) {
+					if (r_pressed || m_drag_draw_block.getId() == 0) {
 						// Update block ID on click
-						Block bt;
-						if (!world->getBlock(bp, &bt))
-							break;
-
 						// Pick background if there is no foreground
-						m_drag_draw_block.setErase(bt.id == 0);
+						m_drag_draw_block.setErase(block.id == 0);
 					}
 
 					BlockUpdate bu = m_drag_draw_block;

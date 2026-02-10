@@ -20,27 +20,32 @@ local blocks_teleporter = {
 				values[k] = v
 			end,
 			on_place = function(values, x, y)
-				local _
 				local fg = env.world.get_block(x, y)
 				local rot = 0
 				if fg == ID_TELEPORTER then
 					-- inherit rotation + 1
+					local _
 					rot, _, _ = env.world.get_params(x, y)
-					rot = (rot + 1) % 4;
+					rot = (rot + 1) % 4
 				end
 
 				gui.select_block(nil, rot, values.id, values.dst)
 			end,
 		},
 		params = env.PARAMS_TYPE_U8U8U8,
+		overlay = {
+			type = gui.TOVT_TEXT_BR,
+			fg_color = 0xFF000000,
+			bg_color = 0x0,
+		},
 		tiles = {
 			{ type = env.DRAW_TYPE_ACTION },
 			{ type = env.DRAW_TYPE_ACTION },
 			{ type = env.DRAW_TYPE_ACTION },
 			{ type = env.DRAW_TYPE_ACTION }
 		},
-		get_visuals = function(tile, rot, _, _)
-			return rot
+		get_visuals = function(tile, rot, id, _)
+			return rot, id
 		end,
 		on_intersect_once = function(_)
 			if reg.get_pwdata(player).godmode then

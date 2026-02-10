@@ -67,12 +67,13 @@ TileCacheEntry TileCacheManager::getOrCache(const Block *bptr)
 		| (size_t)(params_hash) << 24;
 
 	auto it = m_cache.find(hash);
-	if (it != m_cache.end())
+	if (it != m_cache.end()) {
+		if (0) {
+			DEBUG_LOG("FROM CACHE id=%d hash=%lX -> tile=%d\n", b.id, hash, it->second.tile);
+		}
 		return it->second;
+	}
 
-	DEBUG_LOG("GET VISUALS id=%d, tile=%d, type=%d, hash=%lX\n",
-		b.id, (int)b.tile, (int)params.getType(), hash
-	);
 	this->cache_miss_counter++;
 
 	if (was_cached) {
@@ -87,7 +88,22 @@ TileCacheEntry TileCacheManager::getOrCache(const Block *bptr)
 	TileCacheEntry &tce = it->second;
 	tce.tile = b.tile;
 	m_script->getVisuals(props, params, &tce);
+
+	DEBUG_LOG("GET VISUALS id=%d, tile=%d, ptype=%d, hash=%lX -> tile=%d\n",
+		b.id, (int)b.tile, (int)params.getType(), hash, tce.tile
+	);
 	return tce;
+}
+
+void TileCacheManager::clearCacheAt(const Block *b)
+{
+	if (m_params_hashes.empty())
+		return;
+
+	const size_t block_i = b - m_world->begin();
+	if (block_i < m_params_hashes.size()) {
+		m_params_hashes[block_i] = 0;
+	}
 }
 
 void TileCacheManager::clearCacheFor(bid_t block_id)
