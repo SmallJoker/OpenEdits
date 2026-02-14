@@ -1,28 +1,19 @@
 #include "guiscript.h"
+#include "guibuilder.h"
 #include "client/client.h"
 #include "client/gameevent.h"
-#include "client/hudelement.h"
 #include "core/blockmanager.h"
 #include "core/script/script_utils.h"
 #include "guilayout/guilayout_irrlicht.h"
 // Irrlicht includes
 #include <IEventReceiver.h> // SEvent
-#include <IGUIEditBox.h>
-#include <IGUIEnvironment.h>
-#include <IGUIStaticText.h>
+#include <IGUIElement.h>
 
 using namespace guilayout;
 using namespace ScriptUtils;
-using HET = HudElement::Type;
 
-static Logger logger("GuiScript", LL_INFO);
-
-enum GUIElementType {
-	ELMT_TABLE   = 1,
-
-	ELMT_TEXT    = 5,
-	ELMT_INPUT   = 6,
-};
+Logger guiscript_logger("GuiScript", LL_INFO);
+static Logger &logger = guiscript_logger;
 
 GuiScript::GuiScript(BlockManager *bmgr, gui::IGUIEnvironment *env) :
 	ClientScript(bmgr), m_guienv(env)
@@ -62,7 +53,6 @@ bool GuiScript::OnEvent(const SEvent &e)
 	if (e.EventType == EET_GUI_EVENT && e.GUIEvent.EventType == gui::EGET_EDITBOX_CHANGED) {
 		auto ie = e.GUIEvent.Caller;
 		auto e = IGUIElementWrapper::find_wrapper(m_le_root.get(), ie);
-
 		// find out whether we should listen
 		if (!e || !m_props)
 			goto nomatch;
@@ -75,7 +65,7 @@ bool GuiScript::OnEvent(const SEvent &e)
 
 		m_le_root->doRecursive([this] (Element *e_raw) -> bool {
 			if (auto e = dynamic_cast<IGUIElementWrapper *>(e_raw)) {
-				updateInputValue(e->getElement());
+				GuiBuilder::update_input_value(m_lua, m_props->ref_gui_def, e->getElement());
 			}
 			return true; // continue
 		});
@@ -86,42 +76,6 @@ nomatch:
 	return false;
 }
 
-
-/// `true` if OK
-static bool read_s16_array(lua_State *L, const char *field, s16 *ptr, size_t len)
-{
-	u64 set_i = 0;
-	lua_getfield(L, -1, field);
-	if (lua_isnil(L, -1))
-		goto done;
-	luaL_checktype(L, -1, LUA_TTABLE);
-	if (len >= 8 * sizeof(set_i))
-		goto done; // implementation limit
-
-	for (lua_pushnil(L); lua_next(L, -2); lua_pop(L, 1)) {
-		// key @ -2, value @ -1
-		size_t i = luaL_checkint(L, -2) - 1;
-		if (i < len) {
-			ptr[i] = luaL_checkint(L, -1); // downcast
-			//logger(LL_DEBUG, "%s [%zu] = %d", field, i, ptr[i]);
-			set_i |= 1 << i;
-		} else {
-			logger(LL_ERROR, "Index %zu of '%s' >= %zu", i, field, len);
-		}
-	}
-
-done:
-	lua_pop(L, 1); // field
-	if (set_i == 0)
-		return false; // no values provided
-
-	const u64 expected = ((u64)1 << len) - 1;
-	if (set_i != expected) {
-		logger(LL_WARN, "Missing values for '%s'. want=0x%zX, got=0x%zX", field, expected, set_i);
-		return false;
-	}
-	return true;
-}
 
 void GuiScript::onInput(const char *k, const char *v)
 {
@@ -177,170 +131,21 @@ bool GuiScript::onPlace(blockpos_t pos)
 	return true;
 }
 
-void GuiScript::updateInputValue(gui::IGUIElement *ie)
-{
-	const char *name = ie->getName();
-	if (!name[0])
-		return;
-
-	logger(LL_INFO, "%s, name=%s", __func__, name);
-
-	lua_State *L = m_lua;
-	lua_rawgeti(L, LUA_REGISTRYINDEX, m_props->ref_gui_def);
-	lua_getfield(L, -1, "values");
-	lua_remove(L, -2); // "gui_def"
-	lua_getfield(L, -1, name);
-	lua_remove(L, -2); // "values"
-
-	const char *text = lua_tostring(L, -1);
-	if (!text)
-		goto done;
-
-	{
-		core::stringw wtext;
-		core::utf8ToWString(wtext, text);
-		ie->setText(wtext.c_str());
-	}
-
-done:
-	lua_pop(L, 1);
-}
-
-int GuiScript::gui_read_element(lua_State *L)
-{
-	MESSY_CPP_EXCEPTIONS_START
-	GuiScript *script = static_cast<GuiScript *>(get_script(L));
-	if (script->m_le_stack.empty()) {
-		// Root table --> check whether the format is OK
-		luaL_checktype(L, -1, LUA_TTABLE);
-
-		lua_getfield(L, -1, "focus");
-		const char *name = lua_tostring(L, -1);
-		if (name)
-			script->m_focus = name;
-		lua_pop(L, 1);
-
-		lua_getfield(L, -1, "values");
-		luaL_checktype(L, -1, LUA_TTABLE);
-		lua_pop(L, 1);
-
-		lua_getfield(L, -1, "on_input");
-		luaL_checktype(L, -1, LUA_TFUNCTION);
-		lua_pop(L, 1);
-	}
-
-	int type = check_field_int(L, -1, "type");
-	logger(LL_DEBUG, "read element T=%d", type);
-
-	auto &e = script->m_le_stack.emplace_back();
-	auto guienv = script->m_guienv;
-	auto parent = script->m_ie_stack.back();
-
-	switch ((GUIElementType)type) {
-	case ELMT_TABLE:
-		{
-			Table *t = new Table();
-			e.reset(t);
-
-			s16 grid[2];
-			if (read_s16_array(L, "grid", grid, 2)
-					&& grid[0] >= 1 && grid[1] >= 1) {
-				t->setSize(grid[0], grid[1]);
-			}
-
-			lua_getfield(L, -1, "fields");
-			for (lua_pushnil(L); lua_next(L, 2); lua_pop(L, 1)) {
-				// key @ -2, value @ -1
-				size_t i = luaL_checkint(L, -2) - 1; // convert to x/y index
-				luaL_checktype(L, -1, LUA_TTABLE);
-				u16 y = i / grid[0];
-				u16 x = i - y * grid[1];
-
-				gui_read_element(L);
-				t->get(x, y) = std::move(script->m_le_stack.back());
-				script->m_le_stack.pop_back();
-			}
-			lua_pop(L, 1); // fields
-		}
-		break;
-	case ELMT_TEXT:
-		{
-			const char *text = check_field_string(L, -1, "text");
-			core::stringw wtext;
-			core::utf8ToWString(wtext, text);
-			auto ie = guienv->addStaticText(wtext.c_str(), core::recti(), false, true, parent);
-			e.reset(new IGUIElementWrapper(ie));
-
-			ie->setOverrideColor(0xFF000000); //(0xFFFFFFFF);
-		}
-		break;
-	case ELMT_INPUT:
-		{
-			const char *name = check_field_string(L, -1, "name");
-
-			auto ie = guienv->addEditBox(L"", core::recti(), true, parent);
-			e.reset(new IGUIElementWrapper(ie));
-			ie->setName(name);
-			ie->setTextAlignment(gui::EGUIA_CENTER, gui::EGUIA_CENTER);
-
-			script->updateInputValue(ie);
-			if (name == script->m_focus)
-				guienv->setFocus(ie);
-		}
-		break;
-	default:
-		logger(LL_WARN, "Unknown element: %d", type);
-	}
-
-	read_s16_array(L, "margin", e->margin.data(), e->margin.size());
-	read_s16_array(L, "expand", e->expand.data(), e->expand.size());
-	read_s16_array(L, "min_size", e->min_size.data(), e->min_size.size());
-	return 0;
-	MESSY_CPP_EXCEPTIONS_END
-}
-
 guilayout::Element *GuiScript::openGUI(bid_t block_id, gui::IGUIElement *parent)
 {
 	m_le_root = nullptr;
-	m_le_stack.clear();
-	m_ie_stack.clear();
 
 	m_props = m_bmgr->getProps(block_id);
 	if (!m_props || m_props->ref_gui_def < 0)
 		return nullptr; // no GUI
 
-	m_ie_stack.push_back(parent);
-
 	lua_State *L = m_lua;
-
 	int top = lua_gettop(L);
-	lua_rawgeti(L, LUA_REGISTRYINDEX, CUSTOM_RIDX_TRACEBACK);
-	int errorhandler = lua_gettop(L);
 
-	// Function
-	lua_pushcfunction(L, gui_read_element);
-	// Argument 1
-	lua_rawgeti(L, LUA_REGISTRYINDEX, m_props->ref_gui_def);
+	GuiBuilder builder(L, m_guienv);
+	m_le_root = builder.show(m_props->ref_gui_def, parent);
 
-	int status = lua_pcall(L, 1, 0, errorhandler);
-	if (status != 0) {
-		const char *err = lua_tostring(L, -1);
-		logger(LL_ERROR, "%s failed: %s", __func__, err);
-		m_le_stack.clear();
-	}
-
-	lua_settop(L, top);
-	m_ie_stack.clear(); // may become invalid later
-
-	if (m_le_stack.empty())
-		return nullptr;
-
-	if (m_le_stack.size() != 1) {
-		logger(LL_ERROR, "%s: logic error", __func__);
-		return nullptr;
-	}
-
-	m_le_root = std::move(m_le_stack.front());
+	ASSERT_FORCED(lua_gettop(L) == top, "unbalanced stack!");
 	return m_le_root.get();
 }
 
@@ -349,38 +154,13 @@ guilayout::Element *GuiScript::openGUI(bid_t block_id, gui::IGUIElement *parent)
 int GuiScript::l_gui_change_hud(lua_State *L)
 {
 	MESSY_CPP_EXCEPTIONS_START
-	int id = luaL_checkinteger(L, 1);
-	int type = HET::T_MAX_INVALID;
+	int id = -1;
+	if (!lua_isnil(L, 1))
+		id = luaL_checkinteger(L, 1);
 
-	// TODO: get HUD ptr if available
-
-	lua_getfield(L, 2, "type");
-	if (!lua_isnil(L, -1)) {
-		type = (HET)luaL_checkinteger(L, -1);
-	}
-	lua_pop(L, 1); // type
-
-	if (type < 0 || type >= HET::T_MAX_INVALID) {
-		logger(LL_WARN, "change_hud: unknown type %d", (int)type);
-		return 0;
-	}
-
-	HudElement e((HET)type);
-
-	switch ((HET)type) {
-		case HET::T_TEXT:
-			{
-				lua_getfield(L, 2, "value");
-				*e.params.text = luaL_checkstring(L, -1);
-				lua_pop(L, 1);
-			}
-			break;
-		case HET::T_MAX_INVALID:
-			// not reachable
-			break;
-	}
-
-	// TODO: GameEvent to add the HUD
+	// id < 0 --> assign new
+	// TODO
+	int hud_not_implemented_yet = 0;
 	return 0;
 	MESSY_CPP_EXCEPTIONS_END
 }

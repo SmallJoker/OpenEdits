@@ -46,11 +46,6 @@ public:
 	bool onPlace(blockpos_t pos);
 	std::vector<bid_t> hotbar_blocks;
 private:
-
-	void updateInputValue(gui::IGUIElement *ie);
-	// from Lua stack, possibly recursive.
-	static int gui_read_element(lua_State *L);
-
 	static int l_gui_change_hud(lua_State *L);
 	static int l_gui_play_sound(lua_State *L);
 	static int l_gui_select_block(lua_State *L);
@@ -58,11 +53,6 @@ private:
 
 	gui::IGUIEnvironment *m_guienv;
 	BlockUpdate *m_block_update = nullptr;
-
-	// Temporary
-	std::list<EPtr> m_le_stack; //< temporary for layout
-	std::list<gui::IGUIElement *> m_ie_stack; //< for relative positions and rough tab order
-	std::string m_focus; //< name of the focussed element
 
 	// Until the GUI is closed
 	const BlockProperties *m_props = nullptr;

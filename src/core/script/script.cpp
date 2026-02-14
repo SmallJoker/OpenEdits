@@ -186,6 +186,10 @@ bool Script::init()
 	lua_newtable(L);
 	lua_rawseti(L, LUA_REGISTRYINDEX, CUSTOM_RIDX_PLAYER_REFS);
 
+	// Reserved for GuiBuilder (client only)
+	lua_pushboolean(L, false);
+	lua_rawseti(L, LUA_REGISTRYINDEX, CUSTOM_RIDX_GUIBUILDER);
+
 #define FIELD_SET_FUNC(prefix, name) \
 	field_set_function(L, #name, Script::l_ ## prefix ## name)
 

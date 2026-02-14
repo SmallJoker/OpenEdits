@@ -31,6 +31,7 @@ namespace ScriptUtils {
 		CUSTOM_RIDX_TRACEBACK,
 		CUSTOM_RIDX_PLAYER_CONTROLS,
 		CUSTOM_RIDX_PLAYER_REFS,
+		CUSTOM_RIDX_GUIBUILDER,
 	};
 
 	Script *get_script(lua_State *L);
