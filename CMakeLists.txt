@@ -154,6 +154,8 @@ endif()
 
 ### Executable
 
+# Use in-place libraries where available
+set(CMAKE_INSTALL_RPATH ".")
 file(WRITE "${PROJECT_SOURCE_DIR}/src/version.cpp" "#error file needs update")
 add_executable(${PROJECT_NAME} ${SRC_FILES})
 add_dependencies(${PROJECT_NAME} SetVersion)
@@ -245,15 +247,4 @@ if(BUILD_CLIENT)
 	get_target_property(
 		IRRLICHT_DLL IrrlichtMt::IrrlichtMt IMPORTED_LOCATION_RELEASE)
 	install(FILES ${IRRLICHT_DLL} DESTINATION ${INSTALL_DIR})
-endif()
-
-
-# Platform-specific installs
-
-if(LINUX OR UNIX)
-	# Start script
-	install(FILES "${PROJECT_SOURCE_DIR}/misc/AppRun.sh"
-		DESTINATION ${INSTALL_DIR}
-		PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
-	)
 endif()

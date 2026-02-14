@@ -87,7 +87,7 @@ Permission/player flag examples:
 ### Linux
 
 1. Extract the archive to any location
-2. Run `AppRun.sh`
+2. Run `OpenEdits`
 3. In case of issues: run with `gdb`. Debug symbols are included.
 
 ### Windows
