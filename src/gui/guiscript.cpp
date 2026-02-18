@@ -8,9 +8,29 @@
 // Irrlicht includes
 #include <IEventReceiver.h> // SEvent
 #include <IGUIElement.h>
+#include <IGUIEnvironment.h>
 
 using namespace guilayout;
 using namespace ScriptUtils;
+
+struct HudElement {
+	void remove(lua_State *L)
+	{
+		if (lua_ref >= 0)
+			luaL_unref(L, LUA_REGISTRYINDEX, lua_ref);
+		lua_ref = LUA_NOREF;
+		removal_requested = true;
+
+		// Still visible?
+	}
+
+	int lua_ref = LUA_NOREF;
+	std::string backtrace; //< information to throw later
+
+	EPtr layout_element;
+	bool processed = false;
+	bool removal_requested = false;
+};
 
 Logger guiscript_logger("GuiScript", LL_INFO);
 static Logger &logger = guiscript_logger;
@@ -18,6 +38,11 @@ static Logger &logger = guiscript_logger;
 GuiScript::GuiScript(BlockManager *bmgr, gui::IGUIEnvironment *env) :
 	ClientScript(bmgr), m_guienv(env)
 {
+}
+
+GuiScript::~GuiScript()
+{
+	refreshHUD(true);
 }
 
 void GuiScript::initSpecifics()
@@ -29,7 +54,8 @@ void GuiScript::initSpecifics()
 	field_set_function(L, #name, GuiScript::l_ ## prefix ## name)
 
 	lua_newtable(L);
-	FIELD_SET_FUNC(gui_, change_hud);
+	FIELD_SET_FUNC(gui_, set_hud);
+	FIELD_SET_FUNC(gui_, remove_hud);
 	FIELD_SET_FUNC(gui_, play_sound);
 	FIELD_SET_FUNC(gui_, select_block);
 	FIELD_SET_FUNC(gui_, set_hotbar);
@@ -84,7 +110,7 @@ void GuiScript::onInput(const char *k, const char *v)
 
 	lua_State *L = m_lua;
 
-	int top = lua_gettop(L);
+	const int top = lua_gettop(L);
 	lua_rawgeti(L, LUA_REGISTRYINDEX, CUSTOM_RIDX_TRACEBACK);
 
 	logger(LL_INFO, "on_input, id=%d", m_props->id);
@@ -112,7 +138,7 @@ bool GuiScript::onPlace(blockpos_t pos)
 
 	lua_State *L = m_lua;
 
-	int top = lua_gettop(L);
+	const int top = lua_gettop(L);
 	lua_rawgeti(L, LUA_REGISTRYINDEX, CUSTOM_RIDX_TRACEBACK);
 
 	logger(LL_INFO, "on_place, id=%d", props->id);
@@ -140,7 +166,7 @@ guilayout::Element *GuiScript::openGUI(bid_t block_id, gui::IGUIElement *parent)
 		return nullptr; // no GUI
 
 	lua_State *L = m_lua;
-	int top = lua_gettop(L);
+	const int top = lua_gettop(L);
 
 	GuiBuilder builder(L, m_guienv);
 	m_le_root = builder.show(m_props->ref_gui_def, parent);
@@ -149,19 +175,83 @@ guilayout::Element *GuiScript::openGUI(bid_t block_id, gui::IGUIElement *parent)
 	return m_le_root.get();
 }
 
+
 // -------------- Static Lua functions -------------
 
-int GuiScript::l_gui_change_hud(lua_State *L)
+int GuiScript::l_gui_set_hud(lua_State *L)
 {
 	MESSY_CPP_EXCEPTIONS_START
+	GuiScript *script = static_cast<GuiScript *>(get_script(L));
 	int id = -1;
 	if (!lua_isnil(L, 1))
 		id = luaL_checkinteger(L, 1);
+	luaL_checktype(L, 2, LUA_TTABLE);
 
-	// id < 0 --> assign new
-	// TODO
-	int hud_not_implemented_yet = 0;
-	return 0;
+	auto &hud_map = script->m_hud_elements;
+
+	if (id < 0) {
+		// Generate new ID
+		u8 scan_id = script->m_hud_id_next;
+		while (1) {
+			scan_id++;
+			if (scan_id == script->m_hud_id_next)
+				luaL_error(L, "out of HUD IDs");
+
+			if (hud_map.find(scan_id) == hud_map.end()) {
+				// Free slot
+				break;
+			}
+		}
+		script->m_hud_id_next = scan_id + 1;
+		id = scan_id;
+	} else {
+		auto it = hud_map.find(id);
+		if (it == hud_map.end()) {
+			logger(LL_WARN, "%s: Cannot find HUD id=%d", __func__, id);
+		}
+	}
+
+	HudElement &hud = hud_map[id];
+	hud.remove(L);
+
+	{
+		lua_rawgeti(L, LUA_REGISTRYINDEX, CUSTOM_RIDX_TRACEBACK);
+		lua_call(L, 0, 1);
+		hud.backtrace = lua_tostring(L, -1);
+		lua_pop(L, 1);
+	}
+
+	{
+		lua_pushvalue(L, 2);
+		hud.lua_ref = luaL_ref(L, LUA_REGISTRYINDEX);
+		if (hud.lua_ref < 0)
+			luaL_error(L, "Failed to reference HUD table id=%d\n", id);
+	}
+
+	hud.removal_requested = false;
+	lua_pushinteger(L, id);
+	return 1;
+	MESSY_CPP_EXCEPTIONS_END
+}
+
+int GuiScript::l_gui_remove_hud(lua_State *L)
+{
+	MESSY_CPP_EXCEPTIONS_START
+	GuiScript *script = static_cast<GuiScript *>(get_script(L));
+	int id = luaL_checkinteger(L, 1);
+
+	auto &hud_map = script->m_hud_elements;
+
+	bool ret = false;
+	auto it = hud_map.find(id);
+	if (it != hud_map.end()) {
+		it->second.remove(L);
+		ret = true;
+	} else {
+		logger(LL_WARN, "%s: Cannot find HUD id=%d", __func__, id);
+	}
+	lua_pushboolean(L, ret);
+	return 1;
 	MESSY_CPP_EXCEPTIONS_END
 }
 
@@ -228,4 +318,72 @@ int GuiScript::l_gui_set_hotbar(lua_State *L)
 
 	return 0;
 	MESSY_CPP_EXCEPTIONS_END
+}
+
+
+// -------------- HUD Elements -------------
+
+void GuiScript::refreshHUD(bool do_remove)
+{
+	logger(LL_DEBUG, "%s: %d", __func__, (int)do_remove);
+
+	lua_State *L = m_lua;
+	for (auto &it : m_hud_elements) {
+		HudElement &hud = it.second;
+
+		if (do_remove) {
+			hud.remove(L);
+		} else {
+			// Use same Lua table to rebuild
+			hud.processed = false;
+		}
+	}
+
+	if (do_remove)
+		m_hud_elements.clear();
+}
+
+void GuiScript::updateHUD(std::array<s16, 4> area)
+{
+	lua_State *L = m_lua;
+	gui::IGUIElement *root = m_guienv->getRootGUIElement();
+	GuiBuilder builder(L, m_guienv);
+	std::vector<int> to_remove;
+
+	int count_processed = 0;
+
+	for (auto &it : m_hud_elements) {
+		HudElement &hud = it.second;
+
+		if (hud.removal_requested) {
+			to_remove.emplace_back(it.first);
+			continue;
+		}
+
+		if (!hud.processed) {
+			hud.processed = true;
+			count_processed++;
+
+			const int top = lua_gettop(L);
+			hud.layout_element = builder.show(hud.lua_ref, root);
+			if (hud.layout_element) {
+				hud.layout_element->start(area);
+			} else {
+				logger(LL_INFO, "HUD id=%d failed to create. %s",
+					it.first, hud.backtrace.c_str()
+				);
+			}
+
+			ASSERT_FORCED(lua_gettop(L) == top, "unbalanced stack!");
+		}
+	}
+
+	for (int id : to_remove)
+		m_hud_elements.erase(id);
+
+	if (count_processed > 0 || !to_remove.empty()) {
+		logger(LL_DEBUG, "%s: rm=%d, proc=%d, visible=%d", __func__,
+			(int)to_remove.size(), count_processed, (int)m_hud_elements.size()
+		);
+	}
 }

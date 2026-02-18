@@ -275,3 +275,15 @@ if env.test_mode:find("media") then
 		}
 	})
 end
+
+-- C++: setup_guiscript + unittest_gui_layout
+if env.test_mode:find("gui") then
+	gui.set_hud(nil, {
+		type = gui.ELMT_TABLE, grid = { 2, 3 }, fields = {
+			[1] = { type = gui.ELMT_TEXT, text = "UPPER LEFT TABLE VALUE" },
+			[6] = { type = gui.ELMT_TEXT, text = "LOWER RIGHT TABLE VALUE" },
+		},
+		values = {},
+		on_input = function() end
+	})
+end

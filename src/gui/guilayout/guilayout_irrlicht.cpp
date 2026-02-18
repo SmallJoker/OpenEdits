@@ -39,22 +39,27 @@ IGUIElementWrapper::~IGUIElementWrapper()
 		return;
 	}
 
-	// When created with the GUI environment root element,
-	// ->drop() and ->remove() are not needed because
-	// Irrlicht automatically frees its children.
-
 	PRINT_DBG("- IGUIElement %s\n", typeid(*m_element).name());
 
-	m_element->drop();
+	setElement(nullptr);
 }
 
 void IGUIElementWrapper::setElement(gui::IGUIElement *elem)
 {
-	if (m_element)
-		m_element->drop();
+	ASSERT_FORCED(m_element != elem, "why?");
 
-	elem->grab();
+	if (elem)
+		elem->grab();
+
+	if (m_element) {
+		m_element->remove();
+		m_element->drop(); // Might now be a dangling pointer
+	}
+
 	m_element = elem;
+
+	if (!m_element)
+		return;
 
 	gui::EGUI_ELEMENT_TYPE type = m_element->getType();
 

@@ -180,11 +180,13 @@ int GuiBuilder::read_element(lua_State *L)
 			Table *t = new Table();
 			e.reset(t);
 
-			s16 grid[2];
+			s16 grid[2] = { 0, 0 };
 			if (read_s16_array(L, "grid", grid, 2)
 					&& grid[0] >= 1 && grid[1] >= 1) {
 				t->setSize(grid[0], grid[1]);
 			}
+
+			logger(LL_DEBUG, "+table w=%d, h=%d", grid[0], grid[1]);
 
 			lua_getfield(L, -1, "fields");
 			for (lua_pushnil(L); lua_next(L, 2); lua_pop(L, 1)) {
@@ -192,8 +194,9 @@ int GuiBuilder::read_element(lua_State *L)
 				size_t i = luaL_checkint(L, -2) - 1; // convert to x/y index
 				luaL_checktype(L, -1, LUA_TTABLE);
 				u16 y = i / grid[0];
-				u16 x = i - y * grid[1];
+				u16 x = i - y * grid[0];
 
+				logger(LL_DEBUG, "set i=%zu (x=%d, y=%d)", i, x, y);
 				read_element(L);
 				t->get(x, y) = std::move(self->m_le_stack.back());
 				self->m_le_stack.pop_back();

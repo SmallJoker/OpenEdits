@@ -325,7 +325,6 @@ static Element *setup_guiscript(gui::IGUIEnvironment *guienv)
 
 	script->onPlace({ 5, 7 });
 	CHECK(bu.params.param_u8 == 98);
-
 	return e;
 }
 
@@ -381,6 +380,8 @@ void unittest_gui_layout(int which)
 	device->setWindowCaption((std::wstring(L"Layout demo") + L" - " + suffix).c_str());
 
 	bool is_new_screen = true;
+	std::array<s16, 4> guilayout_rect;
+
 	while (device->run()) {
 		auto screensize = driver->getScreenSize();
 		if (screensize != window_size) {
@@ -389,15 +390,24 @@ void unittest_gui_layout(int which)
 		}
 
 		if (is_new_screen && root) {
-			unittest_tic();
+
 			if (rect_override.getArea() == 0)
-				root->start({0, 0, (s16)window_size.Width, (s16)window_size.Height });
+				guilayout_rect = {0, 0, (s16)window_size.Width, (s16)window_size.Height };
 			else
-				root->start({0, 0, (s16)rect_override.getWidth(), (s16)rect_override.getHeight() });
+				guilayout_rect = {0, 0, (s16)rect_override.getWidth(), (s16)rect_override.getHeight() };
+
+			unittest_tic();
+			root->start(guilayout_rect);
 			unittest_toc("root->start()");
+
+			if (script)
+				script->refreshHUD(false);
 		}
 
 		driver->beginScene(true, true, video::SColor(0xFF777777));
+
+		if (script)
+			script->updateHUD(guilayout_rect);
 
 		guienv->drawAll();
 

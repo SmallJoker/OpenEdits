@@ -147,7 +147,12 @@ Namespace: `env.server`. Only available for servers.
 
 Namespace: `gui`. Only available for GUI clients.
 
- * `change_hud(id, HUD Definition)`
+ * `set_hud(id, HUD Definition)` -> `id`
+    * `id` (optional, integer): HUD element ID to overwrite
+    * `HUD Definition` (table): same as `gui_def`.
+    * Return value: HUD element ID
+ * `remove_hud(id)` -> `boolean`
+    * Return value: `true` on success
  * `play_sound(asset_name)`
     * Depends on `env.require_asset`
  * `select_block(block_id, ...)`
