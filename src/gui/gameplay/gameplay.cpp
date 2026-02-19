@@ -83,6 +83,8 @@ void SceneGameplay::OnClose()
 	m_gui->driver->removeTexture(smiley_texture);
 	smiley_texture = nullptr;
 
+	m_gui->script->refreshHUD(true);
+
 	m_chat_history_text.clear();
 	m_chat_input_history.clear();
 	m_chat_input_index = -1;
@@ -270,6 +272,8 @@ void SceneGameplay::draw()
 		m_blockselector->setEnabled(pflags.flags & PlayerFlags::PF_EDIT);
 		m_blockselector->draw();
 	}
+
+	m_gui->script->refreshHUD(false);
 }
 
 void SceneGameplay::step(float dtime)
@@ -299,10 +303,20 @@ void SceneGameplay::step(float dtime)
 	else
 		m_drag_draw_cooldown = 0;
 
-	do {
+	// HUD elements
+	if (!g_blockmanager->isHardcoded()) {
+		auto tl = m_draw_area.UpperLeftCorner,
+			br = m_draw_area.LowerRightCorner;
+
+		m_gui->script->updateHUD({
+			(s16)tl.X, (s16)tl.Y,
+			(s16)br.X, (s16)br.Y
+		});
+	} else {
+		// Hardcoded: coins only.
 		auto player = m_gui->getClient()->getMyPlayer();
 		if (!player)
-			break;
+			goto noplayer;
 
 		if (player->coins > 0) {
 			// Coins text
@@ -315,8 +329,9 @@ void SceneGameplay::step(float dtime)
 			swprintf(buf, 100, L"Coins: %d / %d", (int)player->coins, m_total_coins);
 			m_gui->font->draw(buf, rect, 0xFFFFFF00, true);
 		}
-	} while (false);
-
+	}
+noplayer:
+	return;
 }
 
 static bool editbox_move_to_end(gui::IGUIEnvironment *guienv)

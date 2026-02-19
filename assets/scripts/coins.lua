@@ -7,9 +7,10 @@ env.require_asset("coin.mp3")
 local EV_COINS
 EV_COINS = env.register_event(100 + env.SEF_HAVE_ACTOR, 0, env.PARAMS_TYPE_U8,
 	function(count)
+		local pw_data = get_pwdata(player)
 		if not env.is_me() then
 			-- Client: do not let the server overwrite our data
-			get_pwdata(player).coins = count
+			pw_data.coins = count
 		end
 		print(("@%s | coins of %s: %d"):format(
 			(env.server and "server" or "client"),
@@ -23,6 +24,20 @@ EV_COINS = env.register_event(100 + env.SEF_HAVE_ACTOR, 0, env.PARAMS_TYPE_U8,
 		end
 		if env.is_me() then
 			env.world.update_tiles({43})
+		end
+		if gui.set_hud then
+			pw_data.coins_hud = gui.set_hud(pw_data.coins_hud, {
+				type = gui.ELMT_TABLE, grid = { 2, 2 }, fields = {
+					[2] = {
+						type = gui.ELMT_TEXT,
+						text = "Coins: " .. count,
+						margin = { 1, 0, 0, 1 }, -- top right
+						color = 0xFFFFFF00, -- yellow
+					},
+				},
+				values = {},
+				on_input = function() end
+			})
 		end
 	end
 )

@@ -188,8 +188,13 @@ void Gui::run()
 		scenemgr->drawAll();
 		guienv->drawAll();
 
-		if (m_show_debug)
+		if (m_show_debug) {
 			guilayout::IGUIElementWrapper::draw_wireframe(layout, m_device, 0xFFFF0000);
+
+			for (guilayout::Element *e : script->getHUDElements()) {
+				guilayout::IGUIElementWrapper::draw_wireframe(e, m_device, 0xFF00FF00);
+			}
+		}
 
 		drawFPS();
 		drawPopup(dtime);

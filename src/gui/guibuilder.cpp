@@ -212,7 +212,13 @@ int GuiBuilder::read_element(lua_State *L)
 			auto ie = guienv->addStaticText(wtext.c_str(), core::recti(), false, true, parent);
 			e.reset(new IGUIElementWrapper(ie));
 
-			ie->setOverrideColor(0xFF000000); //(0xFFFFFFFF);
+			video::SColor color(0xFF000000);
+			lua_getfield(L, -1, "color");
+			if (!lua_isnil(L, -1))
+				color = luaL_checkinteger(L, -1);
+			lua_pop(L, 1); // color
+
+			ie->setOverrideColor(color);
 		}
 		break;
 	case ELMT_INPUT:

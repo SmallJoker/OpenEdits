@@ -67,6 +67,7 @@ public:
 	void refreshHUD(bool do_remove);
 	/// Call on each draw step to update the visible HUD elements
 	void updateHUD(std::array<s16, 4> area);
+	std::vector<guilayout::Element *> getHUDElements() const;
 private:
 	std::map<int, HudElement> m_hud_elements;
 	u8 m_hud_id_next = 100;

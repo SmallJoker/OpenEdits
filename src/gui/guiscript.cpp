@@ -228,6 +228,7 @@ int GuiScript::l_gui_set_hud(lua_State *L)
 			luaL_error(L, "Failed to reference HUD table id=%d\n", id);
 	}
 
+	hud.processed = false;
 	hud.removal_requested = false;
 	lua_pushinteger(L, id);
 	return 1;
@@ -373,7 +374,6 @@ void GuiScript::updateHUD(std::array<s16, 4> area)
 					it.first, hud.backtrace.c_str()
 				);
 			}
-
 			ASSERT_FORCED(lua_gettop(L) == top, "unbalanced stack!");
 		}
 	}
@@ -386,4 +386,14 @@ void GuiScript::updateHUD(std::array<s16, 4> area)
 			(int)to_remove.size(), count_processed, (int)m_hud_elements.size()
 		);
 	}
+}
+
+std::vector<guilayout::Element *> GuiScript::getHUDElements() const
+{
+	std::vector<guilayout::Element *> ret;
+	for (auto &it : m_hud_elements) {
+		if (it.second.layout_element)
+			ret.emplace_back(it.second.layout_element.get());
+	}
+	return ret;
 }
