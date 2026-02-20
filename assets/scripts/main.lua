@@ -58,7 +58,7 @@ reg = {}
 -- Per-world player data. Created on join, removed on leave
 reg._player_data = {}
 reg.get_pwdata = function(player)
-	return reg._player_data[player:hash()]
+	return reg._player_data[type(player) == "userdata" and player:hash() or player]
 end
 
 -- Block registration utility functions

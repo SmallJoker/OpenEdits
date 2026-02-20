@@ -12,6 +12,9 @@ env.on_player_event = function(event, arg)
 			godmode = false,
 			coins = 0,
 		}
+		if env.is_me() then
+			reg.my_player_id = id
+		end
 	end
 
 	if event == "godmode" then
@@ -27,5 +30,8 @@ env.on_player_event = function(event, arg)
 
 	if event == "leave" then
 		player_data[id] = nil
+		if env.is_me() then
+			reg.my_player_id = nil
+		end
 	end
 end

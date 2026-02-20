@@ -125,7 +125,8 @@ A `userdata` object.
        * `dir_x`, `dir_y` (number)
        * Note: `dir_(x|y)` may have any value range.
  * `env.is_me()` -> bool
-    * Returns whether the controlled player is selected.
+    * Client: Returns whether `env.player` is the controlled player.
+    * Server: Returns `false`.
 
 Player-related callbacks in `env`:
 

@@ -4,6 +4,30 @@ local get_pwdata = reg.get_pwdata
 
 env.require_asset("coin.mp3")
 
+local function update_hud(pw_data)
+	if not gui.set_hud then
+		return
+	end
+	if pw_data.coins_hud and pw_data.coins == 0 then
+		gui.remove_hud(pw_data.coins_hud)
+		pw_data.coins_hud = nil
+		return
+	end
+
+	pw_data.coins_hud = gui.set_hud(pw_data.coins_hud, {
+		type = gui.ELMT_TABLE, grid = { 1, 1 }, fields = {
+			[1] = {
+				type = gui.ELMT_TEXT,
+				text = "Coins: " .. pw_data.coins,
+				margin = { 1, 0, 0, 1 }, -- top right
+				color = 0xFFFFFF00, -- yellow
+			},
+		},
+		values = {},
+		on_input = function() end
+	})
+end
+
 local EV_COINS
 EV_COINS = env.register_event(100 + env.SEF_HAVE_ACTOR, 0, env.PARAMS_TYPE_U8,
 	function(count)
@@ -25,30 +49,18 @@ EV_COINS = env.register_event(100 + env.SEF_HAVE_ACTOR, 0, env.PARAMS_TYPE_U8,
 		if env.is_me() then
 			env.world.update_tiles({43})
 		end
-		if gui.set_hud then
-			pw_data.coins_hud = gui.set_hud(pw_data.coins_hud, {
-				type = gui.ELMT_TABLE, grid = { 2, 2 }, fields = {
-					[2] = {
-						type = gui.ELMT_TEXT,
-						text = "Coins: " .. count,
-						margin = { 1, 0, 0, 1 }, -- top right
-						color = 0xFFFFFF00, -- yellow
-					},
-				},
-				values = {},
-				on_input = function() end
-			})
-		end
 	end
 )
 -- TODO: send EV_COINS to newly joined players via attributes
--- TODO: update count on block place/remove
 
 env.on_block_place = function(x, y, id)
 	local old_id, old_tile, _ = env.world.get_block(x, y)
 	if old_id == 100 and old_tile > 0 then
-		-- TODO
+		local pd = reg.get_pwdata(reg.my_player_id)
+		pd.coins = math.max(pd.coins - 1, 0)
+
 		env.world.update_tiles({43})
+		update_hud(pd)
 	end
 end
 
@@ -56,6 +68,9 @@ env.on_world_data = function()
 	for _, p in ipairs(env.world.get_players()) do
 		print("reset for " .. p:get_name())
 		get_pwdata(p).coins = 0
+	end
+	if reg.my_player_id then
+		update_hud(reg.get_pwdata(reg.my_player_id))
 	end
 	--env.world.get_blocks_in_range({}, {100}, env.world.PRT_ENTIRE_WORLD)
 end
@@ -79,6 +94,7 @@ local blocks_coins = {
 
 			if gui then
 				gui.play_sound("coin.mp3")
+				update_hud(pd)
 			end
 		end
 	},

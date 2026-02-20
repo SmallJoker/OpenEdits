@@ -388,12 +388,12 @@ void GuiScript::updateHUD(std::array<s16, 4> area)
 	}
 }
 
-std::vector<guilayout::Element *> GuiScript::getHUDElements() const
+void GuiScript::drawHUDElementsDebug(IrrlichtDevice *device) const
 {
-	std::vector<guilayout::Element *> ret;
 	for (auto &it : m_hud_elements) {
-		if (it.second.layout_element)
-			ret.emplace_back(it.second.layout_element.get());
+		if (!it.second.layout_element)
+			continue;
+
+		guilayout::IGUIElementWrapper::draw_wireframe(it.second.layout_element.get(), device, 0xFF00FF00);
 	}
-	return ret;
 }

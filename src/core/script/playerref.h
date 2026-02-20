@@ -13,7 +13,7 @@ public:
 	/// Cleanup by C++ (empty container)
 	static bool invalidate(lua_State *L, Player *player);
 
-	inline Player **ptrRef() { return &m_player; }
+	inline Player *&ptrRef() { return m_player; }
 
 	static PlayerRef *toPlayerRef(lua_State *L, int idx);
 

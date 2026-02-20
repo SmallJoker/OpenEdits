@@ -42,7 +42,11 @@ Environment *ClientScript::getEnv()
 int ClientScript::l_is_me(lua_State *L)
 {
 	ClientScript *script = (ClientScript *)get_script(L);
-	lua_pushboolean(L, script->isMe());
+	const Player *p_me = script->m_my_player;
+	if (!p_me)
+		luaL_error(L, "player not initialized");
+
+	lua_pushboolean(L, p_me == script->getCurrentPlayer());
 	return 1;
 }
 
@@ -50,7 +54,7 @@ int ClientScript::l_world_update_tiles(lua_State *L)
 {
 	MESSY_CPP_EXCEPTIONS_START
 	ClientScript *script = (ClientScript *)get_script(L);
-	if (!script->isMe())
+	if (!script->isCurrentlyMe())
 		luaL_error(L, "wrong player");
 
 	for (lua_pushnil(L); lua_next(L, 1); lua_pop(L, 1)) {

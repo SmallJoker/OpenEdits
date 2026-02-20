@@ -28,7 +28,7 @@ void Script::pushCurrentPlayerRef()
 		FakePlayer p;
 		PlayerRef::push(L, &p);
 		auto ref = PlayerRef::toPlayerRef(L, -1);
-		m_player = ref->ptrRef();
+		m_player = &ref->ptrRef();
 		setPlayer(nullptr);
 	}
 	lua_setfield(L, -2, "player");

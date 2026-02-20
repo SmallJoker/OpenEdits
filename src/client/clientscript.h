@@ -24,7 +24,7 @@ public:
 protected:
 	Environment *getEnv() override;
 
-	inline bool isMe() const { return getCurrentPlayer() == m_my_player; }
+	inline bool isCurrentlyMe() const { return getCurrentPlayer() == m_my_player; }
 
 	static int l_is_me(lua_State *L);
 	static int l_world_update_tiles(lua_State *L);
