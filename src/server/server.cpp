@@ -12,6 +12,7 @@
 #include "core/worldmeta.h"
 #include "core/script/scriptevent.h"
 #include "version.h"
+#include <cassert>
 
 #if 0
 	#define DEBUGLOG(...) printf(__VA_ARGS__)
