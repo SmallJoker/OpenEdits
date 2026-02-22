@@ -721,6 +721,7 @@ uint8_t Client::getBlockTile(const Player *player, const Block *b)
 		case Block::ID_TELEPORTER:
 			return get_params().teleporter.rotation;
 		case Block::ID_COIN:
+		case Block::ID_CHECKPOINT:
 			return b->tile;
 		case Block::ID_COINDOOR:
 		case Block::ID_COINGATE:

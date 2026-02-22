@@ -13,7 +13,7 @@ Logger script_logger("Script", LL_INFO);
 static Logger &logger = script_logger;
 
 
-static const lua_Integer SCRIPT_API_VERSION = 5;
+static const lua_Integer SCRIPT_API_VERSION = 6;
 
 /*
 	Sandbox theory: http://lua-users.org/wiki/SandBoxes

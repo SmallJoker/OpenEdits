@@ -3,7 +3,7 @@
 ![preview image v1.4.0](screenshot.jpeg)
 
 A 2D game block building inspired by Everybody Edits.
-Code structure inspired by Minetest practices.
+Code structure inspired by Luanti/Minetest practices.
 
 The project direction can be found in [doc/DIRECTION.md](doc/DIRECTION.md).
 
@@ -65,13 +65,6 @@ Permission/player flag examples:
  * `--go USERNAME PASSWORD(FILE) [WORLD_ID]`
      * Starts a local server and joins the world ID (if provided)
 
-**Environment variables**
-
- * `OE_DEBUG=+foo,-bar,+all` override the default log levels
-     * `+` prefix: verbose logging
-     * `-` prefix: ignore anything below error level
-     * `all`: Changes *all* loggers
-     * Specific log level overrides take priority over `all`.
 
 **World import/export**
 
@@ -79,6 +72,24 @@ Permission/player flag examples:
      * Helpful level archive: <https://archive.offlinee.com/>
  * Clients may use `.export FILENAME` to export the current world to `worlds/exports/`
  * See `worlds/README.txt` for further information
+
+
+## Development
+
+**Environment variables**
+
+ * `OE_DEBUG=+foo,-bar,+all` override the default log levels
+     * `+` prefix: verbose logging
+     * `-` prefix: ignore anything below error level
+     * `all`: Changes *all* loggers
+     * Specific log level overrides take priority over `all`.
+     * `OE_DEBUG=?` lists the available loggers
+
+
+**Lua API** (This game can be modded!)
+
+ * API reference: [lua_api.md](doc/lua_api.md)
+ * Entry point: `assets/scripts/main.lua`
 
 
 ## [Downloads](https://github.com/SmallJoker/OpenEdits/releases)

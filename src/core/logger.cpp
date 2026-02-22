@@ -2,6 +2,7 @@
 
 #include "logger.h"
 #include "utils.h" // strsplit
+#include <bits/stdc++.h> // std::sort
 #include <map>
 #include <stdarg.h>
 #include <stdio.h>
@@ -24,17 +25,52 @@ static struct tty_checker {
 
 // Problem: the loggers are registered before calling `main`.
 // std::vector behaves weirdly. It may forget early insertios.
-constexpr size_t LOGGERS_MAX = 20;
+constexpr size_t LOGGERS_MAX = 30;
 static Logger *loggers[LOGGERS_MAX] = {};
 static uint8_t loggers_i = 0;
 
 static time_t startup_time = 0;
+
+
+struct {
+	const char *pretty;
+	const char *prefix;
+	const char *term_fmt;
+} LL_LUT[LL_Invalid] = {
+	{ "print", " --- ", "" },
+	{ "error", "ERROR", "\e[0;31m" }, // red
+	{ "warn ", " warn", "\e[1;33m" }, // yellow
+	{ "info ", " info", "\e[1;30m" }, // grey
+	{ "debug", "debug", "\e[1;30m" }  // grey
+};
 
 static void do_log_level_overrides()
 {
 	const char *var_cstr = getenv("OE_DEBUG");
 	if (!var_cstr)
 		return;
+
+	if (var_cstr[0] == '?' && var_cstr[1] == '\0') {
+		// If this causes a segfault, the ordering rule is inconsistent.
+		std::sort(loggers, loggers + LOGGERS_MAX,
+			[](const Logger *lhs, const Logger *rhs) {
+				if (lhs && !rhs)
+					return true; // move to front
+				if (!lhs)
+					return false;
+				return std::strcmp(lhs->getName(), rhs->getName()) < 0;
+			}
+		);
+
+		// Print available loggers
+		puts("--- List of available loggers. Format: Default level, Name");
+		for (Logger *l : loggers) {
+			if (!l)
+				break; // end
+			printf("   %s  %s\n", LL_LUT[l->log_level].pretty, l->getName());
+		}
+		return;
+	}
 
 	struct LevelDef {
 		LogLevel ll;
@@ -98,25 +134,15 @@ Logger::Logger(const char *name, LogLevel default_ll) :
 	log_level(default_ll),
 	m_name(name)
 {
-	if (loggers_i < LOGGERS_MAX) {
-		loggers[loggers_i] = this;
-		loggers_i++;
-	} else {
-		puts("-!- Logger array too small!");
+	if (loggers_i >= LOGGERS_MAX) {
+		const char *err = "-!- Logger array too small!";
+		puts(err);
+		throw std::runtime_error(err);
 	}
+
+	loggers[loggers_i] = this;
+	loggers_i++;
 }
-
-struct {
-	const char *text;
-	const char *term_fmt;
-} LL_LUT[LL_Invalid] = {
-	{ " --- ", "" },
-	{ "ERROR", "\e[0;31m" }, // red
-	{ " warn", "\e[1;33m" }, // yellow
-	{ " info", "\e[1;30m" }, // grey
-	{ "debug", "\e[1;30m" }  // grey
-};
-
 
 void Logger::operator()(LogLevel ll, const char *fmt, ...)
 {
@@ -148,7 +174,7 @@ void Logger::operator()(LogLevel ll, const char *fmt, ...)
 
 	{
 		// Print module name
-		fprintf(stream, " %s [%s] ", LL_LUT[ll_i].text, m_name);
+		fprintf(stream, " %s [%s] ", LL_LUT[ll_i].prefix, m_name);
 	}
 
 	if (is_tty)

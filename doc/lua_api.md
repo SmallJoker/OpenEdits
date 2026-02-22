@@ -12,8 +12,8 @@ Main entry point: `main.lua`
 
 ### Compatibility
 
- * `api.version` (integer)
-    * To be increased if the game is ever in a usable state.
+ * `API_VERSION` (integer)
+    * To be increased for each API change.
 
 
 ### Helper functions
