@@ -32,7 +32,7 @@ struct HudElement {
 	bool removal_requested = false;
 };
 
-Logger guiscript_logger("GuiScript", LL_INFO);
+Logger guiscript_logger("GuiScript", LL_WARN);
 static Logger &logger = guiscript_logger;
 
 GuiScript::GuiScript(BlockManager *bmgr, gui::IGUIEnvironment *env) :
@@ -260,15 +260,26 @@ int GuiScript::l_gui_play_sound(lua_State *L)
 {
 	MESSY_CPP_EXCEPTIONS_START
 	GuiScript *script = static_cast<GuiScript *>(get_script(L));
+
 	const char *sound_name = luaL_checkstring(L, 1);
+	GameEvent e(GameEvent::C2G_SOUND_PLAY);
+	auto sound = (e.sound = new SoundSpec(sound_name));
+
+	if (!lua_isnoneornil(L, 2)) {
+		luaL_checktype(L, 2, LUA_TTABLE);
+
+		// "modifier" table
+
+		lua_getfield(L, 2, "pitch");
+		if (!lua_isnil(L, -1))
+			sound->pitch = luaL_checknumber(L, -1);
+		lua_pop(L, 1);
+	}
 
 	if (!script->m_client)
 		luaL_error(L, "missing client");
 
-	GameEvent e(GameEvent::C2G_SOUND_PLAY);
-	e.text = new std::string(sound_name);
 	script->m_client->sendNewEvent(e);
-
 	return 0;
 	MESSY_CPP_EXCEPTIONS_END
 }

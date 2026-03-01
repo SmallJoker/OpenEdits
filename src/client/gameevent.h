@@ -7,6 +7,7 @@
 using namespace irr;
 
 class Player;
+struct SoundSpec;
 
 /*
 	Holds callback data of various kinds for stuff that is unique
@@ -54,14 +55,11 @@ struct GameEvent {
 	GameEvent(C2G_Enum v) : type_c2g(v) {}
 	~GameEvent();
 
+	// ---- Main menu
+
 	struct FriendAction {
 		int action;
 		std::string player_name;
-	};
-
-	struct PlayerChat {
-		Player *player;
-		std::string message;
 	};
 
 	struct WorldCreationData {
@@ -69,24 +67,32 @@ struct GameEvent {
 		std::string title, code;
 	};
 
+	struct PasswordChangeData {
+		std::string old_pw;
+		std::string new_pw;
+	};
+
+	// ---- In-world
+
 	struct BlockData {
 		blockpos_t pos;
 		Block b;
 	};
 
-	struct PasswordChangeData {
-		std::string old_pw;
-		std::string new_pw;
+	struct PlayerChat {
+		Player *player;
+		std::string message;
 	};
 
 	union {
 		std::string *text;
 		Player *player;
 		FriendAction *friend_action;
-		PlayerChat *player_chat;
 		WorldCreationData *wc_data;
-		BlockData *block;
 		PasswordChangeData *password;
+		PlayerChat *player_chat;
+		BlockData *block;
+		SoundSpec *sound;
 		struct {
 			const char *input, *output;
 		} asset_path;
@@ -108,4 +114,16 @@ protected:
 
 private:
 	GameEventHandler *m_target = nullptr;
+};
+
+struct SoundSpec {
+	static const core::vector2df POS_NONE;
+
+	SoundSpec(const char *name, core::vector2df pos = POS_NONE) :
+		name(name), pos(pos) {}
+
+	std::string name;
+	core::vector2df pos;
+	float pitch = 1.0f;
+	float gain = 1.0f;
 };

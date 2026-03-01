@@ -691,11 +691,11 @@ bool SceneGameplay::OnEvent(GameEvent &e)
 			return true;
 		case E::C2G_SOUND_PLAY:
 			{
-				auto i = e.text->rfind('.');
+				SoundSpec &spec = *e.sound;
+				auto i = spec.name.rfind('.');
 				if (i != std::string::npos)
-					(*e.text)[i] = '\0'; // HACK
+					spec.name[i] = '\0'; // HACK
 
-				SoundSpec spec(e.text->c_str());
 				m_soundplayer->play(spec);
 			}
 			return true;

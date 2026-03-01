@@ -1,6 +1,7 @@
 #include "unittest_internal.h"
 
 #if BUILD_CLIENT
+#include "client/gameevent.h" // SoundSpec
 #include "gui/sound.h"
 
 void sleep_ms(long delay);

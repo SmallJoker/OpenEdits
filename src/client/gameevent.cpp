@@ -9,7 +9,6 @@ GameEvent::~GameEvent()
 	using C = GameEvent::C2G_Enum;
 	switch (type_c2g) {
 		case C::C2G_DIALOG:
-		case C::C2G_SOUND_PLAY:
 			delete text;
 			break;
 		case C::C2G_PLAYER_CHAT:
@@ -32,6 +31,9 @@ GameEvent::~GameEvent()
 		case C::C2G_PLAYER_LEAVE:
 		case C::C2G_CHAT_HISTORY:
 		case C::C2G_PLAYERFLAGS:
+			break;
+		case C::C2G_SOUND_PLAY:
+			delete sound;
 			break;
 	}
 
@@ -95,3 +97,4 @@ bool GameEventHandler::sendNewEvent(GameEvent &e)
 	return handled;
 }
 
+const core::vector2df SoundSpec::POS_NONE(INFINITY, INFINITY);

@@ -154,8 +154,10 @@ Namespace: `gui`. Only available for GUI clients.
     * Return value: HUD element ID
  * `remove_hud(id)` -> `boolean`
     * Return value: `true` on success
- * `play_sound(asset_name)`
+ * `play_sound(asset_name, modifier)`
     * Depends on `env.require_asset`
+    * `modifier` (optional, table)
+       * `pitch` (number): sound pitch. Default: `1.0`
  * `select_block(block_id, ...)`
     * `block_id` (nil/number): Block ID to select
     * `...`: Block Parameters (variable)

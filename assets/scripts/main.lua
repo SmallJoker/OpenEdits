@@ -166,6 +166,7 @@ reg.change_blocks(reg.blocks_keys)
 env.include("coins.lua")
 env.include("teleporter.lua")
 env.include("hidden.lua")
+env.include("music.lua")
 
 
 ---------- Decoration tab

@@ -20,20 +20,9 @@ extern "C" {
 
 struct SoundFile;
 struct SoundSource;
+struct SoundSpec;
 
 using namespace irr;
-
-struct SoundSpec {
-	static const core::vector2df POS_NONE;
-
-	SoundSpec(const char *name, core::vector2df pos = POS_NONE) :
-		name(name), pos(pos) {}
-
-	const char *name;
-	core::vector2df pos;
-	float pitch = 1.0f;
-	float gain = 1.0f;
-};
 
 class SoundPlayer {
 public:

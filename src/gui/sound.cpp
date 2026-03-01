@@ -1,8 +1,7 @@
 #include "sound.h"
+#include "client/gameevent.h" // SoundSpec
 #include "core/filesystem.h"
 #include <stdio.h>
-
-const core::vector2df SoundSpec::POS_NONE(INFINITY, INFINITY);
 
 #ifdef HAVE_SOUND
 
@@ -117,7 +116,7 @@ void SoundPlayer::updateListener(core::vector2df pos)
 
 void SoundPlayer::play(const SoundSpec &spec)
 {
-	auto *file = getOrLoad(spec.name);
+	auto *file = getOrLoad(spec.name.c_str());
 	if (!file)
 		return;
 
@@ -139,7 +138,7 @@ void SoundPlayer::play(const SoundSpec &spec)
 
 	static const char *modes[2] = { "YES", "NO" };
 	logger(LL_DEBUG, "play(name='%s', pitch=%.1f, pos=%s)",
-		spec.name, spec.pitch, modes[positional]
+		spec.name.c_str(), spec.pitch, modes[positional]
 	);
 }
 

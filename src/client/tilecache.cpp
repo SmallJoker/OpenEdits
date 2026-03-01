@@ -52,7 +52,7 @@ TileCacheEntry TileCacheManager::getOrCache(const Block *bptr)
 
 	const Block b = *bptr;
 	auto props = m_bmgr->getProps(b.id);
-	if (!props || props->tiles.size() <= 1 || !props->haveGetVisuals())
+	if (!props || !props->haveGetVisuals())
 		return TileCacheEntry(b.tile, "");
 
 	// Check whether we have something cached ...
