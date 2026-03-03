@@ -17,6 +17,9 @@ s32 LocalPlayer::getGUISmileyId()
 
 void LocalPlayer::updateCoinCount(bool force)
 {
+	if (m_script && !m_script->getBlockMgr()->isHardcoded())
+		return; // done by script
+
 	int old_coins = coins;
 
 	auto collected = m_world->getBlocks(Block::ID_COIN, [](Block &b) -> bool {
@@ -27,9 +30,6 @@ void LocalPlayer::updateCoinCount(bool force)
 
 	if (coins == old_coins && !force)
 		return;
-
-	if (m_script && !m_script->getBlockMgr()->isHardcoded())
-		return; // to be done by script
 
 	int my_coins = coins; // move to stack
 	auto rect = m_world->modified_rect;

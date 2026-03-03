@@ -71,9 +71,10 @@ Environment-related callbacks in `env`:
 
  * `.on_step(abstime)`
     * `abstime` (number), absolute timestamp
- * `.on_block_place(x, y, id)`
+ * `.on_block_place(x, y, fg, bg)`
     * Called *before* the block is placed at coordinates `x`, `y`.
     * The server may return `false` to disallow placement.
+    * Either `fg` or `bg` may be `nil`.
  * `.on_world_data()`
     * Called after new world data has been loaded.
     * Client: called before assigning the tiles (`get_visuals`) but not on join.

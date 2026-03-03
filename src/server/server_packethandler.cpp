@@ -693,7 +693,7 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 			m_con->send(player->peer_id, 0, out);
 	}
 
-	printf("Server: Player %s joined world id=%s\n",
+	logger(LL_INFO, "Player %s joined world id=%s",
 		player->name.c_str(), world->getMeta().id.c_str()
 	);
 }
@@ -702,7 +702,7 @@ void Server::pkt_Leave(peer_t peer_id, Packet &pkt)
 {
 	RemotePlayer *player = getPlayerNoLock(peer_id);
 
-	printf("Server: Player %s left world id=%s\n",
+	logger(LL_INFO, "Player %s left world id=%s",
 		player->name.c_str(), player->getWorld()->getMeta().id.c_str()
 	);
 

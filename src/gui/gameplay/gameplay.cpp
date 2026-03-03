@@ -506,16 +506,10 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 					}
 
 					if (l_pressed && !is_defined) {
-						bool handled = m_blockselector->getBlockUpdate(bp, m_drag_draw_block);
-						if (!handled && g_blockmanager->isEElike()) {
-							if (block.id == Block::ID_SPIKES)
-								m_drag_draw_block.params.param_u8 = (block.tile + 1) % 4;
-							if (block.id == Block::ID_TELEPORTER)
-								m_drag_draw_block.params.teleporter.rotation = (block.tile + 1) % 4;
-						}
+						m_blockselector->getBlockUpdate(bp, block, m_drag_draw_block);
 					}
 
-					if (r_pressed || m_drag_draw_block.getId() == 0) {
+					if (r_pressed && !is_defined) {
 						// Update block ID on click
 						// Pick background if there is no foreground
 						m_drag_draw_block.setErase(block.id == 0);

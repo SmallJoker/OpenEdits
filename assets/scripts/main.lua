@@ -1,6 +1,3 @@
--- v1.3.1 backwards compatibility
-env.event_handlers = {}
-
 if true then
 	env.load_hardcoded_packs()
 	return

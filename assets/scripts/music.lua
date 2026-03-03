@@ -7,7 +7,7 @@ local PIANO_KEY_NAMES = {
 env.require_asset(SOUND_PIANO)
 
 local function do_play_piano_note()
-	if not gui then
+	if not gui or not env.is_me() then
 		return
 	end
 

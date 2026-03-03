@@ -529,23 +529,25 @@ void SceneBlockSelector::setParamsFromBlock(bid_t block_id, BlockParams &params)
 	convertBUToLegacy();
 }
 
-bool SceneBlockSelector::getBlockUpdate(blockpos_t pos, BlockUpdate &bu)
+void SceneBlockSelector::getBlockUpdate(blockpos_t pos, Block b, BlockUpdate &bu)
 {
 	if (m_selected_erase) {
-		bu.setErase(true);
-		return false;
+		bu.setErase(b.id == 0);
+		return;
 	}
 
-	bool handled = false;
 	GuiScript *script = m_gameplay->getGUI()->script;
 	if (script && script->onPlace(pos)) {
 		convertBUToLegacy();
-		handled = true;
+	} else if (m_legacy_compatible) {
+		if (b.id == Block::ID_SPIKES)
+			m_selected.params.param_u8 = (b.tile + 1) % 4;
+		if (b.id == Block::ID_TELEPORTER)
+			m_selected.params.teleporter.rotation = (b.tile + 1) % 4;
 	}
-
 	convertLegacyToBU();
+
 	bu = m_selected;
-	return handled;
 }
 
 static video::ITexture *make_pressed_image(video::IVideoDriver *driver, video::ITexture *source)
@@ -580,8 +582,6 @@ static video::ITexture *make_pressed_image(video::IVideoDriver *driver, video::I
 	cache.emplace(source, out);
 	return out;
 }
-
-extern BlockManager *g_blockmanager;
 
 bool SceneBlockSelector::drawBlockButton(bid_t bid, const core::recti &rect, gui::IGUIElement *parent, int id)
 {

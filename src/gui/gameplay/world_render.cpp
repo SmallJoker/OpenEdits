@@ -274,6 +274,8 @@ void SceneWorldRender::drawBlocksInView()
 	bool blocks_modified = world->modified_rect.isValid();
 	if (blocks_modified) {
 		core::recti modified = rect_u16_to_recti(world->modified_rect);
+		modified.LowerRightCorner += 1; // max pos inclusive
+
 		world->modified_rect = World::make_rect_not_modified();
 		DEBUG_LOG("rect: %d,%d,%d,%d\n",
 			modified.UpperLeftCorner.X, modified.UpperLeftCorner.Y,

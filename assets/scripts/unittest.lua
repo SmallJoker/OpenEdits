@@ -67,14 +67,14 @@ env.on_player_event = function(event, arg)
 end
 
 -- C++: test_script_world_interop
-env.on_block_place = function(x, y, id)
+env.on_block_place = function(x, y, fg, bg)
 	assert(env.player:get_name(), "Missing player")
 
-	if id == 107 then
+	if fg == 107 then
 		return false
 	end
 
-	if id == 104 then
+	if fg == 104 then
 		local old_fg, _, old_bg = env.world.get_block(x, y)
 		feedback(env.player:get_name() .. ":" .. old_fg .. ":" .. old_bg)
 	end

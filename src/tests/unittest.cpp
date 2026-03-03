@@ -6,6 +6,7 @@ void unittest_chatcommand();
 void unittest_connection();
 void unittest_eeo_converter();
 void unittest_database();
+void unittest_irr();
 void unittest_mediamanager();
 void unittest_packet();
 void unittest_physics();
@@ -60,6 +61,7 @@ void unittest(int gui_test_nr)
 		unittest_connection(); // depends on packet
 		unittest_script(); // depends on world & physics (player)
 		unittest_sound();
+		unittest_irr();
 		unittest_gui_gameplay();
 
 		puts("<== Unittest completed");

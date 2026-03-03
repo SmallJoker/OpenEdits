@@ -68,6 +68,7 @@ private:
 
 	void stepSendMedia(RemotePlayer *player);
 	void stepSendBlockUpdates(World *world);
+	void stepSendScriptEvents(RemotePlayer *player);
 	void stepWorldTick(World *world, float dtime);
 
 	bool loadWorldNoLock(World *world);

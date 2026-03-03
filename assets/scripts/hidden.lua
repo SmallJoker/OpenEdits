@@ -10,10 +10,21 @@ local old_event = env.on_player_event or (function() end)
 env.on_player_event = function(event, arg)
 	old_event(event, arg)
 
-	if event == "godmode" then
+	if event == "godmode" and env.is_me() then
 		env.world.set_tile(50,  arg and 1 or -1, world.PRT_ENTIRE_WORLD + world.PROP_ADD)
 		env.world.set_tile(243, arg and 1 or -1, world.PRT_ENTIRE_WORLD + world.PROP_ADD)
+		if env.world.update_tiles then
+			-- Make it so that get_visuals is executed
+			env.world.update_tiles({ 50, 243 })
+		end
 	end
+end
+
+local function get_visuals_godmode(tile)
+	if reg.get_pwdata(reg.my_player_id).godmode then
+		return math.max(1, tile)
+	end
+	return tile
 end
 
 local blocks_hidden = {
@@ -25,13 +36,14 @@ local blocks_hidden = {
 			{ type = env.DRAW_TYPE_SOLID }
 		},
 		on_collide = set_tile_to_1(50),
+		get_visuals = get_visuals_godmode,
 	},
 	{
 		id = 44, -- ID_BLACKREAL
 		minimap_color = 0xFF000000,
 		tiles = {
 			{ type = env.DRAW_TYPE_SOLID },
-		}
+		},
 	},
 	{
 		id = 243, -- ID_BLACKFAKE
@@ -41,6 +53,7 @@ local blocks_hidden = {
 			{ type = env.DRAW_TYPE_ACTION }
 		},
 		on_collide = set_tile_to_1(243),
+		get_visuals = get_visuals_godmode,
 	},
 }
 

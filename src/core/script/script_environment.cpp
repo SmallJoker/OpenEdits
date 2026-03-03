@@ -248,8 +248,14 @@ bool Script::onBlockPlace(const BlockUpdate &bu)
 
 	lua_pushinteger(L, pos.X);
 	lua_pushinteger(L, pos.Y);
-	lua_pushinteger(L, id);
-	int top = callFunction(m_ref_on_block_place, 1, "on_block_place", 3, true);
+	if (bu.isBackground()) {
+		lua_pushnil(L); // fg
+		lua_pushinteger(L, id); // bg
+	} else {
+		lua_pushinteger(L, id);
+		lua_pushnil(L);
+	}
+	int top = callFunction(m_ref_on_block_place, 1, "on_block_place", 4, true);
 	if (!top)
 		return ret;
 

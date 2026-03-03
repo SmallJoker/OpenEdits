@@ -156,30 +156,7 @@ void Server::step(float dtime)
 	// Process script events
 	for (auto &p : m_players) {
 		RemotePlayer *player = (RemotePlayer *)p.second.get();
-		auto world = player->getWorld();
-
-		if (!world)
-			continue;
-
-		// Clear the Player data
-		std::unique_ptr<ScriptEventMap> player_se = std::move(player->script_events_to_send);
-
-		if (player->protocol_version < 9)
-			continue; // packet ID used differently. logs a warning.
-
-		const ScriptEventMap *world_se = world->getMeta().script_events_to_send.get();
-		if (!player_se && !world_se)
-			continue; // nothing to send
-
-		// See also: Client::stepPhysics
-		Packet pkt;
-		pkt.write(Packet2Client::ScriptEvent);
-		size_t count = 0;
-		count += m_script->getSEMgr()->writeBatchNT(pkt, true, player_se.get());
-		count += m_script->getSEMgr()->writeBatchNT(pkt, true, world_se);
-		pkt.write<u16>(UINT16_MAX); // terminate batch
-		if (count > 0)
-			m_con->send(p.first, 1, pkt);
+		stepSendScriptEvents(player);
 	}
 
 	// Clear world-specific event send queue
@@ -458,6 +435,34 @@ void Server::stepSendBlockUpdates(World *world)
 	broadcastInWorld(world, 0, out);
 }
 
+void Server::stepSendScriptEvents(RemotePlayer *player)
+{
+	auto world = player->getWorld();
+
+	if (!world)
+		return;
+
+	// Clear the Player data
+	std::unique_ptr<ScriptEventMap> player_se = std::move(player->script_events_to_send);
+
+	if (player->protocol_version < 9)
+		return; // packet ID used differently. logs a warning.
+
+	const ScriptEventMap *world_se = world->getMeta().script_events_to_send.get();
+	if (!player_se && !world_se)
+		return; // nothing to send
+
+	// See also: Client::stepPhysics
+	Packet pkt;
+	pkt.write(Packet2Client::ScriptEvent);
+	size_t count = 0;
+	count += m_script->getSEMgr()->writeBatchNT(pkt, true, player_se.get());
+	count += m_script->getSEMgr()->writeBatchNT(pkt, true, world_se);
+	pkt.write<u16>(UINT16_MAX); // terminate batch
+	if (count > 0)
+		m_con->send(player->peer_id, 1, pkt);
+}
+
 void Server::stepWorldTick(World *world, float dtime)
 {
 	auto &meta = world->getMeta();
@@ -564,19 +569,21 @@ void Server::respawnPlayer(Player *player, bool send_packet, bool reset_progress
 	if (player->godmode)
 		return;
 
-	auto &meta = player->getWorld()->getMeta();
-	auto blocks = player->getWorld()->getBlocks(Block::ID_SPAWN, nullptr);
+	if (m_bmgr->isHardcoded()) {
+		auto &meta = player->getWorld()->getMeta();
+		auto blocks = player->getWorld()->getBlocks(Block::ID_SPAWN, nullptr);
 
-	if (blocks.empty()) {
-		player->pos = core::vector2df();
-	} else {
-		int index = meta.spawn_index;
-		if (++index >= (int)blocks.size())
-			index = 0;
+		if (blocks.empty()) {
+			player->pos = core::vector2df();
+		} else {
+			int index = meta.spawn_index;
+			if (++index >= (int)blocks.size())
+				index = 0;
 
-		player->pos.X = blocks[index].X;
-		player->pos.Y = blocks[index].Y;
-		meta.spawn_index = index;
+			player->pos.X = blocks[index].X;
+			player->pos.Y = blocks[index].Y;
+			meta.spawn_index = index;
+		}
 	}
 
 	if (send_packet)

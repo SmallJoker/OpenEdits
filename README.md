@@ -105,7 +105,7 @@ Permission/player flag examples:
 
 1. Extract the archive to any location
 2. Run the executable
-3. In case of issues: use a debugger such as x64dbg
+3. In case of issues: use a debugger such as x64dbg or `gdb` (in mingw-w64)
 
 
 ## Compiling

@@ -265,6 +265,7 @@ void Client::pkt_Join(Packet &pkt)
 		m_players.emplace(peer_id, player);
 	}
 	player->setWorld(getWorld());
+	player->setScript(m_script);
 
 	player->name = pkt.readStr16();
 	player->setGodMode(pkt.read<u8>());
@@ -276,7 +277,6 @@ void Client::pkt_Join(Packet &pkt)
 	}
 
 	if (m_script) {
-		player->setScript(m_script);
 		m_script->onPlayerEvent("join", player);
 	}
 

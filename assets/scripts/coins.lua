@@ -1,6 +1,7 @@
 local world = env.world
 local player = env.player
 local get_pwdata = reg.get_pwdata
+local dprint = false and print or function() end
 
 env.require_asset("coin.mp3")
 
@@ -8,9 +9,11 @@ local function update_hud(pw_data)
 	if not gui.set_hud then
 		return
 	end
-	if pw_data.coins_hud and pw_data.coins == 0 then
-		gui.remove_hud(pw_data.coins_hud)
-		pw_data.coins_hud = nil
+	if pw_data.coins == 0 then
+		if pw_data.coins_hud then
+			gui.remove_hud(pw_data.coins_hud)
+			pw_data.coins_hud = nil
+		end
 		return
 	end
 
@@ -36,7 +39,7 @@ EV_COINS = env.register_event(100 + env.SEF_HAVE_ACTOR, 0, env.PARAMS_TYPE_U8,
 			-- Client: do not let the server overwrite our data
 			pw_data.coins = count
 		end
-		print(("@%s | coins of %s: %d"):format(
+		dprint(("@%s | coins of %s: %d"):format(
 			(env.server and "server" or "client"),
 			player:get_name(),
 			count
@@ -46,15 +49,16 @@ EV_COINS = env.register_event(100 + env.SEF_HAVE_ACTOR, 0, env.PARAMS_TYPE_U8,
 			-- Let the other players know
 			env.send_event(EV_COINS, count)
 		end
-		if env.is_me() then
-			env.world.update_tiles({43})
-		end
 	end
 )
--- TODO: send EV_COINS to newly joined players via attributes
 
-env.on_block_place = function(x, y, id)
+-- TODO: send EV_COINS to newly joined players
+
+env.on_block_place = function(x, y, fg, bg)
 	local old_id, old_tile, _ = env.world.get_block(x, y)
+	if not fg then
+		return
+	end
 	if old_id == 100 and old_tile > 0 then
 		local pd = reg.get_pwdata(reg.my_player_id)
 		pd.coins = math.max(pd.coins - 1, 0)
@@ -87,12 +91,13 @@ local blocks_coins = {
 
 			local px, py = player:get_pos()
 			world.set_tile(100, 1, world.PRT_ONE_BLOCK, px, py)
+			world.update_tiles({43})
 
 			local pd = get_pwdata(player)
 			pd.coins = pd.coins + 1
 			env.send_event(EV_COINS, pd.coins)
 
-			if gui then
+			if gui.have_gui then
 				gui.play_sound("coin.mp3")
 				update_hud(pd)
 			end

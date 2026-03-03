@@ -33,8 +33,7 @@ public:
 	void setEraseMode(bool erase);
 
 	void setParamsFromBlock(bid_t block_id, BlockParams &params);
-	/// Returns true if handled by script
-	bool getBlockUpdate(blockpos_t pos, BlockUpdate &bu);
+	void getBlockUpdate(blockpos_t pos, Block b, BlockUpdate &bu);
 
 private:
 	gui::IGUIEditBox *createInputBox(const SEvent &e, s32 id, bool may_open);
