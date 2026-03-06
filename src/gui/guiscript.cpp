@@ -154,7 +154,54 @@ bool GuiScript::onPlace(blockpos_t pos)
 		logger(LL_ERROR, "%s", err);
 	}
 	lua_settop(L, top);
-	return true;
+	return status == 0;
+}
+
+bool GuiScript::fromBlockUpdate()
+{
+	if (!m_block_update)
+		return false;
+	auto props = m_bmgr->getProps(m_block_update->getId());
+	if (!props)
+		return false;
+
+	if (props->ref_gui_def < 0)
+		return true; // nothing to do
+
+	lua_State *L = m_lua;
+
+	const int top = lua_gettop(L);
+	lua_rawgeti(L, LUA_REGISTRYINDEX, CUSTOM_RIDX_TRACEBACK);
+
+	logger(LL_INFO, "from_block, id=%d", props->id);
+	lua_rawgeti(L, LUA_REGISTRYINDEX, props->ref_gui_def);
+	lua_getfield(L, -1, "from_block"); // function
+	if (lua_isnil(L, -1)) {
+		// No callback defined.
+		lua_settop(L, top);
+		return true;
+	}
+	lua_getfield(L, -2, "values"); // arg 1
+	int nargs = 1;
+	nargs += writeBlockParams(m_lua, m_block_update->params);
+
+	int status = lua_pcall(L, nargs, 0, top + 1);
+	if (status != 0) {
+		const char *err = lua_tostring(L, -1);
+		logger(LL_ERROR, "%s", err);
+	}
+	lua_settop(L, top);
+
+	if (m_props == props && m_le_root) {
+		// Update visible fields
+		m_le_root->doRecursive([this] (Element *e_raw) -> bool {
+			if (auto e = dynamic_cast<IGUIElementWrapper *>(e_raw)) {
+				GuiBuilder::update_input_value(m_lua, m_props->ref_gui_def, e->getElement());
+			}
+			return true; // continue
+		});
+	}
+	return status == 0;
 }
 
 guilayout::Element *GuiScript::openGUI(bid_t block_id, gui::IGUIElement *parent)

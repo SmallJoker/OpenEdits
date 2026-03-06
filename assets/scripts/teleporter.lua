@@ -13,6 +13,10 @@ local blocks_teleporter = {
 				{ type = gui.ELMT_INPUT, name = "dst" },
 			},
 			values = { ["id"] = 1, ["dst"] = 2 },
+			from_block = function(values, rot, id, dst)
+				values.id = id
+				values.dst = dst
+			end,
 			on_input = function(values, k, v)
 				if k == "id" or k == "dst" then
 					v = tonumber(v) and v or values[k]

@@ -102,7 +102,7 @@ void dump_args(lua_State *L, FILE *file, bool details)
 				str = buf;
 				break;
 			case LUA_TTABLE:
-				snprintf(buf, sizeof(buf), "<#table %zu>", lua_objlen(L, i));
+				snprintf(buf, sizeof(buf), "<table %p %zu#>", lua_topointer(L, i), lua_objlen(L, i));
 				str = buf;
 				break;
 			case LUA_TUSERDATA:

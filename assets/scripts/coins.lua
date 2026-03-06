@@ -112,6 +112,9 @@ local blocks_coins = {
 				{ type = gui.ELMT_INPUT, name = "coins" },
 			},
 			values = { ["coins"] = 10 },
+			from_block = function(values, coins)
+				values.coins = coins
+			end,
 			on_input = function(values, k, v)
 				if k == "coins" then
 					v = tonumber(v) and v or values[k]

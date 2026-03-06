@@ -46,6 +46,7 @@ private:
 	void onInput(const char *k, const char *v);
 public:
 	bool onPlace(blockpos_t pos);
+	bool fromBlockUpdate();
 	std::vector<bid_t> hotbar_blocks;
 private:
 	static int l_gui_set_hud(lua_State *L);
@@ -55,7 +56,7 @@ private:
 	static int l_gui_set_hotbar(lua_State *L);
 
 	gui::IGUIEnvironment *m_guienv;
-	BlockUpdate *m_block_update = nullptr;
+	BlockUpdate *m_block_update = nullptr; // see `linkWithGui`
 
 	// Until the GUI is closed
 	const BlockProperties *m_props = nullptr;

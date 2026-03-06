@@ -44,6 +44,9 @@ local blocks_hidden = {
 				{ type = gui.ELMT_INPUT, name = "note" },
 			},
 			values = { ["note"] = 12 },
+			from_block = function(values, note)
+				values.note = note
+			end,
 			on_input = function(values, k, v)
 				if k == "note" then
 					v = tonumber(v) and v or values[k]

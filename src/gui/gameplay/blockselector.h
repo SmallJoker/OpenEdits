@@ -17,6 +17,7 @@ namespace irr {
 
 struct BlockParams;
 struct BlockUpdate;
+class GuiScript;
 class SceneGameplay;
 
 class SceneBlockSelector : public IEventReceiver {
@@ -61,6 +62,7 @@ private:
 
 	SceneGameplay *m_gameplay = nullptr;
 	gui::IGUIEnvironment *m_gui = nullptr;
+	GuiScript *m_guiscript = nullptr;
 
 	bool m_do_enable = false; // Two-staged to update in draw()
 	bool m_enabled = false;

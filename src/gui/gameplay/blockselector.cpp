@@ -40,12 +40,18 @@ SceneBlockSelector::SceneBlockSelector(SceneGameplay *parent, gui::IGUIEnvironme
 {
 	m_gameplay = parent;
 	m_gui = gui;
+	m_guiscript = m_gameplay->getGUI()->script;
 
 	m_legacy_compatible = g_blockmanager->isEElike();
+
+	if (m_guiscript)
+		m_guiscript->linkWithGui(&m_selected);
 }
 
 SceneBlockSelector::~SceneBlockSelector()
 {
+	if (m_guiscript)
+		m_guiscript->linkWithGui(&m_selected);
 }
 
 void SceneBlockSelector::draw()
@@ -55,9 +61,8 @@ void SceneBlockSelector::draw()
 		return;
 
 	if (m_hotbar_ids.empty()) {
-		GuiScript *script = m_gameplay->getGUI()->script;
-		if (script)
-			m_hotbar_ids = script->hotbar_blocks;
+		if (m_guiscript)
+			m_hotbar_ids = m_guiscript->hotbar_blocks;
 
 		if (m_hotbar_ids.empty())
 			m_hotbar_ids = { 0, 9, 10, 2, 4, 48, 46, 67 };
@@ -125,14 +130,13 @@ gui::IGUIEditBox *SceneBlockSelector::createInputBox(const SEvent &e, s32 id, bo
 
 bool SceneBlockSelector::toggleScriptElements(const SEvent &e)
 {
-	GuiScript *script = m_gameplay->getGUI()->script;
-	if (!script)
+	if (!m_guiscript)
 		return false;
 
-	auto props = script->getCurrentProps();
+	auto props = m_guiscript->getCurrentProps();
 	auto elem = m_showmore->getElementFromId(ID_ScriptElements, true);
 	if (elem) {
-		script->closeGUI();
+		m_guiscript->closeGUI();
 		elem->remove();
 
 		if (props && props->id == m_selected.getId())
@@ -147,8 +151,7 @@ bool SceneBlockSelector::toggleScriptElements(const SEvent &e)
 	tab->setDrawBackground(true);
 	tab->setNotClipped(true);
 
-	script->linkWithGui(&m_selected);
-	auto *le_root = script->openGUI(m_selected.getId(), tab);
+	auto *le_root = m_guiscript->openGUI(m_selected.getId(), tab);
 	if (!le_root) {
 		// No GUI
 		tab->remove();
@@ -347,9 +350,8 @@ bool SceneBlockSelector::OnEvent(const SEvent &e)
 	if (!m_enabled)
 		return false;
 
-	auto script = m_gameplay->getGUI()->script;
-	if (script) {
-		if (script->OnEvent(e))
+	if (m_guiscript) {
+		if (m_guiscript->OnEvent(e))
 			convertBUToLegacy();
 	}
 
@@ -527,6 +529,9 @@ void SceneBlockSelector::setParamsFromBlock(bid_t block_id, BlockParams &params)
 
 	m_selected.params = params;
 	convertBUToLegacy();
+
+	if (m_guiscript)
+		m_guiscript->fromBlockUpdate();
 }
 
 void SceneBlockSelector::getBlockUpdate(blockpos_t pos, Block b, BlockUpdate &bu)
@@ -536,8 +541,7 @@ void SceneBlockSelector::getBlockUpdate(blockpos_t pos, Block b, BlockUpdate &bu
 		return;
 	}
 
-	GuiScript *script = m_gameplay->getGUI()->script;
-	if (script && script->onPlace(pos)) {
+	if (m_guiscript && m_guiscript->onPlace(pos)) {
 		convertBUToLegacy();
 	} else if (m_legacy_compatible) {
 		if (b.id == Block::ID_SPIKES)
@@ -605,7 +609,8 @@ bool SceneBlockSelector::drawBlockButton(bid_t bid, const core::recti &rect, gui
 		e->setDrawBorder(false);
 		e->setPressedImage(make_pressed_image(m_gui->getVideoDriver(), tile.texture));
 
-		tooltip_len = snprintf(tooltip, sizeof(tooltip), "Pack: %s\nBlock ID: %i\nTile count: %zu\nCallbacks:%s%s%s%s%s%s%s",
+		tooltip_len = snprintf(tooltip, sizeof(tooltip), "Pack: %s\nBlock ID: %i\nTile count: %zu"
+			"\nCallbacks:%s%s%s%s%s%s%s%s",
 			props->pack->name.c_str(),
 			bid,
 			props->tiles.size(),
@@ -615,6 +620,7 @@ bool SceneBlockSelector::drawBlockButton(bid_t bid, const core::recti &rect, gui
 			props->haveOnIntersectOnce() ? " intersect_once" : "",
 			props->haveOnIntersect()     ? " intersect" : "",
 			props->haveOnCollide()       ? " collide" : "",
+			props->haveGetVisuals()      ? " visuals" : "",
 			props->ref_gui_def      >= 0 ? " gui" : ""
 		);
 	} else {

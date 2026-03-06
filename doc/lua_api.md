@@ -170,6 +170,10 @@ Block Definition field `gui_def`:
 
  * (GUI Element Definition)
  * `values` (table): default values of the GUI elements
+ * `from_block(values, ...)`
+    * Executed when copying a block (Ctrl + RMB)
+    * `values` (table): reference to `gui_def.values`
+    * `...`: Block Parameters (variable)
  * `on_input(values, k, v)`
     * Executed upon value change of a GUI element
     * `values` (table): reference to `gui_def.values`
