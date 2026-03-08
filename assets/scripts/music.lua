@@ -22,7 +22,7 @@ local function do_play_piano_note()
 	})
 end
 
-local blocks_hidden = {
+local blocks_def = {
 	{
 		id = 77, -- ID_PIANO
 		params = env.PARAMS_TYPE_U8,
@@ -69,8 +69,8 @@ local blocks_hidden = {
 env.register_pack({
 	name = "music",
 	default_type = env.DRAW_TYPE_ACTION,
-	blocks = reg.table_to_pack_blocks(blocks_hidden)
+	blocks = reg.table_to_pack_blocks(blocks_def)
 })
 
-reg.change_blocks(blocks_hidden)
+reg.change_blocks(blocks_def)
 

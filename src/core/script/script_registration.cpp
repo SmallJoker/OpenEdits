@@ -244,9 +244,13 @@ int Script::l_change_block(lua_State *L)
 	function_ref_from_field(L, 2, "gui_def",     props->ref_gui_def, LUA_TTABLE);
 #endif
 	if (!BUILD_CLIENT) {
-		check_field_type(L, 2, "get_visuals", LUA_TFUNCTION);
-		check_field_type(L, 2, "gui_def",     LUA_TTABLE);
+		check_field_or_nil(L, 2, "get_visuals", LUA_TFUNCTION);
+		check_field_or_nil(L, 2, "gui_def",     LUA_TTABLE);
 	}
+
+	lua_getfield(L, 2, "gui_def");
+	check_gui_def(L, -1);
+	lua_pop(L, 1);
 
 
 	// ---------- Other

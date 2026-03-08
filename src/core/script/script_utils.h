@@ -47,10 +47,12 @@ namespace ScriptUtils {
 
 	void function_ref_from_field(lua_State *L, int idx, const char *field,
 			int &ref, int type = LUA_TFUNCTION);
-	void check_field_type(lua_State *L, int idx, const char *field, int type);
+	bool check_field_or_nil(lua_State *L, int idx, const char *field, int type);
 
 	const char *check_field_string(lua_State *L, int idx, const char *field);
 	lua_Integer check_field_int(lua_State *L, int idx, const char *field);
+
+	void check_gui_def(lua_State *L, int idx);
 
 	void dump_args(lua_State *L, FILE *file, bool details);
 

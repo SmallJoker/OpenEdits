@@ -55,12 +55,16 @@ void function_ref_from_field(lua_State *L, int idx, const char *field,
 	lua_pop(L, 1);
 }
 
-void check_field_type(lua_State *L, int idx, const char *field, int type)
+bool check_field_or_nil(lua_State *L, int idx, const char *field, int type)
 {
+	bool have = false;
 	lua_getfield(L, idx, field);
-	if (!lua_isnil(L, -1))
+	if (!lua_isnil(L, -1)) {
 		luaL_checktype(L, -1, type);
+		have = true;
+	}
 	lua_pop(L, 1);
+	return have;
 }
 
 const char *check_field_string(lua_State *L, int idx, const char *field)
@@ -78,6 +82,25 @@ lua_Integer check_field_int(lua_State *L, int idx, const char *field)
 	lua_pop(L, 1); // field
 	return ret;
 }
+
+void check_gui_def(lua_State *L, int idx)
+{
+	if (lua_isnil(L, idx))
+		return;
+
+	bool have_values     = check_field_or_nil(L, -1, "values",     LUA_TTABLE);
+	bool have_on_input   = check_field_or_nil(L, -1, "on_input",   LUA_TFUNCTION);
+	bool have_on_place   = check_field_or_nil(L, -1, "on_place",   LUA_TFUNCTION);
+	bool have_from_block = check_field_or_nil(L, -1, "from_block", LUA_TFUNCTION);
+
+	if (!have_values && (have_on_input || have_on_place || have_from_block)) {
+		luaL_error(L, "missing 'values' in GUI Definition");
+	}
+	if (have_on_place != have_from_block) {
+		logger(LL_WARN, "'on_place' and 'from_block' should come in pairs");
+	}
+}
+
 
 void dump_args(lua_State *L, FILE *file, bool details)
 {

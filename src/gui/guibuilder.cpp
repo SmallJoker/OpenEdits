@@ -158,13 +158,7 @@ int GuiBuilder::read_element(lua_State *L)
 			self->m_focus = name;
 		lua_pop(L, 1);
 
-		lua_getfield(L, -1, "values");
-		luaL_checktype(L, -1, LUA_TTABLE);
-		lua_pop(L, 1);
-
-		lua_getfield(L, -1, "on_input");
-		luaL_checktype(L, -1, LUA_TFUNCTION);
-		lua_pop(L, 1);
+		check_gui_def(L, -1);
 	}
 
 	int type = check_field_int(L, -1, "type");
