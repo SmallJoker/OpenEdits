@@ -39,15 +39,22 @@ active player of the callback.
     * `x, y` (optional): if set to `nil`, the current player position is used.
  * `get_blocks_in_range(options, block_ids, PositionRange ...)`
     * `options` (table): All fields are optional. Defaults specified below.
+        * `instances = true`
+        * `counts = false`
         * `return_pos = false`
         * `return_tile = false`
         * `return_params = false`
-    * `block_ids` (table/number): Block ID whitelist
+    * `block_ids` (table): Block ID whitelist
         * Format: `{ block_id_1, block_id_2, ... }`
     * `PositionRange`: see `env.world.set_tile`
-    * Return value: (table)
+    * Return value 1: (table)
+        * Is `nil` when `get_instances == false`
         * Key: integer-based
         * Value: `{ block_id [, x, y] [, tile] [, params ...] }`
+    * Return value 2: (table)
+        * Is `nil` when `get_counts == false`
+        * Key: Block ID
+        * Value (number): Count
  * `update_tiles(block_ids)`
     * Client only
     * `block_ids` (table/number): affected Block IDs

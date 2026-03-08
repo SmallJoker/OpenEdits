@@ -17,11 +17,20 @@ local function update_hud(pw_data)
 		return
 	end
 
+	local text = "Coins: " .. pw_data.coins
+	local _, counts = world.get_blocks_in_range(
+		{instances = false, counts = true},
+		{100}, env.world.PRT_ENTIRE_WORLD
+	)
+	if counts then
+		text = text .. " / " .. counts[100]
+	end
+
 	pw_data.coins_hud = gui.set_hud(pw_data.coins_hud, {
 		type = gui.ELMT_TABLE, grid = { 1, 1 }, fields = {
 			[1] = {
 				type = gui.ELMT_TEXT,
-				text = "Coins: " .. pw_data.coins,
+				text = text,
 				margin = { 1, 0, 0, 1 }, -- top right
 				color = 0xFFFFFF00, -- yellow
 			},
@@ -76,7 +85,6 @@ env.on_world_data = function()
 	if reg.my_player_id then
 		update_hud(reg.get_pwdata(reg.my_player_id))
 	end
-	--env.world.get_blocks_in_range({}, {100}, env.world.PRT_ENTIRE_WORLD)
 end
 
 

@@ -318,7 +318,7 @@ static void test_block_placement(BlockManager *bmgr, Script *script, RemotePlaye
 		//printf("%.3f %.3f\n", p.pos.X, p.pos.Y);
 
 		// expected: 2 blocks, 1x 4 values, 1x 7 values
-		CHECK(script->popTestFeedback() == "called_102 2 4 7;");
+		CHECK(script->popTestFeedback() == "called_102 2x 4 7;2x 1 1;");
 	}
 	CHECK(script->popErrorCount() == 0);
 

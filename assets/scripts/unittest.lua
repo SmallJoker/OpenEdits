@@ -225,13 +225,22 @@ env.change_block(102, {
 	},
 	params = env.PARAMS_TYPE_U8U8U8,
 	on_intersect_once = function()
-		local list = env.world.get_blocks_in_range({
+		local list, counts = env.world.get_blocks_in_range({
+			instances = true,
+			counts = true,
+
 			return_pos = true,
 			return_tile = true,
 			return_params = true,
 		}, {101, 102}, env.world.PRT_ENTIRE_WORLD)
-		print(dump(list))
-		feedback("called_102 " .. #list .. " " .. #list[1] .. " " .. #list[2])
+		print(dump(list), dump(counts))
+		feedback("called_102 " .. #list .. "x " .. #list[1] .. " " .. #list[2])
+
+		local n = 0
+		for _ in pairs(counts) do
+			n = n + 1
+		end
+		feedback(n .. "x " .. counts[101] .. " " .. counts[102])
 	end
 })
 

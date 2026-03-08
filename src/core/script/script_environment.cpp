@@ -5,6 +5,7 @@
 #include "core/player.h"
 #include "core/world.h"
 #include "core/worldmeta.h"
+#include <algorithm> // std::find
 
 using namespace ScriptUtils;
 
@@ -345,10 +346,21 @@ int Script::l_world_get_blocks_in_range(lua_State *L)
 
 	// Argument 1: Options
 	struct {
+		bool instances;
+		bool counts;
+
 		bool return_pos;
 		bool return_tile;
 		bool return_params;
 	} opt;
+
+	lua_getfield(L, 1, "instances");
+	opt.instances = lua_isnil(L, -1) || lua_toboolean(L, -1);
+	lua_pop(L, 1);
+
+	lua_getfield(L, 1, "counts");
+	opt.counts = !lua_isnil(L, -1) && lua_toboolean(L, -1);
+	lua_pop(L, 1);
 
 	lua_getfield(L, 1, "return_pos");
 	opt.return_pos = !lua_isnil(L, -1) && lua_toboolean(L, -1);
@@ -363,18 +375,25 @@ int Script::l_world_get_blocks_in_range(lua_State *L)
 	lua_pop(L, 1);
 
 	// Argument 2: Block ID whitelist
-	std::set<bid_t> bid_whitelist;
+	std::vector<bid_t> bid_whitelist;
 	for (lua_pushnil(L); lua_next(L, 2); lua_pop(L, 1)) {
 		// key @ -2, value @ -1
 		bid_t block_id = lua_tonumber(L, -1); // downcast
-		bid_whitelist.insert(block_id);
+		bid_whitelist.emplace_back(block_id);
 	}
+
+	std::vector<int> bid_counts;
+	bid_counts.resize(bid_whitelist.size());
 
 	// Argument 3: Range
 	PositionRange range;
 	script->getPositionRange(3, range);
 
-	lua_createtable(L, 100, 0); // guessed average
+	if (opt.instances)
+		lua_createtable(L, 100, 0); // guessed average
+	else
+		lua_pushnil(L);
+
 	const int value_count = 0
 		+ 1 // block_Id
 		+ 2 * opt.return_pos
@@ -386,7 +405,13 @@ int Script::l_world_get_blocks_in_range(lua_State *L)
 	Block b;
 	for (bool ok = range.iteratorStart(world, &pos); ok; ok = range.iteratorNext(&pos)) {
 		world->getBlock(pos, &b);
-		if (bid_whitelist.find(b.id) == bid_whitelist.end())
+		auto it = std::find(bid_whitelist.begin(), bid_whitelist.end(), b.id);
+		if (it == bid_whitelist.end())
+			continue;
+
+		bid_counts[it - bid_whitelist.begin()]++;
+
+		if (!opt.instances)
 			continue;
 
 		lua_createtable(L, value_count, 0);
@@ -423,8 +448,19 @@ int Script::l_world_get_blocks_in_range(lua_State *L)
 		lua_rawseti(L, -2, ++ret_index);
 	}
 
+	if (opt.counts) {
+		lua_createtable(L, bid_counts.size(), 0);
+		for (size_t i = 0; i < bid_whitelist.size(); ++i) {
+			lua_pushinteger(L, bid_whitelist[i]);
+			lua_pushinteger(L, bid_counts[i]);
+			lua_rawset(L, -3);
+		}
+	} else {
+		lua_pushnil(L);
+	}
+
 	MESSY_CPP_EXCEPTIONS_END
-	return 1;
+	return 2;
 }
 
 int Script::l_world_get_params(lua_State *L)
