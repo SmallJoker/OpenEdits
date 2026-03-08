@@ -50,12 +50,19 @@ enum class TileOverlayType {
 
 /// One of the many possible tiles for a single block
 struct BlockTile {
+	BlockTile()
+	{
+		textures.resize(1);
+	}
+
 	/// Defines the rendering mode of this tile
 	/// Solid+Background: no alpha, Action: alpha_ref, Decoration: alpha
 	BlockDrawType type = BlockDrawType::Invalid;
-	video::ITexture *texture = nullptr;
+	std::vector<video::ITexture *> textures; // >1 if animated
 	bool is_known_tile = false; // true when registered by registerPack()
 	bool have_alpha = false; // false: use BlockDrawType
+	float animation_delay = 1.0f;
+	s8 skip_count = 0; // how many frames to ignore after this tile
 
 	struct VisualOverride {
 		bid_t id;
@@ -79,11 +86,15 @@ struct BlockProperties {
 
 	// -------------- Visuals -------------
 
-	u32 color = 0; // AARRGGBB minimap color
+	static const u32 COLOR_DEFAULT_TRANSPARENT = 0x00101010;
+
+	u32 color = COLOR_DEFAULT_TRANSPARENT; // AARRGGBB minimap color
 	// maximal count of tiles: 8 (3 bits from Block struct)
 	std::vector<BlockTile> tiles; // usually: [0] = normal, [1] = active
 	void setTiles(std::vector<BlockDrawType> types);
-	BlockTile getTile(const Block b) const;
+	const BlockTile &getTileRef(const Block b) const;
+	BlockTile getTile(const Block b) const { return getTileRef(b); }
+
 	bool isBackground() const { return tiles[0].type == BlockDrawType::Background; }
 
 	struct Overlay {
@@ -172,7 +183,8 @@ public:
 
 private:
 	void ensurePropsSize(size_t n);
-	u32 getBlockColor(const BlockTile tile) const;
+	video::ITexture *extractTile(video::ITexture *src, u8 tile_index) const;
+	u32 getDominantColor(video::ITexture *texture) const;
 
 	// This is probably a bad idea for headless servers
 	video::ITexture *m_missing_texture = nullptr;

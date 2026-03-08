@@ -13,6 +13,7 @@ namespace irr {
 	}
 	namespace video {
 		class ITexture;
+		class SMaterial;
 	}
 }
 
@@ -60,9 +61,17 @@ private:
 	void drawBlockParams(BlockDrawData &bdd);
 	CBulkSceneNode *drawBottomLeftText(video::ITexture *texture);
 
-	bool assignBlockTexture(const BlockTile tile, scene::ISceneNode *node);
+	bool assignBlockTexture(const BlockTile &tile, scene::ISceneNode *node);
 	core::recti m_drawn_rect; // excess area, more drawn than needed
 	video::ITexture *m_tex_shadow = nullptr;
+
+	void updateAnimation(float dtime);
+	struct Animation {
+		video::SMaterial *mat = nullptr;
+		size_t index = 0;
+		float timer = 0;
+	};
+	std::map<const BlockTile *, Animation> m_animation_timers;
 
 	void updatePlayerPositions(float dtime);
 	float m_nametag_show_timer = 0;

@@ -596,18 +596,18 @@ bool SceneBlockSelector::drawBlockButton(bid_t bid, const core::recti &rect, gui
 
 	auto props = g_blockmanager->getProps(bid);
 	if (props) {
-		BlockTile tile = props->tiles[0];
+		video::ITexture *texture = props->tiles[0].textures[0];
 
-		auto dim = tile.texture->getOriginalSize();
+		auto dim = texture->getOriginalSize();
 		core::recti rect(
 			core::vector2di(0, 0),
 			core::dimension2di(dim.Height, dim.Height)
 		);
-		e->setImage(tile.texture, rect);
+		e->setImage(texture, rect);
 		e->setScaleImage(true);
 		e->setUseAlphaChannel(false);
 		e->setDrawBorder(false);
-		e->setPressedImage(make_pressed_image(m_gui->getVideoDriver(), tile.texture));
+		e->setPressedImage(make_pressed_image(m_gui->getVideoDriver(), texture));
 
 		tooltip_len = snprintf(tooltip, sizeof(tooltip), "Pack: %s\nBlock ID: %i\nTile count: %zu"
 			"\nCallbacks:%s%s%s%s%s%s%s%s",
@@ -778,7 +778,7 @@ void SceneBlockSelector::updateDraggedImg()
 
 	auto props = g_blockmanager->getProps(m_dragged_bid);
 	video::ITexture *tex = props
-		? props->tiles[0].texture
+		? props->tiles[0].textures[0]
 		: g_blockmanager->getMissingTexture();
 
 	m_dragged_img->setImage(tex);

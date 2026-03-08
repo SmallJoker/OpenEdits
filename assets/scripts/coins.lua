@@ -91,7 +91,10 @@ end
 local blocks_coins = {
 	{
 		id = 100,
-		tiles = { { alpha = true }, { alpha = true } },
+		tiles = {
+			{ alpha = true, animation_count = 2, animation_delay = 1.2 },
+			{ alpha = true }
+		},
 		on_intersect_once = function(tile)
 			if tile ~= 0 or not env.is_me() then
 				return -- cannot collect (again)

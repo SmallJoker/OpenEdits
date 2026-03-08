@@ -272,6 +272,10 @@ Block Definition - regular fields:
           By default, this is inherited from the draw type of the tile.
         * `override` (optional, table): format `{ id = Block ID, tile = number }`
           Replaces the appearance of the block with the tile of another block.
+        * `animation_delay` (optional, number): delay between animation frames.
+        * `animation_count` (optional, integer): count of animation frames.
+        * `skip` (optional, integer): how many tiles to skip.
+          Intended to be used for backwards compatibility.
     * Tile limit: 8.
     * Only foreground blocks (`type != env.DRAW_TYPE_BACKGROUND`) can have >= 1 tile.
  * `overlay` (optional, table)

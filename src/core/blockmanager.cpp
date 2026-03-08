@@ -34,7 +34,7 @@ void BlockProperties::setTiles(std::vector<BlockDrawType> types)
 
 static BlockTile invalid_tile;
 
-BlockTile BlockProperties::getTile(const Block b) const
+const BlockTile &BlockProperties::getTileRef(const Block b) const
 {
 	if (tiles.empty())
 		return invalid_tile;
@@ -92,21 +92,6 @@ void BlockManager::registerPack(BlockPack *pack)
 void BlockManager::setDriver(video::IVideoDriver *driver)
 {
 	m_driver = driver;
-}
-
-static void split_texture(video::IVideoDriver *driver, BlockTile *tile, u8 texture_offset)
-{
-	auto dim = tile->texture->getOriginalSize();
-	video::IImage *img = driver->createImage(tile->texture,
-		core::vector2di(texture_offset * dim.Height, 0),
-		core::dimension2du(dim.Height, dim.Height)
-	);
-
-	char buf[255];
-	snprintf(buf, sizeof(buf), "%p__%i", tile->texture, (int)texture_offset);
-
-	tile->texture = driver->addTexture(buf, img);
-	img->drop();
 }
 
 void BlockManager::sanityCheck()
@@ -243,29 +228,34 @@ void BlockManager::populateTextures()
 		for (bid_t id : pack->block_ids) {
 			auto prop = m_props[id];
 
-			if (texture_offset < max_tiles) {
-				for (BlockTile &tile : prop->tiles) {
-					if (tile.type == BlockDrawType::Invalid)
-						break;
-
-					tile.texture = texture;
-					split_texture(m_driver, &tile, texture_offset);
-					if (tile.is_known_tile)
+			for (BlockTile &tile : prop->tiles) {
+				if (texture_offset < max_tiles && tile.type != BlockDrawType::Invalid) {
+					// Get all animation frames (at least 1)
+					for (video::ITexture *&tex : tile.textures) {
+						tex = extractTile(texture, texture_offset);
 						texture_offset++;
+					}
 				}
 
-				if (prop->color == 0)
-					prop->color = getBlockColor(prop->tiles[0]);
+				texture_offset += tile.skip_count;
 			}
 
+			bool have_missing = false;
 			for (BlockTile &tile : prop->tiles) {
-				if (tile.texture)
-					continue;
+				for (video::ITexture *&tex : tile.textures) {
+					if (tex)
+						continue;
 
-				tile.texture = m_missing_texture;
-				if (prop->color == 0)
-					prop->color = 0xFFFF0000; // red
+					tex = m_missing_texture;
+					have_missing = true;
+				}
+			}
+
+			if (have_missing) {
+				prop->color = 0xFFFF0000; // red
 				logger(LL_ERROR, "Out-of-range texture for block_id=%d\n", id);
+			} else if (prop->color == BlockProperties::COLOR_DEFAULT_TRANSPARENT) {
+				prop->color = getDominantColor(prop->tiles[0].textures[0]);
 			}
 
 			count++;
@@ -317,13 +307,28 @@ void BlockManager::ensurePropsSize(size_t n)
 		m_props.resize(n + 64, nullptr);
 }
 
-u32 BlockManager::getBlockColor(const BlockTile tile) const
+video::ITexture *BlockManager::extractTile(video::ITexture *src, u8 tile_index) const
 {
-	if (!tile.texture)
+	auto dim = src->getOriginalSize();
+	video::IImage *img = m_driver->createImage(src,
+		core::vector2di(tile_index * dim.Height, 0),
+		core::dimension2du(dim.Height, dim.Height)
+	);
+
+	char buf[255];
+	snprintf(buf, sizeof(buf), "%p__%i", src, (int)tile_index);
+
+	video::ITexture *out = m_driver->addTexture(buf, img);
+	img->drop();
+	return out;
+}
+
+u32 BlockManager::getDominantColor(video::ITexture *texture) const
+{
+	if (!texture)
 		return 0xFFFF0000; // red
 
-	auto dim = tile.texture->getOriginalSize();
-	auto texture = tile.texture;
+	auto dim = texture->getOriginalSize();
 
 	void *data = texture->lock(video::ETLM_READ_ONLY);
 

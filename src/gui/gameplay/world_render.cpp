@@ -30,11 +30,12 @@ static float ZINDEX_SMILEY[2] = {
 	0, // god off
 	-3
 };
-static float ZINDEX_LOOKUP[(int)BlockDrawType::Invalid] = {
+static float ZINDEX_LOOKUP[(int)BlockDrawType::Invalid + 1] = {
 	2, // Solid
 	2, // Action
 	-1, // Decoration
 	5, // Background
+	0, // Invalid
 };
 static float ZINDEX_SHADOW = 3;
 
@@ -63,6 +64,8 @@ void SceneWorldRender::draw()
 	}
 	if (m_world_smgr != m_gui->scenemgr)
 		m_world_smgr->clear();
+
+	m_animation_timers.clear();
 
 	auto smgr = m_world_smgr;
 
@@ -119,6 +122,7 @@ void SceneWorldRender::step(float dtime)
 
 	// Actually draw the world contents
 
+	updateAnimation(dtime);
 	drawBlocksInView();
 	updatePlayerPositions(dtime);
 
@@ -289,7 +293,12 @@ void SceneWorldRender::drawBlocksInView()
 	if (!blocks_modified && all_visible)
 		return;
 
+	// Remove soon-to-be dangling pointers
+	for (auto &it : m_animation_timers)
+		it.second.mat = nullptr;
+
 	m_blocks_node->removeAll();
+
 
 	// Draw more than necessary to skip on render steps when moving only slightly
 	m_drawn_rect = core::recti(
@@ -395,18 +404,14 @@ void SceneWorldRender::drawBlocksInView()
 }
 
 static const core::dimension2d<f32> DEFAULT_TILE_SIZE(10, 10);
-
+static const BlockTile FALLBACK_TILE;
 
 void SceneWorldRender::assignNewForeground(BlockDrawData &bdd)
 {
 	auto smgr = m_gui->scenemgr;
 
 	const BlockProperties *props = g_blockmanager->getProps(bdd.b.id);
-	BlockTile tile;
-	if (props)
-		tile = props->getTile(bdd.b);
-	else
-		tile.type = BlockDrawType::Solid;
+	const BlockTile &tile = props ? props->getTileRef(bdd.b) : FALLBACK_TILE;
 	auto z = ZINDEX_LOOKUP[(int)tile.type];
 
 	// New scene node
@@ -595,21 +600,33 @@ CBulkSceneNode *SceneWorldRender::drawBottomLeftText(video::ITexture *texture)
 }
 
 
-bool SceneWorldRender::assignBlockTexture(const BlockTile tile, scene::ISceneNode *node)
+bool SceneWorldRender::assignBlockTexture(const BlockTile &tile, scene::ISceneNode *node)
 {
 	auto &mat = node->getMaterial(0);
 	mat.ZWriteEnable = video::EZW_AUTO;
 	// For EMT_TRANSPARENT_ALPHA_CHANNEL_REF : alpha threshold to clip
 	mat.MaterialTypeParam = 0.5f;
 
-	node->getMaterial(0).forEachTexture([](video::SMaterialLayer &layer) {
+	mat.forEachTexture([](video::SMaterialLayer &layer) {
 		layer.MinFilter = video::ETMINF_LINEAR_MIPMAP_LINEAR;
 		layer.LODBias = -8; // slightly shaper edges
 	});
-	if (!tile.texture) {
-		node->getMaterial(0).setTexture(0, g_blockmanager->getMissingTexture());
+
+	size_t index = 0;
+	if (tile.textures.size() > 1) {
+		auto insertion = m_animation_timers.emplace(&tile, Animation());
+		Animation &anim = insertion.first->second;
+		anim.mat = &mat;
+		index = anim.index;
+	}
+
+	video::ITexture *texture = tile.textures[index];
+	if (!texture) {
+		// Needed to render unknown blocks
+		mat.setTexture(0, g_blockmanager->getMissingTexture());
 		return true;
 	}
+	mat.setTexture(0, texture);
 
 	switch (tile.type) {
 		case BlockDrawType::Solid:
@@ -627,8 +644,27 @@ bool SceneWorldRender::assignBlockTexture(const BlockTile tile, scene::ISceneNod
 		default: break;
 	}
 
-	node->getMaterial(0).setTexture(0, tile.texture);
 	return mat.MaterialType == video::EMT_SOLID;
+}
+
+
+void SceneWorldRender::updateAnimation(float dtime)
+{
+	for (auto &it : m_animation_timers) {
+		Animation &anim = it.second;
+		if (!anim.mat)
+			continue;
+
+		const BlockTile *tile = it.first;
+
+		anim.timer += dtime;
+		if (anim.timer < tile->animation_delay)
+			continue;
+		anim.timer -= tile->animation_delay;
+
+		anim.index = (anim.index + 1) % it.first->textures.size();
+		anim.mat->setTexture(0, it.first->textures[anim.index]);
+	}
 }
 
 

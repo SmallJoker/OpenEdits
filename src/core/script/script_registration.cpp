@@ -127,6 +127,64 @@ int Script::l_register_pack(lua_State *L)
 	return 0;
 }
 
+/// The tile def table must be at Lua stack index -1
+static void read_tile(lua_State *L, BlockTile &tile, const BlockProperties *props)
+{
+	tile.is_known_tile = true;
+
+	{
+		lua_getfield(L, -1, "type");
+		if (!lua_isnil(L, -1))
+			tile.type = read_block_drawtype(L, -1);
+		else if (tile.type == BlockDrawType::Invalid)
+			tile.type = props->pack->default_type;
+		lua_pop(L, 1); // type
+	}
+
+	{
+		lua_getfield(L, -1, "alpha");
+		if (!lua_isnil(L, -1))
+			tile.have_alpha = lua_toboolean(L, -1);
+		lua_pop(L, 1); // alpha
+	}
+
+	{
+		lua_getfield(L, -1, "override");
+		if (!lua_isnil(L, -1)) {
+			luaL_checktype(L, -1, LUA_TTABLE);
+			tile.visual_override.enabled = true;
+			tile.visual_override.id = pull_blockid(L, -1).id;
+			tile.visual_override.tile = check_field_int(L, -1, "tile");
+		}
+		lua_pop(L, 1); // override
+	}
+
+	{
+		lua_getfield(L, -1, "animation_delay");
+		if (!lua_isnil(L, -1)) {
+			tile.animation_delay = luaL_checknumber(L, -1);
+			if (!std::isfinite(tile.animation_delay))
+				luaL_error(L, "invalid delay");
+		}
+		lua_pop(L, 1); // animation_delay
+
+		lua_getfield(L, -1, "animation_count");
+		if (!lua_isnil(L, -1)) {
+			size_t count = (u8)luaL_checkinteger(L, -1);
+			if (tile.textures.size() < count)
+				tile.textures.resize(count);
+		}
+		lua_pop(L, 1); // animation_count
+	}
+
+	{
+		lua_getfield(L, -1, "skip");
+		if (!lua_isnil(L, -1))
+			tile.skip_count = (s8)luaL_checkinteger(L, -1);
+		lua_pop(L, 1); // skop
+	}
+}
+
 int Script::l_change_block(lua_State *L)
 {
 	MESSY_CPP_EXCEPTIONS_START
@@ -181,35 +239,7 @@ int Script::l_change_block(lua_State *L)
 			if (i >= tiles.size())
 				tiles.resize(i + 1);
 
-			BlockTile &tile = tiles.at(i);
-			tile.is_known_tile = true;
-
-			{
-				lua_getfield(L, -1, "type");
-				if (!lua_isnil(L, -1))
-					tile.type = read_block_drawtype(L, -1);
-				else if (tile.type == BlockDrawType::Invalid)
-					tile.type = props->pack->default_type;
-				lua_pop(L, 1); // type
-			}
-
-			{
-				lua_getfield(L, -1, "alpha");
-				if (!lua_isnil(L, -1))
-					tile.have_alpha = lua_toboolean(L, -1);
-				lua_pop(L, 1); // alpha
-			}
-
-			{
-				lua_getfield(L, -1, "override");
-				if (!lua_isnil(L, -1)) {
-					luaL_checktype(L, -1, LUA_TTABLE);
-					tile.visual_override.enabled = true;
-					tile.visual_override.id = pull_blockid(L, -1).id;
-					tile.visual_override.tile = check_field_int(L, -1, "tile");
-				}
-				lua_pop(L, 1); // override
-			}
+			read_tile(L, tiles.at(i), props);
 
 			lua_pop(L, 1); // value
 		}
