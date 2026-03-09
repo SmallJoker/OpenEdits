@@ -255,7 +255,9 @@ void BlockManager::populateTextures()
 				prop->color = 0xFFFF0000; // red
 				logger(LL_ERROR, "Out-of-range texture for block_id=%d\n", id);
 			} else if (prop->color == BlockProperties::COLOR_DEFAULT_TRANSPARENT) {
-				prop->color = getDominantColor(prop->tiles[0].textures[0]);
+				// May be empty for hardcoded blocks
+				if (!prop->tiles.empty())
+					prop->color = getDominantColor(prop->tiles[0].textures[0]);
 			}
 
 			count++;
@@ -265,6 +267,17 @@ void BlockManager::populateTextures()
 	m_populated = true;
 
 	doPackPostprocess();
+
+	// Final sanity check
+	for (const BlockProperties *props : m_props) {
+		if (!props)
+			continue;
+		ASSERT_FORCED(!props->tiles.empty(), "Missing tiles");
+		for (const BlockTile &tile : props->tiles) {
+			ASSERT_FORCED(!tile.textures.empty(), "Missing texture");
+		}
+	}
+
 	logger(LL_PRINT, "Registered textures of %d blocks in %zu packs\n", count, m_packs.size());
 }
 

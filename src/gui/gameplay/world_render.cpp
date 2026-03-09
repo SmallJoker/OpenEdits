@@ -444,9 +444,9 @@ void SceneWorldRender::assignNewBackground(BlockDrawData &bdd)
 	auto smgr = m_gui->scenemgr;
 
 	const BlockProperties *props = g_blockmanager->getProps(bdd.b.bg);
-	BlockTile tile;
-	if (props)
-		tile = props->tiles[0]; // backgrounds cannot change (yet?)
+	const BlockTile &tile = props
+		? props->tiles[0] // backgrounds cannot change (yet?)
+		: FALLBACK_TILE;
 	auto z = ZINDEX_LOOKUP[(int)BlockDrawType::Background];
 
 	// New scene node
