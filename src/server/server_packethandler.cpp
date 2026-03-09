@@ -604,6 +604,8 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 		}
 	}
 
+	player->state = RemotePlayerState::WorldJoin;
+
 	{
 		Packet out;
 		out.data_version = player->protocol_version;
@@ -614,12 +616,16 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 	{
 		// Update player information
 		player->setWorld(world);
-		respawnPlayer(player, false);
-		player->state = RemotePlayerState::WorldPlay;
-	}
 
-	if (m_script)
-		m_script->onPlayerEvent("join", player);
+		if (m_script)
+			m_script->onPlayerEvent("prejoin", player);
+
+		if (player->pos.getLengthSQ())
+			teleportPlayer(player, player->pos, true);
+
+		if (!m_script)
+			respawnPlayer(player, false);
+	}
 
 	// Notify about new player
 	auto make_join_packet = [](RemotePlayer *player, Packet &out) {
@@ -632,7 +638,7 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 	};
 
 	// Announce this player to all those who already joined
-	broadcastInWorld(world.get(), RemotePlayerState::WorldPlay, 0, SERVER_PKT_CB {
+	broadcastInWorld(world.get(), RemotePlayerState::WorldJoin, 0, SERVER_PKT_CB {
 		make_join_packet(player, out);
 	});
 
@@ -692,6 +698,10 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 		if (out.size() > 2)
 			m_con->send(player->peer_id, 0, out);
 	}
+
+	player->state = RemotePlayerState::WorldPlay;
+	if (m_script)
+		m_script->onPlayerEvent("join", player);
 
 	logger(LL_INFO, "Player %s joined world id=%s",
 		player->name.c_str(), world->getMeta().id.c_str()

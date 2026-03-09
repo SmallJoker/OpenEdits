@@ -44,6 +44,7 @@ void PlayerRef::doRegister(lua_State *L)
 		{"hash", hash},
 		{"send_event", send_event},
 		{"next_prn", next_prn},
+		{"send_teleport", send_teleport},
 		{"get_pos", get_pos},
 		{"set_pos", set_pos},
 		{"get_vel", get_vel},
@@ -192,10 +193,26 @@ int PlayerRef::next_prn(lua_State* L)
 
 // -------------- Physics / controls --------------
 
+int PlayerRef::send_teleport(lua_State *L)
+{
+	Player *player = toPlayerRef(L, 1)->m_player;
+	if (!player)
+		return 0;
+
+	core::vector2df pos;
+	pull_v2f(L, 2, pos);
+
+	Script *script = player->getScript();
+	if (!script || script->getScriptType() != Script::ST_SERVER)
+		luaL_error(L, "Server-only");
+
+	script->implSendTeleport(player, pos);
+	return 0;
+}
 
 int PlayerRef::get_pos(lua_State *L)
 {
-	Player *player = toPlayerRef(L, 1)->m_player;
+	const Player *player = toPlayerRef(L, 1)->m_player;
 	if (!player)
 		return 0;
 
@@ -213,7 +230,7 @@ int PlayerRef::set_pos(lua_State *L)
 
 int PlayerRef::get_vel(lua_State *L)
 {
-	Player *player = toPlayerRef(L, 1)->m_player;
+	const Player *player = toPlayerRef(L, 1)->m_player;
 	if (!player)
 		return 0;
 
@@ -231,7 +248,7 @@ int PlayerRef::set_vel(lua_State *L)
 
 int PlayerRef::get_acc(lua_State *L)
 {
-	Player *player = toPlayerRef(L, 1)->m_player;
+	const Player *player = toPlayerRef(L, 1)->m_player;
 	if (!player)
 		return 0;
 

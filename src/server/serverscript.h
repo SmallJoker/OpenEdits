@@ -33,6 +33,9 @@ protected:
 
 
 	// -------- Player API
+public:
+	void implSendTeleport(Player *player, core::vector2df pos) const override;
+
 protected:
 	Server *m_server = nullptr;
 

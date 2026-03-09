@@ -2,6 +2,7 @@
 
 #include "core/operators.h" // PositionRange
 #include "core/types.h" // bid_t
+#include <vector2d.h>
 #include <string>
 #include <vector>
 
@@ -153,6 +154,10 @@ public:
 		m_world = world;
 	}
 	void removePlayer(Player *player);
+
+	virtual void implSendTeleport(Player *player, core::vector2df pos) const {}
+
+	// Callbacks
 	void onPlayerEvent(const char *event, Player *player);
 	void onPlayerEventB(const char *event, Player *player, bool arg);
 

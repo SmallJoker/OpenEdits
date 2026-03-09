@@ -120,6 +120,8 @@ A `userdata` object.
     * See `env.send_event`. For servers only.
  * `:next_prn()` -> integer
     * Gets the next pseudo-random number
+ * `:send_teleport(x, y)`
+    * Teleports the player. For servers only.
  * `:get_pos()` -> `x, y`
     * The block underneath is at `(floor(x + 0.5), floor(y + 0.5))`.
  * `:set_pos(x, y)`
@@ -141,8 +143,10 @@ Player-related callbacks in `env`:
  * `.on_player_event(event, ...)`
     * Callback to overwrite at load time
     * List of events (`event`) and payload (`...`):
-       * `"join"`
-       * `"leave"`
+       * `"prejoin"`: before any players or flags are sent to the client.
+         The player is teleported to the given position.
+       * `"join"`: after all init data was sent to the client
+       * `"leave"`: before the player is removed from the world
        * `"godmode", status`
 
 

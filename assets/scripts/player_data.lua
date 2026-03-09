@@ -4,7 +4,7 @@ local player = env.player
 local old_event = env.on_player_event or (function() end)
 env.on_player_event = function(event, arg)
 	print((env.server and "Server" or "Client"),
-		"event:" .. event, env.player:get_name(), arg)
+		"event:" .. event, player:get_name(), arg)
 
 	local id = player:hash()
 	if event == "join" then

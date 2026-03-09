@@ -18,19 +18,6 @@ env.include("smileys.lua")
 local GRAVITY    = 100.0 -- m/s² for use in callbacks
 
 if env.server then
-	env.on_player_event = function(event)
-		if event == "join" then
-			local names = {}
-			for _, p in ipairs(env.world.get_players()) do
-				names[#names + 1] = p:get_name()
-			end
-			print("List of players: " .. table.concat(names, ", "))
-			return
-		end
-	end
-end
-
-if env.server then
 	env.on_step = function(abstime) end
 end
 
@@ -164,6 +151,7 @@ env.include("coins.lua")
 env.include("teleporter.lua")
 env.include("hidden.lua")
 env.include("music.lua")
+env.include("owner.lua")
 
 
 ---------- Decoration tab

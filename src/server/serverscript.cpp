@@ -115,3 +115,8 @@ int ServerScript::implWorldSetTile(PositionRange range, bid_t block_id, int tile
 	lua_pushboolean(L, modified);
 	return 1;
 }
+
+void ServerScript::implSendTeleport(Player *player, core::vector2df pos) const
+{
+	m_server->teleportPlayer(player, pos, true);
+}

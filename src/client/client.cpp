@@ -763,6 +763,9 @@ void Client::updateAllBlockTiles(bool reset_tiles)
 	if (!is_hardcoded && m_tile_cache_mgr.removed_caches_counter == 0)
 		return; // nothing to update
 
+	if ((int)m_state < (int)ClientState::WorldPlay)
+		return; // yet not ready (`get_visuals` depends on player data)
+
 	m_tile_cache_mgr.cache_miss_counter = 0;
 	m_tile_cache_mgr.removed_caches_counter = 0;
 

@@ -348,6 +348,7 @@ void BlockManager::doPackRegistration()
 		auto props = m_props[Block::ID_COIN];
 		props->trigger_on_touch = true;
 		props->setTiles({ BlockDrawType::Decoration, BlockDrawType::Action });
+		props->tiles[0].skip_count = 1;
 
 		props = m_props[Block::ID_COINDOOR];
 		props->paramtypes = BlockParams::Type::U8;

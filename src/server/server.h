@@ -72,9 +72,11 @@ private:
 	void stepWorldTick(World *world, float dtime);
 
 	bool loadWorldNoLock(World *world);
-	void writeWorldData(Packet &out, World &world, bool is_clear);
+	void writeWorldData(Packet &out, const World &world, bool is_clear);
 	void setDefaultPlayerFlags(Player *player);
+public:
 	void teleportPlayer(Player *player, core::vector2df dst, bool reset_progress = false);
+private:
 	void respawnPlayer(Player *player, bool send_packet, bool reset_progress = true);
 
 	// ----------- Server checks -----------

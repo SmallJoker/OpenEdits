@@ -136,6 +136,7 @@ void Player::setPosition(core::vector2df newpos, bool reset_progress)
 		checkpoint = blockpos_t(-1, -1);
 	}
 
+	dtime_delay = 0;
 	pos = newpos;
 	vel = core::vector2df();
 	acc = core::vector2df();

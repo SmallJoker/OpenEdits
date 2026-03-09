@@ -30,6 +30,7 @@ private:
 	static int next_prn(lua_State *L);
 
 	// Physics / controls
+	static int send_teleport(lua_State *L);
 	static int get_pos(lua_State *L);
 	static int set_pos(lua_State *L);
 	static int get_vel(lua_State *L);

@@ -500,7 +500,7 @@ bool Server::loadWorldNoLock(World *world)
 	return m_world_db && world && m_world_db->load(world);
 }
 
-void Server::writeWorldData(Packet &out, World &world, bool is_clear)
+void Server::writeWorldData(Packet &out, const World &world, bool is_clear)
 {
 	out.write(Packet2Client::WorldData);
 	out.write<u8>(1 + is_clear); // 1: new data. 2: clear
