@@ -148,23 +148,7 @@ void SceneConnect::draw()
 
 void SceneConnect::step(float dtime)
 {
-	using namespace guilayout;
-
-	if (0) {
-		// For debugging
-		m_gui->layout->doRecursive([this] (Element *e) -> bool {
-			using Dir = guilayout::Element::Direction;
-			if (!e)
-				return true;
-
-			this->m_gui->driver->draw2DLine(
-				core::vector2di(e->pos[Dir::DIR_LEFT], e->pos[Dir::DIR_UP]),
-				core::vector2di(e->pos[Dir::DIR_RIGHT], e->pos[Dir::DIR_DOWN]),
-				0xFFFF0000
-			);
-			return true;
-		});
-	}
+	(void)dtime;
 }
 
 bool SceneConnect::OnEvent(const SEvent &e)

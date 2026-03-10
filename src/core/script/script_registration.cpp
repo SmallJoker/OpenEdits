@@ -178,9 +178,9 @@ static void read_tile(lua_State *L, BlockTile &tile, const BlockProperties *prop
 	}
 
 	{
-		lua_getfield(L, -1, "skip");
+		lua_getfield(L, -1, "index");
 		if (!lua_isnil(L, -1))
-			tile.skip_count = (s8)luaL_checkinteger(L, -1);
+			tile.index = (s16)luaL_checkinteger(L, -1);
 		lua_pop(L, 1); // skop
 	}
 }

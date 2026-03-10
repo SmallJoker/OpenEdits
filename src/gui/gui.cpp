@@ -2,6 +2,7 @@
 #include "client/client.h"
 #include "server/server.h"
 #include "core/blockmanager.h"
+#include "core/logger.h"
 #include "core/macros.h"
 #include "core/smileydef.h"
 #include "guilayout/guilayout_irrlicht.h"
@@ -22,6 +23,8 @@
 #include <IGUISkin.h>
 #include <ISceneManager.h>
 #include <IVideoDriver.h>
+
+static Logger logger("Gui", LL_WARN);
 
 Gui::Gui()
 {
@@ -111,7 +114,6 @@ Gui::~Gui()
 void Gui::run()
 {
 	auto t_last = std::chrono::steady_clock::now();
-	getHandler(m_scenetype)->OnOpen();
 
 	constexpr float SERVER_TICK = 0.1f;
 	float server_tick_bank = 0;
@@ -152,10 +154,15 @@ void Gui::run()
 		if (screensize != window_size) {
 			is_new_screen = true;
 			window_size = screensize;
+			logger(LL_DEBUG, "Screen size: (%d, %d)",
+				screensize.Width, screensize.Height
+			);
 		}
 
 		if (is_new_screen) {
-			//printf("Renew scene type %d\n", (int)m_scenetype);
+			logger(LL_DEBUG, "Change screen: %d -> %d",
+				(int)m_scenetype, (int)m_scenetype_next
+			);
 
 			// Clear GUI elements
 			scenemgr->clear();
@@ -204,7 +211,8 @@ void Gui::run()
 	getHandler(m_scenetype)->OnClose();
 	scenemgr->clear();
 	guienv->clear();
-	puts("Gui: Terminated properly.");
+
+	logger(LL_PRINT, "Terminated properly.");
 }
 
 
@@ -267,6 +275,15 @@ SceneHandler *Gui::getHandler(SceneHandlerType type)
 	return it->second;
 }
 
+void Gui::setNextScene(SceneHandlerType type)
+{
+	logger(LL_DEBUG, "%s: %d", __func__, (int)type);
+	if (type == m_scenetype)
+		type = SceneHandlerType::CTRL_RENEW;
+	m_scenetype_next = type;
+}
+
+
 void Gui::setWindowTitle()
 {
 	core::stringw title;
@@ -300,7 +317,7 @@ void Gui::setSceneFromClientState()
 
 	switch (state) {
 	case ClientState::None:
-		break;
+		return;
 	case ClientState::Register:
 		setNextScene(SceneHandlerType::Register);
 		break;
@@ -318,6 +335,8 @@ void Gui::setSceneFromClientState()
 		assert(false);
 		break;
 	}
+
+	logger(LL_DEBUG, "%s: %d", __func__, (int)state);
 }
 
 

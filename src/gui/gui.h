@@ -110,7 +110,7 @@ private:
 	void registerHandler(SceneHandlerType type, SceneHandler *handler);
 	SceneHandler *getHandler(SceneHandlerType type);
 	// Only "Gui" is allowed to decide on the next screen. Use one of the actions functions
-	inline void setNextScene(SceneHandlerType type) { m_scenetype_next = type; }
+	void setNextScene(SceneHandlerType type);
 
 	bool m_initialized = false;
 

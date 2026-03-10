@@ -62,7 +62,7 @@ struct BlockTile {
 	bool is_known_tile = false; // true when registered by registerPack()
 	bool have_alpha = false; // false: use BlockDrawType
 	float animation_delay = 1.0f;
-	s8 skip_count = 0; // how many frames to ignore after this tile
+	s16 index = -1; // where to continue looking for frames (< 0 = disabled)
 
 	struct VisualOverride {
 		bid_t id;

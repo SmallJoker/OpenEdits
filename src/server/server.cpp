@@ -311,11 +311,11 @@ std::vector<Player *> Server::getPlayersNoLock(const World *world) const
 
 void Server::onPeerConnected(peer_t peer_id)
 {
-	if (0) {
-		Packet pkt;
-		pkt.write<Packet2Client>(Packet2Client::Quack);
-		pkt.writeStr16("hello world");
-		m_con->send(peer_id, 0, pkt);
+	if (m_shutdown_requested && *m_shutdown_requested) {
+		std::string msg = "Server is shutting down.";
+		if (PACKET_ACTIONS_MAX == 0)
+			msg = "Server error on startup. Check the logs.";
+		sendMsg(peer_id, msg);
 	}
 }
 
@@ -345,6 +345,9 @@ void Server::processPacket(peer_t peer_id, Packet &pkt)
 	// one server instance, multiple worlds
 	int action = (int)pkt.read<Packet2Server>();
 	if (action >= PACKET_ACTIONS_MAX) {
+		if (PACKET_ACTIONS_MAX == 0)
+			return; // ignore. error during Server startup
+
 		logger(LL_ERROR, "Packet action %u out of range (peer_id=%d)\n", action, peer_id);
 		return;
 	}

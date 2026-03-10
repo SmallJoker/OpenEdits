@@ -229,6 +229,9 @@ void BlockManager::populateTextures()
 			auto prop = m_props[id];
 
 			for (BlockTile &tile : prop->tiles) {
+				if (tile.index >= 0)
+					texture_offset = tile.index;
+
 				if (texture_offset < max_tiles && tile.type != BlockDrawType::Invalid) {
 					// Get all animation frames (at least 1)
 					for (video::ITexture *&tex : tile.textures) {
@@ -236,8 +239,6 @@ void BlockManager::populateTextures()
 						texture_offset++;
 					}
 				}
-
-				texture_offset += tile.skip_count;
 			}
 
 			bool have_missing = false;
@@ -253,7 +254,9 @@ void BlockManager::populateTextures()
 
 			if (have_missing) {
 				prop->color = 0xFFFF0000; // red
-				logger(LL_ERROR, "Out-of-range texture for block_id=%d\n", id);
+				logger(LL_ERROR, "Out-of-range texture offset %d for block_id=%d\n",
+					texture_offset, id
+				);
 			} else if (prop->color == BlockProperties::COLOR_DEFAULT_TRANSPARENT) {
 				// May be empty for hardcoded blocks
 				if (!prop->tiles.empty())

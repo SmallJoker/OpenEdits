@@ -278,10 +278,9 @@ Block Definition - regular fields:
           Replaces the appearance of the block with the tile of another block.
         * `animation_delay` (optional, number): delay between animation frames.
         * `animation_count` (optional, integer): count of animation frames.
-        * `skip` (optional, integer): how many tiles to skip.
-          Intended to be used for backwards compatibility.
-    * Tile limit: 8.
-    * Only foreground blocks (`type != env.DRAW_TYPE_BACKGROUND`) can have >= 1 tile.
+        * `index` (optional, integer): where to continue indexing frames (zero-indexed).
+          Intended to be used for backwards compatibility. Default: `-1` (disabled)
+    * Tile limit: 8 for `type != env.DRAW_TYPE_BACKGROUND`, otherwise 1.
  * `overlay` (optional, table)
     * Defines the appearance of the overlay value returned by `get_visuals`.
     * Fields:

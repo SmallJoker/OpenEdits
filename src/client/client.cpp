@@ -690,9 +690,10 @@ void Client::initScript()
 	return; // OK
 
 error:
-	logger(LL_ERROR, "Failed to initialize script. Falling back to hardcoded.");
-	m_bmgr->doPackRegistration();
-	m_state = ClientState::LobbyIdle;
+	const char *msg = "Failed to initialize Client script. Check the logs.";
+	logger(LL_ERROR, "%s", msg);
+	disconnect(msg);
+	m_state = ClientState::None;
 }
 
 
