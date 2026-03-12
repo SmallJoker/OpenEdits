@@ -121,9 +121,8 @@ void TileCacheManager::clearCacheFor(bid_t block_id)
 
 	if (m_cache.size() != size_before) {
 		DEBUG_LOG("CLEAR CACHE id=%d\n", block_id);
-		removed_caches_counter += size_before - m_cache.size();
 
-		m_params_hashes.clear();
+		this->removed_caches_counter += size_before - m_cache.size();
 		this->params_hash_cache_eff = 0;
 
 		m_world->markAllModified();

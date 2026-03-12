@@ -17,13 +17,9 @@ env.include("smileys.lua")
 
 local GRAVITY    = 100.0 -- m/s² for use in callbacks
 
-if env.server then
-	env.on_step = function(abstime) end
-end
-
-env.on_player_event = function(event, arg)
-	-- nothing
-end
+env.on_step = function(abstime) end
+env.on_player_event = function(event, arg) end
+env.on_block_place = function(x, y, fg, bg) end
 
 --[[
 To implement:

@@ -364,7 +364,9 @@ void unittest_script()
 	p.setScript(&script);
 	CHECK(p.getScript() == nullptr); // until a world is assigned
 
+	p.inside_player_step = true;
 	test_player_physics(script, p);
+	p.inside_player_step = false;
 
 	// script events
 	{

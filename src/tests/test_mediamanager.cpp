@@ -70,6 +70,7 @@ static void test_with_script()
 	CHECK(script.popTestFeedback() == ""); // NOT "unittest_server"!
 }
 
+// TODO: Test TileCache
 
 void unittest_mediamanager()
 {

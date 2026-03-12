@@ -59,7 +59,7 @@ public:
 	ClientMedia *getMedia() const { return m_media; }
 
 	PtrLock<LocalPlayer> getMyPlayer();
-	peer_t getMyPeerId() { return m_my_peer_id; }
+	peer_t getMyPeerId() const { return m_my_peer_id; }
 	PtrLock<map_peer_player_t> getPlayerList();
 	RefCnt<World> getWorld();
 	bool updateBlock(BlockUpdate bu);

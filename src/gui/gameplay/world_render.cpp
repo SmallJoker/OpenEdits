@@ -670,6 +670,8 @@ void SceneWorldRender::updateAnimation(float dtime)
 
 void SceneWorldRender::updatePlayerPositions(float dtime)
 {
+	Client *client = m_gui->getClient();
+
 	auto smgr = m_world_smgr;
 	auto godmode_texture = m_gui->driver->getTexture("assets/textures/god_aura.png");
 
@@ -688,7 +690,7 @@ void SceneWorldRender::updatePlayerPositions(float dtime)
 
 		// Hide nametags after a certain duration
 		// Nested because "getMyPlayer" contains a lock
-		auto me = m_gui->getClient()->getMyPlayer();
+		auto me = client->getMyPlayer();
 		if (!me)
 			break;
 
@@ -699,7 +701,8 @@ void SceneWorldRender::updatePlayerPositions(float dtime)
 	} while (0);
 
 	std::list<scene::ISceneNode *> children = m_players_node->getChildren();
-	const auto players = m_gui->getClient()->getPlayerList();
+	const auto players = client->getPlayerList();
+	const peer_t my_peer_id = client->getMyPeerId();
 	for (auto &p_it : *players.ptr()) {
 		auto player = dynamic_cast<LocalPlayer *>(p_it.second.get());
 
@@ -707,10 +710,12 @@ void SceneWorldRender::updatePlayerPositions(float dtime)
 		if (!m_drawn_rect.isPointInside(bp))
 			continue;
 
+		// Draw the current player in front of all others
+		const float offset = -1.0f * (player->peer_id == my_peer_id);
 		core::vector3df nf_pos(
 			player->pos.X * 10,
 			player->pos.Y * -10,
-			ZINDEX_SMILEY[player->godmode]
+			ZINDEX_SMILEY[player->godmode] + offset
 		);
 
 		s32 nf_id = player->getGUISmileyId();

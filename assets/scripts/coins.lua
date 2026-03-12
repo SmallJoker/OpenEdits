@@ -5,10 +5,14 @@ local dprint = false and print or function() end
 
 env.require_asset("coin.mp3")
 
+local hud_dirty = false
 local function update_hud(pw_data)
+	hud_dirty = false
 	if not gui.set_hud then
 		return
 	end
+
+	pw_data = pw_data or reg.get_pwdata(reg.my_player_id)
 	if pw_data.coins == 0 then
 		if pw_data.coins_hud then
 			gui.remove_hud(pw_data.coins_hud)
@@ -63,17 +67,31 @@ EV_COINS = env.register_event(100 + env.SEF_HAVE_ACTOR, 0, env.PARAMS_TYPE_U8,
 
 -- TODO: send EV_COINS to newly joined players
 
+local old_on_block_place = env.on_block_place
 env.on_block_place = function(x, y, fg, bg)
+	old_on_block_place(x, y, fg, bg)
+
 	local old_id, old_tile, _ = env.world.get_block(x, y)
 	if not fg then
 		return
 	end
-	if old_id == 100 and old_tile > 0 then
+	if old_id == 100 then
 		local pd = reg.get_pwdata(reg.my_player_id)
-		pd.coins = math.max(pd.coins - 1, 0)
+		if old_tile > 0 then
+			pd.coins = math.max(pd.coins - 1, 0)
+			env.world.update_tiles({43})
+		end
 
-		env.world.update_tiles({43})
-		update_hud(pd)
+		hud_dirty = true
+	end
+end
+
+local old_on_step = env.on_step
+env.on_step = function(dtime)
+	old_on_step(dtime)
+
+	if hud_dirty then
+		update_hud()
 	end
 end
 
@@ -82,9 +100,7 @@ env.on_world_data = function()
 		print("reset for " .. p:get_name())
 		get_pwdata(p).coins = 0
 	end
-	if reg.my_player_id then
-		update_hud(reg.get_pwdata(reg.my_player_id))
-	end
+	update_hud()
 end
 
 
@@ -110,7 +126,7 @@ local blocks_coins = {
 
 			if gui.have_gui then
 				gui.play_sound("coin.mp3")
-				update_hud(pd)
+				hud_dirty = true
 			end
 		end
 	},

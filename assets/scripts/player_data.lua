@@ -1,7 +1,7 @@
 local player_data = assert(reg._player_data)
 local player = env.player
 
-local old_event = env.on_player_event or (function() end)
+local old_event = env.on_player_event
 env.on_player_event = function(event, arg)
 	print((env.server and "Server" or "Client"),
 		"event:" .. event, player:get_name(), arg)
@@ -23,6 +23,7 @@ env.on_player_event = function(event, arg)
 		if not pd then
 			return
 		end
+		assert(type(arg) == "boolean", "bad fn overwrite")
 		pd.godmode = arg
 	end
 

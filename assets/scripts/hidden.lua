@@ -1,12 +1,17 @@
 local world = env.world
 
-local function set_tile_to_1(fg)
-	return function(bx, by)
-		world.set_tile(fg, 1, world.PRT_ONE_BLOCK, bx, by)
+local function set_tile_to_1(bx, by)
+	if not env.is_me() then
+		return
 	end
+	local fg, tile, _ = world.get_block(bx, by)
+	if tile > 0 then
+		return
+	end
+	world.set_tile(fg, 1, world.PRT_ONE_BLOCK, bx, by)
 end
 
-local old_event = env.on_player_event or (function() end)
+local old_event = env.on_player_event
 env.on_player_event = function(event, arg)
 	old_event(event, arg)
 
@@ -32,10 +37,10 @@ local blocks_hidden = {
 		id = 50, -- ID_SECRET
 		minimap_color = 0x00000001,
 		tiles = {
-			{ type = env.DRAW_TYPE_SOLID, alpha = true, override = { id = 0, tile = 0} },
+			{ type = env.DRAW_TYPE_SOLID, alpha = true, override = { id = 0, tile = 0 } },
 			{ type = env.DRAW_TYPE_SOLID }
 		},
-		on_collide = set_tile_to_1(50),
+		on_collide = set_tile_to_1,
 		get_visuals = get_visuals_godmode,
 	},
 	{
@@ -52,7 +57,7 @@ local blocks_hidden = {
 			{ type = env.DRAW_TYPE_ACTION, override = { id = 44, tile = 0} },
 			{ type = env.DRAW_TYPE_ACTION }
 		},
-		on_collide = set_tile_to_1(243),
+		on_collide = set_tile_to_1,
 		get_visuals = get_visuals_godmode,
 	},
 }

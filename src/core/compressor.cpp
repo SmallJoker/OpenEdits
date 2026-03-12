@@ -319,13 +319,16 @@ void Decompressor::decompress()
 	do {
 		len = m_reader->decompress(m_output.writePreallocStart(CHUNK_SMALL), CHUNK_SMALL);
 		m_output.writePreallocEnd(len);
-		logger(LL_DEBUG, "Decompressed n=%zu, total=%zu\n", len, m_output.size());
 
 		if (m_output.size() > m_limit_bytes) {
 			logger(LL_ERROR, "decompress: data exceeds limit of %zu", m_limit_bytes);
 			throw std::runtime_error("too much data");
 		}
 	} while (len > 0);
+
+	size_t small = m_reader->iodata.pkt->size();
+	float ratio = 100.0f * small / m_output.size();
+	logger(LL_DEBUG, "Decompressed %zu --> %zu bytes (%.0f %%)", small, m_output.size(), ratio);
 
 	delete m_reader;
 	m_reader = nullptr;

@@ -16,7 +16,7 @@
 	#define DEBUGLOG(...) /* SILENCE */
 #endif
 
-static Logger logger("ClientPkt", LL_DEBUG);
+static Logger logger("ClientPkt", LL_INFO);
 
 // In sync with Packet2Client
 const ClientPacketHandler Client::packet_actions[] = {
@@ -70,7 +70,7 @@ void Client::pkt_Hello(Packet &pkt)
 void Client::pkt_Message(Packet &pkt)
 {
 	std::string str(pkt.readStr16());
-	logger(LL_DEBUG, "message=%s", str.c_str());
+	logger(LL_PRINT, "message=%s", str.c_str());
 
 	GameEvent e(GameEvent::C2G_DIALOG);
 	e.text = new std::string(str);
