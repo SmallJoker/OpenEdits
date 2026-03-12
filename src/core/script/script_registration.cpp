@@ -228,7 +228,7 @@ int Script::l_change_block(lua_State *L)
 	if (!lua_isnil(L, -1)) {
 		int table = lua_gettop(L);
 		luaL_checktype(L, table, LUA_TTABLE);
-		auto &tiles = props->tiles; // setTiles would overwrite everything :(
+		auto &tiles = props->tiles;
 
 		// Allow selective changes, e.g. [2] = { type = ..., alpha = ... }
 		lua_pushnil(L);
@@ -239,7 +239,9 @@ int Script::l_change_block(lua_State *L)
 			if (i >= tiles.size())
 				tiles.resize(i + 1);
 
-			read_tile(L, tiles.at(i), props);
+			BlockTile &tile = tiles.at(i);
+			tile = BlockTile(); // reset this def
+			read_tile(L, tile, props);
 
 			lua_pop(L, 1); // value
 		}

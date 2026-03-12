@@ -59,6 +59,7 @@ public:
 	core::vector2df acc;
 	blockpos_t last_pos; //< from the last full step
 	bool did_jerk = false; //< abrupt position changes. e.g. teleporter
+	bool inside_player_step = false; //< gatekeeping for set vel/acc/pos
 
 	inline blockpos_t getCurrentBlockPos()
 	{ return blockpos_t(pos.X + 0.5f, pos.Y + 0.5f); }

@@ -13,7 +13,7 @@ end
 local old_event = env.on_player_event or (function() end)
 env.on_player_event = function(event)
 	if event == "prejoin" and env.server then
-		env.player:set_pos(get_random_spawn(env.player))
+		env.player:send_teleport(get_random_spawn(env.player))
 	end
 
 	return old_event(event, arg)

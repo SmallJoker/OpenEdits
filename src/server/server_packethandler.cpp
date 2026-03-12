@@ -620,9 +620,6 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 		if (m_script)
 			m_script->onPlayerEvent("prejoin", player);
 
-		if (player->pos.getLengthSQ())
-			teleportPlayer(player, player->pos, true);
-
 		if (!m_script)
 			respawnPlayer(player, false);
 	}

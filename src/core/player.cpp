@@ -198,6 +198,8 @@ void Player::step(float dtime)
 		m_jump_cooldown -= dtime;
 	did_jerk = false;
 
+	inside_player_step = true;
+
 	//printf("dtime: %g, v=%g, a=%g\n", dtime, vel.getLength(), acc.getLength());
 	if (m_script)
 		m_script->setPlayer(this);
@@ -240,6 +242,7 @@ void Player::step(float dtime)
 	}
 
 	stepInternal(dtime);
+	inside_player_step = false;
 }
 
 void Player::stepInternal(float dtime)

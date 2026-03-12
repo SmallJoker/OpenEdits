@@ -138,13 +138,16 @@ A `userdata` object.
     * Client: Returns whether `env.player` is the controlled player.
     * Server: Returns `false`.
 
+The functions `set_pos`, `set_vel` and `set_acc` are only allowed inside of the
+current player physics engine step. This is to avoid desync issues between the
+server and client(s).
+
 Player-related callbacks in `env`:
 
  * `.on_player_event(event, ...)`
     * Callback to overwrite at load time
     * List of events (`event`) and payload (`...`):
        * `"prejoin"`: before any players or flags are sent to the client.
-         The player is teleported to the given position.
        * `"join"`: after all init data was sent to the client
        * `"leave"`: before the player is removed from the world
        * `"godmode", status`
@@ -179,9 +182,10 @@ Namespace: `gui`. Only available for GUI clients.
 
 Block Definition field `gui_def`:
 
- * (GUI Element Definition)
+ * (GUI Element Definition) fields
  * `values` (table): default values of the GUI elements
     * This is mandatory if any of the depending callbacks are defined.
+ * `focus` (optional, string): which field to focus automatically.
  * `from_block(values, ...)`
     * Executed when copying a block (Ctrl + RMB)
     * `values` (table): reference to `gui_def.values`
@@ -197,10 +201,24 @@ Block Definition field `gui_def`:
     * `x`, `y`: The clicked block position
     * `gui.select_block` may be used to set the selected Block Parameters.
 
+GUI Element Definition: (table)
+
+ * `type`: Type of the element. One of `gui.ELMT_*`.
+ * `grid` (table): Table size
+    * For types: `gui.ELMT_TABLE`
+    * Format: `{ width, height }`
+ * `fields` (table): Contents of the container
+    * For types: `gui.ELMT_TABLE`
+    * Value: GUI Element Definition
+ * `text` (string): Text to display
+    * For types: `gui.ELMT_TEXT`
+ * `name` (string): Key to use in the `values` table.
+    * For types: `gui.ELMT_INPUT`
+
 HUD Definition: (table)
 
- * `type` (string)
- * `value` (any, tbd.)
+ * Same fields as GUI Element Definition
+ * The fields `focus`, `from_block` and `on_place` are ignored.
 
 
 ### Registration

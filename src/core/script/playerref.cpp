@@ -220,11 +220,17 @@ int PlayerRef::get_pos(lua_State *L)
 	return 2;
 }
 
+static const char *NO_PHYSICS_SET = "disallowed outside of player step";
+
 int PlayerRef::set_pos(lua_State *L)
 {
 	Player *player = toPlayerRef(L, 1)->m_player;
-	if (player)
-		pull_v2f(L, 2, player->pos);
+	if (!player)
+		return 0;
+	if (!player->inside_player_step)
+		luaL_error(L, NO_PHYSICS_SET);
+
+	pull_v2f(L, 2, player->pos);
 	return 0;
 }
 
@@ -241,8 +247,12 @@ int PlayerRef::get_vel(lua_State *L)
 int PlayerRef::set_vel(lua_State *L)
 {
 	Player *player = toPlayerRef(L, 1)->m_player;
-	if (player)
-		pull_v2f(L, 2, player->vel);
+	if (!player)
+		return 0;
+	if (!player->inside_player_step)
+		luaL_error(L, NO_PHYSICS_SET);
+
+	pull_v2f(L, 2, player->vel);
 	return 0;
 }
 
@@ -259,8 +269,12 @@ int PlayerRef::get_acc(lua_State *L)
 int PlayerRef::set_acc(lua_State *L)
 {
 	Player *player = toPlayerRef(L, 1)->m_player;
-	if (player)
-		pull_v2f(L, 2, player->acc);
+	if (!player)
+		return 0;
+	if (!player->inside_player_step)
+		luaL_error(L, NO_PHYSICS_SET);
+
+	pull_v2f(L, 2, player->acc);
 	return 0;
 }
 
