@@ -95,13 +95,13 @@ void ClientScript::getVisuals(const BlockProperties *props, const BlockParams &p
 	if (props->ref_get_visuals == LUA_NOREF)
 		return;
 
-	lua_State *L = m_lua;
 	m_last_block_id = props->id;
+
+	lua_State *L = m_lua;
 
 	lua_pushinteger(L, tce->tile);
 	int nargs = 1 + writeBlockParams(L, params);
-	int top = callFunction(props->ref_get_visuals, 2, "get_visuals", nargs, true);
-	if (!top)
+	if (!callFunction(props->ref_get_visuals, 2, "get_visuals", nargs, true))
 		return;
 
 	int new_tile = tce->tile;
@@ -132,6 +132,6 @@ void ClientScript::getVisuals(const BlockProperties *props, const BlockParams &p
 	logger(LL_DEBUG, "%s: id=%d -> tile=%d, str=%s", __func__,
 		props->id, tce->tile, tce->overlay.c_str());
 
-	lua_settop(L, top);
+	lua_settop(L, 0);
 }
 

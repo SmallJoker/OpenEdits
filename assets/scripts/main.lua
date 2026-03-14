@@ -172,6 +172,7 @@ env.register_pack({
 
 ---------- Finish
 
+env.include("server_commands.lua", "server")
 env.include("player_data.lua")
 
 if gui.set_hotbar then

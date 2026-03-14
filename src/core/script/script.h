@@ -81,6 +81,7 @@ private:
 
 	int m_private_include_depth = 0;
 
+
 	// -------- Callbacks
 public:
 	virtual void onScriptsLoaded();

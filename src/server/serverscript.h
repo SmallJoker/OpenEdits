@@ -1,7 +1,9 @@
 #pragma once
 
 #include "core/script/script.h"
+#include <map>
 
+class ChatCommand;
 class Server;
 struct BlockUpdate;
 
@@ -36,8 +38,17 @@ protected:
 public:
 	void implSendTeleport(Player *player, core::vector2df pos) const override;
 
+
+	// -------- Chat commands
+public:
+	void runChatCommand(int ref, Player *player, const std::string &msg);
+private:
+	static int l_run_chatcmd(lua_State *L);
+	static int l_server_register_command(lua_State *L);
+
+
 protected:
 	Server *m_server = nullptr;
-
+	std::map<std::string, int> m_chatcmd_refs;
 };
 

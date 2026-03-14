@@ -63,6 +63,9 @@ int Script::l_include(lua_State *L)
 		// TODO: support "client"-only scripts.
 	}
 
+	if (!is_public && script->getScriptType() != ST_SERVER)
+		return 0; // not available -> skip
+
 	if (!is_public)
 		script->m_private_include_depth++;
 

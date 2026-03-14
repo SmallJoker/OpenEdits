@@ -28,6 +28,42 @@ static bool run_script(lua_State *L, const char *text, int line)
 	return true;
 }
 
+static int instance_counter = 0;
+static int l_lua_c_fn_cpp_raii(lua_State *L)
+{
+	struct TestRAII {
+		TestRAII()
+		{ instance_counter++; }
+		~TestRAII()
+		{ instance_counter--; }
+	};
+
+	TestRAII value;
+	CHECK(instance_counter == 1);
+
+	// Prokove an error
+	if (lua_toboolean(L, 1) == true)
+		luaL_checktype(L, 1, LUA_TTABLE);
+	return 0;
+}
+
+static void test_raii()
+{
+	lua_State *L = lua_open();
+
+	lua_pushcfunction(L, l_lua_c_fn_cpp_raii);
+	lua_pushboolean(L, false);
+	CHECK(lua_pcall(L, 1, 0, 0) == 0);
+	CHECK(instance_counter == 0);
+
+	lua_pushcfunction(L, l_lua_c_fn_cpp_raii);
+	lua_pushboolean(L, true);
+	CHECK(lua_pcall(L, 1, 0, 0) != 0);
+	CHECK(instance_counter == 0);
+
+	lua_close(L);
+}
+
 static void test_playerref()
 {
 	lua_State *L = lua_open();
@@ -342,6 +378,7 @@ static void test_block_placement(BlockManager *bmgr, Script *script, RemotePlaye
 
 void unittest_script()
 {
+	test_raii();
 	test_playerref();
 	test_utilities();
 

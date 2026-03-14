@@ -20,7 +20,6 @@ typedef std::function<void(Player *, std::string)> ChatCommandAction;
 
 class ChatCommand {
 public:
-	// Pray to god that you only pass arguments of type CHATCMD_FUNC here!
 	void setMain(ChatCommandAction action) { m_action = action; };
 
 	void         add(const std::string &subcmd, ChatCommandAction action);
@@ -30,6 +29,8 @@ public:
 	bool run(Player *player, std::string msg) const;
 
 	std::string dumpUI() const;
+
+	std::string description;
 
 private:
 	ChatCommandAction m_action = nullptr;

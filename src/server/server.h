@@ -113,7 +113,9 @@ private:
 
 	// ----------- Chat commands -----------
 	void registerChatCommands();
-	void systemChatSend(Player *player, const std::string &msg, bool broadcast = false) const;
+public:
+	void systemChatSend(Player *player, const std::string &msg) const;
+private:
 	/// We might pass "world == nullptr" by accident, thus
 	/// have a separate "any_world" option is safer.
 	Player *findPlayer(const World *world, std::string name, bool any_world = false) const;
@@ -144,6 +146,10 @@ private:
 	CHATCMD_FUNC(chat_Save);
 	CHATCMD_FUNC(chat_Title);
 
+public:
+	ChatCommand &getChatCommand() { return m_chatcmd; }
+
+private:
 	ChatCommand m_chatcmd;
 };
 

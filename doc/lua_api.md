@@ -157,7 +157,21 @@ Player-related callbacks in `env`:
 
 Namespace: `env.server`. Only available for servers.
 
- * none
+ * `register_command(name, Command Definition)`
+    * `name` (string): Name of the command. Is prefixed by `/` automatically.
+
+Command Definition: (table)
+
+ * `run(msg)`
+    * `description` (string): Description of the command action.
+    * `syntax` (string): Human-readable format of the command syntax.
+       * e.g. `"PLAYERNAME [X] [Y]"`, where `X` and `Y` are optional.
+    * `msg` (string): Message part after the command
+    * Return values:
+       * (boolean): success indicator
+       * (string): message to send
+       * Both or none may be returned.
+
 
 ### Client GUI API
 
@@ -230,7 +244,9 @@ These functions must be run at load time.
     * `scope` (string): optional. Default: `nil`
        * value `nil`: distributes and runs the script on server and client
        * value `"server"`: script is only available and run on server-side
-       * Note for `scope ~= nil`: avoid registrations. There would be mismatches.
+       * Note the `scope ~= nil` avoids registrations. There would be mismatches.
+    * Use `scope = "server"` instead of `if env.server` guards! Whereas it's not loaded
+      on client-side, the clients could still request the file.
  * `env.require_asset(asset_name)`
     * To use for dynamically used assets, such as audio playback.
     * `asset_name` (string): file name without extension

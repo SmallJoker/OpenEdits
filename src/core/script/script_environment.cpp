@@ -256,8 +256,7 @@ bool Script::onBlockPlace(const BlockUpdate &bu)
 		lua_pushinteger(L, id);
 		lua_pushnil(L);
 	}
-	int top = callFunction(m_ref_on_block_place, 1, "on_block_place", 4, true);
-	if (!top)
+	if (!callFunction(m_ref_on_block_place, 1, "on_block_place", 4, true))
 		return ret;
 
 	logger(LL_DEBUG, "%s: (%d,%d) id=%d", __func__, pos.X, pos.Y, id);
@@ -269,7 +268,7 @@ bool Script::onBlockPlace(const BlockUpdate &bu)
 		ret = lua_toboolean(L, -1);
 	}
 
-	lua_settop(L, top);
+	lua_settop(L, 0);
 	return ret;
 }
 
@@ -280,12 +279,10 @@ void Script::onWorldData(World *world)
 
 	setWorld(world);
 
-	int top = callFunction(m_ref_on_world_data, 0, "on_world_data", 0, false);
-	if (!top)
+	if (!callFunction(m_ref_on_world_data, 0, "on_world_data", 0, false))
 		return;
 
-	lua_settop(m_lua, top);
-	return;
+	lua_settop(m_lua, 0);
 }
 
 int Script::l_world_get_size(lua_State *L)

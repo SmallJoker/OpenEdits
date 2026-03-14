@@ -89,7 +89,7 @@ bool Server::checkTitle(std::string &out, std::string &title)
 
 // -------------- Chat commands -------------
 
-void Server::systemChatSend(Player *player, const std::string &msg, bool broadcast) const
+void Server::systemChatSend(Player *player, const std::string &msg) const
 {
 	Packet pkt;
 	pkt.write(Packet2Client::Chat);
@@ -167,21 +167,31 @@ CHATCMD_FUNC(Server::chat_Help)
 	if (cmd[0] == '/')
 		cmd = cmd.substr(1);
 
-	for (auto v : help_LUT) {
-		if (cmd != v.cmd)
-			continue;
+	const ChatCommand *chatcmd = m_chatcmd.get("/" + cmd);
+	std::string reply;
+	std::string reply_subcmd;
+	if (chatcmd) {
+		reply = chatcmd->description;
 
-		std::string answer = v.text;
-
-		auto main = m_chatcmd.get("/" + v.cmd);
-		if (main) {
-			std::string subcmds = main->dumpUI();
-			if (!subcmds.empty()) {
-				answer.append("\nSubcommands: ");
-				answer.append(subcmds);
-			}
+		reply_subcmd = chatcmd->dumpUI();
+		if (!reply_subcmd.empty()) {
+			reply_subcmd = "\nSubcommands: " + reply_subcmd;
 		}
-		systemChatSend(player, answer);
+	}
+	if (reply.empty()) {
+		// Try to find in help_LUT
+		for (auto v : help_LUT) {
+			if (cmd != v.cmd)
+				continue;
+
+			reply = v.text;
+			break;
+		}
+	}
+	reply.append(reply_subcmd);
+
+	if (!reply.empty()) {
+		systemChatSend(player, reply);
 		return;
 	}
 

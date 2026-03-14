@@ -6,7 +6,7 @@ local function get_spawn_points()
 	)
 end
 
-local function respawn_player(player, list)
+function reg.respawn_player(player, list)
 	list = list or get_spawn_points()
 	if #list == 0 then
 		return
@@ -20,7 +20,7 @@ end
 local old_event = env.on_player_event
 env.on_player_event = function(event, arg)
 	if event == "prejoin" and env.server then
-		respawn_player(env.player)
+		reg.respawn_player(env.player)
 	end
 
 	return old_event(event, arg)
@@ -33,7 +33,7 @@ env.on_world_data = function()
 	if env.server then
 		local list = get_spawn_points()
 		for _, p in ipairs(env.world.get_players()) do
-			respawn_player(p, list)
+			reg.respawn_player(p, list)
 		end
 	end
 end

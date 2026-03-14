@@ -15,7 +15,7 @@ ChatCommand &ChatCommand::add(const std::string &subcmd)
 
 	if (!is_new) {
 		fprintf(stderr, "Overriding command %s !\n", subcmd.c_str());
-		it->second.m_subcommands.clear();
+		it->second = ChatCommand();
 	}
 
 	return it->second;

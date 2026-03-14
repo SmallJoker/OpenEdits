@@ -62,6 +62,8 @@ Server::Server(bool *shutdown_requested) :
 		}
 	}
 
+	registerChatCommands();
+
 	m_script = new ServerScript(m_bmgr, this);
 	if (!m_script->init()) {
 		logger(LL_ERROR, "Failed to initialize Lua");
@@ -86,8 +88,6 @@ Server::Server(bool *shutdown_requested) :
 		m_bmgr->sanityCheck();
 		m_media_unload_timer.set(4);
 	}
-
-	registerChatCommands();
 
 	{
 		PACKET_ACTIONS_MAX = 0;
@@ -569,24 +569,25 @@ void Server::teleportPlayer(Player *player, core::vector2df dst, bool reset_prog
 
 void Server::respawnPlayer(Player *player, bool send_packet, bool reset_progress)
 {
+	if (m_script)
+		return;
+
 	if (player->godmode)
 		return;
 
-	if (m_bmgr->isHardcoded()) {
-		auto &meta = player->getWorld()->getMeta();
-		auto blocks = player->getWorld()->getBlocks(Block::ID_SPAWN, nullptr);
+	auto &meta = player->getWorld()->getMeta();
+	auto blocks = player->getWorld()->getBlocks(Block::ID_SPAWN, nullptr);
 
-		if (blocks.empty()) {
-			player->pos = core::vector2df();
-		} else {
-			int index = meta.spawn_index;
-			if (++index >= (int)blocks.size())
-				index = 0;
+	if (blocks.empty()) {
+		player->pos = core::vector2df();
+	} else {
+		int index = meta.spawn_index;
+		if (++index >= (int)blocks.size())
+			index = 0;
 
-			player->pos.X = blocks[index].X;
-			player->pos.Y = blocks[index].Y;
-			meta.spawn_index = index;
-		}
+		player->pos.X = blocks[index].X;
+		player->pos.Y = blocks[index].Y;
+		meta.spawn_index = index;
 	}
 
 	if (send_packet)
