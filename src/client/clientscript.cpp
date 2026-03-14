@@ -4,6 +4,7 @@
 #include "core/script/playerref.h"
 #include "core/script/script_utils.h"
 #include "core/blockmanager.h"
+#include "core/profiler.h"
 #include "core/world.h"
 
 using namespace ScriptUtils;
@@ -94,6 +95,9 @@ void ClientScript::getVisuals(const BlockProperties *props, const BlockParams &p
 		return;
 	if (props->ref_get_visuals == LUA_NOREF)
 		return;
+
+	static Profiler profiler(__func__);
+	ScopeProfiler sp(profiler);
 
 	m_last_block_id = props->id;
 

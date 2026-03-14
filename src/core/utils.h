@@ -28,17 +28,6 @@ std::string generate_world_id(unsigned length);
 
 void sleep_ms(long delay);
 
-class TimeTaker {
-public:
-	TimeTaker(bool do_start);
-	~TimeTaker();
-	void start();
-	double stop();
-
-private:
-	void *m_start_time = nullptr;
-};
-
 
 // ------------------ Numeric ------------------
 

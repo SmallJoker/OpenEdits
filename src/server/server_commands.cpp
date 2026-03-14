@@ -4,6 +4,7 @@
 #include "core/network_enums.h"
 #include "core/packet.h"
 #include "core/player.h"
+#include "core/profiler.h"
 #include "core/utils.h" // get_next_part
 #include "core/world.h"
 #include "core/worldmeta.h"

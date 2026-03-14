@@ -1,5 +1,5 @@
 #include "unittest_internal.h"
-#include <chrono>
+#include "core/profiler.h"
 
 void unittest_auth();
 void unittest_chatcommand();
@@ -17,16 +17,14 @@ void unittest_world();
 void unittest_gui_layout(int which);
 void unittest_gui_gameplay();
 
-static std::chrono::steady_clock::time_point time_start;
+static TimeTaker stopwatch(false);
 void unittest_tic()
 {
-	time_start = std::chrono::steady_clock::now();
+	stopwatch.start();
 }
 void unittest_toc(const char *name)
 {
-	// Measure precise timings
-	auto time_now = std::chrono::steady_clock::now();
-	double dtime = std::chrono::duration<double>(time_now - time_start).count();
+	double dtime = stopwatch.stop();
 	if (dtime > 2E-3) {
 		printf("[%s] elapsed: %.2f ms\n", name, dtime * 1E3);
 	} else {
