@@ -59,10 +59,12 @@ Permission/player flag examples:
  * `--unittest` runs the included tests to sanity check
  * `--decompress FILEPATH` decompresses an EELVL file (for development purposes)
  * `--server` starts a server-only instance without GUI
+ * `--setpass USERNAME PASSWORD|@FILE`
+     * Changes the password of the specified player.
  * `--setrole USERNAME ROLE`
      * `ROLE` can be one of: `normal`, `moderator`, `admin`.
      * Can be executed while a server is already running.
- * `--go USERNAME PASSWORD(FILE) [WORLD_ID]`
+ * `--go USERNAME PASSWORD|@FILE [WORLD_ID]`
      * Starts a local server and joins the world ID (if provided)
 
 

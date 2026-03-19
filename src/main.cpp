@@ -82,6 +82,34 @@ static int run_server()
 	return EXIT_SUCCESS;
 }
 
+static int server_setpass(const char *username_raw, const char *password)
+{
+	std::string username = username_raw;
+	to_player_name(username);
+
+	DatabaseAuth auth_db;
+	if (!auth_db.tryOpen("server_auth.sqlite"))
+		return EXIT_FAILURE; // logged by Database::ok
+
+	AuthAccount acc;
+	if (!auth_db.load(username, &acc)) {
+		puts("-!- This account is yet not registered.");
+		return EXIT_FAILURE;
+	}
+
+	Auth auth;
+	auth.hash(auth_db.getUniqueSalt(), password);
+	acc.password = auth.output;
+
+	auth_db.enableWAL();
+	if (auth_db.save(acc)) {
+		puts("--- Password changed successfully!");
+		return EXIT_SUCCESS;
+	}
+
+	return EXIT_FAILURE; // logged by Database::ok
+}
+
 static int server_setrole(char *username_raw, char *role)
 {
 	AuthAccount::AccountLevel newlevel = AuthAccount::AL_INVALID;
@@ -122,6 +150,33 @@ static int server_setrole(char *username_raw, char *role)
 	return EXIT_FAILURE; // logged by Database::ok
 }
 
+static bool try_get_password_from_file(const char *arg, std::string &out)
+{
+	if (arg[0] != '@') {
+		puts("--- Using command-line provided plaintext password");
+		out = arg;
+		return true;
+	}
+	puts("--- Using password provided by file");
+
+	arg++;
+	std::ifstream is(arg);
+	if (!is.good()) {
+		fprintf(stderr, "-!- File \"%s\" not found.\n", arg);
+		return false;
+	}
+
+	std::string line;
+	std::getline(is, line);
+	if (line.empty()) {
+		fprintf(stderr, "-!- First line of file is empty.\n");
+		return false;
+	}
+
+	out = strtrim(line);
+	return true;
+}
+
 static int parse_args(int argc, char *argv[])
 {
 	if (argc < 2)
@@ -160,6 +215,17 @@ static int parse_args(int argc, char *argv[])
 		// Dedicated server
 		return run_server();
 	}
+	if (strcmp(argv[1], "--setpass") == 0) {
+		if (argc != 4) {
+			fprintf(stderr, "%s--setrole USERNAME PASSWORD|@FILE\n", MISSING_ARGS);
+			return EXIT_FAILURE;
+		}
+		std::string pass;
+		bool ok = try_get_password_from_file(argv[3], pass);
+		if (!ok)
+			return EXIT_FAILURE;
+		return server_setpass(argv[2], pass.c_str());
+	}
 	if (strcmp(argv[1], "--setrole") == 0) {
 		if (argc != 4) {
 			fprintf(stderr, "%s--setrole USERNAME ROLE\n", MISSING_ARGS);
@@ -171,26 +237,14 @@ static int parse_args(int argc, char *argv[])
 	if (strcmp(argv[1], "--go") == 0) {
 #if BUILD_CLIENT
 		if (argc != 4 && argc != 5) {
-			fprintf(stderr, "%s--go USERNAME PASSWORD(FILE) [WORLD_ID]\n", MISSING_ARGS);
+			fprintf(stderr, "%s--go USERNAME PASSWORD|@FILE [WORLD_ID]\n", MISSING_ARGS);
 			return EXIT_FAILURE;
 		}
 		start_data.nickname = argv[2];
 
-		// Try to find a matching file
-		bool from_file = false;
-		std::ifstream is(argv[3]);
-		if (is.good()) {
-			std::string line;
-			std::getline(is, line);
-			if (!line.empty()) {
-				from_file = true;
-				start_data.password = strtrim(line);
-				puts("--- Using password provided by file");
-			}
-		}
-
-		if (!from_file)
-			start_data.password = argv[3];
+		bool ok = try_get_password_from_file(argv[3], start_data.password);
+		if (!ok)
+			return EXIT_FAILURE;
 
 		if (argc > 4)
 			start_data.world_id = argv[4];
