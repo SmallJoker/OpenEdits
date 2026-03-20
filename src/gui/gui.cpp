@@ -202,7 +202,7 @@ void Gui::run()
 				script->drawHUDElementsDebug(m_device);
 		}
 
-		drawFPS();
+		drawFPS(dtime);
 		drawPopup(dtime);
 
 		driver->endScene();
@@ -465,11 +465,21 @@ void Gui::displaceRect(core::recti &rect, core::vector2df pos_perc)
 
 // -------------- Overlay elements -------------
 
-void Gui::drawFPS()
+void Gui::drawFPS(float dtime)
 {
+	dtime_stat.sum += dtime;
+	dtime_stat.count++;
+
+	if (dtime_stat.sum > 0.5f) {
+		dtime_stat.avg = dtime_stat.sum / std::max<s16>(1, dtime_stat.count);
+		dtime_stat.sum = 0;
+		dtime_stat.count = 0;
+	}
+
+
 	// FPS indicator text on the bottom right
 	{
-		int fps = driver->getFPS();
+		int fps = 1.0f / dtime_stat.avg;
 		core::stringw str;
 		core::multibyteToWString(str, std::to_string(fps).c_str());
 		core::recti rect(

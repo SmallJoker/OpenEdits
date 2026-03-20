@@ -127,7 +127,12 @@ private:
 
 	void setWindowTitle();
 
-	void drawFPS();
+	void drawFPS(float dtime);
+	struct {
+		float avg = 1;
+		float sum = 0;
+		u16   count = 0;
+	} dtime_stat;
 
 	bool m_show_debug = false;
 
