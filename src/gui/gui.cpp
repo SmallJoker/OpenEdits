@@ -218,7 +218,18 @@ void Gui::run()
 
 bool Gui::OnEvent(const SEvent &event)
 {
-	if (!m_initialized)
+	static Logger irrlog("Irr", LL_INFO);
+	static const LogLevel IRR_TO_OE[ELL_NONE] = { LL_DEBUG, LL_INFO, LL_WARN, LL_ERROR };
+
+	switch (event.EventType) {
+		case EET_LOG_TEXT_EVENT:
+			irrlog(IRR_TO_OE[event.LogEvent.Level], "%s", event.LogEvent.Text);
+			return true;
+		default:
+			break;
+	}
+
+	if (!m_initialized || m_handlers.empty())
 		return false;
 
 	if (event.EventType == EET_KEY_INPUT_EVENT) {
