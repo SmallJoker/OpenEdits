@@ -130,6 +130,8 @@ bool PlayerRef::invalidate(lua_State *L, Player *player)
 
 // -------------- Lua API functions -------------
 
+static const char *NO_PHYSICS_SET = "disallowed outside of player step";
+
 
 PlayerRef *PlayerRef::toPlayerRef(lua_State *L, int idx)
 {
@@ -185,6 +187,8 @@ int PlayerRef::next_prn(lua_State* L)
 	Player *player = toPlayerRef(L, 1)->m_player;
 	if (!player)
 		return 0;
+	if (!player->inside_player_step)
+		luaL_error(L, NO_PHYSICS_SET);
 
 	lua_pushinteger(L, player->getNextPRNum());
 	return 1;
@@ -219,8 +223,6 @@ int PlayerRef::get_pos(lua_State *L)
 	push_v2f(L, player->pos);
 	return 2;
 }
-
-static const char *NO_PHYSICS_SET = "disallowed outside of player step";
 
 int PlayerRef::set_pos(lua_State *L)
 {

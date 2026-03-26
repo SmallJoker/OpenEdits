@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h> // int64_t
+#include <string>
 
 void sleep_ms(long delay);
 
@@ -27,7 +28,7 @@ class Profiler {
 public:
 	Profiler(const char *name);
 
-	static void print_stats();
+	static std::string get_stats();
 	static void reset_stats();
 private:
 	friend class ScopeProfiler;

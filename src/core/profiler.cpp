@@ -66,22 +66,30 @@ Profiler::Profiler(const char *name) :
 	profilers_i++;
 }
 
-void Profiler::print_stats()
+std::string Profiler::get_stats()
 {
-	puts("Profiler stats:");
+	char buf[100];
+	std::string str;
+	str.reserve(1024);
+
+	str.append("Profiler stats:\n");
 	for (Profiler *p : profilers) {
 		if (!p)
 			break;
 
-		printf("   %s : calls=%d", p->m_name, p->m_sum_calls);
+		snprintf(buf, sizeof(buf), "   %s : calls=% 4d", p->m_name, p->m_sum_calls);
+		str.append(buf);
+
 		if (p->m_sum_calls == 0) {
-			puts("");
+			str.append("\n");
 		} else {
-			printf(", total=%zu us, avg=%zu us\n",
-				p->m_sum_time_us, p->m_sum_time_us / p->m_sum_calls
+			snprintf(buf, sizeof(buf), ", avg=% 4d us\n",
+				(int)(p->m_sum_time_us / p->m_sum_calls)
 			);
+			str.append(buf);
 		}
 	}
+	return str;
 }
 
 void Profiler::reset_stats()

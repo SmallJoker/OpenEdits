@@ -4,6 +4,7 @@
 #include "core/blockmanager.h"
 #include "core/logger.h"
 #include "core/macros.h"
+#include "core/profiler.h"
 #include "core/smileydef.h"
 #include "guilayout/guilayout_irrlicht.h"
 #include "guiscript.h"
@@ -490,9 +491,12 @@ void Gui::drawFPS(float dtime)
 
 	// FPS indicator text on the bottom right
 	{
-		int fps = 1.0f / dtime_stat.avg;
 		core::stringw str;
-		core::multibyteToWString(str, std::to_string(fps).c_str());
+		{
+			char buf[10];
+			snprintf(buf, sizeof(buf), "%.0f", 1.0f / dtime_stat.avg);
+			core::multibyteToWString(str, buf);
+		}
 		core::recti rect(
 			core::vector2di(window_size.Width - 40, 5),
 			core::dimension2di(50, 50)
@@ -503,8 +507,11 @@ void Gui::drawFPS(float dtime)
 	// Debug info
 	if (m_show_debug && m_client) {
 		core::stringw str;
-
-		core::multibyteToWString(str, m_client->getDebugInfo().c_str());
+		{
+			std::string str_n = m_client->getDebugInfo();
+			str_n.append(Profiler::get_stats());
+			core::multibyteToWString(str, str_n.c_str());
+		}
 		auto dim = font->getDimension(str.c_str());
 
 		core::recti rect(
@@ -519,6 +526,12 @@ void Gui::drawFPS(float dtime)
 
 		guienv->getSkin()->draw2DRectangle(nullptr, 0x77222222, rect2);
 		font->draw(str, rect, 0xFFFFFF00);
+	}
+
+	m_profiler_reset_countdown -= dtime;
+	if (m_profiler_reset_countdown < 0) {
+		m_profiler_reset_countdown = 5.0f;
+		Profiler::reset_stats();
 	}
 }
 

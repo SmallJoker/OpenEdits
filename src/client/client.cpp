@@ -8,6 +8,7 @@
 #include "core/logger.h"
 #include "core/network_enums.h"
 #include "core/packet.h"
+#include "core/profiler.h"
 #include "core/utils.h" // to_player_name
 #include "core/script/scriptevent.h"
 #include "core/worldmeta.h"
@@ -115,6 +116,9 @@ void Client::connect()
 
 void Client::step(float dtime)
 {
+	static Profiler profiler("Client::step");
+	ScopeProfiler sp(profiler);
+
 	m_time_prev = m_time;
 	m_time = getTimeNowDIV();
 
@@ -347,6 +351,7 @@ std::string Client::getDebugInfo()
 	std::string str;
 	if (m_con)
 		str = m_con->getDebugInfo(0);
+	str.reserve(1024);
 
 	char buf[255];
 	snprintf(buf, sizeof(buf),

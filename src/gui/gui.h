@@ -133,6 +133,7 @@ private:
 		float sum = 0;
 		u16   count = 0;
 	} dtime_stat;
+	float m_profiler_reset_countdown = 0;
 
 	bool m_show_debug = false;
 

@@ -8,6 +8,7 @@
 #include "core/logger.h"
 #include "core/network_enums.h"
 #include "core/packet.h"
+#include "core/profiler.h"
 #include "core/world.h"
 #include "core/worldmeta.h"
 #include "core/script/scriptevent.h"
@@ -130,6 +131,9 @@ Server::~Server()
 
 void Server::step(float dtime)
 {
+	static Profiler profiler("Server::step");
+	ScopeProfiler sp(profiler);
+
 	if (m_is_first_step) {
 		logger(LL_PRINT, "Up and runnning.");
 		m_is_first_step = false;
