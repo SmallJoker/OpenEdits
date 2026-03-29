@@ -81,9 +81,6 @@ struct BlockProperties {
 	const bid_t id;
 	BlockParams::Type paramtypes = BlockParams::Type::None;
 
-	// whether to add the block position to the touched blocks list
-	bool trigger_on_touch = false;
-
 	// -------------- Visuals -------------
 
 	static const u32 COLOR_DEFAULT_TRANSPARENT = 0x00101010;
@@ -121,23 +118,11 @@ struct BlockProperties {
 		None
 	};
 
-	// Callback when a player intersects with the block
-	#define BP_STEP_CALLBACK(name) \
-		void (name)(Player &player, blockpos_t pos)
-	BP_STEP_CALLBACK(*step) = nullptr;
-
-	// Callback when colliding: true -> set velocity to 0
-	#define BP_COLLIDE_CALLBACK(name) \
-		BlockProperties::CollisionType (name)(Player &player, blockpos_t pos, bool is_x)
-	BP_COLLIDE_CALLBACK(*onCollide) = nullptr;
-
 	// Lua callbacks. Make sure to update `Script::close` too.
 	// Default to -2 == LUA_NOREF
-	int ref_on_placed = -2;
 	int ref_intersect_once = -2;
 	int ref_on_intersect = -2;
 	int ref_on_collide = -2;
-	inline bool haveOnPlaced()        const { return ref_on_placed >= 0; }
 	inline bool haveOnIntersectOnce() const { return ref_intersect_once >= 0; }
 	inline bool haveOnIntersect()     const { return ref_on_intersect >= 0; }
 	inline bool haveOnCollide()       const { return ref_on_collide >= 0; }
@@ -154,9 +139,6 @@ public:
 	BlockManager();
 	~BlockManager();
 
-	void doPackRegistration();
-	void doPackPostprocess();
-
 	void registerPack(BlockPack *pack);
 	void setDriver(video::IVideoDriver *driver);
 	void setMediaMgr(MediaManager *media) { m_media = media; }
@@ -164,7 +146,6 @@ public:
 	void populateTextures();
 
 	bool isEElike() const { return m_is_ee_like; }
-	bool isHardcoded() const { return m_hardcoded_packs; }
 
 	// Blocks
 	const BlockProperties *getProps(bid_t block_id) const;;
@@ -193,7 +174,6 @@ private:
 
 	std::vector<BlockProperties *> m_props;
 	std::vector<BlockPack *> m_packs;
-	bool m_hardcoded_packs = false;
 	bool m_populated = false;
 	bool m_is_ee_like = false;
 };

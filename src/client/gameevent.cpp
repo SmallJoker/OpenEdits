@@ -15,9 +15,6 @@ GameEvent::~GameEvent()
 		case C::C2G_LOCAL_CHAT:
 			delete player_chat;
 			break;
-		case C::C2G_ON_TOUCH_BLOCK:
-			delete block;
-			break;
 		// List of no-ops
 		case C::C2G_INVALID:
 		case C::C2G_DISCONNECT:
@@ -86,7 +83,6 @@ bool GameEventHandler::sendNewEvent(GameEvent &e)
 	bool handled = false;
 	if (m_target) {
 		if (
-				e.type_c2g != GameEvent::C2G_ON_TOUCH_BLOCK && // coin spam
 				e.type_c2g != GameEvent::C2G_MAP_UPDATE // (timed) gates spam
 			) {
 			logger(LL_DEBUG, "c2g=%d, g2c=%d\n", (int)e.type_c2g, (int)e.type_g2c);

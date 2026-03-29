@@ -37,23 +37,9 @@ public:
 	void getBlockUpdate(blockpos_t pos, Block b, BlockUpdate &bu);
 
 private:
-	gui::IGUIEditBox *createInputBox(const SEvent &e, s32 id, bool may_open);
-
 	/// `e` for caller information
 	/// Returns `true` if the event was handled successfully.
 	bool toggleScriptElements(const SEvent &e);
-
-	void toggleCoinBox(const SEvent &e);
-	void readCoinBoxValue(const SEvent &e);
-
-	void toggleNoteBox(const SEvent &e);
-	void readNoteBoxValue(const SEvent &e);
-
-	void toggleTeleporterBox(const SEvent &e);
-	void readTeleporterBox();
-
-	void toggleTextBox(const SEvent &e);
-	void readTextBoxValue(const SEvent &e);
 
 	bool drawBlockButton(bid_t bid, const core::recti &rect, gui::IGUIElement *parent, int id);
 	void drawBlockSelector();
@@ -85,14 +71,4 @@ private:
 
 	BlockUpdate m_selected; //< current selected block
 	bool m_selected_erase = false; //< when holding shift
-
-	// Legacy fields
-	bool m_legacy_compatible = false;
-	void convertBUToLegacy();
-	void convertLegacyToBU();
-	u8 m_selected_param1 = 0;
-	u8 m_selected_note = 0;
-	u8 m_selected_tp_id = 0;
-	u8 m_selected_tp_dst = 0;
-	std::string m_selected_text = "Hello World";
 };

@@ -329,7 +329,7 @@ static void test_block_placement(BlockManager *bmgr, Script *script, RemotePlaye
 
 	// env.world.set_tile
 	{
-		p.setPosition({ 5.0f, 4.2f }, false);
+		p.setPosition({ 5.0f, 4.2f });
 		p.step(0.01f); // update acceleration etc.
 		p.step(0.3f);
 		CHECK(std::fabs(p.pos.Y - 5.0f) < 0.001f);
@@ -348,7 +348,7 @@ static void test_block_placement(BlockManager *bmgr, Script *script, RemotePlaye
 			w->updateBlock(bu);
 		}
 
-		p.setPosition({ 7.1f, 5.4f }, false);
+		p.setPosition({ 7.1f, 5.4f });
 		p.step(0.01f);
 		p.step(0.3f); // call on_intersect_once
 		//printf("%.3f %.3f\n", p.pos.X, p.pos.Y);

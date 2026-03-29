@@ -177,36 +177,6 @@ void Server::step(float dtime)
 		stepWorldTick(world.get(), dtime);
 	}
 
-	auto respawn_killed = [this] (Player *player) {
-		Block b;
-		auto world = player->getWorld();
-		if (!world)
-			return;
-
-		world->getBlock(player->checkpoint, &b);
-		if (b.id == Block::ID_CHECKPOINT) {
-			teleportPlayer(player, core::vector2df(player->checkpoint.X, player->checkpoint.Y), false);
-		} else {
-			player->checkpoint = blockpos_t(-1, -1);
-			respawnPlayer(player, true, false);
-		}
-	};
-
-	// Respawn dead players
-	for (auto it = m_deaths.begin(); it != m_deaths.end(); ) {
-		if (!it->second.step(dtime)) {
-			// Waiting
-			it++;
-			continue;
-		}
-
-		Player *player = getPlayerNoLock(it->first);
-		if (player && !player->godmode)
-			respawn_killed(player);
-
-		it = m_deaths.erase(it);
-	}
-
 	// TODO: Run player physics to check whether they are cheating or not
 
 	if (m_media_unload_timer.step(dtime)) {
@@ -474,34 +444,7 @@ void Server::stepSendScriptEvents(RemotePlayer *player)
 
 void Server::stepWorldTick(World *world, float dtime)
 {
-	auto &meta = world->getMeta();
-
-	for (auto &kdata : meta.keys) {
-		if (kdata.step(dtime)) {
-			// Disable keys
-
-			kdata.stop();
-			bid_t block_id = (&kdata - meta.keys) + Block::ID_KEY_R;
-			Packet out;
-			out.write(Packet2Client::ActivateBlock);
-			out.write(block_id);
-			out.write<u8>(false);
-
-			broadcastInWorld(world, 0, out);
-		}
-	}
-
-	// Compare new value vs old value
-	bool sw_old = meta.switch_state & 0x01;
-	bool sw_new = meta.switch_state & 0x80;
-	if (sw_new != sw_old) {
-		Packet out;
-		out.write(Packet2Client::ActivateBlock);
-		out.write<bid_t>(Block::ID_SWITCH);
-		out.write<u8>(sw_new);
-		broadcastInWorld(world, 1, out);
-	}
-	meta.switch_state = sw_new * 0x81;
+	// no-op
 }
 
 bool Server::loadWorldNoLock(World *world)
@@ -558,11 +501,11 @@ void Server::setDefaultPlayerFlags(Player *player)
 	DEBUGLOG("\t-> readback=%08X\n", meta.getPlayerFlags(player->name).flags);
 }
 
-void Server::teleportPlayer(Player *player, core::vector2df dst, bool reset_progress)
+void Server::teleportPlayer(Player *player, core::vector2df dst)
 {
 	Packet pkt;
 	pkt.write(Packet2Client::SetPosition);
-	pkt.write<u8>(reset_progress); // reset progress
+	pkt.write<u8>(0); // reset progress
 	pkt.write(player->peer_id);
 	pkt.write(dst.X);
 	pkt.write(dst.Y);
@@ -570,36 +513,7 @@ void Server::teleportPlayer(Player *player, core::vector2df dst, bool reset_prog
 	// Same channel as world data
 	broadcastInWorld(player, 0, pkt);
 
-	player->setPosition(dst, reset_progress);
-}
-
-void Server::respawnPlayer(Player *player, bool send_packet, bool reset_progress)
-{
-	if (m_script)
-		return;
-
-	if (player->godmode)
-		return;
-
-	auto &meta = player->getWorld()->getMeta();
-	auto blocks = player->getWorld()->getBlocks(Block::ID_SPAWN, nullptr);
-
-	if (blocks.empty()) {
-		player->pos = core::vector2df();
-	} else {
-		int index = meta.spawn_index;
-		if (++index >= (int)blocks.size())
-			index = 0;
-
-		player->pos.X = blocks[index].X;
-		player->pos.Y = blocks[index].Y;
-		meta.spawn_index = index;
-	}
-
-	if (send_packet)
-		teleportPlayer(player, player->pos, reset_progress);
-	else
-		player->setPosition(player->pos, reset_progress);
+	player->setPosition(dst);
 }
 
 void Server::shutdown()
@@ -607,5 +521,3 @@ void Server::shutdown()
 	ASSERT_FORCED(m_shutdown_requested, "Cannot request shutdown.");
 	*m_shutdown_requested = true;
 }
-
-

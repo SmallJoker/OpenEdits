@@ -24,12 +24,7 @@ void WorldMeta::readSpecific(Packet &pkt)
 	if (pkt.data_version < 9)
 		return;
 
-	u16 flags = pkt.read<u16>();
-	// duplicate of Client::pkt_ActivateBlock
-	keys[0].set( !!(flags & (1 << 0))); // 1.0f (active) or 0.0f (stopped)
-	keys[1].set( !!(flags & (1 << 2)));
-	keys[2].set( !!(flags & (1 << 2)));
-	switch_state = (flags & (1 << 3));
+	(void)pkt.read<u16>(); // deprecated switch states
 }
 
 void WorldMeta::writeSpecific(Packet &pkt) const
@@ -39,14 +34,7 @@ void WorldMeta::writeSpecific(Packet &pkt) const
 	if (pkt.data_version < 9)
 		return;
 
-	u16 flags = 0
-		+ (keys[0].isActive() << 0)
-		+ (keys[1].isActive() << 1)
-		+ (keys[2].isActive() << 2)
-		+ (switch_state       << 3)
-	;
-
-	pkt.write(flags);
+	pkt.write<u16>(0); // deprecated switch states
 }
 
 

@@ -43,7 +43,7 @@ void unittest_physics()
 		CHECK(fuzzy_check(p1.pos, {0, 10}));
 
 		// No motion after respawn
-		p1.setPosition({0, 0}, true);
+		p1.setPosition({0, 0});
 		w1.setBlock({0, 0}, b_0g);
 		run_steps(p1, 2);
 		CHECK(fuzzy_check(p1.pos, {0, 0}));
@@ -52,20 +52,20 @@ void unittest_physics()
 		w1.setBlock({0, 0}, Block());
 		for (int i = 1; i <= 6; ++i)
 			w1.setBlock(blockpos_t(i, 0), i <= 3 ? b_right : b_left);
-		p1.setPosition({1, 0}, true);
+		p1.setPosition({1, 0});
 		run_steps(p1, 10);
 		CHECK(fuzzy_check(p1.pos, {3.5, 0}, 3.0f));
 
 		// Vertical ____<< (unstable)
 		w1.setBlock({0, 4}, b_up);
 		w1.setBlock({0, 5}, b_up);
-		p1.setPosition({0, 4}, true);
+		p1.setPosition({0, 4});
 		run_steps(p1, 10);
 		CHECK(fuzzy_check(p1.pos, {0, 10}));
 
 		// Vertical ____<<< (stable)
 		w1.setBlock({0, 6}, b_up);
-		p1.setPosition({0, 4}, true);
+		p1.setPosition({0, 4});
 		run_steps(p1, 10);
 		CHECK(fuzzy_check(p1.pos, {0, 5}, 3.99f));
 
@@ -84,7 +84,7 @@ void unittest_physics()
 		w2.setBlock({2, 3}, b_solid);
 		w2.setBlock({2, 4}, b_solid);
 		w2.setBlock({2, 5}, b_solid);
-		p1.setPosition({0, 0}, true);
+		p1.setPosition({0, 0});
 
 		PlayerControls ctrl;
 		ctrl.dir.X = 1; // move left
@@ -99,7 +99,7 @@ void unittest_physics()
 
 		// 1x4 pillar
 		w2.setBlock({2, 2}, b_solid);
-		p1.setPosition({0, 0}, true);
+		p1.setPosition({0, 0});
 
 		p1.setControls(ctrl);
 

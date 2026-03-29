@@ -40,7 +40,7 @@ public:
 	// True: outdated controls -> send update to server
 	bool setControls(const PlayerControls &ctrl);
 
-	void setPosition(core::vector2df newpos, bool reset_progress);
+	void setPosition(core::vector2df newpos);
 
 	PlayerFlags getFlags() const;
 	// For networking only!
@@ -64,9 +64,6 @@ public:
 	inline blockpos_t getCurrentBlockPos()
 	{ return blockpos_t(pos.X + 0.5f, pos.Y + 0.5f); }
 
-	// For keys or killing blocks
-	std::unique_ptr<std::set<blockpos_t>> on_touch_blocks;
-
 	/// Returns `nullptr` when not playing in a world.
 	Script *getScript() const { return m_script; }
 	ScriptEventManager *getSEMgr() const;
@@ -76,10 +73,6 @@ public:
 	void setGodMode(bool value);
 	bool godmode = false;
 	bool controls_enabled = true;
-
-	// Resetable progress
-	u8 coins = 0;
-	blockpos_t checkpoint;
 
 	u8 smiley_id = 0;
 

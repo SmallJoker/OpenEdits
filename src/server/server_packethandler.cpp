@@ -620,9 +620,6 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 
 		if (m_script)
 			m_script->onPlayerEvent("prejoin", player);
-
-		if (!m_script)
-			respawnPlayer(player, false);
 	}
 
 	// Notify about new player
@@ -856,53 +853,7 @@ void Server::pkt_PlaceBlock(peer_t peer_id, Packet &pkt)
 
 void Server::pkt_TriggerBlocks(peer_t peer_id, Packet &pkt)
 {
-	RemotePlayer *player = getPlayerNoLock(peer_id);
-	auto world = player->getWorld();
-	auto &meta = world->getMeta();
-
-	// TODO: Check whether the responsible player is (or was) nearby
-	bool is_dead = false;
-	while (pkt.getRemainingBytes()) {
-		blockpos_t pos;
-		pkt.read(pos.X);
-		if (pos.X == BLOCKPOS_INVALID)
-			break;
-		pkt.read(pos.Y);
-
-		Block b;
-		world->getBlock(pos, &b);
-		switch (b.id) {
-			case Block::ID_KEY_R:
-			case Block::ID_KEY_G:
-			case Block::ID_KEY_B:
-				{
-					int key_id = b.id - Block::ID_KEY_R;
-					auto &kdata = meta.keys[key_id];
-					if (kdata.set(5.0f)) {
-						Packet out;
-						out.write(Packet2Client::ActivateBlock);
-						out.write(b.id);
-						out.write<u8>(kdata.isActive());
-						broadcastInWorld(player, 1, out);
-					}
-				}
-				break;
-			case Block::ID_SWITCH:
-				meta.switch_state ^= 0x80;
-				break;
-			case Block::ID_CHECKPOINT:
-				player->checkpoint = pos;
-				break;
-			case Block::ID_SPIKES:
-				is_dead = true;
-				break;
-		}
-	}
-
-	if (is_dead) {
-		if (m_deaths.find(peer_id) == m_deaths.end())
-			m_deaths.insert({peer_id, Timer(1.0f) });
-	}
+	// superseded by ScriptEvent
 }
 
 void Server::pkt_ScriptEvent(peer_t peer_id, Packet &pkt)
@@ -941,8 +892,6 @@ void Server::pkt_GodMode(peer_t peer_id, Packet &pkt)
 	}
 
 	player->setGodMode(status);
-	if (status)
-		m_deaths.erase(player->peer_id);
 
 	Packet out;
 	out.write(Packet2Client::GodMode);

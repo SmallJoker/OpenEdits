@@ -261,8 +261,6 @@ These functions must be run at load time.
 
 #### Packs
 
- * `env.load_hardcoded_packs()`
-    * Loads the original packs
  * `env.register_pack(Pack Definition)`
     * Registers a new pack
 

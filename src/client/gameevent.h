@@ -40,7 +40,6 @@ struct GameEvent {
 		C2G_JOIN,
 		C2G_LEAVE,
 		C2G_MAP_UPDATE,
-		C2G_ON_TOUCH_BLOCK,
 		C2G_META_UPDATE,
 		C2G_PLAYER_JOIN,
 		C2G_PLAYER_LEAVE,
@@ -74,11 +73,6 @@ struct GameEvent {
 
 	// ---- In-world
 
-	struct BlockData {
-		blockpos_t pos;
-		Block b;
-	};
-
 	struct PlayerChat {
 		Player *player;
 		std::string message;
@@ -91,7 +85,6 @@ struct GameEvent {
 		WorldCreationData *wc_data;
 		PasswordChangeData *password;
 		PlayerChat *player_chat;
-		BlockData *block;
 		SoundSpec *sound;
 		struct {
 			const char *input, *output;

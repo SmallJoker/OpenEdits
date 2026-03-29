@@ -75,9 +75,8 @@ private:
 	void writeWorldData(Packet &out, const World &world, bool is_clear);
 	void setDefaultPlayerFlags(Player *player);
 public:
-	void teleportPlayer(Player *player, core::vector2df dst, bool reset_progress = false);
+	void teleportPlayer(Player *player, core::vector2df dst);
 private:
-	void respawnPlayer(Player *player, bool send_packet, bool reset_progress = true);
 
 	// ----------- Server checks -----------
 
@@ -95,8 +94,6 @@ private:
 	Timer m_media_unload_timer;
 
 	bool m_is_first_step = true;
-
-	std::map<peer_t, Timer> m_deaths;
 
 	Timer m_ban_cleanup_timer;
 	Timer m_stdout_flush_timer;
@@ -136,7 +133,6 @@ private:
 	void handlePlayerFlagsChange(Player *player, playerflags_t flags_mask);
 	CHATCMD_FUNC(chat_FSet);
 	CHATCMD_FUNC(chat_FDel);
-	CHATCMD_FUNC(chat_Respawn);
 	CHATCMD_FUNC(chat_Teleport);
 	CHATCMD_FUNC(chat_Clear);
 	CHATCMD_FUNC(chat_Import);

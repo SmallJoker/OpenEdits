@@ -23,7 +23,6 @@
 void Server::registerChatCommands()
 {
 	m_chatcmd.add("/help", CHATCMD_REGISTER(chat_Help));
-	m_chatcmd.add("/respawn", CHATCMD_REGISTER(chat_Respawn));
 	m_chatcmd.add("/teleport", CHATCMD_REGISTER(chat_Teleport));
 
 	m_chatcmd.add("/dev", CHATCMD_REGISTER(chat_Dev));
@@ -141,7 +140,6 @@ CHATCMD_FUNC(Server::chat_Help)
 		const std::string cmd;
 		const std::string text;
 	} help_LUT[] = {
-		{ "respawn", "Syntax: /respawn [PLAYERNAME|*]\nRespawns you, someone else or everyone." },
 		{ "teleport", "Syntax: /teleport [PLAYERNAME] DST\nTeleports players. DST can be of the format 'X,Y'." },
 		// Admin
 		{ "shutdown", "Syntax: /shutdown SECONDS\nShuts down the server." },
@@ -625,43 +623,6 @@ CHATCMD_FUNC(Server::chat_FDel)
 	changePlayerFlags(player, msg, false);
 }
 
-CHATCMD_FUNC(Server::chat_Respawn)
-{
-	std::string who(get_next_part(msg));
-	const auto world = player->getWorld();
-
-	if (who == "*") {
-		FOR_PLAYERS(, player, m_players) {
-			if (player->getWorld() == world) {
-				respawnPlayer(player, true);
-			}
-		}
-		return;
-	}
-
-	Player *tp_player = nullptr;
-
-	if (who.empty())
-		tp_player = player;
-	else
-		tp_player = findPlayer(world.get(), who);
-
-	if (!tp_player) {
-		systemChatSend(player, "Specified player not found");
-		return;
-	}
-
-	if (tp_player != player) {
-		// Same as /teleport
-		if (!player->getFlags().check(PlayerFlags::PF_COOWNER)) {
-			systemChatSend(player, "Insufficient permissions");
-			return;
-		}
-	}
-
-	respawnPlayer(tp_player, true, true);
-}
-
 CHATCMD_FUNC(Server::chat_Teleport)
 {
 	if (!player->getFlags().check(PlayerFlags::PF_GODMODE)) {
@@ -716,7 +677,7 @@ CHATCMD_FUNC(Server::chat_Teleport)
 		return;
 	}
 
-	teleportPlayer(tp_player, dst, false);
+	teleportPlayer(tp_player, dst);
 }
 
 /// cmd: /clear [width] [height]
@@ -890,12 +851,6 @@ CHATCMD_FUNC(Server::chat_Load)
 
 	// Must be sent after the world data
 	sendPlayerFlags(world.get());
-
-	// TODO: this is inefficient
-	FOR_PLAYERS(, player, m_players) {
-		if (player->getWorld() == world)
-			respawnPlayer(player, true);
-	}
 
 	if (m_script)
 		m_script->onWorldData(world.get());

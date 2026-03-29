@@ -189,22 +189,6 @@ void Client::step(float dtime)
 	if (m_script)
 		m_script->onStep((double)m_time / TIME_RESOLUTION);
 
-	// Timed gates update
-	while (m_bmgr->isHardcoded() && world.get()) { // run once
-		uint8_t tile_new = (m_time      / TIME_RESOLUTION) % 10;
-		uint8_t tile_old = (m_time_prev / TIME_RESOLUTION) % 10;
-		if (tile_new == tile_old)
-			break;
-
-		// TODO: Sync with the server
-		PositionRange pr;
-		pr.op = PositionRange::PROP_SET;
-		pr.type = PositionRange::PRT_ENTIRE_WORLD;
-		world->setBlockTiles(pr, Block::ID_TIMED_GATE_1, tile_new);
-		world->setBlockTiles(pr, Block::ID_TIMED_GATE_2, tile_new);
-		break;
-	}
-
 	// Update tiles if triggered by Lua
 	if (world && world->modified_rect.isValid()) {
 		GameEvent e(GameEvent::C2G_MAP_UPDATE);
@@ -541,102 +525,6 @@ void Client::processPacket(peer_t peer_id, Packet &pkt)
 	}
 }
 
-using blockdata_t = GameEvent::BlockData;
-using blockdata_v_t = std::vector<blockdata_t>;
-
-static blockdata_v_t send_on_touch_blocks(LocalPlayer *player, Packet &pkt)
-{
-	if (!player || !player->on_touch_blocks)
-		throw std::runtime_error("null ptr");
-
-	// Clear the list
-	auto on_touch_blocks = std::move(player->on_touch_blocks);
-	blockdata_v_t gameevents;
-	gameevents.reserve(on_touch_blocks->size());
-
-	bool needs_coins_update = false;
-
-	pkt.write(Packet2Server::OnTouchBlock);
-
-	const auto world = player->getWorld().get();
-	auto &meta = world->getMeta();
-
-	for (blockpos_t bp : *on_touch_blocks) {
-		Block b;
-		if (!world->getBlock(bp, &b))
-			continue;
-
-		switch (b.id) {
-			case Block::ID_KEY_R:
-			case Block::ID_KEY_G:
-			case Block::ID_KEY_B:
-			{
-				int key_id = b.id - Block::ID_KEY_R;
-				auto &kdata = meta.keys[key_id];
-				// Use timer client-sided to avoid sending duplicates too often
-				if (kdata.set(-1.0f)) {
-					pkt.write(bp.X);
-					pkt.write(bp.Y);
-				}
-			}
-			break;
-			case Block::ID_COIN:
-			case Block::ID_SECRET:
-			case Block::ID_BLACKFAKE:
-				if (b.tile)
-					break;
-
-				b.tile = 1;
-				world->setBlock(bp, b);
-
-				if (b.id == Block::ID_COIN) {
-					needs_coins_update = true;
-					gameevents.emplace_back(blockdata_t {bp, b});
-				}
-			break;
-			case Block::ID_PIANO:
-				gameevents.emplace_back(blockdata_t {bp, b});
-				break;
-			case Block::ID_SWITCH:
-				pkt.write(bp.X);
-				pkt.write(bp.Y);
-			break;
-			case Block::ID_CHECKPOINT:
-				if (player->godmode)
-					break;
-				{
-					// Unmark previous checkpoint
-					Block b2;
-					world->getBlock(player->checkpoint, &b2);
-					if (b2.id == Block::ID_CHECKPOINT) {
-						b2.tile = 0;
-						world->setBlock(player->checkpoint, b2);
-					}
-				}
-				{
-					// Mark current checkpoint
-					player->checkpoint = bp;
-					b.tile = 1;
-					world->setBlock(player->checkpoint, b);
-				}
-				// fall-through
-			case Block::ID_SPIKES:
-				if (player->godmode)
-					break;
-				{
-					pkt.write(bp.X);
-					pkt.write(bp.Y);
-				}
-			break;
-		}
-	} // for
-
-	if (needs_coins_update)
-		player->updateCoinCount(false);
-
-	return gameevents;
-}
-
 void Client::stepPhysics(float dtime)
 {
 	auto world = getWorld();
@@ -645,31 +533,11 @@ void Client::stepPhysics(float dtime)
 
 	SimpleLock lock(m_players_lock);
 
-	auto player = getPlayerNoLock(m_my_peer_id);
-	player->on_touch_blocks.reset(new std::set<blockpos_t>());
-
 	FOR_PLAYERS(, player, m_players) {
 		player->step(dtime);
 	}
 
-	// Process touch events. Should be used for hardcoded only.
-	blockdata_v_t gameevents;
-	{
-		Packet pkt;
-		gameevents = send_on_touch_blocks(player, pkt);
-
-		if (pkt.size() > 2) {
-			pkt.write(BLOCKPOS_INVALID); // terminating position
-
-			m_con->send(0, 1, pkt);
-		}
-	}
-	for (const blockdata_t bd : gameevents) {
-		GameEvent e(GameEvent::C2G_ON_TOUCH_BLOCK);
-		e.block = new blockdata_t(bd);
-		sendNewEvent(e);
-	}
-
+	auto player = getPlayerNoLock(m_my_peer_id);
 	ScriptEventMap *se = player->script_events_to_send.get();
 	if (se && !se->empty()) {
 		// Read back by `Server::pkt_ScriptEvent`
@@ -711,57 +579,11 @@ error:
 
 uint8_t Client::getBlockTile(const Player *player, const Block *b)
 {
-	if (!m_bmgr->isHardcoded()) {
-		return m_tile_cache_mgr.getOrCache(b).tile;
-	}
-
-	auto world = player->getWorld();
-
-	auto get_params = [&world, b] () {
-		BlockParams params;
-		world->getParams(world->getBlockPos(b), &params);
-		return params;
-	};
-
-	switch (b->id) {
-		case Block::ID_SPIKES:
-			return get_params().param_u8;
-		case Block::ID_SECRET:
-		case Block::ID_BLACKFAKE:
-			if (uint8_t tile = b->tile)
-				return tile;
-			return player->godmode;
-		case Block::ID_TELEPORTER:
-			return get_params().teleporter.rotation;
-		case Block::ID_COIN:
-		case Block::ID_CHECKPOINT:
-			return b->tile;
-		case Block::ID_COINDOOR:
-		case Block::ID_COINGATE:
-			return player->coins >= get_params().param_u8;
-		case Block::ID_DOOR_R:
-		case Block::ID_DOOR_G:
-		case Block::ID_DOOR_B:
-			return world->getMeta().keys[b->id - Block::ID_DOOR_R].isActive();
-		case Block::ID_GATE_R:
-		case Block::ID_GATE_G:
-		case Block::ID_GATE_B:
-			return world->getMeta().keys[b->id - Block::ID_GATE_R].isActive();
-		case Block::ID_SWITCH:
-		case Block::ID_SWITCH_DOOR:
-		case Block::ID_SWITCH_GATE:
-			return world->getMeta().switch_state;
-		case Block::ID_TIMED_GATE_1:
-		case Block::ID_TIMED_GATE_2:
-			return (m_time / TIME_RESOLUTION) % 10;
-	}
-	return 0;
+	return m_tile_cache_mgr.getOrCache(b).tile;
 }
 
 void Client::updateAllBlockTiles(bool reset_tiles)
 {
-	const bool is_hardcoded = m_bmgr->isHardcoded();
-
 	auto player = getPlayerNoLock(m_my_peer_id);
 	auto world = player->getWorld();
 
@@ -773,7 +595,7 @@ void Client::updateAllBlockTiles(bool reset_tiles)
 	if (reset_tiles)
 		m_tile_cache_mgr.clearAll();
 
-	if (!is_hardcoded && m_tile_cache_mgr.removed_caches_counter == 0)
+	if (m_tile_cache_mgr.removed_caches_counter == 0)
 		return; // nothing to update
 
 	if ((int)m_state < (int)ClientState::WorldPlay)
@@ -788,7 +610,7 @@ void Client::updateAllBlockTiles(bool reset_tiles)
 			b->tile = 0;
 		b->tile = getBlockTile(player, b);
 	}
-	if (is_hardcoded || m_tile_cache_mgr.cache_miss_counter > 0) {
+	if (m_tile_cache_mgr.cache_miss_counter > 0) {
 		world->markAllModified();
 	}
 }

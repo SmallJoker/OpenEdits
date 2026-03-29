@@ -288,7 +288,7 @@ void SceneGameplay::step(float dtime)
 		m_drag_draw_cooldown = 0;
 
 	// HUD elements
-	if (!g_blockmanager->isHardcoded()) {
+	{
 		auto tl = m_draw_area.UpperLeftCorner,
 			br = m_draw_area.LowerRightCorner;
 
@@ -296,26 +296,7 @@ void SceneGameplay::step(float dtime)
 			(s16)tl.X, (s16)tl.Y,
 			(s16)br.X, (s16)br.Y
 		});
-	} else {
-		// Hardcoded: coins only.
-		auto player = m_gui->getClient()->getMyPlayer();
-		if (!player)
-			goto noplayer;
-
-		if (player->coins > 0) {
-			// Coins text
-			core::recti rect(
-				core::vector2di(SIZEW - 120, 10),
-				core::dimension2di(90, 20)
-			);
-
-			wchar_t buf[100];
-			swprintf(buf, 100, L"Coins: %d / %d", (int)player->coins, m_total_coins);
-			m_gui->font->draw(buf, rect, 0xFFFFFF00, true);
-		}
 	}
-noplayer:
-	return;
 }
 
 static bool editbox_move_to_end(gui::IGUIEnvironment *guienv)
@@ -625,9 +606,6 @@ bool SceneGameplay::OnEvent(GameEvent &e)
 
 			if (m_minimap)
 				m_minimap->markDirty();
-			break;
-		case E::C2G_ON_TOUCH_BLOCK:
-			handleOnTouchBlock(e);
 			break;
 		case E::C2G_PLAYER_JOIN:
 			m_dirty_playerlist = true;
@@ -1051,35 +1029,6 @@ void SceneGameplay::updatePlayerlist()
 		auto e = gui->addStaticText(dst_text.c_str(), rect_text);
 		e->setID(ID_LabelTitle);
 		e->setOverrideColor(Gui::COLOR_ON_BG);
-	}
-}
-
-void SceneGameplay::handleOnTouchBlock(GameEvent &e)
-{
-	switch (e.block->b.id) {
-	case Block::ID_COIN:
-		{
-			SoundSpec spec("coin");
-			// Add some variation
-			spec.pitch = 1.0f + (rand() / (float)RAND_MAX) * 0.1f;
-			m_soundplayer->play(spec);
-		}
-		break;
-	case Block::ID_PIANO:
-		{
-			auto world = m_gui->getClient()->getWorld();
-			BlockParams params;
-			world->getParams(e.block->pos, &params);
-			if (params.getType() != BlockParams::Type::U8)
-				break;
-
-			SoundSpec spec("piano_c4"); // C4, MIDI 60, 261.63 Hz
-			// param = 0 --> C3, MIDI 48, 130.81 Hz
-			float tone_diff = (int)params.param_u8 + 48 - 60;
-			spec.pitch = std::pow(2.0f, tone_diff / 12.0f);
-			m_soundplayer->play(spec);
-		}
-		break;
 	}
 }
 

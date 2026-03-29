@@ -124,7 +124,7 @@ int ServerScript::implWorldSetTile(PositionRange range, bid_t block_id, int tile
 
 void ServerScript::implSendTeleport(Player *player, core::vector2df pos) const
 {
-	m_server->teleportPlayer(player, pos, true);
+	m_server->teleportPlayer(player, pos);
 }
 
 

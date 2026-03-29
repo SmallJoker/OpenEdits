@@ -257,7 +257,6 @@ void Client::pkt_Join(Packet &pkt)
 
 	const peer_t peer_id = pkt.read<peer_t>();
 	LocalPlayer *player = getPlayerNoLock(peer_id);
-	const bool is_me = (peer_id == m_my_peer_id);
 
 	if (!player) {
 		// normal case. player should yet not exist!
@@ -271,10 +270,6 @@ void Client::pkt_Join(Packet &pkt)
 	player->setGodMode(pkt.read<u8>());
 	player->smiley_id = pkt.read<u8>();
 	player->readPhysics(pkt);
-	if (is_me) {
-		SimpleLock lock(getWorld()->mutex);
-		player->updateCoinCount(true);
-	}
 
 	if (m_script) {
 		m_script->onPlayerEvent("join", player);
@@ -342,8 +337,7 @@ void Client::pkt_SetPosition(Packet &pkt)
 {
 	SimpleLock lock(m_players_lock);
 
-	bool reset_progress = pkt.read<u8>();
-	bool my_player_affected = false;
+	pkt.read<u8>(); // reset progress
 
 	while (pkt.getRemainingBytes()) {
 		peer_t peer_id = pkt.read<peer_t>();
@@ -356,15 +350,7 @@ void Client::pkt_SetPosition(Packet &pkt)
 
 		LocalPlayer *player = getPlayerNoLock(peer_id);
 		if (player)
-			player->setPosition(pos, reset_progress);
-
-		if (peer_id == m_my_peer_id)
-			my_player_affected = true;
-	}
-
-	if (reset_progress && my_player_affected) {
-		// semi-duplicate of Player::updateCoinCount
-		updateAllBlockTiles(true);
+			player->setPosition(pos);
 	}
 }
 
@@ -478,8 +464,6 @@ void Client::pkt_PlaceBlock(Packet &pkt)
 			b.tile = getBlockTile(player, &b);
 		}
 	}
-
-	player->updateCoinCount(false);
 }
 
 void Client::pkt_ScriptEvent(Packet &pkt)
@@ -528,63 +512,7 @@ void Client::pkt_ScriptEvent(Packet &pkt)
 
 void Client::pkt_ActivateBlock(Packet &pkt)
 {
-	/*
-		In long term, key blocks (and others) should raise "events" from Lua-side.
-	*/
-
-	auto player = getMyPlayer();
-
-	bid_t activated_id = pkt.read<bid_t>();
-	bool state = pkt.read<u8>();
-
-	bid_t bid_door,
-		bid_gate,
-		bid_aux = Block::ID_INVALID;
-
-	switch (activated_id) {
-		case Block::ID_KEY_R:
-		case Block::ID_KEY_G:
-		case Block::ID_KEY_B:
-		{
-
-			bid_t key_idx = activated_id - Block::ID_KEY_R;
-			bid_door = key_idx + Block::ID_DOOR_R;
-			bid_gate = key_idx + Block::ID_GATE_R;
-
-			auto &timer = player->getWorld()->getMeta().keys[key_idx];
-			timer.set(state); // 1.0f (active) or 0.0f (stopped)
-		}
-			break; // good, continue.
-		case Block::ID_SWITCH:
-		{
-			u8 &val = player->getWorld()->getMeta().switch_state;
-			if (val == state)
-				return; // nothing to do
-
-			val = state;
-			bid_door = Block::ID_SWITCH_DOOR;
-			bid_gate = Block::ID_SWITCH_GATE;
-			bid_aux  = Block::ID_SWITCH;
-		}
-			break; // good, continue
-		default:
-			return; // unknown, unhandled block
-	};
-
-	// Quick iterate
-	size_t n = 0;
-	auto world = player->getWorld();
-	for (Block *b = world->begin(); b < world->end(); ++b) {
-		bid_t id = b->id;
-		if (id == bid_door || id == bid_gate || id == bid_aux) {
-			b->tile = state;
-			n++;
-		}
-	}
-
-	if (n > 0) {
-		world->markAllModified();
-	}
+	// superseded by ScriptEvent
 }
 
 void Client::pkt_GodMode(Packet &pkt)
@@ -600,27 +528,6 @@ void Client::pkt_GodMode(Packet &pkt)
 	if (player) {
 		player->setGodMode(state);
 		player->acc = core::vector2df();
-	}
-	if (peer_id == m_my_peer_id && m_bmgr->isHardcoded()) {
-		RefCnt<World> world = player->getWorld();
-
-		auto bump_tile = [state](Block &b) -> bool {
-			if (state)
-				b.tile++;
-			else if (b.tile)
-				b.tile--;
-			else
-				return false;
-			return true;
-		};
-
-		auto out = world->getBlocks(Block::ID_SECRET, bump_tile);
-		if (!out.empty())
-			world->markAllModified();
-
-		out = world->getBlocks(Block::ID_BLACKFAKE, bump_tile);
-		if (!out.empty())
-			world->markAllModified();
 	}
 
 	// Allow multiple changes per packet

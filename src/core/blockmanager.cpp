@@ -269,8 +269,6 @@ void BlockManager::populateTextures()
 
 	m_populated = true;
 
-	doPackPostprocess();
-
 	// Final sanity check
 	for (const BlockProperties *props : m_props) {
 		if (!props)

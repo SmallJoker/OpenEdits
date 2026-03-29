@@ -65,7 +65,6 @@ public:
 
 	// -------- Registration
 protected:
-	static int l_load_hardcoded_packs(lua_State *L);
 	/// Includes another script file (asset from cache or disk)
 	static int l_include(lua_State *L);
 	static int l_require_asset(lua_State *L);

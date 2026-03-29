@@ -20,12 +20,6 @@ enum ElementId : int {
 	ID_TabControl,
 	ID_SPECIFIC_POPUPS_START,
 		ID_ScriptElements,
-		ID_BoxCoinDoor,
-		ID_BoxNote,
-		ID_TabTeleporter,
-		ID_TabTeleporter_ID,
-		ID_TabTeleporter_DST,
-		ID_BoxText,
 	ID_SPECIFIC_POPUPS_END,
 
 	ID_SELECTOR_TAB_0, // Offset for BlockDrawType tabs
@@ -41,8 +35,6 @@ SceneBlockSelector::SceneBlockSelector(SceneGameplay *parent, gui::IGUIEnvironme
 	m_gameplay = parent;
 	m_gui = gui;
 	m_guiscript = m_gameplay->getGUI()->script;
-
-	m_legacy_compatible = g_blockmanager->isEElike();
 
 	if (m_guiscript)
 		m_guiscript->linkWithGui(&m_selected);
@@ -97,6 +89,7 @@ void SceneBlockSelector::draw()
 	m_dragged_img->setVisible(false);
 }
 
+// Maybe helpful for focused script-provided inputs. Unused for now, as a reminder.
 static void editbox_move_to_end(gui::IGUIElement *element)
 {
 	SEvent ev {};
@@ -104,28 +97,6 @@ static void editbox_move_to_end(gui::IGUIElement *element)
 	ev.KeyInput.PressedDown = true;
 	ev.KeyInput.Key = KEY_END;
 	element->OnEvent(ev);
-}
-
-gui::IGUIEditBox *SceneBlockSelector::createInputBox(const SEvent &e, s32 id, bool may_open)
-{
-	auto elem = m_showmore->getElementFromId(id, true);
-	if (!may_open || elem) {
-		if (elem)
-			elem->remove();
-		return nullptr;
-	}
-
-	core::recti rect(
-		core::vector2di(-BTN_SIZE.Width * 0.5f, BTN_SIZE.Height + 2),
-		core::dimension2di(BTN_SIZE.Width * 2, 30)
-	);
-
-	auto element = m_gui->addEditBox(L"", rect, true, e.GUIEvent.Caller, id);
-	element->setNotClipped(true);
-	element->setTextAlignment(gui::EGUIA_CENTER, gui::EGUIA_CENTER);
-	m_gui->setFocus(element);
-
-	return element;
 }
 
 bool SceneBlockSelector::toggleScriptElements(const SEvent &e)
@@ -176,183 +147,13 @@ bool SceneBlockSelector::toggleScriptElements(const SEvent &e)
 	return true;
 }
 
-void SceneBlockSelector::toggleCoinBox(const SEvent &e)
-{
-	bool may_open =
-		m_selected.getId() == Block::ID_COINDOOR
-		|| m_selected.getId() == Block::ID_COINGATE;
-	auto element = createInputBox(e, ID_BoxCoinDoor, may_open);
-	if (!element)
-		return;
-
-	wchar_t buf[10];
-	swprintf(buf, 10, L"%d", (int)m_selected_param1);
-	element->setText(buf);
-	editbox_move_to_end(element);
-}
-
-static bool sanitize_input(gui::IGUIEditBox *box, int *val, int min, int max)
-{
-	auto wtext = box->getText();
-	int n = swscanf(wtext, L"%d", val);
-	// Indicate bad numeric input
-	if (n == 1 && *val >= min && *val <= max) {
-		box->setOverrideColor(0xFF000000);
-		return true;
-	}
-
-	// red highlight
-	box->setOverrideColor(0xFFCC0000);
-	return false;
-}
-
-void SceneBlockSelector::readCoinBoxValue(const SEvent &e)
-{
-	auto box = (gui::IGUIEditBox *)e.GUIEvent.Caller;
-	int val = -1;
-	if (sanitize_input(box, &val, 0, 127)) {
-		m_selected_param1 = val;
-		convertLegacyToBU();
-	}
-}
-
-void SceneBlockSelector::toggleNoteBox(const SEvent &e)
-{
-	bool may_open = m_selected.getId() == Block::ID_PIANO;
-	auto element = createInputBox(e, ID_BoxNote, may_open);
-	if (!element)
-		return;
-
-	std::string note;
-	SceneGameplay::pianoParamToNote(m_selected_note, &note);
-
-	std::wstring wnote;
-	utf8_to_wide(wnote, note.c_str());
-
-	element->setText(wnote.c_str());
-	editbox_move_to_end(element);
-}
-
-void SceneBlockSelector::readNoteBoxValue(const SEvent &e)
-{
-	auto box = (gui::IGUIEditBox *)e.GUIEvent.Caller;
-	std::string note;
-	wide_to_utf8(note, box->getText());
-
-	if (SceneGameplay::pianoNoteToParam(note.c_str(), &m_selected_note)) {
-		box->setOverrideColor(0xFF000000); // black
-		convertLegacyToBU();
-	} else
-		box->setOverrideColor(0xFFCC0000); // red
-}
-
-void SceneBlockSelector::toggleTeleporterBox(const SEvent &e)
-{
-	auto elem = m_showmore->getElementFromId(ID_TabTeleporter, true);
-	bool may_open = m_selected.getId() == Block::ID_TELEPORTER;
-	if (!may_open || elem) {
-		if (elem)
-			elem->remove();
-		return;
-	}
-
-	core::recti rect_tab(
-		core::vector2di(-BTN_SIZE.Width * 1.5f, BTN_SIZE.Height + 2),
-		core::dimension2di(BTN_SIZE.Width * 2 + 42, 70)
-	);
-
-	auto skin = m_gui->getSkin();
-	video::SColor color(skin->getColor(gui::EGDC_3D_FACE));
-
-	auto tab = m_gui->addTab(rect_tab, e.GUIEvent.Caller, ID_TabTeleporter);
-	tab->setBackgroundColor(color);
-	tab->setDrawBackground(true);
-	tab->setNotClipped(true);
-
-	// Add labels and inputs
-	core::recti rect_label(
-		core::vector2di(3, 9),
-		core::dimension2di(40, 30)
-	);
-	core::recti rect_input(
-		core::vector2di(40, 3),
-		core::dimension2di(BTN_SIZE.Width * 2, 30)
-	);
-
-	{
-		// ID
-		m_gui->addStaticText(L"ID", rect_label, false, false, tab);
-		wchar_t buf[10];
-		swprintf(buf, 10, L"%d", (int)m_selected_tp_id);
-		auto inp = m_gui->addEditBox(buf, rect_input, true, tab, ID_TabTeleporter_ID);
-		inp->setTextAlignment(gui::EGUIA_CENTER, gui::EGUIA_CENTER);
-	}
-	core::vector2di spacing(0, rect_input.getHeight() + 2);
-	rect_label += spacing;
-	rect_input += spacing;
-	{
-		// DST
-		m_gui->addStaticText(L"DST", rect_label, false, false, tab);
-		wchar_t buf[10];
-		swprintf(buf, 10, L"%d", (int)m_selected_tp_dst);
-		auto inp = m_gui->addEditBox(buf, rect_input, true, tab, ID_TabTeleporter_DST);
-		inp->setTextAlignment(gui::EGUIA_CENTER, gui::EGUIA_CENTER);
-	}
-}
-
-void SceneBlockSelector::readTeleporterBox()
-{
-	auto inp_id = (gui::IGUIEditBox *)m_showmore->getElementFromId(ID_TabTeleporter_ID, true);
-	auto inp_dst = (gui::IGUIEditBox *)m_showmore->getElementFromId(ID_TabTeleporter_DST, true);
-	if (!inp_id || !inp_dst)
-		return;
-
-	int val = -1;
-	if (sanitize_input(inp_id, &val, 0, 255))
-		m_selected_tp_id = val;
-	if (sanitize_input(inp_dst, &val, 0, 255))
-		m_selected_tp_dst = val;
-}
-
-void SceneBlockSelector::toggleTextBox(const SEvent &e)
-{
-	auto elem = m_showmore->getElementFromId(ID_BoxText, true);
-	bool may_open = m_selected.getId() == Block::ID_TEXT;
-	if (!may_open || elem) {
-		if (elem)
-			elem->remove();
-		return;
-	}
-
-	core::recti rect(
-		core::vector2di(-BTN_SIZE.Width, BTN_SIZE.Height + 2),
-		core::dimension2di(BTN_SIZE.Width * 4, 30)
-	);
-
-	std::wstring wstr;
-	utf8_to_wide(wstr, m_selected_text.c_str());
-	auto element = m_gui->addEditBox(wstr.c_str(), rect, true, e.GUIEvent.Caller, ID_BoxText);
-	element->setNotClipped(true);
-	m_gui->setFocus(element);
-	editbox_move_to_end(element);
-}
-
-void SceneBlockSelector::readTextBoxValue(const SEvent &e)
-{
-	auto box = (gui::IGUIEditBox *)e.GUIEvent.Caller;
-	wide_to_utf8(m_selected_text, box->getText());
-	convertLegacyToBU();
-}
-
-
 bool SceneBlockSelector::OnEvent(const SEvent &e)
 {
 	if (!m_enabled)
 		return false;
 
 	if (m_guiscript) {
-		if (m_guiscript->OnEvent(e))
-			convertBUToLegacy();
+		(void)m_guiscript->OnEvent(e);
 	}
 
 	if (e.EventType == EET_MOUSE_INPUT_EVENT) {
@@ -402,24 +203,6 @@ bool SceneBlockSelector::OnEvent(const SEvent &e)
 			default: break;
 		}
 	}
-	if (e.EventType == EET_GUI_EVENT && e.GUIEvent.EventType == gui::EGET_EDITBOX_CHANGED) {
-		int id = e.GUIEvent.Caller->getID();
-		switch (id) {
-			case ID_BoxCoinDoor:
-				readCoinBoxValue(e);
-				break;
-			case ID_BoxNote:
-				readNoteBoxValue(e);
-				break;
-			case ID_TabTeleporter_ID:
-			case ID_TabTeleporter_DST:
-				readTeleporterBox();
-				break;
-			case ID_BoxText:
-				readTextBoxValue(e);
-			// ID_ScriptElements is already handled above.
-		}
-	}
 	if (e.EventType == EET_GUI_EVENT && e.GUIEvent.EventType == gui::EGET_BUTTON_CLICKED) {
 		auto btn = e.GUIEvent.Caller;
 		int id = btn->getID();
@@ -433,13 +216,8 @@ bool SceneBlockSelector::OnEvent(const SEvent &e)
 			if (!selectBlockId(id - ID_SELECTOR_0, false))
 				return false;
 
-			if (!toggleScriptElements(e) && m_legacy_compatible) {
-				toggleCoinBox(e);
-				toggleNoteBox(e);
-				toggleTeleporterBox(e);
-				toggleTextBox(e);
-			}
-			return true;
+			if (toggleScriptElements(e))
+				return true;
 		}
 		// Show/hide block selector
 		if (id == ID_SHOWMORE) {
@@ -528,7 +306,6 @@ void SceneBlockSelector::setParamsFromBlock(bid_t block_id, BlockParams &params)
 		return;
 
 	m_selected.params = params;
-	convertBUToLegacy();
 
 	if (m_guiscript)
 		m_guiscript->fromBlockUpdate();
@@ -542,14 +319,8 @@ void SceneBlockSelector::getBlockUpdate(blockpos_t pos, Block b, BlockUpdate &bu
 	}
 
 	if (m_guiscript && m_guiscript->onPlace(pos)) {
-		convertBUToLegacy();
-	} else if (m_legacy_compatible) {
-		if (b.id == Block::ID_SPIKES)
-			m_selected.params.param_u8 = (b.tile + 1) % 4;
-		if (b.id == Block::ID_TELEPORTER)
-			m_selected.params.teleporter.rotation = (b.tile + 1) % 4;
+		// Did something. No-op.
 	}
-	convertLegacyToBU();
 
 	bu = m_selected;
 }
@@ -610,13 +381,10 @@ bool SceneBlockSelector::drawBlockButton(bid_t bid, const core::recti &rect, gui
 		e->setPressedImage(make_pressed_image(m_gui->getVideoDriver(), texture));
 
 		tooltip_len = snprintf(tooltip, sizeof(tooltip), "Pack: %s\nBlock ID: %i\nTile count: %zu"
-			"\nCallbacks:%s%s%s%s%s%s%s%s",
+			"\nCallbacks:%s%s%s%s%s",
 			props->pack->name.c_str(),
 			bid,
 			props->tiles.size(),
-			props->step                  ? " step[C++]" : "",
-			props->onCollide             ? " onCollide[C++]" : "",
-			props->trigger_on_touch      ? " on_touch[C++]" : "",
 			props->haveOnIntersectOnce() ? " intersect_once" : "",
 			props->haveOnIntersect()     ? " intersect" : "",
 			props->haveOnCollide()       ? " collide" : "",
@@ -784,54 +552,3 @@ void SceneBlockSelector::updateDraggedImg()
 	m_dragged_img->setImage(tex);
 	m_gui->getRootGUIElement()->bringToFront(m_dragged_img);
 }
-
-
-void SceneBlockSelector::convertBUToLegacy()
-{
-	if (!m_legacy_compatible)
-		return;
-
-	const BlockParams &params = m_selected.params;
-	switch (m_selected.getId()) {
-		case Block::ID_COINDOOR:
-		case Block::ID_COINGATE:
-			m_selected_param1 = params.param_u8;
-			break;
-		case Block::ID_PIANO:
-			m_selected_note = params.param_u8;
-			break;
-		case Block::ID_TELEPORTER:
-			m_selected_tp_id = params.teleporter.id;
-			m_selected_tp_dst = params.teleporter.dst_id;
-			break;
-		case Block::ID_TEXT:
-			m_selected_text = *params.text;
-			break;
-	}
-}
-
-void SceneBlockSelector::convertLegacyToBU()
-{
-	if (!m_legacy_compatible)
-		return;
-
-	BlockParams &params = m_selected.params;
-	switch (m_selected.getId()) {
-		case Block::ID_COINDOOR:
-		case Block::ID_COINGATE:
-			params.param_u8 = m_selected_param1;
-			break;
-		case Block::ID_PIANO:
-			params.param_u8 = m_selected_note;
-			break;
-		case Block::ID_TELEPORTER:
-			params.teleporter.id = m_selected_tp_id;
-			params.teleporter.dst_id = m_selected_tp_dst;
-			break;
-		case Block::ID_TEXT:
-			*params.text = m_selected_text;
-		default:
-			break;
-	}
-}
-

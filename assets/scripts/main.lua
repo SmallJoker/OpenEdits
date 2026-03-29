@@ -1,14 +1,4 @@
-if true then
-	env.load_hardcoded_packs()
-	return
-end
-
-assert(env.API_VERSION >= 4, "Script implementation is too old.")
-
-if env.server and env.API_VERSION < 5 then
-	-- v1.4.2 backwards compat
-	env.world.get_players = env.server.get_players_in_world
-end
+assert(env.API_VERSION >= 5, "Script implementation is too old.")
 
 env.include("constants.lua")
 env.include("smileys.lua")

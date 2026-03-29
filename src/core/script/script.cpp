@@ -201,7 +201,6 @@ bool Script::init()
 		FIELD_SET_FUNC(/**/, include);
 		FIELD_SET_FUNC(/**/, require_asset);
 		FIELD_SET_FUNC(/**/, register_smileys);
-		FIELD_SET_FUNC(/**/, load_hardcoded_packs);
 		FIELD_SET_FUNC(/**/, register_pack);
 		FIELD_SET_FUNC(/**/, change_block);
 
@@ -262,7 +261,6 @@ void Script::close()
 		props->ref_get_visuals = LUA_REFNIL;
 		props->ref_gui_def = LUA_REFNIL;
 #endif
-		props->ref_on_placed = LUA_REFNIL;
 		props->ref_intersect_once = LUA_REFNIL;
 		props->ref_on_intersect = LUA_REFNIL;
 		props->ref_on_collide = LUA_REFNIL;

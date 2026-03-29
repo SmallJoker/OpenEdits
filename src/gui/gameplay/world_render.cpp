@@ -309,8 +309,6 @@ void SceneWorldRender::drawBlocksInView()
 	const auto upperleft = m_drawn_rect.UpperLeftCorner; // move to stack
 	const auto lowerright = m_drawn_rect.LowerRightCorner;
 
-	const bool is_hardcoded = g_blockmanager->isHardcoded();
-
 	BlockDrawData bdd;
 	bdd.player = player.ptr();
 	bdd.world = world.get();
@@ -324,7 +322,6 @@ void SceneWorldRender::drawBlocksInView()
 			continue;
 
 		// Let's hope those two get "optimized away"
-		blockpos_t &bp = bdd.pos;
 		Block &b = bdd.b;
 
 		bdd.bulk = nullptr;
@@ -333,27 +330,7 @@ void SceneWorldRender::drawBlocksInView()
 			// Unique ID for each appearance type
 			size_t tile_hash = b.tile;
 
-			if (is_hardcoded) {
-				if (b.id == Block::ID_SECRET && b.tile == 0)
-					break;
-
-				if (b.id == Block::ID_BLACKFAKE && b.tile == 0) {
-					bdd.b.id = Block::ID_BLACKREAL;
-					tile_hash = 0;
-				}
-
-				if (b.id == Block::ID_TEXT) {
-					tile_hash = 0;
-					BlockParams params;
-					world->getParams(bp, &params);
-					if (params != BlockParams::Type::Text)
-						break;
-
-					Packet pkt;
-					params.write(pkt);
-					tile_hash = crc32_z(0, pkt.data(), pkt.size());
-				}
-			} else {
+			{
 				// Apply visual override
 				const auto props = g_blockmanager->getProps(b.id);
 				if (props) {
@@ -463,119 +440,33 @@ void SceneWorldRender::assignNewBackground(BlockDrawData &bdd)
 
 void SceneWorldRender::drawBlockParams(BlockDrawData &bdd)
 {
-	if (!g_blockmanager->isHardcoded()) {
-		TileCacheManager &tcache = m_gui->getClient()->getTileCacheMgr();
-		const Block *b = bdd.world->getBlockPtr(bdd.pos);
+	TileCacheManager &tcache = m_gui->getClient()->getTileCacheMgr();
+	const Block *b = bdd.world->getBlockPtr(bdd.pos);
 
-		const TileCacheEntry entry = tcache.getOrCache(b);
-		if (entry.overlay.empty())
-			return;
-
-		DEBUG_LOG("ADD OVERLAY @ %d,%d str=%s\n",
-			bdd.pos.X, bdd.pos.Y, entry.overlay.c_str()
-		);
-
-		const size_t upper_hash = 0
-			| (size_t)0xFF // any tile
-			| std::hash<std::string>{}(entry.overlay) << 8;
-		const size_t hash_node_id = BlockDrawData::hash(bdd.b.id, upper_hash);
-
-		auto overlay = &bdd.bulk_map[hash_node_id];
-		if (!overlay->node) {
-			const BlockProperties *props = g_blockmanager->getProps(bdd.b.id);
-			auto texture = m_gameplay->generateTexture(
-				entry.overlay.c_str(),
-				props->overlay.fg_color,
-				props->overlay.bg_color
-			);
-			overlay->node = drawBottomLeftText(texture);
-		}
-		overlay->node->addTile({bdd.pos.X, -bdd.pos.Y});
+	const TileCacheEntry entry = tcache.getOrCache(b);
+	if (entry.overlay.empty())
 		return;
+
+	DEBUG_LOG("ADD OVERLAY @ %d,%d str=%s\n",
+		bdd.pos.X, bdd.pos.Y, entry.overlay.c_str()
+	);
+
+	const size_t upper_hash = 0
+		| (size_t)0xFF // any tile
+		| std::hash<std::string>{}(entry.overlay) << 8;
+	const size_t hash_node_id = BlockDrawData::hash(bdd.b.id, upper_hash);
+
+	auto overlay = &bdd.bulk_map[hash_node_id];
+	if (!overlay->node) {
+		const BlockProperties *props = g_blockmanager->getProps(bdd.b.id);
+		auto texture = m_gameplay->generateTexture(
+			entry.overlay.c_str(),
+			props->overlay.fg_color,
+			props->overlay.bg_color
+		);
+		overlay->node = drawBottomLeftText(texture);
 	}
-
-	BlockParams params;
-	switch (bdd.b.id) {
-		case Block::ID_PIANO:
-			if (!bdd.world->getParams(bdd.pos, &params) || params != BlockParams::Type::U8) {
-				SANITY_LOG("Invalid %s at pos=(%i,%i)\n", "Piano note", bdd.pos.X, bdd.pos.Y);
-				break;
-			}
-
-			{
-				// see SceneGameplay::handleOnTouchBlock
-				uint8_t note = params.param_u8;
-				std::string note_str = "??";
-				SceneGameplay::pianoParamToNote(note, &note_str);
-
-				size_t hash_node_id = BlockDrawData::hash(bdd.b.id, note + 8);
-				auto overlay = &bdd.bulk_map[hash_node_id];
-				if (!overlay->node) {
-					auto texture = m_gameplay->generateTexture(note_str.c_str(), 0xFFFFFFFF, 0xFF7B31EA);
-					overlay->node = drawBottomLeftText(texture);
-				}
-
-				overlay->node->addTile({bdd.pos.X, -bdd.pos.Y});
-			}
-			break;
-		case Block::ID_COINDOOR:
-		case Block::ID_COINGATE:
-			if (bdd.b.tile != 0)
-				break;
-			if (!bdd.world->getParams(bdd.pos, &params) || params != BlockParams::Type::U8) {
-				SANITY_LOG("Invalid %s at pos=(%i,%i)\n", "coin door/gate", bdd.pos.X, bdd.pos.Y);
-				break;
-			}
-
-			{
-				uint8_t required = params.param_u8;
-				required -= bdd.player->coins;
-
-				size_t hash_node_id = BlockDrawData::hash(bdd.b.id, required + 8);
-				auto overlay = &bdd.bulk_map[hash_node_id];
-				if (!overlay->node) {
-					auto texture = m_gameplay->generateTexture(std::to_string(required), 0xFF000000, 0xFFEECC00);
-					overlay->node = drawBottomLeftText(texture);
-				}
-
-				overlay->node->addTile({bdd.pos.X, -bdd.pos.Y});
-			}
-			break;
-		case Block::ID_TELEPORTER:
-			if (!bdd.world->getParams(bdd.pos, &params) || params != BlockParams::Type::Teleporter) {
-				SANITY_LOG("Invalid %s at pos=(%i,%i)\n", "teleporter", bdd.pos.X, bdd.pos.Y);
-				break;
-			}
-
-			{
-				uint8_t tp_id = params.teleporter.id;
-
-				size_t hash_node_id = BlockDrawData::hash(bdd.b.id, tp_id + 8);
-				auto overlay = &bdd.bulk_map[hash_node_id];
-				if (!overlay->node) {
-					auto texture = m_gameplay->generateTexture(std::to_string(tp_id), 0xFF000000, 0);
-					overlay->node = drawBottomLeftText(texture);
-				}
-
-				overlay->node->addTile({bdd.pos.X, -bdd.pos.Y});
-			}
-			break;
-		case Block::ID_TEXT: {
-			bdd.world->getParams(bdd.pos, &params);
-			if (params != BlockParams::Type::Text) {
-				SANITY_LOG("Invalid %s at pos=(%i,%i)\n", "text", bdd.pos.X, bdd.pos.Y);
-				break;
-			}
-
-			video::ITexture *txt = m_gameplay->generateTexture(*params.text, 0xFFFFFFFF, 0x77000000);
-			auto dim = txt->getOriginalSize();
-
-			auto node = bdd.bulk->node;
-			node->getMaterial(0).setTexture(0, txt);
-			node->setVertexSize(core::dimension2df((float)dim.Width / dim.Height * 8, 8));
-		}
-	break;
-	}
+	overlay->node->addTile({bdd.pos.X, -bdd.pos.Y});
 }
 
 CBulkSceneNode *SceneWorldRender::drawBottomLeftText(video::ITexture *texture)

@@ -35,7 +35,6 @@ void Player::setWorld(RefCnt<World> world)
 		m_world->getMeta().online--;
 
 	{
-		on_touch_blocks.reset();
 		script_events_to_send.reset();
 	}
 
@@ -49,7 +48,7 @@ void Player::setWorld(RefCnt<World> world)
 
 	controls_enabled = true;
 	if (!keep_progress) {
-		setPosition({0, 0}, true);
+		setPosition({0, 0});
 		setGodMode(false);
 	}
 }
@@ -82,7 +81,7 @@ void Player::readPhysics(Packet &pkt)
 	pkt.read(acc.Y);
 
 	pkt.read<u32>(m_prng_state);
-	pkt.read<u8>(coins); // type safety!
+	(void)pkt.read<u8>(); // coins
 
 	u8 flags = pkt.read<u8>();
 	m_controls.jump = flags & 1;
@@ -108,7 +107,7 @@ void Player::writePhysics(Packet &pkt) const
 	pkt.write(acc.Y);
 
 	pkt.write<u32>(m_prng_state);
-	pkt.write<u8>(coins);
+	pkt.write<u8>(0); // coins
 
 	u8 flags = (m_controls.jump << 0);
 	// data_version < 9 used `jump = read<u8>()` !
@@ -129,13 +128,8 @@ bool Player::setControls(const PlayerControls &ctrl)
 	return changed;
 }
 
-void Player::setPosition(core::vector2df newpos, bool reset_progress)
+void Player::setPosition(core::vector2df newpos)
 {
-	if (reset_progress) {
-		coins = 0;
-		checkpoint = blockpos_t(-1, -1);
-	}
-
 	dtime_delay = 0;
 	pos = newpos;
 	vel = core::vector2df();
@@ -300,9 +294,6 @@ void Player::stepInternal(float dtime)
 	if (props && bp != last_pos) {
 		if (m_script)
 			m_script->onIntersectOnce(bp, props);
-
-		if (on_touch_blocks && props->trigger_on_touch)
-			on_touch_blocks->emplace(bp);
 	}
 
 	if (!godmode) {
@@ -395,14 +386,9 @@ bool Player::stepCollisions(float dtime)
 	auto props = m_world->getBlockMgr()->getProps(block.id);
 	// single block effect
 	bool handled = false;
-	if (props) {
-		if (props->haveOnIntersect()) {
-			m_script->onIntersect(props);
-			handled = true;
-		} else if (props->step) {
-			props->step(*this, bp);
-			handled = true;
-		}
+	if (props && props->haveOnIntersect()) {
+		m_script->onIntersect(props);
+		handled = true;
 	}
 	if (handled) {
 		// Position changes (e.g. portal)
@@ -452,8 +438,7 @@ void Player::collideWith(float dtime, int x, int y)
 	const bool have_on_collide_script = props->haveOnCollide();
 	const BlockDrawType tiletype = props->getTile(b).type;
 
-	if (tiletype != BlockDrawType::Solid
-			&& !(props->onCollide || have_on_collide_script))
+	if (tiletype != BlockDrawType::Solid && !have_on_collide_script)
 		return;
 
 	core::rectf player(0, 0, 1, 1);
@@ -478,8 +463,6 @@ void Player::collideWith(float dtime, int x, int y)
 		ci.pos = bp;
 		ci.is_x = is_x;
 		type = (CT)m_script->onCollide(ci);
-	} else if (props->onCollide) {
-		type = props->onCollide(*this, bp, is_x);
 	}
 
 	switch (type) {
@@ -505,9 +488,6 @@ void Player::collideWith(float dtime, int x, int y)
 
 			// fall through
 		case CT::None:
-			if (on_touch_blocks && props->trigger_on_touch)
-				on_touch_blocks->emplace(bp);
-
 			break;
 	}
 }
