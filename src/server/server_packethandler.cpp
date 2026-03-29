@@ -10,6 +10,7 @@
 #include "core/logger.h"
 #include "core/network_enums.h"
 #include "core/packet.h"
+#include "core/smileymanager.h"
 #include "core/utils.h"
 #include "core/world.h"
 #include "core/worldmeta.h"
@@ -955,7 +956,8 @@ void Server::pkt_Smiley(peer_t peer_id, Packet &pkt)
 {
 	RemotePlayer *player = getPlayerNoLock(peer_id);
 
-	player->smiley_id = pkt.read<u8>();
+	u8 smiley_id = std::min<u8>(pkt.read<u8>(), m_smileymgr->getCount() - 1);
+	player->smiley_id = smiley_id;
 
 	Packet out;
 	out.write(Packet2Client::Smiley);

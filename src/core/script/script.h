@@ -10,12 +10,12 @@ struct BlockParams;
 struct BlockProperties;
 struct BlockUpdate;
 struct lua_State;
-struct SmileyDef;
 class BlockManager;
 class Environment;
 class MediaManager;
 class Player;
 class ScriptEventManager;
+class SmileyManager;
 class World;
 
 class Script {
@@ -74,10 +74,9 @@ protected:
 	static int l_change_block(lua_State *L);
 
 public:
-	/// May return an empty vector in case no smileys were registered.
-	const std::vector<SmileyDef> &getSmileys() const { return m_smileys; }
+	void setSmileyMgr(SmileyManager *mgr) { m_smileymgr = mgr; }
 private:
-	std::vector<SmileyDef> m_smileys;
+	SmileyManager *m_smileymgr = nullptr;
 
 	int m_private_include_depth = 0;
 

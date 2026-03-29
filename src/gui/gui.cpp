@@ -5,7 +5,6 @@
 #include "core/logger.h"
 #include "core/macros.h"
 #include "core/profiler.h"
-#include "core/smileydef.h"
 #include "guilayout/guilayout_irrlicht.h"
 #include "guiscript.h"
 #include <chrono>
@@ -364,9 +363,7 @@ bool Gui::connect(ClientStartData &init)
 		init.address = "127.0.0.1";
 	}
 
-	g_blockmanager->setDriver(driver);
-
-	m_client = new Client(init);
+	m_client = new Client(init, driver);
 	m_client->setEventTarget(this);
 	setEventTarget(m_client);
 	script = new GuiScript(g_blockmanager, guienv);

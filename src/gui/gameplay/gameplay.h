@@ -45,10 +45,6 @@ public:
 	static bool pianoParamToNote(u8 param, std::string *note_out);
 	static bool pianoNoteToParam(const char *note, u8 *param_out);
 
-	// For SceneSmileySelector and SceneWorldRender
-	int smiley_count = 0;
-	video::ITexture *smiley_texture = nullptr;
-
 private:
 	bool initChatHistory();
 	bool handleChatInput(const SEvent &e);

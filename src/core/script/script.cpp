@@ -4,7 +4,7 @@
 #include "core/blockmanager.h"
 #include "core/macros.h"
 #include "core/mediamanager.h"
-#include "core/smileydef.h"
+#include "core/smileymanager.h"
 #include <fstream>
 
 using namespace ScriptUtils;
@@ -13,7 +13,7 @@ Logger script_logger("Script", LL_INFO);
 static Logger &logger = script_logger;
 
 
-static const lua_Integer SCRIPT_API_VERSION = 6;
+static const lua_Integer SCRIPT_API_VERSION = 7;
 
 /*
 	Sandbox theory: http://lua-users.org/wiki/SandBoxes
@@ -416,17 +416,22 @@ int Script::l_require_asset(lua_State *L)
 
 int Script::l_register_smileys(lua_State *L)
 {
+	MESSY_CPP_EXCEPTIONS_START
 	Script *script = get_script(L);
 	if (script->m_loading_complete)
 		luaL_error(L, "invalid usage");
-	if (!script->m_media)
-		luaL_error(L, "MediaManager unavailable");
-	if (!script->m_media->requireAsset("smileys.png"))
-		luaL_error(L, "asset not found");
+	if (!script->m_smileymgr)
+		luaL_error(L, "SmileyManager unavailable");
 
-	for (lua_pushnil(L); lua_next(L, 1); lua_pop(L, 1)) {
+	lua_getfield(L, 1, "name");
+	const std::string name = luaL_checkstring(L, -1);
+	lua_pop(L, 1);
+
+	auto pack = std::make_unique<SmileyPack>(name);
+
+	for (lua_pushnil(L); lua_next(L, 2); lua_pop(L, 1)) {
 		// key @ -2, value @ -1
-		SmileyDef &def = script->m_smileys.emplace_back();
+		SmileyDef &def = pack->defs.emplace_back();
 
 		lua_getfield(L, -1, "description");
 		{
@@ -437,7 +442,8 @@ int Script::l_register_smileys(lua_State *L)
 		lua_pop(L, 1);
 	}
 
-	logger(LL_DEBUG, "%d smileys registered", (int)script->m_smileys.size());
+	script->m_smileymgr->registerPack(pack.release());
+	MESSY_CPP_EXCEPTIONS_END
 	return 0;
 }
 

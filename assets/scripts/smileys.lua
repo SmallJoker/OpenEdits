@@ -2,7 +2,7 @@ if not env.register_smileys then
 	return
 end
 
-env.register_smileys({
+local listing = {
 	{
 		description = "Normal"
 	},
@@ -18,4 +18,12 @@ env.register_smileys({
 	{
 		description = "Fedora"
 	}
-})
+}
+
+if env.API_VERSION >= 7 then
+	env.register_smileys({
+		name = "basic"
+	}, listing)
+else
+	env.register_smileys(listing)
+end

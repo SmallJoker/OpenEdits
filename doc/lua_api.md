@@ -138,9 +138,9 @@ A `userdata` object.
     * Client: Returns whether `env.player` is the controlled player.
     * Server: Returns `false`.
 
-The functions `set_pos`, `set_vel` and `set_acc` are only allowed inside of the
-current player physics engine step. This is to avoid desync issues between the
-server and client(s).
+The following functions `next_prn`, `set_pos`, `set_vel` and `set_acc` are only
+allowed inside of the current player physics engine step.
+This is to avoid desync issues between the server and client(s).
 
 Player-related callbacks in `env`:
 
@@ -250,8 +250,11 @@ These functions must be run at load time.
  * `env.require_asset(asset_name)`
     * To use for dynamically used assets, such as audio playback.
     * `asset_name` (string): file name without extension
- * `env.register_smileys({ def1, def2, ... })`
+ * `env.register_smileys(info, {def, def2, ...})`
     * Registers the smileys as provided by `smileys.png`
+    * `info` (table)
+       * `name` (string): Internal name of the smiley. A corresponding
+          texture named `smileys_{name}.png` is required.
     * `def` (table): One entry per smiley. Fields:
        * `description` (string): Human-readable name
 

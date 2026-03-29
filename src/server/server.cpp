@@ -9,6 +9,7 @@
 #include "core/network_enums.h"
 #include "core/packet.h"
 #include "core/profiler.h"
+#include "core/smileymanager.h"
 #include "core/world.h"
 #include "core/worldmeta.h"
 #include "core/script/scriptevent.h"
@@ -72,12 +73,13 @@ Server::Server(bool *shutdown_requested) :
 	}
 
 	m_media = new ServerMedia();
-
+	m_smileymgr->init(nullptr, m_media);
 
 	// Initialize Script + Assets needed for the clients
 	{
 		m_media->indexAssets();
 		m_script->setMediaMgr(m_media);
+		m_script->setSmileyMgr(m_smileymgr);
 
 		if (!m_script->loadFromAsset("main.lua")) {
 			logger(LL_ERROR, "No future without main script");

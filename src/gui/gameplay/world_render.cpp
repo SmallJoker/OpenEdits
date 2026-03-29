@@ -4,6 +4,7 @@
 #include "client/localplayer.h"
 #include "core/blockmanager.h"
 #include "core/packet.h"
+#include "core/smileymanager.h"
 #include "gui/CBulkSceneNode.h"
 #include <ICameraSceneNode.h>
 #include <ISceneCollisionManager.h>
@@ -674,13 +675,7 @@ void SceneWorldRender::updatePlayerPositions(float dtime)
 	auto smgr = m_world_smgr;
 	auto tex_god_aura = m_gui->driver->getTexture("assets/textures/god_aura.png");
 	auto tex_speech   = m_gui->driver->getTexture("assets/textures/speech_indicator.png");
-
-	// Smiley "units" of the full texture - needed for correct proportions.
-	u32 smiley_texture_width;
-	{
-		const auto img_dim = m_gameplay->smiley_texture->getOriginalSize();
-		smiley_texture_width = img_dim.Width / img_dim.Height;
-	}
+	auto smileymgr = m_gui->getClient()->getSmileyMgr();
 
 	do {
 		if (m_nametag_force_show) {
@@ -745,6 +740,8 @@ void SceneWorldRender::updatePlayerPositions(float dtime)
 			}
 		}
 
+		auto smiley = smileymgr->getSmileyAt(player->smiley_id);
+
 		if (nf) {
 			nf->setPosition(nf_pos);
 		} else {
@@ -762,7 +759,7 @@ void SceneWorldRender::updatePlayerPositions(float dtime)
 				layer.MinFilter = video::ETMINF_LINEAR_MIPMAP_LINEAR;
 				layer.MagFilter = video::ETMAGF_LINEAR;
 			});
-			nf->getMaterial(0).setTexture(0, m_gameplay->smiley_texture);
+			nf->getMaterial(0).setTexture(0, smiley.first->texture);
 
 			// Add nametag
 			auto nt_texture = m_gameplay->generateTexture(player->name);
@@ -779,11 +776,12 @@ void SceneWorldRender::updatePlayerPositions(float dtime)
 			nt->getMaterial(0).setTexture(0, nt_texture);
 		}
 
-		if (player->smiley_id < m_gameplay->smiley_count) {
+		if (smiley.first->texture) {
+			float width = smiley.first->texture_width;
 			// Assign smiley texture offset
 			auto &mat = nf->getMaterial(0).getTextureMatrix(0);
-			mat.setTextureTranslate(player->smiley_id / (float)smiley_texture_width, 0);
-			mat.setTextureScale(1.0f / smiley_texture_width, 1);
+			mat.setTextureTranslate(smiley.second / width, 0.0f);
+			mat.setTextureScale(1.0f / width, 1.0f);
 		}
 
 		const bool nametags_visible = m_nametag_show_timer > 1.0;

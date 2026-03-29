@@ -9,6 +9,10 @@
 #include "tilecache.h"
 #include <string>
 
+namespace irr::video {
+	class IVideoDriver;
+};
+
 class ClientMedia;
 class ClientScript;
 class Connection;
@@ -41,7 +45,7 @@ struct ClientStartData {
 class Client : public Environment, public GameEventHandler {
 public:
 	/// "init" is invalid afterwards!
-	Client(ClientStartData &init);
+	Client(ClientStartData &init, irr::video::IVideoDriver *driver);
 	~Client();
 
 	void prepareScript(ClientScript *script, bool need_audiovisuals);
@@ -57,6 +61,7 @@ public:
 	const ClientStartData &getStartData() { return m_start_data; }
 
 	ClientMedia *getMedia() const { return m_media; }
+	const SmileyManager *getSmileyMgr() const { return m_smileymgr; }
 
 	PtrLock<LocalPlayer> getMyPlayer();
 	peer_t getMyPeerId() const { return m_my_peer_id; }
@@ -144,6 +149,7 @@ private:
 	Auth m_auth;
 	ClientMedia *m_media = nullptr;
 	ClientScript *m_script = nullptr;
+	irr::video::IVideoDriver *m_driver = nullptr;
 };
 
 struct ClientPacketHandler {

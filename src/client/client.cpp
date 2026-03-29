@@ -9,6 +9,7 @@
 #include "core/network_enums.h"
 #include "core/packet.h"
 #include "core/profiler.h"
+#include "core/smileymanager.h"
 #include "core/utils.h" // to_player_name
 #include "core/script/scriptevent.h"
 #include "core/worldmeta.h"
@@ -26,12 +27,15 @@ extern BlockManager *g_blockmanager; // for client-only use
 
 static const float POSITION_SEND_INTERVAL = 5.0f;
 
-Client::Client(ClientStartData &init) :
+Client::Client(ClientStartData &init, irr::video::IVideoDriver *driver) :
 	Environment(g_blockmanager),
 	m_rl_scriptevents(1 / 20.0f, 2),
-	m_start_data(std::move(init)) // eaten
+	m_start_data(std::move(init)), // eaten
+	m_driver(driver)
 {
 	logger(LL_PRINT, "Startup ...");
+
+	m_bmgr->setDriver(driver);
 
 	{
 		PACKET_ACTIONS_MAX = 0;
@@ -103,6 +107,9 @@ void Client::prepareScript(ClientScript *script, bool need_audiovisuals)
 	m_script->setMediaMgr(m_media);
 	m_script->setClient(this);
 	ASSERT_FORCED(m_script->init(), "No future.");
+
+	m_smileymgr->init(m_driver, m_media);
+	m_script->setSmileyMgr(m_smileymgr);
 }
 
 void Client::connect()
@@ -689,9 +696,9 @@ void Client::initScript()
 
 	m_script->onScriptsLoaded();
 	m_script->setMyPlayer(getPlayerNoLock(m_my_peer_id));
+	m_smileymgr->populateTextures();
 	m_state = ClientState::LobbyIdle;
 	// maybe generate an event?
-
 	return; // OK
 
 error:

@@ -6,6 +6,7 @@
 
 class BlockManager;
 class Player;
+class SmileyManager;
 class World;
 
 using map_peer_player_t = std::map<peer_t, std::unique_ptr<Player>>;
@@ -38,6 +39,7 @@ protected:
 
 	Connection *m_con = nullptr;
 	BlockManager *m_bmgr;
+	SmileyManager *m_smileymgr = nullptr; //< owned by this class
 
 	std::mutex m_players_lock;
 	map_peer_player_t m_players;

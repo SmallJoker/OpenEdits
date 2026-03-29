@@ -1,9 +1,18 @@
 #include "environment.h"
 #include "player.h"
+#include "smileymanager.h"
 #include <chrono>
 
-Environment::Environment(BlockManager *bmgr) : m_bmgr(bmgr) {}
-Environment::~Environment() {}
+Environment::Environment(BlockManager *bmgr) : m_bmgr(bmgr)
+{
+	m_smileymgr = new SmileyManager();
+}
+
+Environment::~Environment()
+{
+	if (m_smileymgr)
+		delete m_smileymgr;
+}
 
 std::vector<Player *> Environment::getPlayersNoLock(const World *world) const
 {
