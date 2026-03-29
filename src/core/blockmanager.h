@@ -44,6 +44,7 @@ struct BlockPack {
 
 enum class TileOverlayType {
 	Text_BottomRight,
+	Text_FullSize,
 	Invalid
 };
 

@@ -37,7 +37,7 @@ local blocks_hidden = {
 		id = 50, -- ID_SECRET
 		minimap_color = 0x00000001,
 		tiles = {
-			{ type = env.DRAW_TYPE_SOLID, alpha = true, override = { id = 0, tile = 0 } },
+			{ type = env.DRAW_TYPE_SOLID, override = { id = 0, tile = 0 } },
 			{ type = env.DRAW_TYPE_SOLID }
 		},
 		on_collide = set_tile_to_1,

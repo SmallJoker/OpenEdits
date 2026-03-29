@@ -330,31 +330,28 @@ void SceneWorldRender::drawBlocksInView()
 			// Unique ID for each appearance type
 			size_t tile_hash = b.tile;
 
-			{
-				// Apply visual override
-				const auto props = g_blockmanager->getProps(b.id);
-				if (props) {
-					const auto vo = props->getTile(b).visual_override;
-					if (vo.enabled) {
-						//printf("apply override id=%d tile=%d\n", b.id, b.tile);
-						b.id = vo.id;
-						b.tile = vo.tile;
-						tile_hash = vo.tile;
-					}
+			// Apply visual override
+			const auto props = g_blockmanager->getProps(b.id);
+			if (props) {
+				const auto vo = props->getTile(b).visual_override;
+				if (vo.enabled) {
+					//printf("apply override id=%d tile=%d\n", b.id, b.tile);
+					b.id = vo.id;
+					b.tile = vo.tile;
+					tile_hash = vo.tile;
 				}
 			}
 
-			if (b.id == 0)
-				break;
+			if (b.id != 0) {
+				size_t hash_node_id = BlockDrawData::hash(bdd.b.id, tile_hash);
+				bdd.bulk = &bdd.bulk_map[hash_node_id];
+				if (!bdd.bulk->node) {
+					// Yet not cached: Add.
+					assignNewForeground(bdd);
+				}
 
-			size_t hash_node_id = BlockDrawData::hash(bdd.b.id, tile_hash);
-			bdd.bulk = &bdd.bulk_map[hash_node_id];
-			if (!bdd.bulk->node) {
-				// Yet not cached: Add.
-				assignNewForeground(bdd);
+				bdd.bulk->node->addTile({x, -y});
 			}
-
-			bdd.bulk->node->addTile({x, -y});
 
 			drawBlockParams(bdd);
 		} while (false);
@@ -450,21 +447,32 @@ void SceneWorldRender::drawBlockParams(BlockDrawData &bdd)
 	DEBUG_LOG("ADD OVERLAY @ %d,%d str=%s\n",
 		bdd.pos.X, bdd.pos.Y, entry.overlay.c_str()
 	);
+	const bid_t block_id = b->id; // bdd.b.id may be manipulated!
 
 	const size_t upper_hash = 0
 		| (size_t)0xFF // any tile
 		| std::hash<std::string>{}(entry.overlay) << 8;
-	const size_t hash_node_id = BlockDrawData::hash(bdd.b.id, upper_hash);
+	const size_t hash_node_id = BlockDrawData::hash(block_id, upper_hash);
 
 	auto overlay = &bdd.bulk_map[hash_node_id];
 	if (!overlay->node) {
-		const BlockProperties *props = g_blockmanager->getProps(bdd.b.id);
+		const BlockProperties *props = g_blockmanager->getProps(block_id);
 		auto texture = m_gameplay->generateTexture(
 			entry.overlay.c_str(),
 			props->overlay.fg_color,
 			props->overlay.bg_color
 		);
-		overlay->node = drawBottomLeftText(texture);
+
+		switch (props->overlay.type) {
+		case TileOverlayType::Text_BottomRight:
+			overlay->node = drawBottomLeftText(texture);
+			break;
+		case TileOverlayType::Text_FullSize:
+			overlay->node = drawFullSizeText(texture);
+			break;
+		case TileOverlayType::Invalid:
+			ASSERT_FORCED(false, "unreachable?");
+		}
 	}
 	overlay->node->addTile({bdd.pos.X, -bdd.pos.Y});
 }
@@ -490,6 +498,26 @@ CBulkSceneNode *SceneWorldRender::drawBottomLeftText(video::ITexture *texture)
 	return node;
 }
 
+CBulkSceneNode *SceneWorldRender::drawFullSizeText(video::ITexture *texture)
+{
+	auto dim_i = texture->getOriginalSize();
+	core::dimension2df dim;
+	dim.Height = 8;
+	dim.Width = (float)dim_i.Width / dim_i.Height * dim.Height;
+
+	// Align right
+	auto node = new CBulkSceneNode(m_blocks_node, m_gui->scenemgr, -1,
+		core::vector3df(0, (DEFAULT_TILE_SIZE.Height - dim.Height) / 2, 0.5),
+		DEFAULT_TILE_SIZE
+	);
+	node->drop();
+
+	node->setVertexSize(dim);
+	node->getMaterial(0).setTexture(0, texture);
+	node->getMaterial(0).MaterialType = video::EMT_TRANSPARENT_ALPHA_CHANNEL_REF;
+
+	return node;
+}
 
 bool SceneWorldRender::assignBlockTexture(const BlockTile &tile, scene::ISceneNode *node)
 {

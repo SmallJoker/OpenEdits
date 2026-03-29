@@ -60,6 +60,7 @@ private:
 	void assignNewBackground(BlockDrawData &bdd);
 	void drawBlockParams(BlockDrawData &bdd);
 	CBulkSceneNode *drawBottomLeftText(video::ITexture *texture);
+	CBulkSceneNode *drawFullSizeText(video::ITexture *texture);
 
 	bool assignBlockTexture(const BlockTile &tile, scene::ISceneNode *node);
 	core::recti m_drawn_rect; // excess area, more drawn than needed

@@ -50,19 +50,16 @@ bool BlockUpdate::check(bid_t *block_id, bool *is_bg) const
 
 bool BlockUpdate::sanitizeParams()
 {
-	switch (getId()) {
-		case Block::ID_TEXT: {
-			constexpr size_t LEN_MAX = 50;
+	if (params.getType() == BlockParams::Type::Text) {
+		constexpr size_t LEN_MAX = 50;
 
-			std::string &text = *params.text;
-			text = strtrim(text);
-			if (text.empty())
-				return false;
+		std::string &text = *params.text;
+		text = strtrim(text);
+		if (text.empty())
+			return false;
 
-			if (text.size() > LEN_MAX)
-				text.resize(LEN_MAX);
-		}
-		break;
+		if (text.size() > LEN_MAX)
+			text.resize(LEN_MAX);;
 	}
 	return true;
 }

@@ -43,8 +43,12 @@ static BlockDrawType read_block_drawtype(lua_State *L, int idx)
 static TileOverlayType read_tile_overlay_type(lua_State *L, int idx)
 {
 	int type = luaL_checkint(L, idx);
-	if (type < 0 || type >= (int)TileOverlayType::Invalid)
-		luaL_error(L, "Invalid TileOverlayType value");
+	if (type < 0 || type >= (int)TileOverlayType::Invalid) {
+		logger(LL_WARN, "Invalid TileOverlayType value=%d", type);
+		// Fallback is OK (no impact on network protocol)
+		return TileOverlayType::Invalid;
+	}
+
 	return (TileOverlayType)type;
 }
 

@@ -66,6 +66,7 @@ do
 
 	-- blockmanager.h / TileOverlayType
 	gui.TOVT_TEXT_BR = 0
+	gui.TOVT_TEXT_FS = 1
 end
 
 local old_register = env.register_event

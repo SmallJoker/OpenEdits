@@ -1,4 +1,5 @@
 local ID_SPAWN = 255
+local ID_TEXT = 1000
 
 local function get_spawn_points()
 	return env.world.get_blocks_in_range(
@@ -46,6 +47,44 @@ local blocks_def = {
 			{ type = env.DRAW_TYPE_ACTION, alpha = true },
 		},
 	},
+	{
+		id = ID_TEXT,
+		tiles = {
+			{ type = env.DRAW_TYPE_ACTION, alpha = true },
+		},
+		gui_def = {
+			-- root element
+			type = gui.ELMT_TABLE, grid = { 1, 2 }, fields = {
+				-- Hacky placeholder to make it larger
+				{ type = gui.ELMT_TEXT, text = "", min_size = { 150, 0 } },
+				{ type = gui.ELMT_INPUT, name = "text" },
+			},
+
+			values = { ["text"] = "gaming!" },
+			from_block = function(values, text)
+				values.text = text
+			end,
+			on_input = function(values, k, v)
+				values[k] = v
+			end,
+			on_place = function(values, x, y)
+				-- must match the "params" type
+				gui.select_block(nil, values.text)
+			end,
+		},
+		params = env.PARAMS_TYPE_STR16,
+		overlay = {
+			type = gui.TOVT_TEXT_FS,
+			fg_color = 0xFFFFFFFF,
+			bg_color = 0x77000000,
+		},
+		tiles = {
+			{ type = env.DRAW_TYPE_ACTION, override = { id = 0, tile = 0 }  }
+		},
+		get_visuals = function(tile, text)
+			return 0, text
+		end,
+	},
 }
 
 env.register_pack({
@@ -53,3 +92,5 @@ env.register_pack({
 	default_type = env.DRAW_TYPE_ACTION,
 	blocks = reg.table_to_pack_blocks(blocks_def)
 })
+
+reg.change_blocks(blocks_def)
