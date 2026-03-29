@@ -118,6 +118,11 @@ struct BlockProperties {
 		None
 	};
 
+	// For unittests only!
+	#define BP_STEP_CALLBACK(name) \
+		void (name)(Player &player, blockpos_t pos)
+	BP_STEP_CALLBACK(*step) = nullptr;
+
 	// Lua callbacks. Make sure to update `Script::close` too.
 	// Default to -2 == LUA_NOREF
 	int ref_intersect_once = -2;
@@ -138,6 +143,8 @@ class BlockManager {
 public:
 	BlockManager();
 	~BlockManager();
+
+	void registerUnittestPacks();
 
 	void registerPack(BlockPack *pack);
 	void setDriver(video::IVideoDriver *driver);

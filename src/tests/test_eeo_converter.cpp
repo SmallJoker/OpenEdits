@@ -21,7 +21,7 @@ static void eeoc_write()
 		world.setBlock({x, 8}, b);
 	}
 	// FG + BG
-	b.id = 45;
+	b.id = 14;
 	b.bg = 501;
 	world.setBlock({7, 5}, b);
 
@@ -30,6 +30,16 @@ static void eeoc_write()
 	b.bg = 502;
 	for (u16 y = 0; y < 10; y++)
 		world.setBlock({25, y}, b);
+
+	// With BlockParams
+	{
+		BlockUpdate bu(world.getBlockMgr());
+		bu.set(Block::ID_TELEPORTER);
+		bu.pos = blockpos_t(26, 2);
+		bu.params.teleporter.id = 7;
+		bu.params.teleporter.dst_id = 65;
+		CHECK(world.updateBlock(bu));
+	}
 
 	EEOconverter conv(world);
 	conv.toFile("unittest_1.eelvl");
@@ -60,10 +70,16 @@ static void eeoc_read_check()
 	CHECK(b.id == 9 && b.bg == 0);
 
 	CHECK(world.getBlock({7, 5}, &b));
-	CHECK(b.id == 45 && b.bg == 501);
+	CHECK(b.id == 14 && b.bg == 501);
 
 	CHECK(world.getBlock({25, 7}, &b));
 	CHECK(b.id == 0 && b.bg == 502);
+
+	BlockParams params;
+	CHECK(world.getParams({26, 2}, &params));
+	CHECK(params.getType() == BlockParams::Type::Teleporter);
+	bool ok = params.teleporter.id == 7 && params.teleporter.dst_id == 65;
+	CHECK(ok);
 
 	std::remove((EEOconverter::IMPORT_DIR + "/unittest_1.eelvl").c_str());
 }

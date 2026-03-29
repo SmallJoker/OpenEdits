@@ -386,9 +386,14 @@ bool Player::stepCollisions(float dtime)
 	auto props = m_world->getBlockMgr()->getProps(block.id);
 	// single block effect
 	bool handled = false;
-	if (props && props->haveOnIntersect()) {
-		m_script->onIntersect(props);
-		handled = true;
+	if (props) {
+		if (props->haveOnIntersect()) {
+			m_script->onIntersect(props);
+			handled = true;
+		} else if (props->step) {
+			props->step(*this, bp);
+			handled = true;
+		}
 	}
 	if (handled) {
 		// Position changes (e.g. portal)

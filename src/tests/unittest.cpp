@@ -1,4 +1,5 @@
 #include "unittest_internal.h"
+#include "core/blockmanager.h"
 #include "core/profiler.h"
 
 void unittest_auth();
@@ -32,11 +33,26 @@ void unittest_toc(const char *name)
 	}
 }
 
+static void setup_blockmanager()
+{
+	g_blockmanager->registerUnittestPacks();
+
+	if (0) {
+		for (auto props : g_blockmanager->getProps()) {
+			if (props)
+				printf("  id=%d\n", props->id);
+		}
+	}
+}
+
 //#define UNITTEST_CATCH_EX
 
 void unittest(int gui_test_nr)
 {
 	puts("==> Start unittest");
+
+	// There are a few tests that want some pre-filled types
+	setup_blockmanager();
 
 #ifdef UNITTEST_CATCH_EX
 	try

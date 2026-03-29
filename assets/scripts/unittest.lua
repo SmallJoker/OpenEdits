@@ -276,6 +276,8 @@ env.change_block(103, {
 -- C++: test_with_script
 if env.test_mode:find("media") then
 	env.register_smileys({
+		name = "basic"
+	}, {
 		{
 			description = "Normal"
 		},

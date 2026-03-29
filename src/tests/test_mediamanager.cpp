@@ -1,7 +1,9 @@
 #if BUILD_CLIENT
 
 #include "unittest_internal.h"
+#include "core/blockmanager.h"
 #include "core/packet.h"
+#include "core/smileymanager.h"
 #include "client/clientmedia.h"
 #include "server/remoteplayer.h"
 #include "server/servermedia.h"
@@ -58,13 +60,17 @@ static void test_server_client()
 static void test_with_script()
 {
 	BlockManager bmgr;
+	SmileyManager smileymgr;
 	ClientScript script(&bmgr);
 
 	ClientMedia media;
 	media.indexAssets();
 
+	smileymgr.init(nullptr, &media);
+
 	script.init();
 	script.setMediaMgr(&media);
+	script.setSmileyMgr(&smileymgr);
 	script.setTestMode("const media smiley");
 	CHECK(script.loadFromAsset("unittest.lua"));
 	CHECK(script.popTestFeedback() == ""); // NOT "unittest_server"!
