@@ -35,7 +35,6 @@ SceneGameplay::SceneGameplay() :
 	SceneHandler(L"Gameplay"),
 	m_drag_draw_block(g_blockmanager)
 {
-	LocalPlayer::gui_smiley_counter = 300; // Unique ID for the player SceneNode
 }
 
 SceneGameplay::~SceneGameplay()
@@ -296,6 +295,13 @@ void SceneGameplay::step(float dtime)
 		// GUI elements must be updated in sync with the render thread to avoid segfaults
 		std::wstring text = joinChatHistoryText();
 		m_chathistory->setText(text.c_str());
+	}
+
+	{
+		auto players = m_gui->getClient()->getPlayerList();
+		FOR_PLAYERS(, player, *players.ptr()) {
+			((LocalPlayer *)player)->speech_countdown -= dtime;
+		}
 	}
 
 	if (m_drag_draw_cooldown > dtime)
@@ -657,8 +663,12 @@ bool SceneGameplay::OnEvent(GameEvent &e)
 				const char *who = "* SERVER";
 				if (e.type_c2g == E::C2G_LOCAL_CHAT)
 					who = "* LOCAL";
-				if (e.player_chat->player)
-					who = e.player_chat->player->name.c_str();
+
+				LocalPlayer *player = (LocalPlayer *)e.player_chat->player;
+				if (player) {
+					who = player->name.c_str();
+					player->speech_countdown = 6.0f; // seconds
+				}
 
 				char buf[500];
 				snprintf(buf, sizeof(buf), "%s: %s\n",

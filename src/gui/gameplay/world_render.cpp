@@ -53,17 +53,16 @@ SceneWorldRender::~SceneWorldRender()
 		m_world_smgr->clear();
 		m_world_smgr->drop();
 	}
+
+	m_gui->driver->removeTexture(m_tex_shadow);
 }
 
 
 void SceneWorldRender::draw()
 {
-	if (!m_world_smgr) {
+	if (!m_world_smgr)
 		m_world_smgr = m_gui->scenemgr->createNewSceneManager(false);
-		//m_world_smgr = m_gui->scenemgr;
-	}
-	if (m_world_smgr != m_gui->scenemgr)
-		m_world_smgr->clear();
+	m_world_smgr->clear();
 
 	m_animation_timers.clear();
 
@@ -673,7 +672,8 @@ void SceneWorldRender::updatePlayerPositions(float dtime)
 	Client *client = m_gui->getClient();
 
 	auto smgr = m_world_smgr;
-	auto godmode_texture = m_gui->driver->getTexture("assets/textures/god_aura.png");
+	auto tex_god_aura = m_gui->driver->getTexture("assets/textures/god_aura.png");
+	auto tex_speech   = m_gui->driver->getTexture("assets/textures/speech_indicator.png");
 
 	// Smiley "units" of the full texture - needed for correct proportions.
 	u32 smiley_texture_width;
@@ -700,11 +700,23 @@ void SceneWorldRender::updatePlayerPositions(float dtime)
 			m_nametag_show_timer = 0;
 	} while (0);
 
+	enum : s32 {
+		OFFSET_FACE = 0, // in m_players_node
+
+		// Children of the player node. Use ascending IDs such
+		// that deep node ID searches do not match them by accident.
+		OFFSET_GOD_AURA,
+		OFFSET_NAMETAG,
+		OFFSET_SPEECH,
+		// free space for other player decorations (effects?)
+		OFFSET_MAX = 10
+	};
+
 	std::list<scene::ISceneNode *> children = m_players_node->getChildren();
 	const auto players = client->getPlayerList();
 	const peer_t my_peer_id = client->getMyPeerId();
 	for (auto &p_it : *players.ptr()) {
-		auto player = dynamic_cast<LocalPlayer *>(p_it.second.get());
+		const auto player = dynamic_cast<LocalPlayer *>(p_it.second.get());
 
 		core::vector2di bp(player->pos.X + 0.5f, player->pos.Y + 0.5f);
 		if (!m_drawn_rect.isPointInside(bp))
@@ -718,10 +730,16 @@ void SceneWorldRender::updatePlayerPositions(float dtime)
 			ZINDEX_SMILEY[player->godmode] + offset
 		);
 
-		s32 nf_id = player->getGUISmileyId();
+		if (player->node_id < 0) {
+			player->node_id = m_player_node_id_counter;
+			m_player_node_id_counter += OFFSET_MAX;
+		}
+
+		const s32 node_id = player->node_id;
+
 		scene::ISceneNode *nf = nullptr;
 		for (auto &c : children) {
-			if (c && c->getID() == nf_id) {
+			if (c && c->getID() == (node_id + OFFSET_FACE)) {
 				nf = c;
 				c = nullptr; // mark as handled
 			}
@@ -734,7 +752,7 @@ void SceneWorldRender::updatePlayerPositions(float dtime)
 			nf = smgr->addBillboardSceneNode(m_players_node,
 				core::dimension2d<f32>(15, 15),
 				nf_pos,
-				nf_id
+				(node_id + OFFSET_FACE)
 			);
 			nf->forEachMaterial([](video::SMaterial &mat) {
 				mat.ZWriteEnable = video::EZW_AUTO;
@@ -752,7 +770,7 @@ void SceneWorldRender::updatePlayerPositions(float dtime)
 			auto nt = smgr->addBillboardSceneNode(nf,
 				core::dimension2d<f32>(nt_size.Width * 0.4f, nt_size.Height * 0.4f),
 				core::vector3df(0, -10, -5),
-				nf_id + 1
+				(node_id + OFFSET_NAMETAG)
 			);
 			nt->forEachMaterial([](video::SMaterial &mat){
 				mat.ZWriteEnable = video::EZW_AUTO;
@@ -768,44 +786,66 @@ void SceneWorldRender::updatePlayerPositions(float dtime)
 			mat.setTextureScale(1.0f / smiley_texture_width, 1);
 		}
 
-		scene::ISceneNode *ga = nullptr;
+		const bool nametags_visible = m_nametag_show_timer > 1.0;
+		scene::ISceneNode *ga = nullptr,
+			*ci = nullptr;
 		for (auto &c : nf->getChildren()) {
-			if (c->getID() == nf_id + 2) {
-				ga = c;
-				break;
+			const s32 offset = c->getID() - node_id;
+			switch (offset) {
+				case OFFSET_GOD_AURA:
+					ga = c;
+					break;
+				case OFFSET_NAMETAG:
+					c->setVisible(nametags_visible);
+					break;
+				case OFFSET_SPEECH:
+					ci = c;
+					break;
 			}
 		}
 
-		// Add godmode aura
-		if (player->godmode != (!!ga)) {
-			// Difference!
-			if (player->godmode) {
-				auto ga = smgr->addBillboardSceneNode(nf,
-					core::dimension2d<f32>(18, 18),
-					core::vector3df(0, 0, 0.1),
-					nf_id + 2
-				);
+		// Update god aura if needed
+		if (player->godmode == (!!ga)) {
+			// OK, no change needed.
+		} else if (player->godmode) {
+			auto node = smgr->addBillboardSceneNode(nf,
+				core::dimension2d<f32>(18, 18),
+				core::vector3df(0, 0, 0.1),
+				(node_id + OFFSET_GOD_AURA)
+			);
 
-				ga->forEachMaterial([](video::SMaterial &mat){
-					mat.ZWriteEnable = video::EZW_AUTO;
-					mat.MaterialType = video::EMT_TRANSPARENT_ALPHA_CHANNEL;
-				});
-				ga->getMaterial(0).setTexture(0, godmode_texture);
-			} else {
-				nf->removeChild(ga);
-			}
+			node->forEachMaterial([](video::SMaterial &mat){
+				mat.ZWriteEnable = video::EZW_AUTO;
+				mat.MaterialType = video::EMT_TRANSPARENT_ALPHA_CHANNEL;
+			});
+			node->getMaterial(0).setTexture(0, tex_god_aura);
+		} else {
+			ga->remove();
 		}
 
-		for (auto c : nf->getChildren()) {
-			auto id = c->getID();
-			if (id == nf_id + 1) {
-				// Nametag
-				c->setVisible(m_nametag_show_timer > 1.0f);
-			}
-			// id + 2: effect
+		const bool speech_visible = player->speech_countdown > 0.0f;
+
+		if (speech_visible == (!!ci)) {
+			// OK, no change needed.
+		} else if (speech_visible) {
+			auto node = smgr->addBillboardSceneNode(nf,
+				core::dimension2d<f32>(7, 7),
+				core::vector3df(8, 6, -0.1),
+				(node_id + OFFSET_SPEECH)
+			);
+
+			node->forEachMaterial([](video::SMaterial &mat){
+				mat.ZWriteEnable = video::EZW_AUTO;
+				mat.MaterialType = video::EMT_TRANSPARENT_ALPHA_CHANNEL;
+			});
+			node->getMaterial(0).setTexture(0, tex_speech);
+		} else {
+			// TODO: A fade animation (shrink or alpha) would be nice.
+			ci->remove();
 		}
 	}
 
+	// Remove any remaining entries
 	for (auto c : children) {
 		if (c)
 			m_players_node->removeChild(c);
