@@ -154,7 +154,8 @@ bool DatabaseAuth::tryOpen(const char *filepath)
 		"VALUES (?, ?, ?, ?)"
 	);
 	PREPARE(STMT_F2B_READ,
-		"SELECT * FROM `fail2ban` WHERE `affected` = ? AND `context` = ? LIMIT 1"
+		"SELECT * FROM `fail2ban` WHERE `affected` = ? AND `context` = ? "
+		"ORDER BY `expiry` DESC LIMIT 1"
 	);
 	PREPARE(STMT_F2B_CLEANUP,
 		"DELETE FROM `fail2ban` WHERE `expiry` <= ?"
