@@ -5,7 +5,7 @@
 #include <IVideoDriver.h>
 #include <memory> // unique_ptr
 
-static Logger logger("SmileyManager", LL_DEBUG);
+static Logger logger("SmileyManager", LL_INFO);
 
 SmileyManager::~SmileyManager()
 {

@@ -50,7 +50,7 @@ local blocks_def = {
 	{
 		id = ID_TEXT,
 		tiles = {
-			{ type = env.DRAW_TYPE_ACTION, alpha = true },
+			{ type = env.DRAW_TYPE_ACTION, override = { id = 0, tile = 0 }  }
 		},
 		gui_def = {
 			-- root element
@@ -77,9 +77,6 @@ local blocks_def = {
 			type = gui.TOVT_TEXT_FS,
 			fg_color = 0xFFFFFFFF,
 			bg_color = 0x77000000,
-		},
-		tiles = {
-			{ type = env.DRAW_TYPE_ACTION, override = { id = 0, tile = 0 }  }
 		},
 		get_visuals = function(tile, text)
 			return 0, text

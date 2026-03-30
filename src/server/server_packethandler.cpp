@@ -22,7 +22,7 @@
 #else
 	#define DEBUGLOG(...) /* SILENCE */
 #endif
-static Logger logger("ServerPkt", LL_DEBUG);
+static Logger logger("ServerPkt", LL_INFO);
 
 // in sync with core/packet.h
 const ServerPacketHandler Server::packet_actions[] = {

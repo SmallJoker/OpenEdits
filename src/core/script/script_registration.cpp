@@ -115,7 +115,9 @@ int Script::l_register_pack(lua_State *L)
 	pack->default_type = read_block_drawtype(L, -1);
 	lua_pop(L, 1); // table
 
-	logger(LL_INFO, "register pack: %s\n", pack->name.c_str());
+	logger(LL_DEBUG, "%s: name=%s #blocks=%zu",
+		__func__, pack->name.c_str(), pack->block_ids.size()
+	);
 	script->m_bmgr->registerPack(pack.release());
 
 	MESSY_CPP_EXCEPTIONS_END

@@ -9,7 +9,7 @@
 
 using namespace ScriptUtils;
 
-Logger script_logger("Script", LL_INFO);
+Logger script_logger("Script", LL_WARN);
 static Logger &logger = script_logger;
 
 

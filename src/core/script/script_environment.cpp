@@ -215,7 +215,7 @@ int Script::l_register_event(lua_State *L)
 		def.types.push_back((Type)type);
 	}
 
-	logger(LL_INFO, "%s: id=%d, #types=%zu", __func__, event_id, def.types.size());
+	logger(LL_DEBUG, "%s: id=%d, #types=%zu", __func__, event_id, def.types.size());
 
 	// Return the event ID
 	lua_pushinteger(L, event_id);

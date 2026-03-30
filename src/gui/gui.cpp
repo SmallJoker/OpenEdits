@@ -182,6 +182,9 @@ void Gui::run()
 
 		driver->beginScene(true, true, video::SColor(0xFF000000));
 
+		static Profiler profiler("GUI Render");
+		ScopeProfiler sp(profiler);
+
 		auto handler = getHandler(m_scenetype);
 
 		if (is_new_screen) {

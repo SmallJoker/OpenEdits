@@ -70,3 +70,9 @@ env.register_pack({
 
 reg.change_blocks(blocks_hidden)
 
+local old_on_block_place = env.on_block_place
+env.on_block_place = function(x, y, fg, bg)
+	old_on_block_place(x, y, fg, bg)
+
+
+end

@@ -5,8 +5,6 @@ env.include("smileys.lua")
 
 -------------- Client & server script
 
-local GRAVITY    = 100.0 -- m/s² for use in callbacks
-
 env.on_step = function(abstime) end
 env.on_player_event = function(event, arg) end
 env.on_block_place = function(x, y, fg, bg) end
@@ -23,7 +21,9 @@ scriptevent_handler_func = function()
 end
 ]]
 
-reg = {}
+reg = {
+	GRAVITY_ACCEL = 100 -- m/s²
+}
 
 -- Per-world player data. Created on join, removed on leave
 reg._player_data = {}
@@ -67,6 +67,18 @@ env.register_pack({
 	blocks = { 9, 10, 11, 12, 13, 14, 15 }
 })
 
+env.register_pack({
+	name = "beta",
+	default_type = env.DRAW_TYPE_SOLID,
+	blocks = { 37, 38, 39, 40, 41, 42 }
+})
+
+env.register_pack({
+	name = "factory",
+	default_type = env.DRAW_TYPE_SOLID,
+	blocks = { 45, 46, 47, 48, 49 }
+})
+
 env.include("keys_doors.lua")
 env.register_pack({
 	name = "doors",
@@ -81,6 +93,7 @@ env.include("candy.lua")
 ---------- Action tab
 
 
+local GRAVITY = reg.GRAVITY_ACCEL
 local player = env.player
 local blocks_action = {
 	-- Cannot use indices: unordered `pairs` iteration.
@@ -125,6 +138,7 @@ env.register_pack({
 })
 reg.change_blocks(blocks_action)
 
+env.include("boost.lua")
 
 env.register_pack({
 	name = "keys",
@@ -134,6 +148,8 @@ env.register_pack({
 reg.change_blocks(reg.blocks_keys)
 
 env.include("coins.lua")
+-- TODO: Timed gates
+-- TODO: Switches
 env.include("teleporter.lua")
 env.include("hidden.lua")
 env.include("music.lua")

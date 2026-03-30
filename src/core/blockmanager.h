@@ -96,6 +96,8 @@ struct BlockProperties {
 	bool isBackground() const { return tiles[0].type == BlockDrawType::Background; }
 
 	struct Overlay {
+		// TODO: Replace type with scale + position
+
 		TileOverlayType type = TileOverlayType::Invalid; // optional
 		// Colors: 0xAARRGGBB
 		uint32_t fg_color = 0xFFFFFFFF;

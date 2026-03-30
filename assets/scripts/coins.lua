@@ -3,6 +3,9 @@ local player = env.player
 local get_pwdata = reg.get_pwdata
 local dprint = false and print or function() end
 
+local ID_COINDOOR = 43
+local ID_COINGATE = 165
+
 env.require_asset("coin.mp3")
 
 local hud_dirty = false
@@ -79,7 +82,7 @@ env.on_block_place = function(x, y, fg, bg)
 		local pd = reg.get_pwdata(reg.my_player_id)
 		if old_tile > 0 then
 			pd.coins = math.max(pd.coins - 1, 0)
-			env.world.update_tiles({43})
+			env.world.update_tiles({ID_COINDOOR, ID_COINGATE})
 		end
 
 		hud_dirty = true
@@ -103,35 +106,8 @@ env.on_world_data = function()
 	update_hud()
 end
 
-
-local blocks_coins = {
-	{
-		id = 100,
-		tiles = {
-			{ alpha = true, animation_count = 2, animation_delay = 1.2 },
-			{ alpha = true }
-		},
-		on_intersect_once = function(tile)
-			if tile ~= 0 or not env.is_me() then
-				return -- cannot collect (again)
-			end
-
-			local px, py = player:get_pos()
-			world.set_tile(100, 1, world.PRT_ONE_BLOCK, px, py)
-			world.update_tiles({43})
-
-			local pd = get_pwdata(player)
-			pd.coins = pd.coins + 1
-			env.send_event(EV_COINS, pd.coins)
-
-			if gui.have_gui then
-				gui.play_sound("coin.mp3")
-				hud_dirty = true
-			end
-		end
-	},
-	{
-		id = 43, -- Coindoor
+local function make_coin_block(override)
+	local ret = {
 		gui_def = {
 			-- root element
 			type = gui.ELMT_TABLE, grid = { 2, 1 }, fields = {
@@ -159,13 +135,6 @@ local blocks_coins = {
 			fg_color = 0xFF000000,
 			bg_color = 0xFFEECC00,
 		},
-		tiles = {
-			{
-				type = env.DRAW_TYPE_SOLID,
-				--params_mask = 0x000000FF, -- "Which unique params are needed?"
-			},
-			{ type = env.DRAW_TYPE_SOLID, alpha = true }
-		},
 		get_visuals = function(tile, coins)
 			-- Only called when coming into visible range and there is nothing cached
 			-- The returned tile can only be changed if they're not "physics dependent"
@@ -175,6 +144,48 @@ local blocks_coins = {
 			end
 			return 0, coins - p_coins
 		end,
+	}
+	for k, v in pairs(override) do
+		ret[k] = v
+	end
+	return ret
+end
+
+local blocks_coins = {
+	{
+		id = 100,
+		tiles = {
+			{ alpha = true, animation_count = 2, animation_delay = 1.2 },
+			{ alpha = true }
+		},
+		on_intersect_once = function(tile)
+			if tile ~= 0 or not env.is_me() then
+				return -- cannot collect (again)
+			end
+
+			local px, py = player:get_pos()
+			world.set_tile(100, 1, world.PRT_ONE_BLOCK, px, py)
+			world.update_tiles({ID_COINDOOR, ID_COINGATE})
+
+			local pd = get_pwdata(player)
+			pd.coins = pd.coins + 1
+			env.send_event(EV_COINS, pd.coins)
+
+			if gui.have_gui then
+				gui.play_sound("coin.mp3")
+				hud_dirty = true
+			end
+		end
+	},
+	make_coin_block({
+		id = ID_COINDOOR,
+		tiles = {
+			{
+				type = env.DRAW_TYPE_SOLID,
+				--params_mask = 0x000000FF, -- "Which unique params are needed?"
+			},
+			{ type = env.DRAW_TYPE_SOLID, alpha = true }
+		},
 		on_collide = function(bx, by, is_x)
 			-- Called on every player! Do not check against the local `tile`.
 			local coins = world.get_params(bx, by)
@@ -184,7 +195,23 @@ local blocks_coins = {
 				and env.COLLISION_TYPE_NONE
 				or env.COLLISION_TYPE_POSITION)
 		end,
-	}
+	}),
+	make_coin_block({
+		id = ID_COINGATE,
+		tiles = {
+			{ type = env.DRAW_TYPE_SOLID, alpha = true },
+			{ type = env.DRAW_TYPE_SOLID }
+		},
+		on_collide = function(bx, by, is_x)
+			-- Called on every player! Do not check against the local `tile`.
+			local coins = world.get_params(bx, by)
+			local p_coins = get_pwdata(player).coins
+
+			return (p_coins < coins
+				and env.COLLISION_TYPE_NONE
+				or env.COLLISION_TYPE_POSITION)
+		end,
+	}),
 }
 
 env.register_pack({
