@@ -102,24 +102,23 @@ nomatch:
 	return false;
 }
 
-/// Returns the final Lua top, or 0 on failure.
-static int prepare_gui_cb(lua_State *L, const char *name, const BlockProperties *props)
+/// Returns `true` on success
+static bool prepare_gui_cb(lua_State *L, const char *name, const BlockProperties *props)
 {
 	if (props->ref_gui_def < 0)
-		return 0; // nothing to do
+		return false; // nothing to do
 
-	const int top = lua_gettop(L);
 	lua_rawgeti(L, LUA_REGISTRYINDEX, CUSTOM_RIDX_TRACEBACK); // @1
 
 	logger(LL_INFO, "%s, id=%d", name, props->id);
 	lua_rawgeti(L, LUA_REGISTRYINDEX, props->ref_gui_def); // @2
 	lua_getfield(L, -1, name); // @3, function
 	if (lua_isnil(L, -1)) {
-		lua_settop(L, top);
-		return 0;
+		lua_pop(L, 3);
+		return false;
 	}
 
-	return top;
+	return true;
 }
 
 void GuiScript::onInput(const char *k, const char *v)
@@ -128,8 +127,8 @@ void GuiScript::onInput(const char *k, const char *v)
 		return;
 
 	lua_State *L = m_lua;
-	const int top = prepare_gui_cb(L, "on_input", m_props);
-	if (top == 0)
+	const int top = lua_gettop(L);
+	if (!prepare_gui_cb(L, "on_input", m_props))
 		return;
 
 	lua_getfield(L, -2, "values"); // arg 1
@@ -154,8 +153,8 @@ bool GuiScript::onPlace(blockpos_t pos)
 		return false;
 
 	lua_State *L = m_lua;
-	const int top = prepare_gui_cb(L, "on_place", props);
-	if (top == 0)
+	const int top = lua_gettop(L);
+	if (!prepare_gui_cb(L, "on_place", props))
 		return true;
 
 	lua_getfield(L, -2, "values"); // arg 1
@@ -181,8 +180,8 @@ bool GuiScript::fromBlockUpdate()
 		return false;
 
 	lua_State *L = m_lua;
-	const int top = prepare_gui_cb(L, "from_block", props);
-	if (top == 0)
+	const int top = lua_gettop(L);
+	if (!prepare_gui_cb(L, "from_block", props))
 		return true;
 
 	lua_getfield(L, -2, "values"); // arg 1
