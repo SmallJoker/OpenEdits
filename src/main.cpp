@@ -1,3 +1,4 @@
+#include "core/auth.h"
 #include "core/blockmanager.h"
 #include "core/eeo_converter.h" // EEOconverter::inflate
 #include "core/logger.h"
