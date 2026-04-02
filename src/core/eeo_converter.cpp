@@ -516,7 +516,9 @@ void EEOconverter::fromFile(const std::string &filename_)
 				goto no_import;
 		}
 
-		params_in.importParams(block_id, bu.params);
+		if (blockmgr->getProps(block_id)) {
+			params_in.importParams(block_id, bu.params);
+		}
 no_import:
 
 		/*for (size_t i = 0; i < pos_x.size(); ++i) {

@@ -424,7 +424,7 @@ Block *World::updateBlock(BlockUpdate bu)
 	return &updateBlockNoCheck(bu);
 }
 
-Block &World::updateBlockNoCheck(BlockUpdate bu)
+Block &World::updateBlockNoCheck(const BlockUpdate &bu)
 {
 	Block &ref = getBlockRefNoCheck(bu.pos);
 	if (bu.isBackground()) {
