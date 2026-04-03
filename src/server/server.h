@@ -71,6 +71,7 @@ private:
 	void stepSendScriptEvents(RemotePlayer *player);
 	void stepWorldTick(World *world, float dtime);
 
+	/// May throw std::runtime_error when failing to load a world
 	bool loadWorldNoLock(World *world);
 	void writeWorldData(Packet &out, const World &world, bool is_clear);
 	void setDefaultPlayerFlags(Player *player);

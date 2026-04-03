@@ -247,6 +247,10 @@ void Client::pkt_WorldData(Packet &pkt)
 		GameEvent e(GameEvent::C2G_META_UPDATE);
 		sendNewEvent(e);
 	}
+	{
+		GameEvent e(GameEvent::C2G_MAP_UPDATE);
+		sendNewEvent(e);
+	}
 
 	DEBUGLOG("pkt_WorldData: done.\n");
 }
@@ -463,6 +467,11 @@ void Client::pkt_PlaceBlock(Packet &pkt)
 			m_tile_cache_mgr.clearCacheAt(&b);
 			b.tile = getBlockTile(player, &b);
 		}
+	}
+
+	{
+		GameEvent e(GameEvent::C2G_MAP_UPDATE);
+		sendNewEvent(e);
 	}
 }
 

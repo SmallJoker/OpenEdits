@@ -10,7 +10,7 @@ end
 function reg.respawn_player(player, list)
 	list = list or get_spawn_points()
 	if #list == 0 then
-		return
+		list[1] = { 0, 1, 1 }
 	end
 
 	local pos = list[math.random(1, #list)]
@@ -34,7 +34,9 @@ env.on_world_data = function()
 	if env.server then
 		local list = get_spawn_points()
 		for _, p in ipairs(env.world.get_players()) do
-			reg.respawn_player(p, list)
+			if not reg.get_pwdata(p).godmode then
+				reg.respawn_player(p, list)
+			end
 		end
 	end
 end

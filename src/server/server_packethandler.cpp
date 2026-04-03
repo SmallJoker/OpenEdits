@@ -534,27 +534,18 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 
 	// query database for existing world
 	auto world = getWorldNoLock(world_id);
-	if (!world) {
+	if (!world)
 		world = std::make_shared<World>(m_bmgr, world_id);
 
-		if (!loadWorldNoLock(world.get()))
-			world.reset(); // Not found
+	bool ok = false;
+	try {
+		ok = loadWorldNoLock(world.get());
+	} catch (std::runtime_error &e) {
+		sendMsg(peer_id, std::string("Cannot load this world: ") + e.what());
+		return;
 	}
-
-	if (!world && WorldMeta::idToType(world_id) == WorldMeta::Type::Readonly) {
-		std::string path = EEOconverter::findWorldPath(world_id);
-		if (!path.empty()) {
-			world = std::make_shared<World>(m_bmgr, world_id);
-			try {
-				EEOconverter conv(*world.get());
-				conv.fromFile(path);
-			} catch (std::runtime_error &e) {
-				sendMsg(peer_id, std::string("Cannot load this world: ") + e.what());
-				return;
-			}
-			world->getMeta().owner += " "; // HACK: prevent modifications
-		}
-	}
+	if (!ok)
+		world.reset(); // Not found
 
 	if (!world && !create_world) {
 		sendMsg(peer_id, "The specified world ID does not exist.");

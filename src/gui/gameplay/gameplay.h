@@ -41,8 +41,7 @@ public:
 
 	video::ITexture *generateTexture(const std::string &text, u32 color = 0xFFFFFFFF, u32 bgcolor = 0xFF000000);
 
-	/// returns true on success
-	static bool pianoParamToNote(u8 param, std::string *note_out);
+	/// TODO: port to Lua
 	static bool pianoNoteToParam(const char *note, u8 *param_out);
 
 private:
@@ -73,10 +72,6 @@ private:
 	bool m_erase_mode = false;     // removes the pointed block : shift down
 
 	core::recti m_draw_area; // rendering area
-
-	void updateWorldStuff();
-	bool m_dirty_world = false;
-	int m_total_coins = 0;
 
 	GameCommands m_gamecmd;
 

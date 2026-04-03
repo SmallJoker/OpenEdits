@@ -19,17 +19,6 @@ void unittest_gui_gameplay()
 
 	CHECK(SceneGameplay::pianoNoteToParam(" cb 5 ", &param));
 	CHECK(param == (5 - 3) * 12 + 0 - 1); // B4
-
-	std::string note;
-
-	CHECK(SceneGameplay::pianoParamToNote(0, &note));
-	CHECK(note == "C3");
-
-	CHECK(SceneGameplay::pianoParamToNote((3 - 3) * 12 + 3, &note));
-	CHECK(note == "D'3");
-
-	CHECK(SceneGameplay::pianoParamToNote((5 - 3) * 12 + 0 - 1, &note));
-	CHECK(note == "B4");
 }
 
 #else // BUILD_CLIENT

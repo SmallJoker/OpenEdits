@@ -188,12 +188,6 @@ void Client::step(float dtime)
 
 	if (m_script)
 		m_script->onStep((double)m_time / TIME_RESOLUTION);
-
-	// Update tiles if triggered by Lua
-	if (world && world->modified_rect.isValid()) {
-		GameEvent e(GameEvent::C2G_MAP_UPDATE);
-		sendNewEvent(e);
-	}
 }
 
 bool Client::OnEvent(GameEvent &e)

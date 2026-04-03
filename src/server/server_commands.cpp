@@ -829,8 +829,16 @@ CHATCMD_FUNC(Server::chat_Load)
 
 	auto old_world = player->getWorld();
 	auto world = old_world->copyNewSkeleton();
-	if (!loadWorldNoLock(world.get())) {
-		systemChatSend(player, "Failed to load world from database");
+	bool ok = false;
+	std::string errmsg;
+	try {
+		ok = loadWorldNoLock(world.get());
+	} catch (std::runtime_error &e) {
+		errmsg = " Error: ";
+		errmsg.append(e.what());
+	}
+	if (!ok) {
+		systemChatSend(player, "Failed to load world." + errmsg);
 		return;
 	}
 
@@ -854,6 +862,8 @@ CHATCMD_FUNC(Server::chat_Load)
 
 	if (m_script)
 		m_script->onWorldData(world.get());
+
+	systemChatSend(player, "Loaded!");
 }
 
 CHATCMD_FUNC(Server::chat_Save)

@@ -31,10 +31,12 @@ static float ZINDEX_SMILEY[2] = {
 	0, // god off
 	-3
 };
+static float ZINDEX_OFFSET_MY_PLAYER = -1;
+
 static float ZINDEX_LOOKUP[(int)BlockDrawType::Invalid + 1] = {
 	2, // Solid
 	2, // Action
-	-1, // Decoration
+	-2, // Decoration
 	5, // Background
 	0, // Invalid
 };
@@ -638,7 +640,7 @@ void SceneWorldRender::updatePlayerPositions(float dtime)
 			continue;
 
 		// Draw the current player in front of all others
-		const float offset = -1.0f * (player->peer_id == my_peer_id);
+		const float offset = ZINDEX_OFFSET_MY_PLAYER * (player->peer_id == my_peer_id);
 		core::vector3df nf_pos(
 			player->pos.X * 10,
 			player->pos.Y * -10,

@@ -215,8 +215,6 @@ void SceneGameplay::draw()
 		m_world_render->draw();
 	}
 
-	m_dirty_world = true; // refresh coins and whatever else
-
 	m_dirty_playerlist = true;
 
 	{
@@ -265,7 +263,6 @@ void SceneGameplay::step(float dtime)
 	m_soundplayer->step();
 
 	updatePlayerlist();
-	updateWorldStuff();
 	m_minimap->step(dtime);
 
 	if (m_chat_history_dirty) {
@@ -602,8 +599,6 @@ bool SceneGameplay::OnEvent(GameEvent &e)
 			m_dirty_playerlist = true;
 			break;
 		case E::C2G_MAP_UPDATE:
-			m_dirty_world = true;
-
 			if (m_minimap)
 				m_minimap->markDirty();
 			break;
@@ -876,21 +871,6 @@ video::ITexture *SceneGameplay::generateTexture(const std::string &text, u32 col
 static const char *PIANO_KEY_NAMES[] = { "C", "C'", "D", "D'", "E", "F", "F'", "G", "G'", "A", "A'", "B" };
 static_assert(sizeof(PIANO_KEY_NAMES) == 12 * sizeof(char *), "Invalid notes");
 
-bool SceneGameplay::pianoParamToNote(u8 param, std::string *note_out)
-{
-	// param = 0 : octave = 3, key = "C"
-	int octave = param / 12 + 3;
-	char buf[20];
-	snprintf(buf, sizeof(buf), "%s%d",
-		PIANO_KEY_NAMES[param % 12], octave
-	);
-
-	if (note_out)
-		note_out->assign(buf);
-
-	return true;
-}
-
 bool SceneGameplay::pianoNoteToParam(const char *note, u8 *param_out)
 {
 	enum class Token {
@@ -1030,22 +1010,6 @@ void SceneGameplay::updatePlayerlist()
 		e->setID(ID_LabelTitle);
 		e->setOverrideColor(Gui::COLOR_ON_BG);
 	}
-}
-
-
-void SceneGameplay::updateWorldStuff()
-{
-	if (!m_dirty_world)
-		return;
-	m_dirty_world = false;
-
-	auto world = m_gui->getClient()->getWorld();
-	if (!world)
-		return;
-
-	// Update coin count
-	auto blocks = world->getBlocks(Block::ID_COIN, nullptr);
-	m_total_coins = blocks.size();
 }
 
 

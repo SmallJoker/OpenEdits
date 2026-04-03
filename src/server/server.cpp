@@ -5,6 +5,7 @@
 #include "servermedia.h"
 #include "serverscript.h"
 #include "core/blockmanager.h"
+#include "core/eeo_converter.h"
 #include "core/logger.h"
 #include "core/network_enums.h"
 #include "core/packet.h"
@@ -449,7 +450,26 @@ void Server::stepWorldTick(World *world, float dtime)
 
 bool Server::loadWorldNoLock(World *world)
 {
-	return m_world_db && world && m_world_db->load(world);
+	if (!world)
+		return false;
+
+	// Load from database
+	if (m_world_db && m_world_db->load(world))
+		return true;
+
+	const std::string world_id = world->getMeta().id;
+
+	if (WorldMeta::idToType(world_id) == WorldMeta::Type::Readonly) {
+		std::string path = EEOconverter::findWorldPath(world_id);
+		if (path.empty())
+			return false;
+
+		EEOconverter conv(*world);
+		conv.fromFile(path);
+		world->getMeta().owner += " "; // HACK: prevent modifications
+		return true;
+	}
+	return false;
 }
 
 void Server::writeWorldData(Packet &out, const World &world, bool is_clear)
