@@ -199,17 +199,17 @@ int Script::l_register_event(lua_State *L)
 
 		using Type = BlockParams::Type;
 		switch ((Type)type) {
+			case Type::None:
 			case Type::STR16:
 			case Type::U8:
 			case Type::U8U8U8:
 				goto good;
-			case Type::None:
 			case Type::INVALID:
 				break;
 			// DO NOT USE default CASE
 		}
 
-		throw std::exception();
+		throw std::runtime_error("unknown type");
 	good:
 		logger_off(LL_DEBUG, "%s: id=%d, type=%d", __func__, event_id, type);
 		def.types.push_back((Type)type);

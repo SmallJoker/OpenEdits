@@ -154,6 +154,7 @@ env.include("teleporter.lua")
 env.include("hidden.lua")
 env.include("music.lua")
 env.include("owner.lua")
+env.include("spike.lua")
 
 
 ---------- Decoration tab

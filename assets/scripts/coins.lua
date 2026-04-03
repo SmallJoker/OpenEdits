@@ -74,10 +74,10 @@ local old_on_block_place = env.on_block_place
 env.on_block_place = function(x, y, fg, bg)
 	old_on_block_place(x, y, fg, bg)
 
-	local old_id, old_tile, _ = env.world.get_block(x, y)
 	if not fg then
 		return
 	end
+	local old_id, old_tile, _ = env.world.get_block(x, y)
 	if old_id == 100 then
 		local pd = reg.get_pwdata(reg.my_player_id)
 		if old_tile > 0 then

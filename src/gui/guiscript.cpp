@@ -212,7 +212,7 @@ guilayout::Element *GuiScript::openGUI(bid_t block_id, gui::IGUIElement *parent)
 	m_le_root = nullptr;
 
 	m_props = m_bmgr->getProps(block_id);
-	if (!m_props || m_props->ref_gui_def < 0)
+	if (!m_props || !m_props->have_gui)
 		return nullptr; // no GUI
 
 	lua_State *L = m_lua;

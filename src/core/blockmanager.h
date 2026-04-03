@@ -139,6 +139,7 @@ struct BlockProperties {
 	inline bool haveGetVisuals()       const { return ref_get_visuals >= 0; }
 
 	int ref_gui_def = -2;
+	bool have_gui = false;
 #endif
 };
 

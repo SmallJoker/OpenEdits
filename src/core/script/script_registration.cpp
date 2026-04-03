@@ -270,6 +270,12 @@ int Script::l_change_block(lua_State *L)
 #if BUILD_CLIENT
 	function_ref_from_field(L, 2, "get_visuals", props->ref_get_visuals);
 	function_ref_from_field(L, 2, "gui_def",     props->ref_gui_def, LUA_TTABLE);
+	if (props->ref_gui_def >= 0) {
+		lua_getfield(L, -1, "gui_def");
+		lua_getfield(L, -1, "type");
+		props->have_gui = !lua_isnil(L, -1);
+		lua_pop(L, 2);
+	}
 #endif
 	if (!BUILD_CLIENT) {
 		check_field_or_nil(L, 2, "get_visuals", LUA_TFUNCTION);

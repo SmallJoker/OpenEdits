@@ -114,20 +114,18 @@ bool SceneBlockSelector::toggleScriptElements(const SEvent &e)
 			return true; // just close
 	}
 
-	auto skin = m_gui->getSkin();
-	video::SColor color(skin->getColor(gui::EGDC_3D_FACE));
-
 	auto tab = m_gui->addTab(core::recti(), e.GUIEvent.Caller, ID_ScriptElements);
-	tab->setBackgroundColor(color);
-	tab->setDrawBackground(true);
-	tab->setNotClipped(true);
-
 	auto *le_root = m_guiscript->openGUI(m_selected.getId(), tab);
 	if (!le_root) {
 		// No GUI
 		tab->remove();
 		return false;
 	}
+
+	auto skin = m_gui->getSkin();
+	tab->setBackgroundColor(skin->getColor(gui::EGDC_3D_FACE));
+	tab->setDrawBackground(true);
+	tab->setNotClipped(true);
 
 	le_root->getMinSize(false, false);
 
