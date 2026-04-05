@@ -33,7 +33,7 @@ active player of the callback.
  * `get_id()` -> string
     * Server only
  * `select(id)` -> boolean
-    * Server only
+    * Server only. Returns `true` on success.
  * `get_size()` -> `width, height`
  * `get_block(x, y)` -> `fg, tile, bg`
     * `x, y` (optional): if set to `nil`, the current player position is used.
@@ -134,6 +134,13 @@ A `userdata` object.
        * `jump` (bool)
        * `dir_x`, `dir_y` (number)
        * Note: `dir_(x|y)` may have any value range.
+ * `:get_physics()` -> table
+    * Table fields:
+       * `ctrl_accel` (number): controls-induced player acceleration
+       * `jump_speed` (number): jump speed. Should be positive.
+ * `:set_physics(def)`
+    * `def` (table): see `:get_physics`
+    * For clients only. Distributed automatically.
  * `env.is_me()` -> bool
     * Client: Returns whether `env.player` is the controlled player.
     * Server: Returns `false`.

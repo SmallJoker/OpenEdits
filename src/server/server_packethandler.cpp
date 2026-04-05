@@ -534,18 +534,19 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 
 	// query database for existing world
 	auto world = getWorldNoLock(world_id);
-	if (!world)
+	if (!world) {
 		world = std::make_shared<World>(m_bmgr, world_id);
 
-	bool ok = false;
-	try {
-		ok = loadWorldNoLock(world.get());
-	} catch (std::runtime_error &e) {
-		sendMsg(peer_id, std::string("Cannot load this world: ") + e.what());
-		return;
+		bool ok = false;
+		try {
+			ok = loadWorldNoLock(world.get());
+		} catch (std::runtime_error &e) {
+			sendMsg(peer_id, std::string("Cannot load this world: ") + e.what());
+			return;
+		}
+		if (!ok)
+			world.reset(); // Not found
 	}
-	if (!ok)
-		world.reset(); // Not found
 
 	if (!world && !create_world) {
 		sendMsg(peer_id, "The specified world ID does not exist.");
@@ -620,7 +621,7 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 		out.writeStr16(player->name);
 		out.write<u8>(player->godmode);
 		out.write<u8>(player->smiley_id);
-		player->writePhysics(out);
+		player->writePhysics(out, true);
 	};
 
 	// Announce this player to all those who already joined

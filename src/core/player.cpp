@@ -46,8 +46,8 @@ void Player::setWorld(RefCnt<World> world)
 	// Avoid sending "godmode" events or similar
 	m_script = world ? m_script_backup : nullptr;
 
-	controls_enabled = true;
 	if (!keep_progress) {
+		m_physics = PlayerPhysics();
 		setPosition({0, 0});
 		setGodMode(false);
 	}
@@ -67,7 +67,8 @@ void Player::setScript(Script *script)
 
 void Player::readPhysics(Packet &pkt)
 {
-	ASSERT_FORCED(pkt.data_version != 0, "invalid proto ver");
+	const u16 proto_ver = pkt.data_version;
+	ASSERT_FORCED(proto_ver != 0, "invalid proto ver");
 
 	pkt.read(dtime_delay);
 
@@ -83,17 +84,26 @@ void Player::readPhysics(Packet &pkt)
 	pkt.read<u32>(m_prng_state);
 	(void)pkt.read<u8>(); // coins
 
-	u8 flags = pkt.read<u8>();
-	m_controls.jump = flags & 1;
+	const u8 flags = pkt.read<u8>();
+	m_controls.jump = flags & (1 << 0);
+	const bool have_physics = flags & (1 << 1);
 
 	pkt.read(m_controls.dir.X);
 	pkt.read(m_controls.dir.Y);
 
+	if (have_physics) {
+		// Get the server to broadcast these values a few times
+		m_physics.setModified();
+
+		pkt.read(m_physics.controls_accel);
+		pkt.read(m_physics.jump_speed);
+	}
 }
 
-void Player::writePhysics(Packet &pkt) const
+void Player::writePhysics(Packet &pkt, bool send_all) const
 {
-	ASSERT_FORCED(pkt.data_version != 0, "invalid proto ver");
+	const u16 proto_ver = pkt.data_version;
+	ASSERT_FORCED(proto_ver != 0, "invalid proto ver");
 
 	pkt.write(dtime_delay);
 
@@ -109,14 +119,22 @@ void Player::writePhysics(Packet &pkt) const
 	pkt.write<u32>(m_prng_state);
 	pkt.write<u8>(0); // coins
 
-	u8 flags = (m_controls.jump << 0);
-	// data_version < 9 used `jump = read<u8>()` !
-	pkt.write<u8>(pkt.data_version >= 9 ? flags : (flags & 1));
+	const bool have_physics = send_all || m_physics.resend_counter > 0;
+	pkt.write<u8>(0
+		| (m_controls.jump << 0)
+		| (have_physics << 1)
+	);
 
-	core::vector2df dir_normal = m_controls.dir;
-	dir_normal.normalize();
-	pkt.write(dir_normal.X);
-	pkt.write(dir_normal.Y);
+	pkt.write(m_controls.dir.X);
+	pkt.write(m_controls.dir.Y);
+
+	if (proto_ver >= 11 && have_physics) {
+		if (m_physics.resend_counter)
+			m_physics.resend_counter--;
+
+		pkt.write(m_physics.controls_accel);
+		pkt.write(m_physics.jump_speed);
+	}
 }
 
 bool Player::setControls(const PlayerControls &ctrl)
@@ -137,7 +155,6 @@ void Player::setPosition(core::vector2df newpos)
 
 	last_pos = blockpos_t(-1, -1);
 	did_jerk = true;
-	controls_enabled = true;
 }
 
 PlayerFlags Player::getFlags() const
@@ -307,12 +324,12 @@ void Player::stepInternal(float dtime)
 	last_pos = bp;
 
 	// Controls handling
-	if (controls_enabled && m_controls.jump && m_jump_cooldown <= 0) {
+	if (m_controls.jump && m_jump_cooldown <= 0 && m_physics.jump_speed != 0.0f) {
 		if (get_sign(m_collision.X * acc.X) == 1 && vel.X == 0) {
-			vel.X += m_collision.X * -Player::JUMP_SPEED;
+			vel.X += m_collision.X * -m_physics.jump_speed;
 			m_jump_cooldown = 0.2f;
 		} else if (get_sign(m_collision.Y * acc.Y) == 1 && vel.Y == 0) {
-			vel.Y += m_collision.Y * -Player::JUMP_SPEED;
+			vel.Y += m_collision.Y * -m_physics.jump_speed;
 			m_jump_cooldown = 0.2f;
 		}
 	}
@@ -330,11 +347,11 @@ void Player::stepInternal(float dtime)
 	}
 
 	// Apply direction
-	if (controls_enabled) {
+	{
 		if (acc.X == 0)
-			acc.X += dir_normal.X * Player::CONTROLS_ACCEL;
+			acc.X += dir_normal.X * m_physics.controls_accel;
 		if (acc.Y == 0)
-			acc.Y += dir_normal.Y * Player::CONTROLS_ACCEL;
+			acc.Y += dir_normal.Y * m_physics.controls_accel;
 		//printf("ctrl x=%g,y=%g\n", m_controls.dir.X, m_controls.dir.Y);
 	}
 
@@ -342,6 +359,7 @@ void Player::stepInternal(float dtime)
 		// Stokes friction to stop movement after releasing keys
 		const float viscosity = props ? props->viscosity : 1.0f;
 		const float coeff_s = godmode ? 1.5f : 6.0f * viscosity; // Stokes
+		// TODO: Too high viscosity causes unwanted inversion of movement!
 		if (std::fabs(acc.X) < 0.01f && !dir_normal.X)
 			acc.X += -coeff_s * vel.X;
 		if (std::fabs(acc.Y) < 0.01f && !dir_normal.Y)
@@ -403,7 +421,7 @@ bool Player::stepCollisions(float dtime)
 		bp = bp2;
 	} else {
 		// default step
-		acc.Y += Player::GRAVITY_NORMAL;
+		acc.Y += Player::GRAVITY_DEFAULT;
 	}
 
 	// Collide with direct neighbours, outside afterwards.
@@ -510,10 +528,8 @@ ScriptEventManager *Player::getSEMgr() const
 void Player::setGodMode(bool value)
 {
 	godmode = value;
-	if (value) {
-		controls_enabled = true;
-	} else {
-		// Trigger the current block once (e.g. spikes)
+	if (!value) {
+		// Force position resend, re-run callbacks
 		last_pos = blockpos_t(-1, -1);
 	}
 

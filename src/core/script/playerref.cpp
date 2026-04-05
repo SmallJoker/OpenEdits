@@ -52,6 +52,8 @@ void PlayerRef::doRegister(lua_State *L)
 		{"get_acc", get_acc},
 		{"set_acc", set_acc},
 		{"get_controls", get_controls},
+		{"get_physics", get_physics},
+		{"set_physics", set_physics},
 		{nullptr, nullptr}
 	};
 
@@ -313,4 +315,50 @@ int PlayerRef::get_controls(lua_State *L)
 		lua_setfield(L, -2, "dir_y");
 	}
 	return 1;
+}
+
+int PlayerRef::get_physics(lua_State *L)
+{
+	Player *player = toPlayerRef(L, 1)->m_player;
+	if (!player)
+		return 0;
+
+	const PlayerPhysics &phys = player->getPhysicsRef();
+
+	lua_newtable(L);
+	lua_pushnumber(L, phys.controls_accel);
+	lua_setfield(L, -2, "ctrl_accel");
+	lua_pushnumber(L, phys.jump_speed);
+	lua_setfield(L, -2, "jump_speed");
+
+	return 1;
+}
+
+int PlayerRef::set_physics(lua_State *L)
+{
+	MESSY_CPP_EXCEPTIONS_START
+	Player *player = toPlayerRef(L, 1)->m_player;
+	if (!player)
+		return 0;
+
+	Script *script = player->getScript();
+	if (!script || script->getScriptType() != Script::ST_CLIENT)
+		luaL_error(L, "Client-only");
+
+	PlayerPhysics phys = player->getPhysicsRef();
+
+	lua_getfield(L, 2, "ctrl_accel");
+	if (!lua_isnil(L, -1))
+		phys.controls_accel = luaL_checknumber(L, -1);
+	lua_pop(L, 1);
+
+	lua_getfield(L, 2, "jump_speed");
+	if (!lua_isnil(L, -1))
+		phys.jump_speed = luaL_checknumber(L, -1);
+	lua_pop(L, 1);
+
+	phys.setModified();
+	player->getPhysicsRef() = phys;
+	return 0;
+	MESSY_CPP_EXCEPTIONS_END
 }

@@ -352,16 +352,16 @@ std::string Client::getDebugInfo()
 
 	auto player = getMyPlayer();
 	if (player.ptr() && player->getWorld()) {
+		PlayerPhysics phys = player->getPhysicsRef();
 		snprintf(buf, sizeof(buf),
 			"Pos: (%.1f, %.1f)\n"
-			"Vel: (%.1f, %.1f)\n"
-			"Acc: (%.0f, %.0f)\n"
-			"Events: %s%s%s\n",
+			"Vel: (%.1f, %.1f), Jump: %.1f\n"
+			"Acc: (%.0f, %.0f), Ctrl: %.1f\n"
+			"Events: %s%s\n",
 			player->pos.X, player->pos.Y,
-			player->vel.X, player->vel.Y,
-			player->acc.X, player->acc.Y,
+			player->vel.X, player->vel.Y, phys.jump_speed,
+			player->acc.X, player->acc.Y, phys.controls_accel,
 			(player->did_jerk ? "jerk " : ""),
-			(player->controls_enabled ? "" : "locked "),
 			(player->godmode ? "god " : "")
 		);
 		str.append(buf);

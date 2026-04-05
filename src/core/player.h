@@ -14,6 +14,17 @@ class Script;
 class ScriptEventManager;
 class World;
 
+struct PlayerPhysics {
+	float controls_accel = 75.0f;
+	float jump_speed = 30.0f;
+
+	void setModified()
+	{ resend_counter = 3; }
+
+	/// Movement data is sent unreliably, thus send 3 times
+	mutable u8 resend_counter = 3;
+};
+
 struct PlayerControls {
 	bool operator ==(const PlayerControls &o) const
 	{
@@ -34,9 +45,12 @@ public:
 	void setScript(Script *script);
 
 	void readPhysics(Packet &pkt);
-	void writePhysics(Packet &pkt) const;
+	/// `send_all`: To be used in Join packets
+	void writePhysics(Packet &pkt, bool send_all = false) const;
 
-	PlayerControls getControls() { return m_controls; }
+	PlayerPhysics &getPhysicsRef() { return m_physics; }
+
+	PlayerControls getControls() const { return m_controls; }
 	// True: outdated controls -> send update to server
 	bool setControls(const PlayerControls &ctrl);
 
@@ -72,13 +86,10 @@ public:
 
 	void setGodMode(bool value);
 	bool godmode = false;
-	bool controls_enabled = true;
 
 	u8 smiley_id = 0;
 
-	static constexpr float GRAVITY_NORMAL = 100.0f;
-	static constexpr float CONTROLS_ACCEL = 75.0f;
-	static constexpr float JUMP_SPEED = 30.0f;
+	static constexpr float GRAVITY_DEFAULT = 100.0f;
 
 protected:
 	Player(peer_t peer_id);
@@ -96,6 +107,7 @@ protected:
 	Script *m_script_backup = nullptr;
 
 	PlayerControls m_controls;
+	PlayerPhysics m_physics;
 	core::vector2d<s8> m_collision;
 
 	u32 m_prng_state;

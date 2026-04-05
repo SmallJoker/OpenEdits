@@ -3,17 +3,17 @@
 
 static BP_STEP_CALLBACK(step_arrow_left)
 {
-	player.acc.X = -Player::GRAVITY_NORMAL;
+	player.acc.X = -Player::GRAVITY_DEFAULT;
 }
 
 static BP_STEP_CALLBACK(step_arrow_up)
 {
-	player.acc.Y = -Player::GRAVITY_NORMAL;
+	player.acc.Y = -Player::GRAVITY_DEFAULT;
 }
 
 static BP_STEP_CALLBACK(step_arrow_right)
 {
-	player.acc.X = +Player::GRAVITY_NORMAL;
+	player.acc.X = +Player::GRAVITY_DEFAULT;
 }
 
 static BP_STEP_CALLBACK(step_arrow_none)
