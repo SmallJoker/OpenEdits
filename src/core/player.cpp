@@ -129,9 +129,6 @@ void Player::writePhysics(Packet &pkt, bool send_all) const
 	pkt.write(m_controls.dir.Y);
 
 	if (proto_ver >= 11 && have_physics) {
-		if (m_physics.resend_counter)
-			m_physics.resend_counter--;
-
 		pkt.write(m_physics.controls_accel);
 		pkt.write(m_physics.jump_speed);
 	}
@@ -467,13 +464,28 @@ void Player::collideWith(float dtime, int x, int y)
 	core::rectf player(0, 0, 1, 1);
 	core::rectf block(0, 0, 1, 1);
 	core::vector2df diff(x - pos.X, y - pos.Y);
+
+	if (0 && diff.X && diff.Y) {
+		// Check whether (x, y) are in movement dir
+		blockpos_t bp2 = getCurrentBlockPos();
+
+		if (m_collision.Y == 0 && bp2.Y - get_sign(vel.Y) == y) {
+			int dir = get_sign(m_controls.dir.X);
+			bp2.X += dir;
+
+			bool ok = m_world->getBlock(bp2, &b);
+			if (ok && b.id == 0) {
+				// can walk wideways -> report a Y collision
+				// TODO: prohibit jumping
+				diff.X -= dir;
+			}
+		} // else: same for X
+	}
 	block += diff;
 
 	player.clipAgainst(block);
 	if (player.getArea() < 0.001f)
 		return;
-
-	//printf("collision x=%d,y=%d\n", x, y);
 
 	const bool is_x = player.getWidth() < player.getHeight();
 

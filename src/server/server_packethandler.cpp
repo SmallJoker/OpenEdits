@@ -733,6 +733,8 @@ void Server::pkt_Move(peer_t peer_id, Packet &pkt)
 		out.write(peer_id);
 		player->writePhysics(out);
 	});
+
+	player->getPhysicsRef().sent();
 }
 
 void Server::pkt_Chat(peer_t peer_id, Packet &pkt)

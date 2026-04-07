@@ -445,9 +445,11 @@ void Client::sendPlayerMove()
 	if (!player)
 		return;
 
-	Packet pkt = createPacket(Packet2Server::Move);
 	player->step(0.0001f); // update controls
+
+	Packet pkt = createPacket(Packet2Server::Move);
 	player->writePhysics(pkt);
+	player->getPhysicsRef().sent();
 	m_con->send(0, 1 | Connection::FLAG_UNRELIABLE, pkt);
 
 	player->last_sent_pos = player->last_pos;

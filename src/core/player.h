@@ -21,8 +21,15 @@ struct PlayerPhysics {
 	void setModified()
 	{ resend_counter = 3; }
 
+	/// To call after sending to all peers
+	void sent()
+	{
+		if (resend_counter)
+			resend_counter--;
+	}
+
 	/// Movement data is sent unreliably, thus send 3 times
-	mutable u8 resend_counter = 3;
+	u8 resend_counter = 3;
 };
 
 struct PlayerControls {
@@ -75,7 +82,7 @@ public:
 	bool did_jerk = false; //< abrupt position changes. e.g. teleporter
 	bool inside_player_step = false; //< gatekeeping for set vel/acc/pos
 
-	inline blockpos_t getCurrentBlockPos()
+	inline blockpos_t getCurrentBlockPos() const
 	{ return blockpos_t(pos.X + 0.5f, pos.Y + 0.5f); }
 
 	/// Returns `nullptr` when not playing in a world.
