@@ -83,13 +83,13 @@ private:
 
 	PARAM_CONV_IMPORT_REG(importTeleporter)
 	{
-		params.teleporter.rotation = val_I[0];
+		params.teleporter.rotation = (val_I[0] + 1) % 4;
 		params.teleporter.id = val_I[1];
 		params.teleporter.dst_id = val_I[2];
 	}
 	PARAM_CONV_EXPORT_REG(exportTeleporter)
 	{
-		val_I[0] = params.teleporter.rotation;
+		val_I[0] = (params.teleporter.rotation + 3) % 4;
 		val_I[1] = params.teleporter.id;
 		val_I[2] = params.teleporter.dst_id;
 	}
@@ -185,6 +185,7 @@ static void fill_block_translations()
 	};
 	enum : bid_t {
 		SOLID = 9,
+		ONEWAY = 62,
 
 		BG_GREY = 500,
 		BG_BLUE,
@@ -204,10 +205,15 @@ static void fill_block_translations()
 	set_range(SOLID, 70, 76); // minerals
 	set_range(SOLID, 78, 82); // xmas11
 	set_range(SOLID, 84, 88); // scifi
+	set_range(ONEWAY, 89, 91); // scifi
+
 	BLOCK_ID_LUT[92] = SOLID; // prison
 	set_range(SOLID, 99, 104); // cowboy
+	set_range(ONEWAY, 122, 127); // cowboy
+	set_range(SOLID, 128, 135); // plastic
+	BLOCK_ID_LUT[136] = 50; // secret
 	set_range(13, 137, 142); // sand -> yellow basic
-	set_range(SOLID, 144, 153); // industrial
+	set_range(SOLID, 143, 153); // cloud + industrial
 	set_range(SOLID, 158, 163); // medieval
 	set_range(12, 166, 171); // orange pipes -> red basic
 	set_range(SOLID, 172, 176); // space
@@ -219,7 +225,7 @@ static void fill_block_translations()
 
 	set_range(SOLID, 1008, 1010); // gates (active)
 	set_range(14, 1030, 1034); // nature -> green basic
-	set_range(SOLID, 1035, 1040); // domestic)
+	set_range(SOLID, 1035, 1040); // domestic
 	set_range(SOLID, 1047, 1049); // halloween15
 	set_range(13, 1065, 1069); // gold -> yellow basic
 	set_range(SOLID, 1059, 1063); // arctic
@@ -516,8 +522,8 @@ void EEOconverter::fromFile(const std::string &filename_)
 				goto no_import;
 		}
 
-		if (blockmgr->getProps(block_id)) {
-			params_in.importParams(block_id, bu.params);
+		if (blockmgr->getProps(bu.getId())) {
+			params_in.importParams(bu.getId(), bu.params);
 		}
 no_import:
 
