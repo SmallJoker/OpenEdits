@@ -31,7 +31,7 @@ void sleep_ms(long delay);
 
 // ------------------ Numeric ------------------
 
-inline float get_sign(float f)
+inline int get_sign(float f)
 {
 	if (f > 0.0001f)
 		return 1;

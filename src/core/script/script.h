@@ -86,6 +86,7 @@ public:
 
 	void onStep(double abstime);
 
+	/// Falls back to id=0 if `props` has no intersect callback
 	void onIntersect(const BlockProperties *props);
 	void onIntersectOnce(blockpos_t pos, const BlockProperties *props);
 

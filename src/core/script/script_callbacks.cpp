@@ -60,6 +60,8 @@ void Script::onIntersect(const BlockProperties *props)
 		// no callback registered: fall-back to air
 		props = m_bmgr->getProps(0);
 	}
+	if (!props)
+		return;
 
 	m_last_block_id = props->id;
 	callFunction(props->ref_on_intersect, 0, "on_intersect", 0, true);

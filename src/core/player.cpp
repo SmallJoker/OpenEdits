@@ -201,7 +201,6 @@ void Player::step(float dtime)
 	if (!m_world || dtime <= 0)
 		return;
 
-	m_collision = core::vector2d<s8>(0, 0);
 	if (m_jump_cooldown > 0)
 		m_jump_cooldown -= dtime;
 	did_jerk = false;
@@ -260,6 +259,8 @@ void Player::stepInternal(float dtime)
 		- Sliding into a 1 block gap does not work
 			-> Snap feature?
 	*/
+
+	m_collision = core::vector2d<s8>(0, 0);
 
 	pos += ((0.5f * acc * dtime) + vel) * dtime;
 	vel += acc * dtime;
@@ -400,25 +401,17 @@ bool Player::stepCollisions(float dtime)
 
 	auto props = m_world->getBlockMgr()->getProps(block.id);
 	// single block effect
-	bool handled = false;
-	if (props) {
-		if (props->haveOnIntersect()) {
-			m_script->onIntersect(props);
-			handled = true;
-		} else if (props->step) {
-			props->step(*this, bp);
-			handled = true;
-		}
+	if (props && props->step) {
+		props->step(*this, bp);
+	} else {
+		m_script->onIntersect(props);
 	}
-	if (handled) {
+	{
 		// Position changes (e.g. portal)
 		blockpos_t bp2 = getCurrentBlockPos();
 		if (bp != bp2)
 			did_jerk = true;
 		bp = bp2;
-	} else {
-		// default step
-		acc.Y += Player::GRAVITY_DEFAULT;
 	}
 
 	// Collide with direct neighbours, outside afterwards.
@@ -433,6 +426,15 @@ bool Player::stepCollisions(float dtime)
 		{ -1,  1 },
 		{ -1, -1 },
 	};
+	/*
+		"X" is the current player position
+		+-------> +x
+		| 7 1 5
+		| 3 X 2
+		| 6 0 4
+		v
+		+y
+	*/
 
 	for (const auto dir : SCAN_DIR) {
 		int bx = bp.X + dir.X,
@@ -464,30 +466,39 @@ void Player::collideWith(float dtime, int x, int y)
 	core::rectf player(0, 0, 1, 1);
 	core::rectf block(0, 0, 1, 1);
 	core::vector2df diff(x - pos.X, y - pos.Y);
-
-	if (0 && diff.X && diff.Y) {
-		// Check whether (x, y) are in movement dir
-		blockpos_t bp2 = getCurrentBlockPos();
-
-		if (m_collision.Y == 0 && bp2.Y - get_sign(vel.Y) == y) {
-			int dir = get_sign(m_controls.dir.X);
-			bp2.X += dir;
-
-			bool ok = m_world->getBlock(bp2, &b);
-			if (ok && b.id == 0) {
-				// can walk wideways -> report a Y collision
-				// TODO: prohibit jumping
-				diff.X -= dir;
-			}
-		} // else: same for X
-	}
 	block += diff;
 
 	player.clipAgainst(block);
 	if (player.getArea() < 0.001f)
 		return;
 
-	const bool is_x = player.getWidth() < player.getHeight();
+	float time_x = 99.0f,
+		time_y = 99.0f;
+
+	{
+		const float
+			v_abs_x = std::abs(vel.X),
+			v_abs_y = std::abs(vel.Y);
+		// Prevent division by near-zero
+		if (v_abs_x > 0.125f)
+			time_x = player.getWidth() / v_abs_x;
+		if (v_abs_y > 0.125f)
+			time_y = player.getHeight() / v_abs_y;
+	}
+
+	const bool is_x = time_x < time_y;
+
+	// Do not collide when going away from the intersecting face
+	int v_sign;
+	if (is_x) {
+		v_sign = get_sign(vel.X);
+		if (v_sign == -get_sign(diff.X))
+			return;
+	} else {
+		v_sign = get_sign(vel.Y);
+		if (v_sign == -get_sign(diff.Y))
+			return;
+	}
 
 	using CT = BlockProperties::CollisionType;
 	CT type = CT::Position; // default for BlockDrawType::Solid
@@ -502,16 +513,19 @@ void Player::collideWith(float dtime, int x, int y)
 
 	switch (type) {
 		case CT::Position:
+			if (0) {
+				printf("collide @ (%d %d), x?=%d, t=(%.2f, %.2f), v=(%.0f, %.0f)\n",
+					x, y, (int)is_x, time_x, time_y, vel.X, vel.Y);
+			}
+
 			if (is_x) {
 				pos.X = std::roundf(pos.X);
-				int sign = get_sign(vel.X);
-				if (sign)
-					m_collision.X = sign;
+				if (v_sign)
+					m_collision.X = v_sign;
 			} else {
 				pos.Y = std::roundf(pos.Y);
-				int sign = get_sign(vel.Y);
-				if (sign)
-					m_collision.Y = sign;
+				if (v_sign)
+					m_collision.Y = v_sign;
 			}
 
 			// fall through

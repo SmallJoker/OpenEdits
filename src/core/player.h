@@ -103,6 +103,7 @@ protected:
 
 	void stepInternal(float dtime);
 	bool stepCollisions(float dtime);
+	/// Performs a block collision
 	void collideWith(float dtime, int x, int y);
 
 	// Currently active world (nullptr if lobby)
