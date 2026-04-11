@@ -556,12 +556,10 @@ bool SceneWorldRender::assignBlockTexture(const BlockTile &tile, scene::ISceneNo
 				mat.MaterialType = video::EMT_TRANSPARENT_ALPHA_CHANNEL_REF;
 			break;
 		case BlockDrawType::Action:
+		case BlockDrawType::Decoration:
 			mat.MaterialType = tile.have_alpha
 				? video::EMT_TRANSPARENT_ALPHA_CHANNEL
 				: video::EMT_TRANSPARENT_ALPHA_CHANNEL_REF;
-			break;
-		case BlockDrawType::Decoration:
-			mat.MaterialType = video::EMT_TRANSPARENT_ALPHA_CHANNEL_REF;
 			break;
 		default: break;
 	}

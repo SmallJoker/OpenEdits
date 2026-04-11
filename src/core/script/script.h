@@ -165,6 +165,7 @@ protected:
 	void pushCurrentPlayerRef();
 	inline Player *getCurrentPlayer() const { return m_player ? *m_player : nullptr; }
 
+	static int l_world_find_player(lua_State *L);
 	static int l_world_get_players(lua_State *L);
 
 	Player **m_player = nullptr; //< this sits inside a PlayerRef

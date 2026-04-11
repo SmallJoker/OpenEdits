@@ -3,6 +3,7 @@ local player = env.player
 local get_pwdata = reg.get_pwdata
 local dprint = false and print or function() end
 
+local ID_COIN = 100
 local ID_COINDOOR = 43
 local ID_COINGATE = 165
 
@@ -27,10 +28,10 @@ local function update_hud(pw_data)
 	local text = "Coins: " .. pw_data.coins
 	local _, counts = world.get_blocks_in_range(
 		{instances = false, counts = true},
-		{100}, env.world.PRT_ENTIRE_WORLD
+		{ID_COIN}, env.world.PRT_ENTIRE_WORLD
 	)
 	if counts then
-		text = text .. " / " .. counts[100]
+		text = text .. " / " .. counts[ID_COIN]
 	end
 
 	pw_data.coins_hud = gui.set_hud(pw_data.coins_hud, {
@@ -48,7 +49,7 @@ local function update_hud(pw_data)
 end
 
 local EV_COINS
-EV_COINS = env.register_event(100 + env.SEF_HAVE_ACTOR, 0, env.PARAMS_TYPE_U8,
+EV_COINS = env.register_event(ID_COIN + env.SEF_HAVE_ACTOR, 0, env.PARAMS_TYPE_U8,
 	function(count)
 		local pw_data = get_pwdata(player)
 		if not env.is_me() then
@@ -70,15 +71,10 @@ EV_COINS = env.register_event(100 + env.SEF_HAVE_ACTOR, 0, env.PARAMS_TYPE_U8,
 
 -- TODO: send EV_COINS to newly joined players
 
-local old_on_block_place = env.on_block_place
-env.on_block_place = function(x, y, fg, bg)
-	old_on_block_place(x, y, fg, bg)
-
-	if not fg then
-		return
-	end
-	local old_id, old_tile, _ = env.world.get_block(x, y)
-	if old_id == 100 then
+reg.register_on_block_place({
+	check_prev = true,
+	fg = ID_COIN,
+	action = function(x, y, old_tile)
 		local pd = reg.get_pwdata(reg.my_player_id)
 		if old_tile > 0 then
 			pd.coins = math.max(pd.coins - 1, 0)
@@ -87,7 +83,7 @@ env.on_block_place = function(x, y, fg, bg)
 
 		hud_dirty = true
 	end
-end
+})
 
 local old_on_step = env.on_step
 env.on_step = function(dtime)
@@ -100,7 +96,7 @@ end
 
 env.on_world_data = function()
 	for _, p in ipairs(env.world.get_players()) do
-		print("reset for " .. p:get_name())
+		dprint("reset for " .. p:get_name())
 		get_pwdata(p).coins = 0
 	end
 	update_hud()
@@ -171,7 +167,7 @@ local blocks_coins = {
 			pd.coins = pd.coins + 1
 			env.send_event(EV_COINS, pd.coins)
 
-			if gui.have_gui then
+			if env.have_gui then
 				gui.play_sound("coin.mp3")
 				hud_dirty = true
 			end

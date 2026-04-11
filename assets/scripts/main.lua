@@ -3,33 +3,53 @@ assert(env.API_VERSION >= 5, "Script implementation is too old.")
 env.include("constants.lua")
 env.include("smileys.lua")
 
--------------- Client & server script
+-------------- Utils: Callbacks
 
 env.on_step = function(abstime) end
 env.on_player_event = function(event, arg) end
-env.on_block_place = function(x, y, fg, bg) end
 
 --[[
-To implement:
-scriptevent_handler_func = function()
-	player:set_physics({
-		default_acceleration = num,       -- when no "on_collide" is defined
-		acceleration_multiplicator = num, -- should affect the final acceleration
-		control_acceleration = num,
-		jump_speed = num
-	})
-end
+EE-like:
+	GRAVITY_ACCEL = 200,
+	BOOST_V = 100
+	env.player:set_physics({ jump_speed = 42 })
 ]]
 
 reg = {
-	GRAVITY_ACCEL = 100 -- m/s²
+	GRAVITY_ACCEL = 100, -- m/s²
+	-- Per-world player data. Created on join, removed on leave
+	_player_data = {},
 }
 
--- Per-world player data. Created on join, removed on leave
-reg._player_data = {}
+do
+	local callbacks = {}
+	env.on_block_place = function(x, y, fg, bg)
+		local old_fg, old_tile, old_bg = env.world.get_block(x, y)
+		for _, def in ipairs(callbacks) do
+			if fg and def.fg == (def.check_prev and old_fg or fg) then
+				def.action(x, y, (def.check_prev and old_tile or nil))
+			end
+			if bg and def.bg == (def.check_prev and old_bg or bg) then
+				def.action(x, y)
+			end
+		end
+	end
+
+	reg.register_on_block_place = function(def)
+		assert(type(def.check_prev) == "boolean") -- check previous id?
+		assert(def.fg or def.bg)
+		assert(type(def.action) == "function") -- function(x, y, [tile])
+		callbacks[#callbacks + 1] = def
+	end
+end
+
 reg.get_pwdata = function(player)
 	return reg._player_data[type(player) == "userdata" and player:hash() or player]
 end
+
+
+-------------- Utils: Registration
+
 
 -- Block registration utility functions
 function reg.table_to_pack_blocks(block_defs)

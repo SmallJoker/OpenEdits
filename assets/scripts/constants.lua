@@ -53,7 +53,8 @@ end
 -- "env.gui": backwards compatibility
 gui = gui or env.gui or {}
 -- Attempt to avoid the pitfall of using the check "gui ~= nil"
-gui.have_gui = (gui.play_sound ~= nil)
+env.have_gui = (gui.play_sound ~= nil)
+env.is_client = env.world.update_tiles ~= nil
 
 do
 	-- hudelement.h / HudElement::Type

@@ -2,6 +2,7 @@
 #include "script_utils.h"
 #include "core/environment.h"
 #include "core/player.h"
+#include "core/utils.h" // strcmpi
 #include "playerref.h"
 
 namespace {
@@ -55,6 +56,41 @@ void Script::onPlayerEventB(const char *event, Player *player, bool arg)
 	lua_pushstring(m_lua, event);
 	lua_pushboolean(m_lua, arg);
 	callFunction(m_ref_on_player_event, 0, "on_player_event", 2);
+}
+
+int Script::l_world_find_player(lua_State *L)
+{
+	const char *player_name = nullptr;
+	peer_t peer_id = 0;
+	if (lua_isnumber(L, 1))
+		peer_id = luaL_checkint(L, 1);
+	else if (lua_isstring(L, 1))
+		player_name = luaL_checkstring(L, 1);
+	else
+		luaL_error(L, "unknown criteria");
+
+	Script *script = (Script *)ScriptUtils::get_script(L);
+	Environment *env = script->getEnv();
+
+	if (!env)
+		luaL_error(L, "no env");
+
+	auto players = env->getPlayersNoLock(script->m_world);
+
+	for (Player *p : players) {
+		if (player_name) {
+			if (strcmpi(p->name, player_name))
+				continue;
+		} else {
+			if (p->peer_id != peer_id)
+				continue;
+		}
+		PlayerRef::push(L, p);
+		return 1;
+	}
+
+	lua_pushnil(L);
+	return 1;
 }
 
 int Script::l_world_get_players(lua_State *L)

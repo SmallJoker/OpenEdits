@@ -3,7 +3,7 @@ local get_pwdata = reg.get_pwdata
 local ID_CHECKPOINT = 360
 local ID_SPIKES = 361
 
-
+-- Client --> Server
 local EV_CHECKPOINT
 EV_CHECKPOINT = env.register_event(ID_CHECKPOINT, 0, env.PARAMS_TYPE_STR16,
 	function(str)
@@ -19,6 +19,41 @@ EV_CHECKPOINT = env.register_event(ID_CHECKPOINT, 0, env.PARAMS_TYPE_STR16,
 	end
 )
 
+local delay_killed = {} -- [player] = { time = <>, world = <>, pos = {<>} }
+local delay_timestamp = 0
+local world = env.world
+
+-- Delayed turn off event
+if env.server then
+	local old_on_step = env.on_step
+	env.on_step = function(abstime)
+		old_on_step(abstime)
+
+		delay_timestamp = abstime
+		for player_id, def in pairs(delay_killed) do
+			repeat
+				if def.time > abstime then
+					break -- later
+				end
+
+				world.select(def.world)
+				local player = world.find_player(player_id)
+				if player then
+					if def.pos then
+						player:send_teleport(def.pos[1], def.pos[2])
+					else
+						reg.respawn_player(player)
+					end
+				end
+
+				delay_killed[player_id] = nil
+			until true
+		end
+	end
+end
+
+
+-- Client --> Server
 local EV_KILLED
 EV_KILLED = env.register_event(ID_SPIKES, 0, env.PARAMS_TYPE_U8,
 	function()
@@ -26,37 +61,33 @@ EV_KILLED = env.register_event(ID_SPIKES, 0, env.PARAMS_TYPE_U8,
 		if pw_data.godmode then
 			return
 		end
-
-		local pos = pw_data.checkpoint
-		-- TODO: delay teleport by a few seconds
-		if pos then
-			env.player:send_teleport(pos[1], pos[2])
-		else
-			reg.respawn_player(env.player)
+		local player_id = env.player:hash()
+		if delay_killed[player_id] then
+			return
 		end
+
+		delay_killed[player_id] = {
+			time = delay_timestamp + 2,
+			world = env.world.get_id(),
+			pos = pw_data.checkpoint
+		}
 	end
 )
 
-local old_on_block_place = env.on_block_place
-env.on_block_place = function(x, y, fg, bg)
-	old_on_block_place(x, y, fg, bg)
-
-	if not fg then
-		return
-	end
-	local old_id, old_tile, _ = env.world.get_block(x, y)
-	if old_id ~= ID_CHECKPOINT then
-		return
-	end
-
-	for _, p in ipairs(env.world.get_players()) do
-		local pw_data = get_pwdata(p)
-		local pos = pw_data.checkpoint
-		if pos and pos[1] == x and pos[2] == y then
-			pw_data.checkpoint = nil
+reg.register_on_block_place({
+	check_prev = true,
+	fg = ID_CHECKPOINT,
+	action = function(x, y)
+		-- Checkpoint erased
+		for _, p in ipairs(env.world.get_players()) do
+			local pw_data = get_pwdata(p)
+			local pos = pw_data.checkpoint
+			if pos and pos[1] == x and pos[2] == y then
+				pw_data.checkpoint = nil
+			end
 		end
 	end
-end
+})
 
 -- Clear any checkpoint data (server (N) and client (1))
 local old_on_world_data = env.on_world_data
@@ -91,12 +122,18 @@ local function set_my_checkpoint(px, py)
 	pw_data.checkpoint = px and { px, py }
 end
 
+
+if env.API_VERSION < 8 then
+	return -- FOXME: This is wrong. client and server must have the same events and blocks!
+end
+
+
 local blocks_def = {
 	{
 		id = ID_CHECKPOINT,
 		tiles = {
-			{ type = env.DRAW_TYPE_DECURATION },
-			{ type = env.DRAW_TYPE_ACTION },
+			{ type = env.DRAW_TYPE_DECURATION, alpha = true },
+			{ type = env.DRAW_TYPE_ACTION, alpha = true },
 		},
 		on_intersect_once = function(tile)
 			if tile > 0 or not env.is_me() then
@@ -109,9 +146,6 @@ local blocks_def = {
 		id = ID_SPIKES,
 		params = env.PARAMS_TYPE_U8,
 		gui_def = {
-			-- v1.6.0 backwards compat
-			type = gui.ELMT_TEXT, text = "?",
-
 			values = { rot = 0 },
 			from_block = function(values, rot)
 				values.rot = rot
@@ -136,6 +170,7 @@ local blocks_def = {
 			end
 		end,
 		on_intersect = function()
+			env.player:set_acc(0, 0)
 			local vx, vy = env.player:get_vel()
 			env.player:set_vel(vx * 0.1, vy * 0.1)
 		end,

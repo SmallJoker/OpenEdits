@@ -73,8 +73,7 @@ int ServerScript::l_world_select(lua_State *L)
 	const char *id = luaL_checkstring(L, 1);
 
 	auto world = script->m_server->getWorldNoLock(id);
-	if (world)
-		script->setWorld(world.get());
+	script->setWorld(world.get()); // can be nullptr
 
 	lua_pushboolean(L, !!world);
 	return 1;
@@ -165,6 +164,10 @@ int ServerScript::l_run_chatcmd(lua_State *L)
 {
 	MESSY_CPP_EXCEPTIONS_START
 
+	ServerScript *script = (ServerScript *)get_script(L);
+	// Get now as it may change during execution!
+	Player *player = script->getCurrentPlayer();
+
 	lua_call(L, 1, 2);
 
 	bool success = true;
@@ -180,8 +183,7 @@ int ServerScript::l_run_chatcmd(lua_State *L)
 	if (!success)
 		reply = "ERR: " + reply;
 
-	ServerScript *script = (ServerScript *)get_script(L);
-	script->m_server->systemChatSend(script->getCurrentPlayer(), reply);
+	script->m_server->systemChatSend(player, reply);
 
 	return 0;
 	MESSY_CPP_EXCEPTIONS_END

@@ -71,6 +71,8 @@ active player of the callback.
     * `PositionRange` (optional): defines which blocks that are affected
         * arg 1: one of `env.world.PRT_*`. May be combined with `env.world.PROP_*`.
         * arg 2+: see `script_environment.cpp` / `Script::get_position_range`
+ * `find_player(hash or name)` -> (variable)
+    * Returns `PlayerRef` if found, `nil` otherwise.
  * `get_players()`
     * Returns a table of `PlayerRef` (ipairs).
 
@@ -291,7 +293,7 @@ Pack Definition: (table)
 |---------------|---------------|---------------|--------------|-------|
 | `*SOLID`      | Yes           | Opaque        | 1 bit        |  2    |
 | `*ACTION`     | No            | 1 bit         | 8 bits       |  2    |
-| `*DECORATION` | No            | 1 bit         | N/A          | -1    |
+| `*DECORATION` | No            | 1 bit         | 8 bits       | -1    |
 | `*BACKGROUND` | Never         | Opaque        | N/A          |  5    |
 
 Notes:
