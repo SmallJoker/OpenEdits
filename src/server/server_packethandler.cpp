@@ -336,6 +336,17 @@ void Server::pkt_Auth(peer_t peer_id, Packet &pkt)
 		out.write(Packet2Client::Auth);
 		out.writeStr16("pass_set");
 		m_con->send(peer_id, 0, out);
+
+		// Kick other players
+		FOR_PLAYERS(const, p2, m_players) {
+			if (p2 == player)
+				continue;
+
+			if (p2->name == info.name) {
+				sendMsg(p2->peer_id, "Account password changed. Please login again.");
+				m_con->disconnect(p2->peer_id);
+			}
+		}
 		return;
 	}
 
@@ -461,11 +472,13 @@ void Server::pkt_GetLobby(peer_t peer_id, Packet &)
 		}
 
 		// Examples for client test
-		for (u8 type = 0; type < (u8)LobbyFriend::Type::MAX_INVALID; ++type) {
-			out.write<u8>(true);
-			out.write(type);
-			out.writeStr16("FOOBAR" + std::to_string(type));
-			out.writeStr16("WORLDID");
+		if (0) {
+			for (u8 type = 0; type < (u8)LobbyFriend::Type::MAX_INVALID; ++type) {
+				out.write<u8>(true);
+				out.write<u8>(type);
+				out.writeStr16("FOOBAR" + std::to_string(type));
+				out.writeStr16("WORLDID");
+			}
 		}
 
 		out.write<u8>(false); // done with friends

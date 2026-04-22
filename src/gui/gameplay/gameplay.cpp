@@ -17,6 +17,7 @@
 #include <IGUIListBox.h>
 #include <IGUIStaticText.h>
 #include <IVideoDriver.h>
+#include <CGUIEditBox.h>
 
 static int SIZEW = 650; // world render size
 
@@ -200,7 +201,7 @@ void SceneGameplay::draw()
 		e->setAutoScroll(true);
 		e->setMultiLine(true);
 		e->setWordWrap(true);
-		e->setEnabled(false);
+		((gui::CGUIEditBox *)e)->setWritable(false);
 		e->setDrawBackground(false);
 		e->setTextAlignment(gui::EGUIA_UPPERLEFT, gui::EGUIA_LOWERRIGHT);
 		e->setOverrideColor(0xFFCCCCCC);
