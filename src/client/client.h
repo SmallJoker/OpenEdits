@@ -78,6 +78,7 @@ public:
 
 	LocalPlayer *getPlayerNoLock(peer_t peer_id);
 	ClientState getState() const { return m_state; }
+	int getServerAPIversion() const { return m_server_api_version; }
 
 	// ----------- Networking -----------
 	void disconnect(const char *reason);
@@ -139,6 +140,7 @@ private:
 	// State used for packet filtering
 	ClientState m_state = ClientState::None;
 	uint16_t m_protocol_version = 0;
+	int m_server_api_version = 0;
 
 	std::string m_world_id = "foobar";
 	ClientStartData m_start_data;

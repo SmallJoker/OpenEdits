@@ -14,7 +14,8 @@ Main entry point: `main.lua`
 
  * `API_VERSION` (integer)
     * To be increased for each API change.
-
+ * `SERVER_API_VERSION` (nil/integer)
+    * Client only. API version of the server.
 
 ### Helper functions
 
@@ -23,6 +24,10 @@ Main entry point: `main.lua`
  * `error(...)`
     * Logs an error but does NOT abort script execution!
     * Includes detailed argument dumping
+
+Utility:
+
+ * `bit`: [Lua Bit Operations Module](https://bitop.luajit.org/)
 
 
 ### Environment World API
@@ -118,6 +123,9 @@ A `userdata` object.
  * `:get_name()` -> string
  * `:hash()` -> (undefined)
     * Unique identifier (per connection) for faster array access
+ * `:get_flags()` -> integer
+    * Returns the player flags (permissions, restrictions)
+    * Values: see `PlayerFlagsEnum`
  * `:send_event()`
     * See `env.send_event`. For servers only.
  * `:next_prn()` -> integer

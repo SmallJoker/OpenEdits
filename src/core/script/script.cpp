@@ -13,7 +13,7 @@ Logger script_logger("Script", LL_WARN);
 static Logger &logger = script_logger;
 
 
-static const lua_Integer SCRIPT_API_VERSION = 8;
+const int Script::SCRIPT_API_VERSION = 9;
 
 /*
 	Sandbox theory: http://lua-users.org/wiki/SandBoxes
@@ -91,9 +91,10 @@ static const char *G_WHITELIST[] = {
 	"type",
 	"unpack",
 // Tables / libraries
-	"table",
+	"bit",
 	"math",
 	"string",
+	"table",
 	nullptr
 };
 
@@ -160,6 +161,7 @@ bool Script::init()
 		lua_rawseti(L, LUA_REGISTRYINDEX, CUSTOM_RIDX_TRACEBACK);
 	}
 
+	luaopen_bit(L); // requires LuaJIT
 	luaopen_math(L);
 	luaopen_string(L);
 	luaopen_table(L);

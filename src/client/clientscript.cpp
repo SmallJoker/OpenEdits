@@ -13,6 +13,8 @@ static Logger &logger = script_logger;
 
 void ClientScript::initSpecifics()
 {
+	ASSERT_FORCED(m_client, "Missing Client");
+
 	lua_State *L = m_lua;
 
 	PlayerRef::doRegister(L);
@@ -20,6 +22,9 @@ void ClientScript::initSpecifics()
 
 	lua_getglobal(L, "env");
 	{
+		lua_pushinteger(L, m_client->getServerAPIversion());
+		lua_setfield(L, -2, "SERVER_API_VERSION");
+
 		field_set_function(L, "is_me", ClientScript::l_is_me);
 
 		lua_getfield(L, -1, "world");

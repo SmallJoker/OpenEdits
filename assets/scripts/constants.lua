@@ -46,6 +46,12 @@ do
 end
 
 do
+	-- playerflags.h / PlayerFlagsEnum
+	env.PF_MASK_TMP   = 0x000000FF
+	env.PF_MASK_WORLD = 0x000FF000
+end
+
+do
 	-- scriptevent.h
 	env.SEF_HAVE_ACTOR = 0x8000
 end

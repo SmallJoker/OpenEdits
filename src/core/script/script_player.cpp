@@ -79,7 +79,7 @@ int Script::l_world_find_player(lua_State *L)
 
 	for (Player *p : players) {
 		if (player_name) {
-			if (strcmpi(p->name, player_name))
+			if (!strcmpi(p->name, player_name))
 				continue;
 		} else {
 			if (p->peer_id != peer_id)

@@ -20,6 +20,8 @@ class World;
 
 class Script {
 public:
+	static const int SCRIPT_API_VERSION;
+
 	enum Type {
 		ST_UNKNOWN,
 		ST_SERVER,

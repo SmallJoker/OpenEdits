@@ -51,6 +51,8 @@ void Server::pkt_Quack(peer_t peer_id, Packet &pkt)
 
 void Server::pkt_Hello(peer_t peer_id, Packet &pkt)
 {
+	ASSERT_FORCED(m_script, "Missing script");
+
 	uint16_t protocol_max = pkt.read<uint16_t>();
 	uint16_t protocol_min = pkt.read<uint16_t>();
 
@@ -96,6 +98,7 @@ void Server::pkt_Hello(peer_t peer_id, Packet &pkt)
 		reply.write(player->protocol_version);
 		reply.write(player->peer_id);
 		reply.writeStr16(player->name);
+		reply.write<u16>(m_script->SCRIPT_API_VERSION);
 
 		m_con->send(peer_id, 0, reply);
 	}

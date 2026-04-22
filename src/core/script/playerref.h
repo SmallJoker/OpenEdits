@@ -26,6 +26,8 @@ private:
 	static int get_name(lua_State *L);
 	static int hash(lua_State *L);
 
+	static int get_flags(lua_State *L);
+
 	static int send_event(lua_State *L);
 	static int next_prn(lua_State *L);
 

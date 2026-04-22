@@ -42,6 +42,7 @@ void PlayerRef::doRegister(lua_State *L)
 	static const luaL_Reg classtable_fn[] = {
 		{"get_name", get_name},
 		{"hash", hash},
+		{"get_flags", get_flags},
 		{"send_event", send_event},
 		{"next_prn", next_prn},
 		{"send_teleport", send_teleport},
@@ -170,6 +171,16 @@ int PlayerRef::hash(lua_State *L)
 	return 1;
 }
 
+int PlayerRef::get_flags(lua_State *L)
+{
+	Player *player = toPlayerRef(L, 1)->m_player;
+	if (!player || !player->getWorld())
+		return 0;
+
+	lua_pushinteger(L, player->getFlags().flags);
+	return 1;
+}
+
 int PlayerRef::send_event(lua_State *L)
 {
 	// Player-specific events
@@ -184,7 +195,7 @@ int PlayerRef::send_event(lua_State *L)
 	MESSY_CPP_EXCEPTIONS_END
 }
 
-int PlayerRef::next_prn(lua_State* L)
+int PlayerRef::next_prn(lua_State *L)
 {
 	Player *player = toPlayerRef(L, 1)->m_player;
 	if (!player)

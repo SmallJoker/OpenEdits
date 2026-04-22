@@ -59,6 +59,9 @@ void Client::pkt_Hello(Packet &pkt)
 	auto player = std::make_unique<LocalPlayer>(m_my_peer_id);
 	player->name = pkt.readStr16();
 	m_start_data.nickname = player->name; // for completeness' sake
+	if (m_protocol_version >= 12) {
+		m_server_api_version = pkt.read<u16>();
+	}
 
 	m_players.emplace(m_my_peer_id, player.release());
 
