@@ -56,7 +56,6 @@ private:
 
 	void drawBlocksInView();
 	void assignNewForeground(BlockDrawData &bdd);
-	void assignNewShadow(BlockDrawData &bdd);
 	void assignNewBackground(BlockDrawData &bdd);
 	void drawBlockParams(BlockDrawData &bdd);
 	CBulkSceneNode *drawBottomLeftText(video::ITexture *texture);
@@ -64,7 +63,6 @@ private:
 
 	bool assignBlockTexture(const BlockTile &tile, scene::ISceneNode *node);
 	core::recti m_drawn_rect; // excess area, more drawn than needed
-	video::ITexture *m_tex_shadow = nullptr;
 
 	void updateAnimation(float dtime);
 	struct Animation {

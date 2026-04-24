@@ -2,6 +2,7 @@
 #include <IVideoDriver.h>
 #include <ISceneManager.h>
 #include <ICameraSceneNode.h>
+#include <stdexcept>
 
 CBulkSceneNode::CBulkSceneNode(ISceneNode *parent, scene::ISceneManager *mgr, s32 id,
 	const core::vector3df &pos, const core::dimension2d<f32> &tile_size) :
@@ -38,6 +39,34 @@ void CBulkSceneNode::addTile(core::vector2di coord)
 	m_bbox_large.addInternalPoint(x + m_vertex_size.Width, y + m_vertex_size.Height, RelativeTranslation.Z + 1);
 }
 
+void CBulkSceneNode::copyTilesFrom(CBulkSceneNode *other, video::SColor color)
+{
+	m_is_copy = true;
+
+	// Update vertex data
+	other->OnAnimate(0);
+
+	// Vertices: copy
+	m_buffer->Vertices->Data = other->m_buffer->Vertices->Data;
+
+	if (color != 0) {
+		for (video::S3DVertex &v : m_buffer->Vertices->Data) {
+			v.Color = color;
+		}
+	}
+
+	// Indices: reuse by reference
+	m_buffer->Indices->drop();
+	m_buffer->Indices = other->m_buffer->Indices;
+	m_buffer->Indices->grab();
+
+	m_bbox_large = other->m_bbox_large;
+	m_buffer->setBoundingBox(m_bbox_large);
+
+	m_buffer->setDirty();
+}
+
+
 video::SMaterial &CBulkSceneNode::getMaterial(u32 i)
 {
 	return m_buffer->Material;
@@ -58,6 +87,9 @@ void CBulkSceneNode::OnRegisterSceneNode()
 
 void CBulkSceneNode::OnAnimate(u32 t_ms)
 {
+	if (m_is_copy)
+		return;
+
 	auto &vertices = m_buffer->Vertices->Data;
 	auto &indices = m_buffer->Indices->Data;
 	const size_t vertices_size_old = vertices.size();
@@ -81,7 +113,7 @@ void CBulkSceneNode::OnAnimate(u32 t_ms)
 		i_offset[4] = 3 + (4 * i);
 		i_offset[5] = 2 + (4 * i);
 
-		for (s32 j = 0; j < 4; ++j)
+		for (unsigned j = 0; j < 4; ++j)
 			v_offset[j].Color = 0xFFFFFFFF;
 
 		v_offset[0].TCoords.set(1.0f, 1.0f);
@@ -94,7 +126,7 @@ void CBulkSceneNode::OnAnimate(u32 t_ms)
 	const f32 TILE_H = m_tile_size.Height;
 
 	// See also: size prediction in CBulkSceneNode::addTile(...)
-	core::vector3df node_pos = getAbsolutePosition()
+	core::vector3df node_pos = core::vector3df(0)
 		- core::vector3df(TILE_W, TILE_H, 0) / 2; // center
 
 	core::vector3df h_len(m_vertex_size.Width, 0, 0);
@@ -132,7 +164,11 @@ void CBulkSceneNode::render()
 	if (!camera || !driver)
 		return;
 
-	driver->setTransform(video::ETS_WORLD, core::IdentityMatrix);
+	{
+		core::matrix4 tf = core::IdentityMatrix;
+		tf.setTranslation(getAbsolutePosition());
+		driver->setTransform(video::ETS_WORLD, tf);
+	}
 	driver->setMaterial(m_buffer->Material);
 	driver->drawMeshBuffer(m_buffer);
 

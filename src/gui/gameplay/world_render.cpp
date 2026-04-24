@@ -46,8 +46,6 @@ SceneWorldRender::SceneWorldRender(SceneGameplay *parent, Gui *gui)
 {
 	m_gameplay = parent;
 	m_gui = gui;
-
-	m_tex_shadow = gui->driver->getTexture("assets/textures/shadow.png");
 }
 
 SceneWorldRender::~SceneWorldRender()
@@ -56,8 +54,6 @@ SceneWorldRender::~SceneWorldRender()
 		m_world_smgr->clear();
 		m_world_smgr->drop();
 	}
-
-	m_gui->driver->removeTexture(m_tex_shadow);
 }
 
 
@@ -193,6 +189,7 @@ void SceneWorldRender::setCamera(core::vector3df pos)
 struct BlockDrawData {
 	struct BulkData {
 		CBulkSceneNode *node = nullptr;
+		CBulkSceneNode *shadow_node = nullptr;
 		bool is_solid = false;
 	};
 
@@ -358,16 +355,9 @@ void SceneWorldRender::drawBlocksInView()
 			drawBlockParams(bdd);
 		} while (false);
 
+		{
+			// Add background
 
-		if (bdd.bulk && bdd.bulk->is_solid) {
-			// solid above; no background needed. Add shadow instead.
-			bdd.bulk = &bdd.bulk_map[SIZE_MAX];
-			if (!bdd.bulk->node) {
-				assignNewShadow(bdd);
-			}
-
-			bdd.bulk->node->addTile({x, -y});
-		} else {
 			bdd.bulk = &bdd.bulk_map[b.bg];
 			if (!bdd.bulk->node) {
 				// Yet not cached: Add.
@@ -375,6 +365,12 @@ void SceneWorldRender::drawBlocksInView()
 			}
 
 			bdd.bulk->node->addTile({x, -y});
+		}
+	}
+
+	for (auto &kv : bdd.bulk_map) {
+		if (kv.second.shadow_node) {
+			kv.second.shadow_node->copyTilesFrom(kv.second.node, 0x55000000);
 		}
 	}
 }
@@ -399,20 +395,31 @@ void SceneWorldRender::assignNewForeground(BlockDrawData &bdd)
 	bdd.bulk->is_solid = assignBlockTexture(tile, bdd.bulk->node);
 
 	//bdd.bulk->node->setDebugDataVisible(scene::EDS_BBOX);
-}
 
-void SceneWorldRender::assignNewShadow(BlockDrawData &bdd)
-{
-	bdd.bulk->node = new CBulkSceneNode(m_blocks_node, m_gui->scenemgr, -1,
-		core::vector3df(1.5f, -1.5f, ZINDEX_SHADOW),
-		DEFAULT_TILE_SIZE
-	);
-	bdd.bulk->node->drop();
+	{
+		// Add shadow.
+		auto node = new CBulkSceneNode(m_blocks_node, smgr, -1,
+			core::vector3df(1.5f, -1.5f, ZINDEX_SHADOW),
+			DEFAULT_TILE_SIZE
+		);
+		node->drop();
 
-	auto &mat = bdd.bulk->node->getMaterial(0);
-	mat.ZWriteEnable = video::EZW_AUTO;
-	mat.MaterialType = video::EMT_TRANSPARENT_ALPHA_CHANNEL;
-	mat.setTexture(0, m_tex_shadow);
+		node->getMaterial(0) = bdd.bulk->node->getMaterial(0);
+		node->getMaterial(0).MaterialType = video::EMT_TRANSPARENT_ALPHA_CHANNEL;
+		// ^ TODO: Shadows are always black despite vertex alpha. Why? Is this a draw order problem?
+
+#if 0
+		node->getMaterial(0).BlendOperation = video::EBO_ADD;
+		node->getMaterial(0).BlendFactor = video::pack_textureBlendFuncSeparate(
+			video::EBF_ONE, video::EBF_ONE_MINUS_SRC_COLOR,
+			video::EBF_SRC_ALPHA, video::EBF_ONE,
+			video::EMFN_MODULATE_1X, video::EAS_TEXTURE
+		);
+		ASSERT_FORCED(node->getMaterial(0).isAlphaBlendOperation(), "Required");
+#endif
+
+		bdd.bulk->shadow_node = node;
+	}
 }
 
 void SceneWorldRender::assignNewBackground(BlockDrawData &bdd)

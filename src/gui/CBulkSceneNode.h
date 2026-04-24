@@ -13,6 +13,7 @@ public:
 
 	~CBulkSceneNode();
 
+	/// '.ColorParam' becomes the vertex color
 	video::SMaterial &getMaterial(u32 i) override;
 	u32 getMaterialCount() const override { return 1; };
 
@@ -22,12 +23,15 @@ public:
 	const core::aabbox3d<f32> &getBoundingBox() const override;
 
 	void addTile(core::vector2di coord);
+	void copyTilesFrom(CBulkSceneNode *other, video::SColor color);
 
 	void OnRegisterSceneNode() override;
 	void OnAnimate(u32 t_ms) override;
 	void render() override;
 
 private:
+	bool m_is_copy = false;
+
 	core::aabbox3d<f32> m_bbox_large;
 	std::vector<core::vector2di> m_tiles;
 	core::dimension2d<f32> m_tile_size, // uniform grid to place vertices
