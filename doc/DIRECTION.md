@@ -1,7 +1,7 @@
 # Project direction
 
 1. Same gameplay style as Everybody Edits
-2. Same block ID mapping. New blocks/packs must have an unique ID
+2. Same block ID mapping. New blocks/packs must have a unique ID
 3. Guest "accounts" without chat or owned worlds
 4. Decentralised servers (community-hosted)
 
@@ -13,13 +13,13 @@ To-do:
     * Useful for chat commands, bot programming and saner client communication
  * Private worlds
  * Achievements: death counter, timer (Lua side)
+ * Login
+    * Save server addresses, nickname and (optionally) password hash to database
  * Modding API (Lua)
     * Events with more than 1 payload
     * Per-player and per-world states (shared on join)
-    * Player-specific gravity and speed modifiers
     * Ensure correct client-side prediction by sanity checks (physics dependent tile)
     * Movable objects, e.g. for mobs.
-    * HUD API: Text, blocks, other items. (e.g. to show collectibles)
  * Moderator tools in the main menu
     * Event logger + "Inbox"
     * IP/user bans or mutes

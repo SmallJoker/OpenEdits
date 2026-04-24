@@ -28,7 +28,8 @@ enum ElementId : int {
 	ID_BtnGodMode,
 	ID_BtnMinimap,
 	ID_LabelTitle,
-	ID_ListPlayers = 120
+	ID_ListPlayers = 120,
+	ID_TextChatHistory,
 };
 
 SceneGameplay::SceneGameplay() :
@@ -197,7 +198,7 @@ void SceneGameplay::draw()
 		if (m_chat_history_text.empty())
 			initChatHistory();
 
-		auto e = gui->addEditBox(L"", rect_ch, true);
+		auto e = gui->addEditBox(L"", rect_ch, false, nullptr, ID_TextChatHistory);
 		e->setAutoScroll(true);
 		e->setMultiLine(true);
 		e->setWordWrap(true);
@@ -205,7 +206,6 @@ void SceneGameplay::draw()
 		e->setDrawBackground(false);
 		e->setTextAlignment(gui::EGUIA_UPPERLEFT, gui::EGUIA_LOWERRIGHT);
 		e->setOverrideColor(0xFFCCCCCC);
-		m_chathistory = e;
 		m_chat_history_dirty = true;
 	}
 
@@ -266,12 +266,7 @@ void SceneGameplay::step(float dtime)
 	updatePlayerlist();
 	m_minimap->step(dtime);
 
-	if (m_chat_history_dirty) {
-		m_chat_history_dirty = false;
-		// GUI elements must be updated in sync with the render thread to avoid segfaults
-		std::wstring text = joinChatHistoryText();
-		m_chathistory->setText(text.c_str());
-	}
+	updateChatHistory();
 
 	{
 		auto players = m_gui->getClient()->getPlayerList();
@@ -321,6 +316,29 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 {
 	//if (e.EventType == EET_GUI_EVENT)
 	//	printf("event %d, %s\n", e.GUIEvent.EventType, e.GUIEvent.Caller->getTypeName());
+
+	if (e.EventType == EET_KEY_INPUT_EVENT && e.KeyInput.PressedDown) {
+		// Automatically remove focus from the chat history to be more pleasant to use.
+		// Call first because other functions depend on the focused element.
+
+		auto focused = m_gui->guienv->getFocus();
+		if (focused && focused->getID() == ID_TextChatHistory) {
+			if (e.KeyInput.Shift || e.KeyInput.Control)
+				return false; // Ctrl+C, Ctrl+Shift+Arrow
+
+			switch (e.KeyInput.Key) {
+				case KEY_SHIFT:
+				case KEY_LSHIFT:
+				case KEY_RSHIFT:
+				case KEY_CONTROL:
+				case KEY_LCONTROL:
+				case KEY_RCONTROL:
+					return false;
+				default: break;
+			}
+			m_gui->guienv->setFocus(nullptr);
+		}
+	}
 
 	if (m_blockselector && m_blockselector->OnEvent(e))
 		return true;
@@ -514,16 +532,25 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 	}
 	if (e.EventType == EET_KEY_INPUT_EVENT) {
 		auto focused = m_gui->guienv->getFocus();
-		if (focused) {
+		while (focused) { // RUN ONCE
 			if (focused->getID() == ID_BoxChat) {
 				if (handleChatInput(e))
 					return true;
+			}
+
+			if (focused->getID() == ID_TextChatHistory) {
+				if (e.KeyInput.Shift || e.KeyInput.Control)
+					return false; // Ctrl+C, Ctrl+Shift+Arrow
+				m_gui->guienv->setFocus(nullptr);
+				break; // pass through
 			}
 
 			if (focused->getType() == gui::EGUIET_EDIT_BOX) {
 				// Skip other inputs if an edit box is selected
 				return false;
 			}
+
+			break; // NOT HANDLED
 		}
 
 		if (handleChatInput(e))
@@ -533,9 +560,9 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 		if (!player)
 			return false;
 
-		EKEY_CODE keycode = e.KeyInput.Key;
-		bool down = e.KeyInput.PressedDown;
-		auto controls = player->getControls();
+		const EKEY_CODE keycode = e.KeyInput.Key;
+		const bool down = e.KeyInput.PressedDown;
+		PlayerControls controls = player->getControls();
 
 		// The Client performs physics of all players, including ours.
 		switch (keycode) {
@@ -857,7 +884,6 @@ video::ITexture *SceneGameplay::generateTexture(const std::string &text, u32 col
 	dim.Width += 2;
 
 	auto texture = driver->addRenderTargetTexture(dim); //, "rt", video::ECF_A8R8G8B8);
-	// FIXME: With the OpenGL 3 driver the resulting image is mirrored along the Y axis.
 	driver->setRenderTarget(texture, true, true, video::SColor(bgcolor));
 
 	m_gui->font->draw(textw.c_str(), core::recti(core::vector2di(2,0), dim), 0xFF555555); // Shadow
@@ -1034,4 +1060,20 @@ std::wstring SceneGameplay::joinChatHistoryText()
 	}
 
 	return out;
+}
+
+
+void SceneGameplay::updateChatHistory()
+{
+	if (!m_chat_history_dirty)
+		return;
+
+	m_chat_history_dirty = false;
+
+	// GUI elements must be updated in sync with the render thread to avoid segfaults
+	std::wstring text = joinChatHistoryText();
+
+	auto root = m_gui->guienv->getRootGUIElement();
+	auto chathistory = root->getElementFromId(ID_TextChatHistory);
+	chathistory->setText(text.c_str());
 }

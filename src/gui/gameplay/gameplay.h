@@ -76,8 +76,8 @@ private:
 	GameCommands m_gamecmd;
 
 	std::wstring joinChatHistoryText();
-	gui::IGUIEditBox *m_chathistory = nullptr;
 	std::list<std::wstring> m_chat_history_text;
+	void updateChatHistory();
 	bool m_chat_history_dirty = false;
 };
 
