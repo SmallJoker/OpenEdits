@@ -256,25 +256,22 @@ bool SceneLobby::OnEvent(const SEvent &e)
 						}
 						break;
 					}
+
+					// Update "join by world ID"
+					std::string world_id = getWorldIdFromList(caller);
+					if (!world_id.empty()) {
+						auto *box = root->getElementFromId(ID_BoxWorldID, true);
+						std::wstring wstr;
+						utf8_to_wide(wstr, world_id.c_str());
+						box->setText(wstr.c_str());
+					}
 				}
 				break;
 			case gui::EGET_LISTBOX_SELECTED_AGAIN:
 				{
-					std::vector<std::string> *lookup = nullptr;
-					switch (caller_id) {
-						case ID_ListPublic:  lookup = &m_public_index_to_worldid; break;
-						case ID_ListMine:    lookup = &m_my_index_to_worldid;     break;
-						case ID_ListImport:  lookup = &m_import_index_to_worldid; break;
-					}
-					if (lookup) {
-						auto *list = (gui::IGUIListBox *)caller;
-
-						try {
-							world_id = lookup->at(list->getSelected());
-						} catch (std::exception &) {
-							break;
-						}
-
+					std::string id = getWorldIdFromList(caller);
+					if (!id.empty()) {
+						world_id = id;
 						m_gui->joinWorld(this);
 						break;
 					}
@@ -530,6 +527,28 @@ void SceneLobby::updateWorldList()
 	m_dirty_search = true;
 }
 
+std::string SceneLobby::getWorldIdFromList(gui::IGUIElement *caller)
+{
+	std::vector<std::string> *lookup = nullptr;
+	switch (caller->getID()) {
+		case ID_ListPublic:  lookup = &m_public_index_to_worldid; break;
+		case ID_ListMine:    lookup = &m_my_index_to_worldid;     break;
+		case ID_ListImport:  lookup = &m_import_index_to_worldid; break;
+		case ID_ListSearch:  lookup = &m_search_index_to_worldid; break;
+	}
+	if (!lookup)
+		return "";
+
+	auto *list = (gui::IGUIListBox *)caller;
+
+	try {
+		return lookup->at(list->getSelected());
+	} catch (std::exception &) {
+		return "";
+	}
+}
+
+
 void SceneLobby::updateFriendsList()
 {
 	m_friends.list->clear();
@@ -646,8 +665,10 @@ void SceneLobby::updateSearchList()
 		return a.weight > b.weight;
 	});
 
+	m_search_index_to_worldid.clear();
 	for (const Entry e : matches) {
 		auto [textw, is_mine] = world_to_list_text(*e.meta, player.ptr());
 		list_e->addItem(textw.c_str());
+		m_search_index_to_worldid.push_back(e.meta->id);
 	}
 }

@@ -8,6 +8,7 @@ namespace irr {
 	namespace gui {
 		class IGUIButton;
 		class IGUIEditBox;
+		class IGUIElement;
 		class IGUIListBox;
 		class IGUITabControl;
 	}
@@ -34,10 +35,12 @@ private:
 	void updateWorldList();
 	bool m_dirty_worldlist = false;
 
+	std::string getWorldIdFromList(gui::IGUIElement *caller);
 	std::vector<std::string>
 		m_public_index_to_worldid,
 		m_my_index_to_worldid,
-		m_import_index_to_worldid;
+		m_import_index_to_worldid,
+		m_search_index_to_worldid;
 	gui::IGUIListBox *m_publiclist = nullptr;
 	gui::IGUIListBox *m_mylist = nullptr;
 	gui::IGUIListBox *m_importlist = nullptr;
