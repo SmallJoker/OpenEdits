@@ -370,7 +370,7 @@ void SceneWorldRender::drawBlocksInView()
 
 	for (auto &kv : bdd.bulk_map) {
 		if (kv.second.shadow_node) {
-			kv.second.shadow_node->copyTilesFrom(kv.second.node, 0x55000000);
+			kv.second.shadow_node->copyTilesFrom(kv.second.node, 0x7F000000);
 		}
 	}
 }
@@ -404,19 +404,15 @@ void SceneWorldRender::assignNewForeground(BlockDrawData &bdd)
 		);
 		node->drop();
 
+		// Render the same
 		node->getMaterial(0) = bdd.bulk->node->getMaterial(0);
-		node->getMaterial(0).MaterialType = video::EMT_TRANSPARENT_ALPHA_CHANNEL;
-		// ^ TODO: Shadows are always black despite vertex alpha. Why? Is this a draw order problem?
 
-#if 0
-		node->getMaterial(0).BlendOperation = video::EBO_ADD;
-		node->getMaterial(0).BlendFactor = video::pack_textureBlendFuncSeparate(
-			video::EBF_ONE, video::EBF_ONE_MINUS_SRC_COLOR,
-			video::EBF_SRC_ALPHA, video::EBF_ONE,
-			video::EMFN_MODULATE_1X, video::EAS_TEXTURE
+		// Except that we want semi-transparent shadows. Blend (vertex * texture) alpha.
+		node->getMaterial(0).MaterialType = video::EMT_ONETEXTURE_BLEND;
+		node->getMaterial(0).MaterialTypeParam = video::pack_textureBlendFunc(
+			video::EBF_SRC_ALPHA, video::EBF_ONE_MINUS_SRC_ALPHA,
+			video::EMFN_MODULATE_1X, video::EAS_VERTEX_COLOR | video::EAS_TEXTURE
 		);
-		ASSERT_FORCED(node->getMaterial(0).isAlphaBlendOperation(), "Required");
-#endif
 
 		bdd.bulk->shadow_node = node;
 	}
