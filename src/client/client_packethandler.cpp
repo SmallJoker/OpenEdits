@@ -356,8 +356,10 @@ void Client::pkt_SetPosition(Packet &pkt)
 		pkt.read(pos.Y);
 
 		LocalPlayer *player = getPlayerNoLock(peer_id);
-		if (player)
+		if (player) {
 			player->setPosition(pos);
+			m_script->onPlayerEvent("teleport", player);
+		}
 	}
 }
 

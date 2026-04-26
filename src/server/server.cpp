@@ -523,17 +523,24 @@ void Server::setDefaultPlayerFlags(Player *player)
 
 void Server::teleportPlayer(Player *player, core::vector2df dst)
 {
-	Packet pkt;
-	pkt.write(Packet2Client::SetPosition);
-	pkt.write<u8>(0); // reset progress
-	pkt.write(player->peer_id);
-	pkt.write(dst.X);
-	pkt.write(dst.Y);
+	const bool joined = ((RemotePlayer *)player)->state == RemotePlayerState::WorldPlay;
 
-	// Same channel as world data
-	broadcastInWorld(player, 0, pkt);
+	if (joined) {
+		Packet pkt;
+		pkt.write(Packet2Client::SetPosition);
+		pkt.write<u8>(0); // reset progress
+		pkt.write(player->peer_id);
+		pkt.write(dst.X);
+		pkt.write(dst.Y);
+
+		// Same channel as world data
+		broadcastInWorld(player, 0, pkt);
+	}
 
 	player->setPosition(dst);
+
+	if (joined)
+		m_script->onPlayerEvent("teleport", player);
 }
 
 void Server::shutdown()

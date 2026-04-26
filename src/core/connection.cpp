@@ -86,7 +86,8 @@ Connection::Connection(Connection::ConnectionType type, const char *name)
 	}
 
 	if (!m_host) {
-		logger(LL_ERROR, "Failed to initialize instance\n");
+		logger(LL_ERROR, "Failed to initialize instance name=%s"
+			" (port blocked or already in use?)", m_name);
 	}
 }
 

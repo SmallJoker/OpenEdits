@@ -345,6 +345,19 @@ int PlayerRef::get_physics(lua_State *L)
 	return 1;
 }
 
+static const PlayerPhysics defaults;
+
+template <float PlayerPhysics::*VAR>
+static inline void set_phys_var(lua_State *L, PlayerPhysics &phys)
+{
+	if (lua_isnil(L, -1))
+		return;
+
+	lua_Number num = luaL_checknumber(L, -1);
+	// NaN --> default value
+	phys.*VAR = (num != num) ? defaults.*VAR : num;
+}
+
 int PlayerRef::set_physics(lua_State *L)
 {
 	MESSY_CPP_EXCEPTIONS_START
@@ -353,19 +366,19 @@ int PlayerRef::set_physics(lua_State *L)
 		return 0;
 
 	Script *script = player->getScript();
-	if (!script || script->getScriptType() != Script::ST_CLIENT)
+	if (!script)
+		luaL_error(L, "missing script");
+	if (script->getScriptType() != Script::ST_CLIENT)
 		luaL_error(L, "Client-only");
 
 	PlayerPhysics phys = player->getPhysicsRef();
 
 	lua_getfield(L, 2, "ctrl_accel");
-	if (!lua_isnil(L, -1))
-		phys.controls_accel = luaL_checknumber(L, -1);
+	set_phys_var<&PlayerPhysics::controls_accel>(L, phys);
 	lua_pop(L, 1);
 
 	lua_getfield(L, 2, "jump_speed");
-	if (!lua_isnil(L, -1))
-		phys.jump_speed = luaL_checknumber(L, -1);
+	set_phys_var<&PlayerPhysics::jump_speed>(L, phys);
 	lua_pop(L, 1);
 
 	phys.setModified();

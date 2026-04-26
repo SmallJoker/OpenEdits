@@ -146,8 +146,9 @@ A `userdata` object.
        * Note: `dir_(x|y)` may have any value range.
  * `:get_physics()` -> table
     * Table fields:
-       * `ctrl_accel` (number): controls-induced player acceleration
-       * `jump_speed` (number): jump speed. Should be positive.
+       * `ctrl_accel` (number|boolean): controls-induced player acceleration
+       * `jump_speed` (number|boolean): jump speed. Should be positive.
+       * `NAN` values will reset parameters to their defaults.
  * `:set_physics(def)`
     * `def` (table): see `:get_physics`
     * For clients only. Distributed automatically.
@@ -168,6 +169,7 @@ Player-related callbacks in `env`:
        * `"join"`: after all init data was sent to the client
        * `"leave"`: before the player is removed from the world
        * `"godmode", status`
+       * `"teleport"`: after teleporting
 
 
 ### Server API

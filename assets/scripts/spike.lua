@@ -1,3 +1,6 @@
+local NAN = 0/0
+assert(NAN ~= NAN)
+
 local get_pwdata = reg.get_pwdata
 
 local ID_CHECKPOINT = 360
@@ -73,6 +76,24 @@ EV_KILLED = env.register_event(ID_SPIKES, 0, env.PARAMS_TYPE_U8,
 		}
 	end
 )
+
+local old_event = env.on_player_event
+env.on_player_event = function(event, arg)
+	if event == "teleport" or (event == "godmode" and arg) then
+		if env.is_me() then
+			-- Spikes: Reset to default
+			env.player:set_physics({ ctrl_accel = NAN, jump_speed = NAN })
+		end
+
+		-- Only does something server-side.
+		local player_id = env.player:hash()
+		if delay_killed[player_id] then
+			delay_killed[player_id] = nil
+		end
+	end
+
+	old_event(event, arg)
+end
 
 reg.register_on_block_place({
 	check_prev = true,
@@ -164,9 +185,9 @@ local blocks_def = {
 		},
 
 		on_intersect_once = function(tile)
-			if env.is_me() then
-				-- TODO: disable player controls
+			if env.is_me() and not get_pwdata(env.player).godmode then
 				env.send_event(EV_KILLED, 0)
+				env.player:set_physics({ ctrl_accel = 0, jump_speed = 0 })
 			end
 		end,
 		on_intersect = function()
