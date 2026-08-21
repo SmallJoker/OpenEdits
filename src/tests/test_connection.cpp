@@ -4,6 +4,7 @@
 
 void sleep_ms(long delay);
 
+namespace {
 
 class DummyProcessor : public PacketProcessor {
 public:
@@ -14,6 +15,8 @@ public:
 	}
 	size_t last_size = 0;
 };
+
+} // namespace
 
 void unittest_connection()
 {

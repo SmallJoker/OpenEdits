@@ -2,6 +2,8 @@
 #include "core/blockmanager.h"
 #include "core/eeo_converter.h" // EEOconverter::inflate
 #include "core/logger.h"
+#include "core/network_enums.h"
+#include "core/packet.h"
 #include "core/utils.h" // to_player_name
 #include "server/database_auth.h" // AuthAccount
 #include "server/server.h"
@@ -151,6 +153,78 @@ static int server_setrole(char *username_raw, char *role)
 	return EXIT_FAILURE; // logged by Database::ok
 }
 
+
+namespace {
+
+class DummyProcessor : public PacketProcessor {
+public:
+	void processPacket(peer_t peer_id, Packet &pkt) override
+	{
+		response.~Packet();
+		new (&response) Packet(&pkt);
+	}
+	Packet response;
+};
+
+} // namespace
+
+static int check_is_up(const char *address)
+{
+	DummyProcessor proc;
+
+	Connection con(Connection::TYPE_CLIENT, "PROBE");
+	con.connect(address);
+	con.listenAsync(proc);
+
+	for (int i = 0; con.getPeerIDs(nullptr) == 0; ++i) {
+		// Up to 5 s (in case of slow DNS)
+		if (i == 50) {
+			fprintf(stderr, "Cannot reach server.\n");
+			return 31;
+		}
+		sleep_ms(100);
+	}
+
+	// Connected
+	{
+		Packet pkt;
+		pkt.write(Packet2Server::Quack);
+		con.send(0, 0, pkt);
+	}
+
+	for (int i = 0; proc.response.size() == 0; ++i) {
+		if (i == 20) {
+			fprintf(stderr, "No response to request.\n");
+			return 32;
+		}
+		sleep_ms(100);
+	}
+
+	// Process server reply
+	Packet &pkt = proc.response;
+	bool is_ok = false;
+	Packet2Client reply;
+	u16 proto_min, proto_max, online;
+	try {
+		pkt.read(reply);
+		pkt.read(proto_min);
+		pkt.read(proto_max);
+		pkt.read(online);
+
+		is_ok = (reply == Packet2Client::Quack);
+	} catch (std::out_of_range &e) {}
+
+	if (!is_ok) {
+		fprintf(stderr, "Unexpected reply. size=%zu\n", pkt.size());
+		return 33;
+	}
+
+	printf("> PROTOCOL_VERSION_MIN = %d\n", proto_min);
+	printf("> PROTOCOL_VERSION_MAX = %d\n", proto_max);
+	printf("> players_online       = %d\n", online);
+	return EXIT_SUCCESS;
+}
+
 static bool try_get_password_from_file(const char *arg, std::string &out)
 {
 	if (arg[0] != '@') {
@@ -252,6 +326,13 @@ static int parse_args(int argc, char *argv[])
 
 		// Login to server
 		return run_client();
+	}
+	if (strcmp(argv[1], "--is-up") == 0) {
+		if (argc < 3) {
+			fprintf(stderr, "%s%s ADDRESS\n", argv[1], MISSING_ARGS);
+			return EXIT_FAILURE;
+		}
+		return check_is_up(argv[2]);
 	}
 
 	puts("-!- Unknown command line option.");

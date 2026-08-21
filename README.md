@@ -66,6 +66,8 @@ Permission/player flag examples:
      * Can be executed while a server is already running.
  * `--go USERNAME PASSWORD|@FILE [WORLD_ID]`
      * Starts a local server and joins the world ID (if provided)
+ * `--is-up ADDRESS`
+     * Checks whether the server is online. Exit code 0 when online.
 
 
 **World import/export**

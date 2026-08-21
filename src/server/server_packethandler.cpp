@@ -46,7 +46,21 @@ const ServerPacketHandler Server::packet_actions[] = {
 
 void Server::pkt_Quack(peer_t peer_id, Packet &pkt)
 {
-	logger(LL_PRINT, "Quack! %zu bytes from peer_id=%u\n", pkt.size(), peer_id);
+	logger(LL_DEBUG, "Quack! %zu bytes from peer_id=%u\n", pkt.size(), peer_id);
+
+	Packet out;
+	out.write(Packet2Client::Quack);
+	out.write(PROTOCOL_VERSION_MIN);
+	out.write(PROTOCOL_VERSION_MAX);
+
+	size_t online = 0;
+	for (const auto &it : m_players) {
+		auto player = (RemotePlayer *)it.second.get();
+		online += (player->state >= RemotePlayerState::Idle);
+	}
+	out.write<u16>(online);
+
+	m_con->send(peer_id, 0, out);
 }
 
 void Server::pkt_Hello(peer_t peer_id, Packet &pkt)
