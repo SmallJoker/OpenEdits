@@ -20,10 +20,6 @@ local listing = {
 	}
 }
 
-if env.API_VERSION >= 7 then
-	env.register_smileys({
-		name = "basic"
-	}, listing)
-else
-	env.register_smileys(listing)
-end
+env.register_smileys({
+	name = "basic"
+}, listing)

@@ -13,6 +13,11 @@ namespace irr {
 		class IGUIElement;
 		class IGUIEnvironment;
 	}
+
+	namespace scene {
+		class ISceneManager;
+		class ISceneNode;
+	}
 }
 
 namespace guilayout {
@@ -22,6 +27,7 @@ namespace guilayout {
 struct BlockProperties;
 struct BlockUpdate;
 struct HudElement;
+struct Particles;
 
 using namespace irr;
 typedef std::unique_ptr<guilayout::Element> EPtr;
@@ -73,4 +79,18 @@ public:
 private:
 	std::map<int, HudElement> m_hud_elements;
 	u8 m_hud_id_next = 100;
+
+	// -------- Particles
+public:
+	/// Call on each draw step
+	void updateParticles(float dtime);
+	void removeParticles();
+	std::map<int, Particles> &getParticles() { return m_particles; }
+private:
+	void animateParticle(Particles &p, float dtime);
+	static int read_particles(lua_State *L);
+	static int l_gui_spawn_particles(lua_State *L);
+
+	std::map<int, Particles> m_particles;
+	u8 m_particles_id_next = 20;
 };

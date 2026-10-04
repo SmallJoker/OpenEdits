@@ -76,4 +76,6 @@ private:
 	s32 m_player_node_id_counter = 1;
 	float m_nametag_show_timer = 0;
 	bool m_nametag_force_show = false;
+
+	void updateParticles(float dtime);
 };

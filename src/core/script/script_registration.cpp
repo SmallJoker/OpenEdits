@@ -278,8 +278,9 @@ int Script::l_change_block(lua_State *L)
 	}
 #endif
 	if (!BUILD_CLIENT) {
-		check_field_or_nil(L, 2, "get_visuals", LUA_TFUNCTION);
-		check_field_or_nil(L, 2, "gui_def",     LUA_TTABLE);
+		(void)get_check_field_or_nil(L, 2, "get_visuals", LUA_TFUNCTION);
+		(void)get_check_field_or_nil(L, 2, "gui_def",     LUA_TTABLE);
+		lua_pop(L, 2);
 	}
 
 	lua_getfield(L, 2, "gui_def");

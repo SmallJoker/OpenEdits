@@ -1,4 +1,4 @@
-assert(env.API_VERSION >= 5, "Script implementation is too old.")
+assert(env.API_VERSION >= 7, "Your game version is too old.")
 
 env.include("constants.lua")
 env.include("smileys.lua")
@@ -175,6 +175,7 @@ env.include("hidden.lua")
 env.include("music.lua")
 env.include("owner.lua")
 env.include("spike.lua")
+env.include("dev_blocks.lua")
 
 
 ---------- Decoration tab

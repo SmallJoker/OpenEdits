@@ -14,6 +14,8 @@ Main entry point: `main.lua`
 
  * `API_VERSION` (integer)
     * To be increased for each API change.
+    * v1.6.0: 7
+    * v1.7.0: 9
  * `SERVER_API_VERSION` (nil/integer)
     * Client only. API version of the server.
 
@@ -210,8 +212,10 @@ Namespace: `gui`. Only available for GUI clients.
     * `block_id` (nil/number): Block ID to select
     * `...`: Block Parameters (variable)
     * Generally to be used in the `gui_def.on_place` callback
-* `set_hotbar({ block_id_1, ... })`
+ * `set_hotbar({ block_id_1, ... })`
     * Sets the initial block hotbar.
+ * `spawn_particles(Particles Definition)`
+    * Spawns particles.
 
 Block Definition field `gui_def`:
 
@@ -253,6 +257,24 @@ HUD Definition: (table)
  * Same fields as GUI Element Definition
  * The fields `focus`, `from_block` and `on_place` are ignored.
 
+Particles Definition: (table)
+
+ * `pos` (table): List of x,y positions, `{ {x1, y1}, ... }`.
+    * May be of any length. Other properties are repeated if needed.
+ * `animate(self, dtime)` (optional, function)
+    * Intended to mutate `pos`.
+    * `self`: Particles Definition
+    * `dtime` (number): Seconds since last call
+    * Return `true` if any parameter was changed
+    * Return `false` to remove the particles
+ * `interval` (optional, number): Delay between `animate` calls.
+ * `expiry` (number): Maximum lifetime in seconds
+ * `texture` (string): Texture to use
+ * `frame_index` (number): An animation frame index
+ * `size` (table): Appearance size
+    * Separate width + height:  `{ {w1, h1}, ... }`
+    * Identical width + height: `{ s1, ... }`
+ * `rotation` (optional, table): Rotation in radians, `{ r1, ... }`
 
 ### Registration
 

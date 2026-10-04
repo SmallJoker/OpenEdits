@@ -1,7 +1,7 @@
 #pragma once
 
-#include <IBillboardSceneNode.h>
 #include <CMeshBuffer.h>
+#include <ISceneNode.h>
 #include <vector>
 
 using namespace irr;
@@ -9,7 +9,7 @@ using namespace irr;
 class CBulkSceneNode : public scene::ISceneNode {
 public:
 	CBulkSceneNode(ISceneNode *parent, scene::ISceneManager *mgr, s32 id,
-		const core::vector3df &pos, const core::dimension2d<f32> &tile_size);
+		const core::vector3df &pos, const core::dimension2d<f32> tile_size);
 
 	~CBulkSceneNode();
 
@@ -26,10 +26,10 @@ public:
 	void copyTilesFrom(CBulkSceneNode *other, video::SColor color);
 
 	void OnRegisterSceneNode() override;
-	void OnAnimate(u32 t_ms) override;
+	virtual void OnAnimate(u32 t_ms) override;
 	void render() override;
 
-private:
+protected:
 	bool m_is_copy = false;
 
 	core::aabbox3d<f32> m_bbox_large;

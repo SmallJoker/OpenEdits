@@ -63,6 +63,7 @@ void SceneGameplay::OnOpen()
 void SceneGameplay::OnClose()
 {
 	m_gui->script->refreshHUD(true);
+	m_gui->script->removeParticles();
 
 	m_chat_history_text.clear();
 	m_chat_input_history.clear();

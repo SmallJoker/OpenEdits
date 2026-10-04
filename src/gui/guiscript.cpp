@@ -1,10 +1,13 @@
 #include "guiscript.h"
+#include "guiscript_internal.h"
+
 #include "guibuilder.h"
 #include "client/client.h"
 #include "client/gameevent.h"
 #include "core/blockmanager.h"
 #include "core/script/script_utils.h"
 #include "guilayout/guilayout_irrlicht.h"
+#include "particles.h" // for the dtor
 // Irrlicht includes
 #include <IEventReceiver.h> // SEvent
 #include <IGUIElement.h>
@@ -14,6 +17,12 @@ using namespace guilayout;
 using namespace ScriptUtils;
 
 struct HudElement {
+	~HudElement()
+	{
+		if (lua_ref != LUA_NOREF)
+			abort();
+	}
+
 	void remove(lua_State *L)
 	{
 		if (lua_ref >= 0)
@@ -43,6 +52,7 @@ GuiScript::GuiScript(BlockManager *bmgr, gui::IGUIEnvironment *env) :
 GuiScript::~GuiScript()
 {
 	refreshHUD(true);
+	removeParticles();
 }
 
 void GuiScript::initSpecifics()
@@ -59,6 +69,7 @@ void GuiScript::initSpecifics()
 	FIELD_SET_FUNC(gui_, play_sound);
 	FIELD_SET_FUNC(gui_, select_block);
 	FIELD_SET_FUNC(gui_, set_hotbar);
+	FIELD_SET_FUNC(gui_, spawn_particles);
 	lua_setglobal(L, "gui");
 
 #undef FIELD_SET_FUNC
@@ -225,7 +236,6 @@ guilayout::Element *GuiScript::openGUI(bid_t block_id, gui::IGUIElement *parent)
 	return m_le_root.get();
 }
 
-
 // -------------- Static Lua functions -------------
 
 int GuiScript::l_gui_set_hud(lua_State *L)
@@ -237,31 +247,7 @@ int GuiScript::l_gui_set_hud(lua_State *L)
 		id = luaL_checkinteger(L, 1);
 	luaL_checktype(L, 2, LUA_TTABLE);
 
-	auto &hud_map = script->m_hud_elements;
-
-	if (id < 0) {
-		// Generate new ID
-		u8 scan_id = script->m_hud_id_next;
-		while (1) {
-			scan_id++;
-			if (scan_id == script->m_hud_id_next)
-				luaL_error(L, "out of HUD IDs");
-
-			if (hud_map.find(scan_id) == hud_map.end()) {
-				// Free slot
-				break;
-			}
-		}
-		script->m_hud_id_next = scan_id + 1;
-		id = scan_id;
-	} else {
-		auto it = hud_map.find(id);
-		if (it == hud_map.end()) {
-			logger(LL_WARN, "%s: Cannot find HUD id=%d", __func__, id);
-		}
-	}
-
-	HudElement &hud = hud_map[id];
+	HudElement &hud = get_free_slot(L, "HUD", script->m_hud_elements, script->m_hud_id_next, id);
 	hud.remove(L);
 
 	{
@@ -383,6 +369,7 @@ int GuiScript::l_gui_set_hotbar(lua_State *L)
 }
 
 
+
 // -------------- HUD Elements -------------
 
 void GuiScript::refreshHUD(bool do_remove)
@@ -418,6 +405,7 @@ void GuiScript::updateHUD(std::array<s16, 4> area)
 		HudElement &hud = it.second;
 
 		if (hud.removal_requested) {
+			hud.remove(L);
 			to_remove.emplace_back(it.first);
 			continue;
 		}

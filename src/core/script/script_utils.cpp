@@ -55,15 +55,28 @@ void function_ref_from_field(lua_State *L, int idx, const char *field,
 	lua_pop(L, 1);
 }
 
-bool check_field_or_nil(lua_State *L, int idx, const char *field, int type)
+void get_check_field(lua_State *L, int idx, const char *field, int type)
+{
+	lua_getfield(L, idx, field);
+	int t = lua_type(L, -1);
+	if (t != type) {
+		luaL_error(L, "field '%s': expected type %s, got %s.",
+			field, lua_typename(L, type), lua_typename(L, t));
+	}
+}
+
+bool get_check_field_or_nil(lua_State *L, int idx, const char *field, int type)
 {
 	bool have = false;
 	lua_getfield(L, idx, field);
 	if (!lua_isnil(L, -1)) {
-		luaL_checktype(L, -1, type);
+		int t = lua_type(L, -1);
+		if (t != type) {
+			luaL_error(L, "field '%s': expected type %s (or nil), got %s.",
+				field, lua_typename(L, type), lua_typename(L, t));
+		}
 		have = true;
 	}
-	lua_pop(L, 1);
 	return have;
 }
 
@@ -87,11 +100,14 @@ void check_gui_def(lua_State *L, int idx)
 {
 	if (lua_isnil(L, idx))
 		return;
+	if (idx < 0) idx = lua_gettop(L) + idx + 1;
 
-	bool have_values     = check_field_or_nil(L, -1, "values",     LUA_TTABLE);
-	bool have_on_input   = check_field_or_nil(L, -1, "on_input",   LUA_TFUNCTION);
-	bool have_on_place   = check_field_or_nil(L, -1, "on_place",   LUA_TFUNCTION);
-	bool have_from_block = check_field_or_nil(L, -1, "from_block", LUA_TFUNCTION);
+	bool have_values     = get_check_field_or_nil(L, idx, "values",     LUA_TTABLE);
+	bool have_on_input   = get_check_field_or_nil(L, idx, "on_input",   LUA_TFUNCTION);
+	bool have_on_place   = get_check_field_or_nil(L, idx, "on_place",   LUA_TFUNCTION);
+	bool have_from_block = get_check_field_or_nil(L, idx, "from_block", LUA_TFUNCTION);
+
+	lua_pop(L, 4);
 
 	if (!have_values && (have_on_input || have_on_place || have_from_block)) {
 		luaL_error(L, "missing 'values' in GUI Definition");

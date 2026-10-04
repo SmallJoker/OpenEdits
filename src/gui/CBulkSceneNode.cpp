@@ -5,7 +5,7 @@
 #include <stdexcept>
 
 CBulkSceneNode::CBulkSceneNode(ISceneNode *parent, scene::ISceneManager *mgr, s32 id,
-	const core::vector3df &pos, const core::dimension2d<f32> &tile_size) :
+	const core::vector3df &pos, const core::dimension2d<f32> tile_size) :
 	scene::ISceneNode(parent, mgr, id, pos),
 #define M FLT_MAX
 	m_bbox_large({{M,M,M}, {-M,-M,-M}}),
@@ -14,7 +14,9 @@ CBulkSceneNode::CBulkSceneNode(ISceneNode *parent, scene::ISceneManager *mgr, s3
 {
 	m_tile_size = tile_size;
 	m_vertex_size = tile_size;
-	m_tiles.reserve(20 * 20);
+
+	if (tile_size.Height != 0)
+		m_tiles.reserve(20 * 20);
 
 	m_buffer->setHardwareMappingHint(scene::EHM_STATIC);
 }
@@ -126,14 +128,15 @@ void CBulkSceneNode::OnAnimate(u32 t_ms)
 	const f32 TILE_H = m_tile_size.Height;
 
 	// See also: size prediction in CBulkSceneNode::addTile(...)
-	core::vector3df node_pos = core::vector3df(0)
-		- core::vector3df(TILE_W, TILE_H, 0) / 2; // center
+	core::vector3df node_pos(-TILE_W / 2, -TILE_H / 2, 0); // center
 
+	// Left-aligned
 	core::vector3df h_len(m_vertex_size.Width, 0, 0);
 	core::vector3df v_len(0, m_vertex_size.Height, 0);
 	for (size_t i = vertices_size_old / 4; i < m_tiles.size(); ++i) {
 		auto v_offset = &vertices[4 * i];
 
+		// NOTE: Right-handed system. The origin is at the bottom left.
 		/* Vertices are:
 		2--1
 		|\ |

@@ -6,7 +6,12 @@
 #include "core/packet.h"
 #include "core/smileymanager.h"
 #include "gui/CBulkSceneNode.h"
+#include "gui/guiscript.h" // getParticles
+#include "gui/particles.h"
+// Irrlicht includes
+#include "gui/CParticlesSceneNode.h"
 #include <ICameraSceneNode.h>
+#include <IBillboardSceneNode.h> // for players
 #include <ISceneCollisionManager.h>
 #include <ISceneManager.h>
 #include <IVideoDriver.h>
@@ -123,6 +128,7 @@ void SceneWorldRender::step(float dtime)
 	updateAnimation(dtime);
 	drawBlocksInView();
 	updatePlayerPositions(dtime);
+	updateParticles(dtime);
 
 	if (zoom_factor < 1.0f)
 		zoom_factor = 1.0f;
@@ -643,8 +649,8 @@ void SceneWorldRender::updatePlayerPositions(float dtime)
 		// Draw the current player in front of all others
 		const float offset = ZINDEX_OFFSET_MY_PLAYER * (player->peer_id == my_peer_id);
 		core::vector3df nf_pos(
-			player->pos.X * 10,
-			player->pos.Y * -10,
+			player->pos.X *  DEFAULT_TILE_SIZE.Width,
+			player->pos.Y * -DEFAULT_TILE_SIZE.Height,
 			ZINDEX_SMILEY[player->godmode] + offset
 		);
 
@@ -774,3 +780,54 @@ void SceneWorldRender::updatePlayerPositions(float dtime)
 
 	//printf("drawing %zu players\n", m_players->getChildren().size());
 }
+
+
+void SceneWorldRender::updateParticles(float dtime)
+{
+	m_gui->script->updateParticles(dtime);
+
+	auto &particles = m_gui->script->getParticles();
+	Client *client = m_gui->getClient();
+
+	// Update position
+	for (auto &it : particles) {
+		Particles &p = it.second;
+
+		bool regen_node =
+			!p.scene_node
+			|| p.scene_node->getReferenceCount() == 1;
+		bool do_update = regen_node
+			|| p.relative_to != 0;
+
+		if (!do_update)
+			continue;
+
+		core::vector3df pos;
+		LocalPlayer *player = client->getPlayerNoLock(p.relative_to);
+		if (player) {
+			pos.X = player->pos.X *  DEFAULT_TILE_SIZE.Width;
+			pos.Y = player->pos.Y * -DEFAULT_TILE_SIZE.Height;
+		}
+
+		if (!regen_node) {
+			auto node = p.scene_node.get();
+			node->setPosition(pos);
+			node->updateAbsolutePosition();
+			continue;
+		}
+
+		if (p.scene_node.get())
+			p.scene_node->remove();
+
+		// 2 references: 1x ISceneManager, 1x irr_ptr
+		auto node = new CParticlesSceneNode(m_blocks_node, m_world_smgr, -1,
+			pos, DEFAULT_TILE_SIZE, p);
+		p.scene_node.reset(node);
+
+		video::SMaterial &mat = node->getMaterial(0);
+		mat.setTexture(0, m_gui->driver->getTexture(p.texture_path));
+		mat.MaterialType = video::EMT_TRANSPARENT_ALPHA_CHANNEL_REF;
+		mat.MaterialTypeParam = 0.5f;
+	}
+}
+

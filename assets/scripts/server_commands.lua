@@ -1,7 +1,7 @@
 assert(reg.respawn_player)
 env.server.register_command("respawn", {
 	description = "Respawns the current player",
-	syntax = "", -- TODO: also respawn other players
+	syntax = "[player name]",
 	run = function(msg)
 		local who = env.player
 		if #msg > 0 and env.API_VERSION >= 9 then
