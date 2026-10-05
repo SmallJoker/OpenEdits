@@ -7,9 +7,6 @@
 CBulkSceneNode::CBulkSceneNode(ISceneNode *parent, scene::ISceneManager *mgr, s32 id,
 	const core::vector3df &pos, const core::dimension2d<f32> tile_size) :
 	scene::ISceneNode(parent, mgr, id, pos),
-#define M FLT_MAX
-	m_bbox_large({{M,M,M}, {-M,-M,-M}}),
-#undef M
 	m_buffer(new scene::SMeshBuffer())
 {
 	m_tile_size = tile_size;
@@ -18,6 +15,11 @@ CBulkSceneNode::CBulkSceneNode(ISceneNode *parent, scene::ISceneManager *mgr, s3
 	if (tile_size.Height != 0)
 		m_tiles.reserve(20 * 20);
 
+#define M FLT_MAX
+	// Note: This is only helpful for calls like 'addInternalPoint'.
+	//       The occlusion test in CSceneManager repairs the BoundingBox locally.
+	m_buffer->setBoundingBox({{M,M,M}, {-M,-M,-M}}),
+#undef M
 	m_buffer->setHardwareMappingHint(scene::EHM_STATIC);
 }
 
@@ -37,8 +39,9 @@ void CBulkSceneNode::addTile(core::vector2di coord)
 	const f32 x = m_tile_size.Width * (coord.X - 0.5f);
 	const f32 y = m_tile_size.Height * (coord.Y - 0.5f);
 
-	m_bbox_large.addInternalPoint(x, y, RelativeTranslation.Z);
-	m_bbox_large.addInternalPoint(x + m_vertex_size.Width, y + m_vertex_size.Height, RelativeTranslation.Z + 1);
+	auto &bbox = m_buffer->BoundingBox;
+	bbox.addInternalPoint(x, y, RelativeTranslation.Z);
+	bbox.addInternalPoint(x + m_vertex_size.Width, y + m_vertex_size.Height, RelativeTranslation.Z + 1);
 }
 
 void CBulkSceneNode::copyTilesFrom(CBulkSceneNode *other, video::SColor color)
@@ -62,8 +65,7 @@ void CBulkSceneNode::copyTilesFrom(CBulkSceneNode *other, video::SColor color)
 	m_buffer->Indices = other->m_buffer->Indices;
 	m_buffer->Indices->grab();
 
-	m_bbox_large = other->m_bbox_large;
-	m_buffer->setBoundingBox(m_bbox_large);
+	m_buffer->BoundingBox = other->m_buffer->BoundingBox;
 
 	m_buffer->setDirty();
 }
@@ -76,7 +78,16 @@ video::SMaterial &CBulkSceneNode::getMaterial(u32 i)
 
 const core::aabbox3d<f32> &CBulkSceneNode::getBoundingBox() const
 {
-	return m_bbox_large;
+	auto bbox = m_buffer->BoundingBox;
+	if (std::abs(bbox.MinEdge.X) > 1E6) {
+		printf("get %f,%f %f,%f\n",
+			bbox.MinEdge.X,
+			bbox.MinEdge.Y,
+			bbox.MaxEdge.X,
+			bbox.MaxEdge.Y
+		);
+	}
+	return m_buffer->BoundingBox;
 }
 
 void CBulkSceneNode::OnRegisterSceneNode()
@@ -153,8 +164,6 @@ void CBulkSceneNode::OnAnimate(u32 t_ms)
 	}
 
 	m_buffer->setDirty();
-	//m_buffer->recalculateBoundingBox();
-	m_buffer->setBoundingBox(m_bbox_large);
 }
 
 
@@ -167,19 +176,14 @@ void CBulkSceneNode::render()
 	if (!camera || !driver)
 		return;
 
-	{
-		core::matrix4 tf = core::IdentityMatrix;
-		tf.setTranslation(getAbsolutePosition());
-		driver->setTransform(video::ETS_WORLD, tf);
-	}
+	driver->setTransform(video::ETS_WORLD, AbsoluteTransformation);
 	driver->setMaterial(m_buffer->Material);
 	driver->drawMeshBuffer(m_buffer);
 
 	if (DebugDataVisible & scene::EDS_BBOX)
 	{
-		driver->setTransform(video::ETS_WORLD, AbsoluteTransformation);
 		video::SMaterial m;
 		driver->setMaterial(m);
-		driver->draw3DBox(m_bbox_large, video::SColor(0,208,195,152));
+		driver->draw3DBox(getBoundingBox(), video::SColor(0,208,195,152));
 	}
 }

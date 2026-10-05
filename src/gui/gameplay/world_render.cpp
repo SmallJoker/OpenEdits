@@ -824,6 +824,8 @@ void SceneWorldRender::updateParticles(float dtime)
 			pos, DEFAULT_TILE_SIZE, p);
 		p.scene_node.reset(node);
 
+		node->setBoundingBoxUnscaled(p.bbox);
+
 		video::SMaterial &mat = node->getMaterial(0);
 		mat.setTexture(0, m_gui->driver->getTexture(p.texture_path));
 		mat.MaterialType = video::EMT_TRANSPARENT_ALPHA_CHANNEL_REF;

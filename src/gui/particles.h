@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/macros.h" // peer_t
+#include <aabbox3d.h>
 #include <irrPtr.h>
 #include <vector2d.h>
 #include <string>
@@ -17,6 +18,7 @@ namespace irr::video {
 
 struct Particles {
 	// Implementation in guiscript.cpp
+	Particles();
 	~Particles();
 	void remove(lua_State *L);
 
@@ -31,5 +33,6 @@ struct Particles {
 	std::vector<core::vector2df> pos;
 	std::vector<float> size;
 	const char *texture_path = nullptr;
+	core::aabbox3df bbox;
 	irr_ptr<CParticlesSceneNode> scene_node;
 };

@@ -5,6 +5,7 @@
 #include "client/clientmedia.h"
 #include "client/localplayer.h"
 #include "core/logger.h"
+#include "core/profiler.h"
 #include "core/script/playerref.h"
 #include "core/script/script_utils.h"
 #include "particles.h"
@@ -18,6 +19,11 @@ using namespace ScriptUtils;
 
 extern Logger guiscript_logger;
 static Logger &logger = guiscript_logger;
+
+Particles::Particles() :
+	bbox({0,0,0})
+{
+}
 
 Particles::~Particles()
 {
@@ -85,6 +91,9 @@ void GuiScript::removeParticles()
 
 void GuiScript::animateParticle(Particles &p, float dtime)
 {
+	static Profiler profiler(__func__);
+	ScopeProfiler sp(profiler);
+
 	// Use a protected call to execute 'animate' and reading the table.
 	lua_State *L = m_lua;
 
@@ -144,6 +153,10 @@ int GuiScript::read_particles(lua_State *L)
 		return 1;
 	}
 
+#define M FLT_MAX
+	core::aabbox3d<f32> bbox({{M,M,M}, {-M,-M,-M}});
+#undef M
+
 	// Stack: [-3] = Particles*, [-2] = dtime, [-1] = table
 	get_check_field(L, 3, "pos", LUA_TTABLE);
 	p.pos.resize(lua_objlen(L, -1) / 2);
@@ -151,14 +164,23 @@ int GuiScript::read_particles(lua_State *L)
 		lua_rawgeti(L, -1, i * 2 + 1); // x @ -2
 		lua_rawgeti(L, -2, i * 2 + 2); // y @ -1
 
-		p.pos[i] = core::vector2df(
+		core::vector2df pos(
 			lua_tonumber(L, -2),
 			lua_tonumber(L, -1)
 		);
+		p.pos[i] = pos;
 
 		lua_pop(L, 2);
+
+		// OpenGL Y goes up, world Y goes down.
+		bbox.addInternalPoint(pos.X, -pos.Y, 0.0f);
 	}
 	lua_pop(L, 1); // pos
+
+	// Extra margin to take size into account (max 4, any rotation)
+	bbox.MaxEdge += 4 * M_SQRT2;
+	bbox.MinEdge -= 4 * M_SQRT2;
+	p.bbox = bbox;
 
 	get_check_field(L, 3, "size", LUA_TTABLE);
 	p.size.resize(lua_objlen(L, -1));
@@ -170,6 +192,7 @@ int GuiScript::read_particles(lua_State *L)
 		lua_pop(L, 1);
 	}
 	lua_pop(L, 1); // size
+
 
 	/* TODO:
 		rotation

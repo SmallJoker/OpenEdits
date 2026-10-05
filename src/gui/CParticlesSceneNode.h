@@ -12,6 +12,8 @@ public:
 
 	~CParticlesSceneNode();
 
+	void setBoundingBoxUnscaled(const core::aabbox3df &box);
+
 	void OnAnimate(u32 t_ms) override;
 
 private:

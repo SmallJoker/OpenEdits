@@ -14,6 +14,12 @@ CParticlesSceneNode::~CParticlesSceneNode()
 {
 }
 
+void CParticlesSceneNode::setBoundingBoxUnscaled(const core::aabbox3df &box)
+{
+	m_buffer->BoundingBox.MaxEdge = box.MaxEdge * m_tile_size.Width;
+	m_buffer->BoundingBox.MinEdge = box.MinEdge * m_tile_size.Width;
+}
+
 void CParticlesSceneNode::OnAnimate(u32 t_ms)
 {
 	auto &vertices = m_buffer->Vertices->Data;
@@ -75,5 +81,4 @@ void CParticlesSceneNode::OnAnimate(u32 t_ms)
 	}
 
 	m_buffer->setDirty();
-	m_buffer->setBoundingBox(m_bbox_large);
 }

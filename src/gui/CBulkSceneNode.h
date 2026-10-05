@@ -32,7 +32,6 @@ public:
 protected:
 	bool m_is_copy = false;
 
-	core::aabbox3d<f32> m_bbox_large;
 	std::vector<core::vector2di> m_tiles;
 	core::dimension2d<f32> m_tile_size, // uniform grid to place vertices
 		m_vertex_size; // size of the vertex (may overlap tile size)
