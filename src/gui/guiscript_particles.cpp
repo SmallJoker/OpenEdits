@@ -235,27 +235,42 @@ int GuiScript::l_gui_spawn_particles(lua_State *L)
 			luaL_error(L, "Failed to reference Particles table id=%d\n", id);
 	}
 
-	(void)get_check_field_or_nil(L, 2, "animate", LUA_TFUNCTION);
-	lua_pop(L, 1);
+	// Values used by 'read_particles'
+	{
+		(void)get_check_field_or_nil(L, 2, "animate", LUA_TFUNCTION);
+		(void)get_check_field_or_nil(L, 2, "pos",  LUA_TTABLE);
+		(void)get_check_field_or_nil(L, 2, "size", LUA_TTABLE);
+		lua_pop(L, 3);
+	}
 
 	const char *texture = check_field_string(L, 2, "texture");
 	p.texture_path = script->m_client->getMedia()->getAssetPath(texture);
+	if (!p.texture_path)
+		luaL_error(L, "unknown texture");
 
 	get_check_field(L, 2, "expiry", LUA_TNUMBER);
-	p.expiry = lua_tonumber(L, -1);
+	const float expiry = lua_tonumber(L, -1);
 	lua_pop(L, 1);
 
 	if (get_check_field_or_nil(L, 2, "interval", LUA_TNUMBER))
 		p.interval = lua_tonumber(L, -1);
 	lua_pop(L, 1);
 
+	if (get_check_field_or_nil(L, 2, "tile_index", LUA_TNUMBER))
+		p.tile_index = lua_tointeger(L, 2);
+	lua_pop(L, 1);
+
 	if (get_check_field_or_nil(L, 2, "relative_to", LUA_TUSERDATA)) {
 		Player *player = PlayerRef::toPlayerRef(L, -1)->ptrRef();
-		if (player)
-			p.relative_to = player->peer_id;
+		if (!player)
+			luaL_error(L, "unknown player");
+
+		p.relative_to = player->peer_id;
 	}
 	lua_pop(L, 1);
 
+	// final touch after success: make it not expire.
+	p.expiry = expiry;
 	return 0;
 	MESSY_CPP_EXCEPTIONS_END
 }

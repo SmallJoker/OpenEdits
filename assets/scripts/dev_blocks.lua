@@ -1,4 +1,4 @@
-local PARTICLE_TEX = "missing_texture.png"
+local PARTICLE_TEX = "pack_basic.png"
 env.require_asset(PARTICLE_TEX)
 
 
@@ -14,21 +14,27 @@ EV_ANIMATION = env.register_event(reg.next_event_id(0) + env.SEF_HAVE_ACTOR, 0, 
 			texture = PARTICLE_TEX,
 			pos = {
 				-- flat array of x, y coordinates
-				0, 0
+				0, 0,
+				0, 0,
+				0, 0,
+				0, 0,
 			},
+			time_offsets = { 0.1, 0.8, 2.0, 3.0 },
 			age = 0,
 			animate = function(self, dtime)
 				-- Couldn't this be done in a shader?
 				local age = self.age + dtime
 				self.age = age
 
-				self.pos[1] =  1 + 2 * math.cos(age * 0.8)
-				self.pos[2] = -2 + 2 * math.sin(age * 0.8)
+				for i, offset in ipairs(self.time_offsets) do
+					local t = age + offset
+					self.pos[i * 2 - 1] =  1 + 2 * math.cos(t * 0.8)
+					self.pos[i * 2 + 0] = -2 + 2 * math.sin(t * 0.8)
+				end
 				self.size[1] = math.min(2, 8 - age)
 				return true
 			end,
-			z_index = {-5}, -- TODO
-			frame_index = {0},
+			tile_index = 3,
 			size = {0},
 			interval = 0,
 			relative_to = env.player,

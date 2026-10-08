@@ -22,7 +22,7 @@ struct Particles {
 	~Particles();
 	void remove(lua_State *L);
 
-	float expiry = 1.0f;
+	float expiry = -1.0f;
 	float interval = 0;
 	float interval_elapsed = 0;
 	int ref_table = -2; // LUA_NOREF
@@ -33,6 +33,7 @@ struct Particles {
 	std::vector<core::vector2df> pos;
 	std::vector<float> size;
 	const char *texture_path = nullptr;
+	u8 tile_index = 0;
 	core::aabbox3df bbox;
 	irr_ptr<CParticlesSceneNode> scene_node;
 };

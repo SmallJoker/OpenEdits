@@ -270,11 +270,12 @@ Particles Definition: (table)
  * `interval` (optional, number): Delay between `animate` calls.
  * `expiry` (number): Maximum lifetime in seconds
  * `texture` (string): Texture to use
- * `frame_index` (number): An animation frame index
+ * `tile_index` (optional, number): An animation frame index
+ * `relative_to` (optional, PlayerRef): Player to follow
  * `size` (table): Appearance size
     * Separate width + height:  `{ {w1, h1}, ... }`
     * Identical width + height: `{ s1, ... }`
- * `rotation` (optional, table): Rotation in radians, `{ r1, ... }`
+
 
 ### Registration
 

@@ -827,7 +827,15 @@ void SceneWorldRender::updateParticles(float dtime)
 		node->setBoundingBoxUnscaled(p.bbox);
 
 		video::SMaterial &mat = node->getMaterial(0);
-		mat.setTexture(0, m_gui->driver->getTexture(p.texture_path));
+		video::ITexture *tex = m_gui->driver->getTexture(p.texture_path);
+		{
+			auto tex_size = tex->getOriginalSize();
+			int count = tex_size.Width / tex_size.Height;
+			auto &m = mat.getTextureMatrix(0);
+			m.setTextureTranslate((float)p.tile_index / count, 0.0f);
+			m.setTextureScale(1.0f / count, 1.0f);
+		}
+		mat.setTexture(0, tex);
 		mat.MaterialType = video::EMT_TRANSPARENT_ALPHA_CHANNEL_REF;
 		mat.MaterialTypeParam = 0.5f;
 	}
