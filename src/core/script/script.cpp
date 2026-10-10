@@ -276,6 +276,12 @@ void Script::close()
 	m_lua = nullptr;
 }
 
+const char *Script::getAssetPath(const char *name)
+{
+	ASSERT_FORCED(m_media, "Missing MediaManager");
+	return m_media->getAssetPath(name);
+}
+
 bool Script::loadFromAsset(const std::string &asset_name)
 {
 	ASSERT_FORCED(m_media, "Missing MediaManager");

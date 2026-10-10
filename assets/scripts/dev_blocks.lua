@@ -10,6 +10,13 @@ EV_ANIMATION = env.register_event(reg.next_event_id(0) + env.SEF_HAVE_ACTOR, 0, 
 			return
 		end
 
+		env.player:set_smiley({
+			texture = "pack_basic.png",
+			tile_index = 4,
+			size = 1.0,
+			visible = false
+		})
+
 		gui.spawn_particles(-1, {
 			texture = PARTICLE_TEX,
 			pos = {
@@ -24,6 +31,9 @@ EV_ANIMATION = env.register_event(reg.next_event_id(0) + env.SEF_HAVE_ACTOR, 0, 
 			animate = function(self, dtime)
 				-- Couldn't this be done in a shader?
 				local age = self.age + dtime
+				if self.age < 2 and age > 2 then
+					env.player:set_smiley({ visible = true })
+				end
 				self.age = age
 
 				for i, offset in ipairs(self.time_offsets) do

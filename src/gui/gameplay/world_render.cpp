@@ -382,6 +382,7 @@ void SceneWorldRender::drawBlocksInView()
 }
 
 static const core::dimension2d<f32> DEFAULT_TILE_SIZE(10, 10);
+static const core::dimension2d<f32> DEFAULT_SMILEY_SIZE(15, 15);
 static const BlockTile FALLBACK_TILE;
 
 void SceneWorldRender::assignNewForeground(BlockDrawData &bdd)
@@ -604,7 +605,7 @@ void SceneWorldRender::updatePlayerPositions(float dtime)
 	auto smgr = m_world_smgr;
 	auto tex_god_aura = m_gui->driver->getTexture("assets/textures/god_aura.png");
 	auto tex_speech   = m_gui->driver->getTexture("assets/textures/speech_indicator.png");
-	auto smileymgr = m_gui->getClient()->getSmileyMgr();
+	auto smileymgr = client->getSmileyMgr();
 
 	do {
 		if (m_nametag_force_show) {
@@ -669,26 +670,23 @@ void SceneWorldRender::updatePlayerPositions(float dtime)
 			}
 		}
 
-		auto smiley = smileymgr->getSmileyAt(player->smiley_id);
-
 		if (nf) {
 			nf->setPosition(nf_pos);
 		} else {
 			// Smiley
 			nf = smgr->addBillboardSceneNode(m_players_node,
-				core::dimension2d<f32>(15, 15),
+				DEFAULT_SMILEY_SIZE,
 				nf_pos,
 				(node_id + OFFSET_FACE)
 			);
-			nf->forEachMaterial([](video::SMaterial &mat) {
-				mat.ZWriteEnable = video::EZW_AUTO;
-				mat.MaterialType = video::EMT_TRANSPARENT_ALPHA_CHANNEL;
-			});
-			nf->getMaterial(0).forEachTexture([](video::SMaterialLayer &layer) {
+
+			auto &nf_mat = nf->getMaterial(0);
+				nf_mat.MaterialType = video::EMT_TRANSPARENT_ALPHA_CHANNEL;
+			nf_mat.forEachTexture([](video::SMaterialLayer &layer) {
 				layer.MinFilter = video::ETMINF_LINEAR_MIPMAP_LINEAR;
 				layer.MagFilter = video::ETMAGF_LINEAR;
 			});
-			nf->getMaterial(0).setTexture(0, smiley.first->texture);
+
 
 			// Add nametag
 			auto nt_texture = m_gameplay->generateTexture(player->name);
@@ -698,19 +696,54 @@ void SceneWorldRender::updatePlayerPositions(float dtime)
 				core::vector3df(0, -10, -5),
 				(node_id + OFFSET_NAMETAG)
 			);
-			nt->forEachMaterial([](video::SMaterial &mat){
-				mat.ZWriteEnable = video::EZW_AUTO;
-				//mat.MaterialType = video::EMT_TRANSPARENT_ALPHA_CHANNEL_REF;
-			});
-			nt->getMaterial(0).setTexture(0, nt_texture);
+
+			auto &nt_mat = nt->getMaterial(0);
+			//nt_mat.MaterialType = video::EMT_TRANSPARENT_ALPHA_CHANNEL_REF;
+			nt_mat.setTexture(0, nt_texture);
 		}
 
-		if (smiley.first->texture) {
-			float width = smiley.first->texture_width;
+		// Assign smiley texture
+		if (player->smiley.modified) {
+			player->smiley.modified = false;
+
+			video::ITexture *tex = nullptr;
+			int index = 0;
+			const auto &smiley = player->smiley;
+
+			if (smiley.override_texture) {
+				tex = m_gui->driver->getTexture(smiley.override_texture);
+				index = smiley.override_index;
+			} else {
+				// Use player-specified smiley
+				auto pair = smileymgr->getSmileyAt(smiley.id);
+				tex = pair.first->texture;
+				index = pair.second;
+			}
+
+			float scale = DEFAULT_SMILEY_SIZE.Width / DEFAULT_TILE_SIZE.Width;
+			if (!std::isnan(smiley.size))
+				scale = smiley.size;
+
+			DEBUG_LOG("set index=%d, visible=%d, scale=%.2f\n", index, smiley.is_visible, scale);
+
+			((scene::IBillboardSceneNode *)nf)->setSize(DEFAULT_TILE_SIZE * scale);
+
+			auto &mat = nf->getMaterial(0);
+			mat.setTexture(0, tex);
+
+			if (smiley.is_visible) {
+				mat.ZBuffer = video::ECFN_LESSEQUAL; // default
+			} else {
+				// why does this work?
+				mat.ZBuffer = video::ECFN_NEVER;
+			}
+
+			auto dim = tex->getOriginalSize();
+			int max_tiles = dim.Width / dim.Height;
 			// Assign smiley texture offset
-			auto &mat = nf->getMaterial(0).getTextureMatrix(0);
-			mat.setTextureTranslate(smiley.second / width, 0.0f);
-			mat.setTextureScale(1.0f / width, 1.0f);
+			auto &m = mat.getTextureMatrix(0);
+			m.setTextureTranslate((float)index / max_tiles, 0.0f);
+			m.setTextureScale(1.0f / max_tiles, 1.0f);
 		}
 
 		const bool nametags_visible = m_nametag_show_timer > 1.0;
@@ -741,11 +774,9 @@ void SceneWorldRender::updatePlayerPositions(float dtime)
 				(node_id + OFFSET_GOD_AURA)
 			);
 
-			node->forEachMaterial([](video::SMaterial &mat){
-				mat.ZWriteEnable = video::EZW_AUTO;
-				mat.MaterialType = video::EMT_TRANSPARENT_ALPHA_CHANNEL;
-			});
-			node->getMaterial(0).setTexture(0, tex_god_aura);
+			auto &mat = node->getMaterial(0);
+			mat.MaterialType = video::EMT_TRANSPARENT_ALPHA_CHANNEL;
+			mat.setTexture(0, tex_god_aura);
 		} else {
 			ga->remove();
 		}
@@ -761,11 +792,9 @@ void SceneWorldRender::updatePlayerPositions(float dtime)
 				(node_id + OFFSET_SPEECH)
 			);
 
-			node->forEachMaterial([](video::SMaterial &mat){
-				mat.ZWriteEnable = video::EZW_AUTO;
-				mat.MaterialType = video::EMT_TRANSPARENT_ALPHA_CHANNEL;
-			});
-			node->getMaterial(0).setTexture(0, tex_speech);
+			auto &mat = node->getMaterial(0);
+			mat.MaterialType = video::EMT_TRANSPARENT_ALPHA_CHANNEL;
+			mat.setTexture(0, tex_speech);
 		} else {
 			// TODO: A fade animation (shrink or alpha) would be nice.
 			ci->remove();

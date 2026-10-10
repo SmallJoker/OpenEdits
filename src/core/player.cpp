@@ -50,6 +50,10 @@ void Player::setWorld(RefCnt<World> world)
 		m_physics = PlayerPhysics();
 		setPosition({0, 0});
 		setGodMode(false);
+
+		auto backup = smiley.id;
+		smiley = Smiley();
+		smiley.id = backup;
 	}
 }
 

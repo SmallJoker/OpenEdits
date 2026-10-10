@@ -275,7 +275,7 @@ void Client::pkt_Join(Packet &pkt)
 
 	player->name = pkt.readStr16();
 	player->setGodMode(pkt.read<u8>());
-	player->smiley_id = pkt.read<u8>();
+	player->smiley.id = pkt.read<u8>();
 	player->readPhysics(pkt);
 
 	if (m_script) {
@@ -554,13 +554,12 @@ void Client::pkt_Smiley(Packet &pkt)
 	SimpleLock lock(m_players_lock);
 
 	peer_t peer_id = pkt.read<peer_t>();
-	int smiley_id = pkt.read<u8>();
-
 	LocalPlayer *player = getPlayerNoLock(peer_id);
 	if (!player)
 		return;
 
-	player->smiley_id = smiley_id;
+	player->smiley.id = pkt.read<u8>();
+	player->smiley.modified = true;
 }
 
 void Client::pkt_PlayerFlags(Packet &pkt)

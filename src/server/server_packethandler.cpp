@@ -650,7 +650,7 @@ void Server::pkt_Join(peer_t peer_id, Packet &pkt)
 		out.write(player->peer_id);
 		out.writeStr16(player->name);
 		out.write<u8>(player->godmode);
-		out.write<u8>(player->smiley_id);
+		out.write(player->smiley.id);
 		player->writePhysics(out, true);
 	};
 
@@ -930,12 +930,12 @@ void Server::pkt_Smiley(peer_t peer_id, Packet &pkt)
 	RemotePlayer *player = getPlayerNoLock(peer_id);
 
 	u8 smiley_id = std::min<u8>(pkt.read<u8>(), m_smileymgr->getCount() - 1);
-	player->smiley_id = smiley_id;
+	player->smiley.id = smiley_id;
 
 	Packet out;
 	out.write(Packet2Client::Smiley);
 	out.write(peer_id);
-	out.write<u8>(player->smiley_id);
+	out.write(player->smiley.id);
 
 	broadcastInWorld(player, 1, out);
 }

@@ -55,6 +55,7 @@ void PlayerRef::doRegister(lua_State *L)
 		{"get_controls", get_controls},
 		{"get_physics", get_physics},
 		{"set_physics", set_physics},
+		{"set_smiley", set_smiley},
 		{nullptr, nullptr}
 	};
 
@@ -383,6 +384,50 @@ int PlayerRef::set_physics(lua_State *L)
 
 	phys.setModified();
 	player->getPhysicsRef() = phys;
+	return 0;
+	MESSY_CPP_EXCEPTIONS_END
+}
+
+
+int PlayerRef::set_smiley(lua_State *L)
+{
+	MESSY_CPP_EXCEPTIONS_START
+	Player *player = toPlayerRef(L, 1)->m_player;
+	if (!player)
+		return 0;
+
+	Script *script = player->getScript();
+	if (!script)
+		luaL_error(L, "missing script");
+
+	Player::Smiley &smiley = player->smiley;
+	smiley.modified = true;
+
+	if (get_check_field_or_nil(L, 2, "visible", LUA_TBOOLEAN))
+		smiley.is_visible = lua_toboolean(L, -1);
+	lua_pop(L, 1);
+
+	if (get_check_field_or_nil(L, 2, "texture", LUA_TSTRING)) {
+		const char *name = lua_tostring(L, -1);
+		if (name[0] == '\0') {
+			name = nullptr; // clear override
+		} else {
+			name = script->getAssetPath(name);
+			if (!name)
+				luaL_error(L, "unknown texture");
+		}
+		smiley.override_texture = name;
+	}
+	lua_pop(L, 1);
+
+	if (get_check_field_or_nil(L, 2, "tile_index", LUA_TNUMBER))
+		smiley.override_index = lua_tointeger(L, -1);
+	lua_pop(L, 1);
+
+	if (get_check_field_or_nil(L, 2, "size", LUA_TNUMBER))
+		smiley.size = lua_tonumber(L, -1);
+	lua_pop(L, 1);
+
 	return 0;
 	MESSY_CPP_EXCEPTIONS_END
 }

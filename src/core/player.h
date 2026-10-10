@@ -14,6 +14,8 @@ class Script;
 class ScriptEventManager;
 class World;
 
+using smiley_id_t = u8; // used in packets
+
 struct PlayerPhysics {
 	float controls_accel = 75.0f;
 	float jump_speed = 30.0f;
@@ -94,7 +96,15 @@ public:
 	void setGodMode(bool value);
 	bool godmode = false;
 
-	u8 smiley_id = 0;
+	struct Smiley {
+		smiley_id_t id = 0; ///< Player-picked smiley
+		bool is_visible = true;
+		bool modified = true; ///< GUI optimization
+
+		float size = NAN;
+		const char *override_texture = nullptr;
+		int override_index = 0;
+	} smiley;
 
 	static constexpr float GRAVITY_DEFAULT = 100.0f;
 

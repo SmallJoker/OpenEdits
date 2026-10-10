@@ -147,13 +147,21 @@ A `userdata` object.
        * `dir_x`, `dir_y` (number)
        * Note: `dir_(x|y)` may have any value range.
  * `:get_physics()` -> table
-    * Table fields:
+    * Table fields: (all optional)
        * `ctrl_accel` (number|boolean): controls-induced player acceleration
        * `jump_speed` (number|boolean): jump speed. Should be positive.
        * `NAN` values will reset parameters to their defaults.
  * `:set_physics(def)`
     * `def` (table): see `:get_physics`
     * For clients only. Distributed automatically.
+ * `:set_smiley(def)`
+    * Client only.
+    * `def` table fields: (all optional)
+       * `texture` (string): Overrides the player smiley.
+         Override is undone with the value `""`.
+       * `tile_index` (number): Index in the `texture`.
+       * `size` (number): `NAN` resets to default.
+       * `visible` (boolean)
  * `env.is_me()` -> bool
     * Client: Returns whether `env.player` is the controlled player.
     * Server: Returns `false`.

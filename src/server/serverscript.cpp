@@ -4,6 +4,7 @@
 #include "core/script/playerref.h"
 #include "core/script/script_utils.h"
 #include "core/chatcommand.h"
+#include "core/smileymanager.h"
 #include "core/world.h"
 #include "core/worldmeta.h"
 #include <string.h> // memset

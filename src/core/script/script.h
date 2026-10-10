@@ -40,6 +40,8 @@ public:
 	ScriptEventManager *getSEMgr() const { return m_emgr; }
 
 	void setMediaMgr(MediaManager *media) { m_media = media; }
+	/// @return non-NULL on success
+	const char *getAssetPath(const char *name);
 	/// Safe file loader
 	bool loadFromAsset(const std::string &asset_name);
 
@@ -73,13 +75,17 @@ protected:
 	static int l_register_smileys(lua_State *L);
 	static int l_register_pack(lua_State *L);
 	static int l_change_block(lua_State *L);
+private:
+	int m_private_include_depth = 0;
 
+
+	// -------- Smiley
 public:
 	void setSmileyMgr(SmileyManager *mgr) { m_smileymgr = mgr; }
-private:
-	SmileyManager *m_smileymgr = nullptr;
+	const SmileyManager *getSmileyMgr() const { return m_smileymgr; }
 
-	int m_private_include_depth = 0;
+protected:
+	SmileyManager *m_smileymgr = nullptr;
 
 
 	// -------- Callbacks

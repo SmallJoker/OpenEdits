@@ -76,10 +76,7 @@ void SmileyManager::populateTextures()
 		video::ITexture *texture = nullptr;
 		if (path)
 			texture = m_driver->getTexture(path);
-		if (texture) {
-			auto img_dim = texture->getOriginalSize();
-			pack->texture_width = img_dim.Width / img_dim.Height;
-		} else {
+		if (!texture) {
 			logger(LL_ERROR, "Failed to load texture '%s'", path);
 			texture = tex_fallback;
 		}
@@ -105,7 +102,7 @@ std::pair<const SmileyPack *, size_t> SmileyManager::getSmileyAt(int i_int) cons
 {
 	ASSERT_FORCED(m_populated, "not ready!");
 
-	size_t i = (i_int > 0) * i_int;
+	size_t i = (i_int > 0) * i_int; // clamp negative to 0
 
 	for (const SmileyPack *pack : m_smiley_packs) {
 		if (i < pack->defs.size())
@@ -117,4 +114,3 @@ std::pair<const SmileyPack *, size_t> SmileyManager::getSmileyAt(int i_int) cons
 	static const SmileyPack fallback("ERR");
 	return { &fallback, 0 };
 }
-

@@ -23,7 +23,6 @@ struct SmileyPack {
 
 	std::string name;
 	video::ITexture *texture = nullptr;
-	int texture_width = 1; //< Max count of smileys for this texture
 	std::vector<SmileyDef> defs; //< Actual amount of smileys
 };
 

@@ -244,7 +244,7 @@ int GuiScript::l_gui_spawn_particles(lua_State *L)
 	}
 
 	const char *texture = check_field_string(L, 2, "texture");
-	p.texture_path = script->m_client->getMedia()->getAssetPath(texture);
+	p.texture_path = script->getAssetPath(texture);
 	if (!p.texture_path)
 		luaL_error(L, "unknown texture");
 
