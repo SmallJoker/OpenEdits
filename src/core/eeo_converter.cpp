@@ -18,7 +18,6 @@
 #else
 	#define DEBUGLOG(...) do {} while (false)
 #endif
-#define ERRORLOG(...) fprintf(stderr, __VA_ARGS__)
 
 static Logger logger("EEOconverter", LL_INFO);
 
@@ -440,7 +439,6 @@ static void decompress_file(Packet &pkt, const std::string &filename)
 
 void EEOconverter::fromFile(const std::string &filename_)
 {
-	std::filesystem::create_directories(IMPORT_DIR);
 	const std::string filename = IMPORT_DIR + "/" + filename_;
 
 	ensure_cache();
@@ -542,12 +540,11 @@ no_import:
 		}
 	}
 
-	printf("EEOconverter: Imported world %s from file '%s'\n", meta.id.c_str(), filename.c_str());
+	logger(LL_INFO, "Imported world %s from file '%s'", meta.id.c_str(), filename.c_str());
 }
 
 void EEOconverter::toFile(const std::string &filename_) const
 {
-	std::filesystem::create_directories(EXPORT_DIR);
 	const std::string filename = EXPORT_DIR + "/" + filename_;
 
 	ensure_cache();
@@ -688,9 +685,14 @@ void EEOconverter::toFile(const std::string &filename_) const
 		os.close();
 	}
 
-	printf("EEOconverter: Exported world %s to file '%s'\n", meta.id.c_str(), filename.c_str());
+	logger(LL_INFO, "Exported world %s to file '%s'", meta.id.c_str(), filename.c_str());
 }
 
+void EEOconverter::setup_paths()
+{
+	std::filesystem::create_directories(EXPORT_DIR);
+	std::filesystem::create_directories(IMPORT_DIR);
+}
 
 void EEOconverter::inflate(const std::string &filename)
 {
@@ -706,7 +708,7 @@ void EEOconverter::inflate(const std::string &filename)
 	of.write((const char *)zs.data(), zs.size());
 	of.close();
 
-	printf("EEOconverter: Decompressed file %s\n", outname.c_str());
+	logger(LL_PRINT, "Decompressed file '%s'", outname.c_str());
 }
 
 static std::string path_to_worldid(const std::string &path)

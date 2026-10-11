@@ -46,10 +46,11 @@ static void eeoc_write()
 	std::string relpath = EEOconverter::EXPORT_DIR + "/unittest_1.eelvl";
 	EEOconverter::inflate(relpath);
 
-	std::rename(
+	int status = std::rename(
 		relpath.c_str(),
 		(EEOconverter::IMPORT_DIR + "/unittest_1.eelvl").c_str()
 	);
+	CHECK(status == 0);
 }
 
 static void eeoc_read_check()

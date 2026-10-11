@@ -358,6 +358,8 @@ int main(int argc, char *argv[])
 	// Used by Gui, Client and Unittests but not Server.
 	g_blockmanager = new BlockManager();
 
+	EEOconverter::setup_paths();
+
 	int status = parse_args(argc, argv);
 
 	delete g_blockmanager;

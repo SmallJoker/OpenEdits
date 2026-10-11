@@ -17,6 +17,8 @@ public:
 	// Write to new EELVL file
 	void toFile(const std::string &filename_) const;
 
+	static void setup_paths();
+
 	// Utility/debugging function to decompress a file
 	static void inflate(const std::string &filename);
 
