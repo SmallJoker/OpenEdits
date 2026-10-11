@@ -1,6 +1,11 @@
 #include "blockmanager.h"
 #include "player.h"
 
+static BP_STEP_CALLBACK(step_default_down)
+{
+	player.acc.Y = +Player::GRAVITY_DEFAULT;
+}
+
 static BP_STEP_CALLBACK(step_arrow_left)
 {
 	player.acc.X = -Player::GRAVITY_DEFAULT;
@@ -31,6 +36,7 @@ void BlockManager::registerUnittestPacks()
 		registerPack(pack);
 
 		m_props[0]->color = 0xFF000000;
+		m_props[0]->step = step_default_down;
 		m_props[1]->step = step_arrow_left;
 		m_props[2]->step = step_arrow_up;
 		m_props[3]->step = step_arrow_right;

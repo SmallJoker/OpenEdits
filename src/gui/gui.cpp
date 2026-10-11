@@ -135,6 +135,11 @@ void Gui::run()
 				delete m_server;
 				m_server = nullptr;
 			}
+
+			// restore for reconnect
+			delete g_blockmanager;
+			g_blockmanager = new BlockManager();
+
 			m_pending_disconnect = false;
 		}
 

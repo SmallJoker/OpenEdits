@@ -407,9 +407,10 @@ bool Player::stepCollisions(float dtime)
 	// single block effect
 	if (props && props->step) {
 		props->step(*this, bp);
-	} else {
+	} else if (m_script) {
 		m_script->onIntersect(props);
 	}
+
 	{
 		// Position changes (e.g. portal)
 		blockpos_t bp2 = getCurrentBlockPos();

@@ -56,6 +56,7 @@ static void test_server_client()
 }
 
 #include "core/blockmanager.h"
+#include "client/client.h"
 #include "client/clientscript.h"
 static void test_with_script()
 {
@@ -68,6 +69,9 @@ static void test_with_script()
 
 	smileymgr.init(nullptr, &media);
 
+	ClientStartData data;
+	Client client(data, nullptr);
+	script.setClient(&client);
 	script.init();
 	script.setMediaMgr(&media);
 	script.setSmileyMgr(&smileymgr);

@@ -68,12 +68,6 @@ Client::~Client()
 		m_script = nullptr;
 	}
 
-	if (m_bmgr == g_blockmanager) {
-		// restore for reconnect
-		delete g_blockmanager;
-		g_blockmanager = new BlockManager();
-	}
-
 	if (m_media) {
 		delete m_media;
 		m_media = nullptr;
