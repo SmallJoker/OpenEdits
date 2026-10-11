@@ -2,7 +2,12 @@ local SOUND_PIANO = "piano_c4.mp3"
 local PIANO_KEY_NAMES = {
 	-- ' as a shorter notation for # to fit everyhing in the overlay
 	"C", "C'", "D", "D'", "E", "F", "F'", "G", "G'", "A", "A'", "B"
-};
+}
+local PIANO_KEY_OFFSETS = {
+	["#"] = 1,
+	["'"] = 1,
+	["b"] = -1,
+}
 
 env.require_asset(SOUND_PIANO)
 
@@ -21,6 +26,32 @@ local function do_play_piano_note()
 		pitch = pitch
 	})
 end
+
+local function param_to_note_str(note)
+	-- param = 0 : octave = 3, key = "C"
+	local octave = math.floor(note / 12 + 3)
+	return PIANO_KEY_NAMES[note % 12 + 1] .. tostring(octave)
+end
+
+local function note_str_to_param(str)
+	-- Notations: C, C', C#, C#3, Db, Db3
+	local _, _, letter, offset, octave = str:find("([A-Ha-h])([#'b]?)([%d]?)")
+
+	if letter:find("[a-z]") then
+		-- To uppercase
+		letter = string.char(string.byte(letter) - 0x20)
+	end
+	letter = (("CCDDEFFGGAAB"):find(letter, 1, true)) - 1
+	offset = PIANO_KEY_OFFSETS[offset] or 0
+	octave = tonumber(octave) or 0
+
+	local param = (octave - 3) * 12 + letter + offset
+	if param < 0 or param > 50 then
+		return nil
+	end
+	return param
+end
+
 
 local blocks_def = {
 	{
@@ -43,24 +74,22 @@ local blocks_def = {
 				{ type = gui.ELMT_TEXT, text = "Note" },
 				{ type = gui.ELMT_INPUT, name = "note" },
 			},
-			values = { ["note"] = 12 },
+			values = { ["note"] = "C4" },
 			from_block = function(values, note)
-				values.note = note
+				values.note = param_to_note_str(note)
 			end,
 			on_input = function(values, k, v)
-				if k == "note" then
-					v = tonumber(v) and v or values[k]
-				end
 				values[k] = v
 			end,
 			on_place = function(values, x, y)
-				gui.select_block(nil, values.note)
+				local param = note_str_to_param(values.note)
+				if param then
+					gui.select_block(nil, param)
+				end
 			end,
 		},
 		get_visuals = function(tile, note)
-			-- param = 0 : octave = 3, key = "C"
-			local octave = math.floor(note / 12 + 3)
-			return 0, PIANO_KEY_NAMES[note % 12 + 1] .. tostring(octave)
+			return 0, param_to_note_str(note)
 		end,
 
 	},

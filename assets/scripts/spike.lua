@@ -5,6 +5,7 @@ local get_pwdata = reg.get_pwdata
 
 local ID_CHECKPOINT = 360
 local ID_SPIKES = 361
+local KILL_DURATION_S = 2
 
 -- Client --> Server
 local EV_CHECKPOINT
@@ -70,12 +71,40 @@ EV_KILLED = env.register_event(ID_SPIKES, 0, env.PARAMS_TYPE_U8,
 		end
 
 		delay_killed[player_id] = {
-			time = delay_timestamp + 2,
+			time = delay_timestamp + KILL_DURATION_S,
 			world = env.world.get_id(),
 			pos = pw_data.checkpoint
 		}
 	end
 )
+
+
+local POOF_TEX = "poof.png"
+env.require_asset(POOF_TEX)
+
+local function kill_current_player()
+	env.send_event(EV_KILLED, 0)
+	env.player:set_physics({ ctrl_accel = 0, jump_speed = 0 })
+
+	if not env.player.set_smiley then
+		return
+	end
+	-- Effects
+
+	env.player:set_smiley({ visible = false })
+	gui.spawn_particles(-1, {
+		texture = POOF_TEX,
+		pos = { 0, 0 },
+		animate = function(self, dtime)
+			self.size[1] = self.size[1] + dtime * 0.8
+			return true
+		end,
+		size = {0.5},
+		interval = 0,
+		relative_to = env.player,
+		expiry = KILL_DURATION_S,
+	})
+end
 
 local old_event = env.on_player_event
 env.on_player_event = function(event, arg)
@@ -83,13 +112,17 @@ env.on_player_event = function(event, arg)
 		if env.is_me() then
 			-- Spikes: Reset to default
 			env.player:set_physics({ ctrl_accel = NAN, jump_speed = NAN })
+			if env.player.set_smiley then
+				env.player:set_smiley({ visible = true })
+			end
 		end
 
 		-- Only does something server-side.
 		local player_id = env.player:hash()
-		if delay_killed[player_id] then
-			delay_killed[player_id] = nil
-		end
+		delay_killed[player_id] = nil
+	end
+	if env.server and event == "leave" then
+		delay_killed[env.player:hash()] = nil
 	end
 
 	old_event(event, arg)
@@ -185,10 +218,11 @@ local blocks_def = {
 		},
 
 		on_intersect_once = function(tile)
-			if env.is_me() and not get_pwdata(env.player).godmode then
-				env.send_event(EV_KILLED, 0)
-				env.player:set_physics({ ctrl_accel = 0, jump_speed = 0 })
+			if not env.is_me() or get_pwdata(env.player).godmode then
+				return
 			end
+
+			kill_current_player()
 		end,
 		on_intersect = function()
 			env.player:set_acc(0, 0)

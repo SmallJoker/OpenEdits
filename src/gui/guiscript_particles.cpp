@@ -271,6 +271,8 @@ int GuiScript::l_gui_spawn_particles(lua_State *L)
 
 	// final touch after success: make it not expire.
 	p.expiry = expiry;
-	return 0;
+
+	lua_pushnumber(L, id);
+	return 1;
 	MESSY_CPP_EXCEPTIONS_END
 }

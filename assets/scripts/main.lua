@@ -175,7 +175,7 @@ env.include("hidden.lua")
 env.include("music.lua")
 env.include("owner.lua")
 env.include("spike.lua")
-env.include("dev_blocks.lua")
+--env.include("dev_blocks.lua")
 
 
 ---------- Decoration tab

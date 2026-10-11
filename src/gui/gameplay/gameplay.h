@@ -41,9 +41,6 @@ public:
 
 	video::ITexture *generateTexture(const std::string &text, u32 color = 0xFFFFFFFF, u32 bgcolor = 0xFF000000);
 
-	/// TODO: port to Lua
-	static bool pianoNoteToParam(const char *note, u8 *param_out);
-
 private:
 	bool initChatHistory();
 	bool handleChatInput(const SEvent &e);

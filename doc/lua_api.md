@@ -222,8 +222,9 @@ Namespace: `gui`. Only available for GUI clients.
     * Generally to be used in the `gui_def.on_place` callback
  * `set_hotbar({ block_id_1, ... })`
     * Sets the initial block hotbar.
- * `spawn_particles(Particles Definition)`
-    * Spawns particles.
+ * `spawn_particles(id, Particles Definition)` -> `id`
+    * `id` (optional, integer): Particles ID to overwrite
+    * Return value: Particles ID
 
 Block Definition field `gui_def`:
 
