@@ -1,0 +1,52 @@
+name: linux
+
+# Helpful references and examples
+# https://github.com/luanti-org/luanti/blob/master/.github/workflows/linux.yml
+# https://devpane.tools/yaml/github-actions-yaml-guide
+
+on:
+  push:
+    paths:
+      - 'src/**.[ch]'
+      - 'src/**.[ch]pp'
+      - '.github/workflows/linux.yml'
+      - 'assets/**'
+      - 'cmake/**.cmake'
+      - 'CMakeLists.txt'
+  # Why do I have to duplicate this?
+  pull_request:
+    paths:
+      - 'src/**.[ch]'
+      - 'src/**.[ch]pp'
+      - '.github/workflows/linux.yml'
+      - 'assets/**'
+      - 'cmake/**.cmake'
+      - 'CMakeLists.txt'
+
+jobs:
+  ubuntu-24:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - name: Dependencies
+        run: |
+          bash ./misc/workflow_build.sh prep_ubuntu-24
+
+      - name: Build
+        run: |
+          bash ./misc/workflow_build.sh build_linux_gui
+
+      - name: Unittest
+        run: |
+          bash ./misc/workflow_build.sh test_linux
+
+      - name: Install
+        run: |
+          cd ./build
+          make install
+
+      - name: Upload binary
+        uses: actions/upload-artifact@v7
+        with:
+          name: output
+          path: build/build/OpenEdits
