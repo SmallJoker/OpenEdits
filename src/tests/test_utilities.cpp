@@ -99,15 +99,15 @@ static void test_rate_limit()
 
 void unittest_utilities()
 {
-	const std::string utf8_in1 = "Hello Wörld!";
-	const std::wstring utf32_in1 = L"Hello Wörld!";
+	const std::string  utf8_in1 =  "Hello Wörld!";
+	const std::wstring wide_in1 = L"Hello Wörld!";
 
-	std::wstring utf32_out;
-	CHECK(utf8_to_wide(utf32_out, utf8_in1.c_str()));
-	CHECK(utf32_out == utf32_in1);
+	std::wstring wide_out;
+	CHECK(utf8_to_wide(wide_out, utf8_in1.c_str()));
+	CHECK(wide_out == wide_in1);
 
 	std::string utf8_out;
-	CHECK(wide_to_utf8(utf8_out, utf32_in1.c_str()));
+	CHECK(wide_to_utf8(utf8_out, wide_in1.c_str()));
 	CHECK(utf8_out == utf8_in1);
 
 	const std::string split_in = "foo,,bar   ,baz, more";

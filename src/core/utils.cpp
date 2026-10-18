@@ -194,34 +194,44 @@ bool utf8_to_wide(std::wstring &dst, const char *str)
 #else
 
 // Based on code written by est31, https://github.com/minetest/minetest/commit/572990dcd
+// and paradust7, https://github.com/luanti-org/luanti/commit/c7c27421f
 bool utf8_to_wide(std::wstring &dst, const char *str)
 {
 	const size_t length = strlen(str);
-	size_t outbuf_size = length + 1;
-	wchar_t *outbuf = new wchar_t[outbuf_size];
-	memset(outbuf, 0, outbuf_size * sizeof(wchar_t));
-	// Windows does not seem to like "CP_UTF8" -> results in unittest fail
-	int hr = MultiByteToWideChar(CP_ACP, 0, str, length,
-		outbuf, outbuf_size);
-	if (hr >= 0)
-		dst.assign(outbuf);
-	delete[] outbuf;
-	return hr >= 0;
+	if (length == 0) {
+		dst.clear();
+		return true;
+	}
+
+	dst = std::wstring(length, L'\0');
+	int len = MultiByteToWideChar(CP_UTF8, 0, str, length,
+		dst.data(), dst.size());
+	if (len <= 0) {
+		dst.clear();
+		return false;
+	}
+	dst.resize(len);
+	return true;
 }
 
 bool wide_to_utf8(std::string &dst, const wchar_t *str)
 {
 	const size_t length = wcslen(str);
-	size_t outbuf_size = (length + 1) * 6;
-	char *outbuf = new char[outbuf_size];
-	memset(outbuf, 0, outbuf_size);
-	// Windows does not seem to like "CP_UTF8" -> results in unittest fail
-	int hr = WideCharToMultiByte(CP_ACP, 0, str, length,
-		outbuf, outbuf_size, NULL, NULL);
-	if (hr >= 0)
-		dst.assign(outbuf);
-	delete[] outbuf;
-	return hr >= 0;
+	if (length == 0) {
+		dst.clear();
+		return true;
+	}
+
+	// 1 wchar can expand to at most 4 utf-8 bytes
+	dst = std::string(length * 4, L'\0');
+	int len = WideCharToMultiByte(CP_UTF8, 0, str, length,
+		dst.data(), dst.size(), NULL, NULL);
+	if (len <= 0) {
+		dst.clear();
+		return false;
+	}
+	dst.resize(len);
+	return true;
 }
 
 

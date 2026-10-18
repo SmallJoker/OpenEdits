@@ -45,7 +45,7 @@ jobs:
       - name: Upload binary
         uses: actions/upload-artifact@v7
         with:
-          name: output
+          name: ubuntu-x86_64
           path: build/build
 
       - name: Unittest
@@ -83,7 +83,7 @@ jobs:
       - name: Upload binary
         uses: actions/upload-artifact@v7
         with:
-          name: output
+          name: windows-x86_64
           path: build/build
 
       - name: Unittest
