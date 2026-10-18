@@ -1,20 +1,20 @@
-name: linux
+name: Workhorse
+
+# https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manually-run-a-workflow#running-a-workflow
 
 # Helpful references and examples
 # https://github.com/luanti-org/luanti/blob/master/.github/workflows/linux.yml
 # https://devpane.tools/yaml/github-actions-yaml-guide
 
 on:
-  push:
-    paths:
-      - 'src/**.[ch]'
-      - 'src/**.[ch]pp'
-      - '.github/workflows/linux.yml'
-      - 'assets/**'
-      - 'cmake/**.cmake'
-      - 'CMakeLists.txt'
+  workflow_dispatch:
   # Why do I have to duplicate this?
-  pull_request:
+  #pull_request:
+  push:
+    branches:
+      - 'ci'
+    tags:
+      - '**'
     paths:
       - 'src/**.[ch]'
       - 'src/**.[ch]pp'
@@ -25,9 +25,11 @@ on:
 
 jobs:
   ubuntu-24:
+    if: true
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
+
       - name: Dependencies
         run: |
           bash ./misc/workflow_build.sh prep_ubuntu-24
@@ -36,17 +38,55 @@ jobs:
         run: |
           bash ./misc/workflow_build.sh build_linux_gui
 
-      - name: Unittest
-        run: |
-          bash ./misc/workflow_build.sh test_linux
-
       - name: Install
         run: |
-          cd ./build
-          make install
+          cmake --install ./build
 
       - name: Upload binary
         uses: actions/upload-artifact@v7
         with:
           name: output
-          path: build/build/OpenEdits
+          path: build/build
+
+      - name: Unittest
+        run: |
+          bash ./misc/workflow_build.sh test_linux
+
+  # https://gordonyfg.github.io/blog/post-gtest_mingw64_vscode_win_ci_w_githubaction/
+  # https://www.msys2.org/docs/ci/
+  windows-mingw-w64:
+    if: true
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: ucrt64
+          update: true
+
+      - name: Dependencies
+        run: |
+          bash ./misc/workflow_build.sh prep_windows
+
+      - name: Build
+        run: |
+          bash ./misc/workflow_build.sh build_windows_gui
+
+      - name: Install
+        run: |
+          cmake --install ./build
+          bash ./misc/workflow_build.sh install_runtime_mingw64
+
+      - name: Upload binary
+        uses: actions/upload-artifact@v7
+        with:
+          name: output
+          path: build/build
+
+      - name: Unittest
+        run: |
+          bash ./misc/workflow_build.sh test_windows
+

@@ -170,11 +170,6 @@ target_link_libraries(
 	ZLIB::ZLIB
 )
 
-if (MINGW)
-	# Needed by ENet but is not carried over (?)
-	target_link_libraries(${PROJECT_NAME} winmm ws2_32)
-endif()
-
 if(BUILD_CLIENT)
 	target_link_libraries(${PROJECT_NAME} IrrlichtMt::IrrlichtMt)
 endif()
@@ -198,13 +193,25 @@ if(HAVE_LUA)
 	)
 endif()
 
+# By Shaurya2k06, https://github.com/EVerest/EVerest/commit/19950f32
+if(NOT TARGET SQLite3::SQLite3) # CMake < 4.3
+	set_target_properties(SQLite::SQLite3 PROPERTIES IMPORTED_GLOBAL TRUE)
+	add_library(SQLite3::SQLite3 ALIAS SQLite::SQLite3)
+endif()
+
+if (MINGW)
+	# Needed by ENet but is not carried over (?)
+	target_link_libraries(${PROJECT_NAME} ws2_32 winmm)
+endif()
+
 if(MSVC)
-	# For ENet
+	# For ENet.
+	# SQLite3 is compiled into the project for simplicity.
 	target_link_libraries(${PROJECT_NAME} ws2_32.lib winmm.lib)
 elseif(HAIKU)
-	target_link_libraries(${PROJECT_NAME} SQLite::SQLite3)
+	target_link_libraries(${PROJECT_NAME} SQLite3::SQLite3)
 else()
-	target_link_libraries(${PROJECT_NAME} stdc++fs SQLite::SQLite3)
+	target_link_libraries(${PROJECT_NAME} stdc++fs SQLite3::SQLite3)
 endif()
 
 

@@ -3,6 +3,7 @@ build/
 bin/
 cache/
 experimental/
+irrlicht-mt/
 src/version.cpp
 worlds/imports/
 worlds/exports/
