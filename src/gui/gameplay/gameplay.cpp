@@ -28,6 +28,7 @@ enum ElementId : int {
 	ID_BtnGodMode,
 	ID_BtnMinimap,
 	ID_LabelTitle,
+	ID_BtnCopyId,
 	ID_ListPlayers = 120,
 	ID_TextChatHistory,
 };
@@ -349,40 +350,52 @@ bool SceneGameplay::OnEvent(const SEvent &e)
 	if (e.EventType == EET_GUI_EVENT) {
 		switch (e.GUIEvent.EventType) {
 			case gui::EGET_BUTTON_CLICKED:
-				if (e.GUIEvent.Caller->getID() == ID_BtnBack) {
+				switch (e.GUIEvent.Caller->getID()) {
+				case ID_BtnBack:
 					m_gui->leaveWorld();
 					return true;
-				}
-				if (e.GUIEvent.Caller->getID() == ID_BtnGodMode) {
-					auto player = m_gui->getClient()->getMyPlayer();
-					GameEvent e(GameEvent::G2C_GODMODE);
-					e.intval = !player->godmode;
-					m_gui->sendNewEvent(e);
-					m_gui->guienv->setFocus(nullptr);
-					return true;
-				}
-				if (e.GUIEvent.Caller->getID() == ID_BtnChat) {
-					auto root = m_gui->guienv->getRootGUIElement();
-					auto element = static_cast<gui::IGUIEditBox *>(root->getElementFromId(ID_BoxChat));
-
-					if (!element)
-						return false;
-
-					if (!element->isVisible()) {
-						// Show
-						editbox_move_to_end(m_gui->guienv);
-					} else {
-						// Hide
-						element->setVisible(false);
+				case ID_BtnGodMode:
+					{
+						auto player = m_gui->getClient()->getMyPlayer();
+						GameEvent e(GameEvent::G2C_GODMODE);
+						e.intval = !player->godmode;
+						m_gui->sendNewEvent(e);
 						m_gui->guienv->setFocus(nullptr);
 					}
 					return true;
-				}
-				if (e.GUIEvent.Caller->getID() == ID_BtnMinimap) {
+				case ID_BtnChat:
+					{
+						auto root = m_gui->guienv->getRootGUIElement();
+						auto element = static_cast<gui::IGUIEditBox *>(root->getElementFromId(ID_BoxChat));
+
+						if (!element)
+							return false;
+
+						if (!element->isVisible()) {
+							// Show
+							editbox_move_to_end(m_gui->guienv);
+						} else {
+							// Hide
+							element->setVisible(false);
+							m_gui->guienv->setFocus(nullptr);
+						}
+					}
+					return true;
+				case ID_BtnMinimap:
 					if (m_minimap)
 						m_minimap->toggleVisibility();
 					m_gui->guienv->setFocus(nullptr);
 					return true;
+				case ID_BtnCopyId:
+					{
+						auto world = m_gui->getClient()->getWorld();
+						if (!world)
+							return false;
+
+						m_gui->guienv->getOSOperator()->copyToClipboard(world->getMeta().id.c_str());
+					}
+					return true;
+				default: break;
 				}
 				break;
 			case gui::EGET_EDITBOX_ENTER:
@@ -907,35 +920,39 @@ void SceneGameplay::updatePlayerlist()
 
 	auto gui = m_gui->guienv;
 	auto root = gui->getRootGUIElement();
-	auto playerlist = root->getElementFromId(ID_ListPlayers);
-
-	if (playerlist) {
-		root->removeChild(playerlist);
-		root->removeChild(root->getElementFromId(ID_LabelTitle));
-	}
 
 	const auto wsize = m_gui->window_size;
 
-	core::recti rect(
-		core::vector2di(SIZEW, 50),
-		core::dimension2du(wsize.Width - SIZEW, 100)
-	);
+	// Player names
+	{
+		if (auto *e = root->getElementFromId(ID_ListPlayers))
+			root->removeChild(e);
 
-	auto e = gui->addListBox(rect, nullptr, ID_ListPlayers);
+		core::recti rect(
+			core::vector2di(SIZEW, 50),
+			core::dimension2du(wsize.Width - SIZEW, 100)
+		);
 
-	const auto list = m_gui->getClient()->getPlayerList();
+		auto e = gui->addListBox(rect, nullptr, ID_ListPlayers);
 
-	// TODO FIXME: rank sorting first, alphabetical sorting after.
-	for (auto &it : *list.ptr()) {
-		core::stringw wstr;
-		core::multibyteToWString(wstr, it.second->name.c_str());
-		u32 i = e->addItem(wstr.c_str());
-		PlayerFlags pf = it.second->getFlags();
-		e->setItemOverrideColor(i, pf.getColor());
+		const auto list = m_gui->getClient()->getPlayerList();
+
+		// TODO FIXME: rank sorting first, alphabetical sorting after.
+		for (auto &it : *list.ptr()) {
+			core::stringw wstr;
+			core::multibyteToWString(wstr, it.second->name.c_str());
+			u32 i = e->addItem(wstr.c_str());
+			PlayerFlags pf = it.second->getFlags();
+			e->setItemOverrideColor(i, pf.getColor());
+		}
 	}
+
 
 	// Add world ID and online count
 	{
+		if (auto *e = root->getElementFromId(ID_LabelTitle))
+			root->removeChild(e);
+
 		core::recti rect_text(
 			core::vector2di(SIZEW, 5),
 			core::dimension2du(wsize.Width - SIZEW, 45)
@@ -955,6 +972,23 @@ void SceneGameplay::updatePlayerlist()
 		auto e = gui->addStaticText(dst_text.c_str(), rect_text);
 		e->setID(ID_LabelTitle);
 		e->setOverrideColor(Gui::COLOR_ON_BG);
+	}
+
+	// Copy ID button
+	{
+		if (auto *e = root->getElementFromId(ID_BtnCopyId))
+			root->removeChild(e);
+
+		core::recti rect(
+			core::vector2di(wsize.Width - 24, 22),
+			core::dimension2du(22, 22)
+		);
+
+		auto e = gui->addButton(rect, nullptr, ID_BtnCopyId);
+		e->setImage(m_gui->driver->getTexture("assets/textures/icon_copy.png"));
+		e->setScaleImage(true);
+		e->setUseAlphaChannel(true);
+		e->setToolTipText(L"Copy World ID");
 	}
 }
 

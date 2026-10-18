@@ -670,10 +670,15 @@ void SceneWorldRender::updatePlayerPositions(float dtime)
 			}
 		}
 
+		bool update_smiley = player->smiley.modified;
+		player->smiley.modified = false;
+
 		if (nf) {
 			nf->setPosition(nf_pos);
 		} else {
 			// Smiley
+			update_smiley = true;
+
 			nf = smgr->addBillboardSceneNode(m_players_node,
 				DEFAULT_SMILEY_SIZE,
 				nf_pos,
@@ -703,9 +708,7 @@ void SceneWorldRender::updatePlayerPositions(float dtime)
 		}
 
 		// Assign smiley texture
-		if (player->smiley.modified) {
-			player->smiley.modified = false;
-
+		if (update_smiley) {
 			video::ITexture *tex = nullptr;
 			int index = 0;
 			const auto &smiley = player->smiley;
