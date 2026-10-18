@@ -192,17 +192,23 @@ DejaVu Sans bitmaps (Bitstream Vera license, extended MIT)
 
 Images that are not listed below were created by SmallJoker (CC BY 4.0).
 
+*Unfortunately, `iconfinder.com` ceased to exist in November 2025.*
+
 DailyYouth (CC BY 3.0)
 
  * [`icon_chat.png`](https://www.iconfinder.com/icons/3643728/balloon_chat_conversation_speak_word_icon)
 
-IconMarket (CC BY 3.0)
+IconMarket (CC BY 4.0)
 
- * [`icon_minimap.png`](https://www.iconfinder.com/icons/6442794/compass_direction_discover_location_navigation_icon) (desaturated)
+ * [`icon_minimap.png`](https://icon-icons.com/icon/compass-direction-location-navigation/148671) (desaturated)
 
 ZUMMACO (CC BY 3.0)
 
  * [`ìcon_leave.png`](https://www.iconfinder.com/icons/7030313/sign_out_ui_basic_logout_app_user_interface_ui_icon)
+
+Microsoft Fluent Emoji (MIT)
+
+ * [`icon_copy.png`](https://github.com/microsoft/fluentui-emoji/blob/main/assets/Bookmark%20tabs/High%20Contrast/bookmark_tabs_high_contrast.svg) (modified)
 
 ### Sounds
 
