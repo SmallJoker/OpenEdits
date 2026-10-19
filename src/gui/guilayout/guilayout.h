@@ -35,12 +35,12 @@ struct Element {
 	virtual void clear() { m_children.clear(); }
 	void doRecursive(std::function<bool(Element *)> callback);
 
-	s16_x4 margin {}; //< outer springs to space/dock elements (L,U,R,D)
-	s16_x2 expand {10, 10}; //< inner springs to enlarge elements (x,y) = padding / 2
+	s16_x4 margin {}; ///< outer springs to space/dock elements (L,U,R,D)
+	s16_x2 expand {10, 10}; ///< inner springs to enlarge elements (x,y) = padding / 2
 
 	/// modify min_size && return true to skip box calcs
 	virtual void getMinSize(bool shrink_x, bool shrink_y) {}
-	s16_x2 min_size {}; //< dynamic size (margin, expand) is added atop if available
+	s16_x2 min_size {}; ///< dynamic size (margin, expand) is added atop if available
 
 	/// For the current container: initiates the positioning mechanism
 	/// `pos_new` must be non-`nullptr` for the root element

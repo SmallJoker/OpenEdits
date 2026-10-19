@@ -74,9 +74,23 @@ void IGUIElementWrapper::setElement(gui::IGUIElement *elem)
 			margin = { 0, 1, 1, 1 }; // left align
 			expand = { 0, 0 }; // no benefit from larger container
 			setTextlike(true, 0);
-			{
+			if (type == gui::EGUIET_STATIC_TEXT) {
 				gui::IGUIStaticText *e = (gui::IGUIStaticText *)m_element;
 				e->setTextAlignment(gui::EGUIA_UPPERLEFT, gui::EGUIA_CENTER);
+			}
+			break;
+		case gui::EGUIET_CHECK_BOX: {
+				margin = { 0, 1, 1, 1 }; // left align
+				expand = { 0, 0 };
+
+				const gui::IGUISkin *skin = ((Spoofed *)m_element)->getEnv()->getSkin();
+				const s32 height = skin->getSize(gui::EGDS_CHECK_BOX_WIDTH) + 6;
+				if (m_element->getText()[0] != L'\0') {
+					setTextlike(true, 0);
+					min_size[SIZE_X] += height;
+				} else {
+					min_size = { (s16)height, (s16)height };
+				}
 			}
 			break;
 		default: break;
@@ -98,17 +112,17 @@ void IGUIElementWrapper::start(const s16_x4 *pos_new)
 		pos[DIR_DOWN] - 1
 	};
 
-#if 0
-	core::stringc dst;
-	core::wStringToUTF8(dst, element->getTypeName());
-	printf("Draw element %s: X % 3i, Y % 3i | W % 3i, H % 3i\n",
-		dst.c_str(),
-		rect.UpperLeftCorner.X,
-		rect.UpperLeftCorner.Y,
-		rect.getWidth(),
-		rect.getHeight()
-	);
-#endif
+	if (0) {
+		printf("Draw element %s\t: pos=(%d, %d), size=(%d, %d), min_size=(%d,%d)\n",
+			typeid(*m_element).name(),
+			rect.UpperLeftCorner.X,
+			rect.UpperLeftCorner.Y,
+			rect.getWidth(),
+			rect.getHeight(),
+			min_size[SIZE_X],
+			min_size[SIZE_Y]
+		);
+	}
 
 	// Sync with container
 	m_element->setRelativePosition(rect);

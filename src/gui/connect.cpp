@@ -1,6 +1,7 @@
 #include "connect.h"
 #include "guilayout/guilayout_irrlicht.h"
 #include <IGUIButton.h>
+#include <IGUICheckBox.h>
 #include <IGUIEditBox.h>
 #include <IGUIEnvironment.h>
 #include <IGUIFont.h>
@@ -17,6 +18,7 @@ enum ElementId : int {
 	ID_BoxAddress,
 	ID_BtnConnect,
 	ID_BtnHost,
+	ID_ChkRemember,
 	ID_ListServers,
 	ID_BtnDelServer
 };
@@ -41,10 +43,14 @@ void SceneConnect::draw()
 	using WRAP = guilayout::IGUIElementWrapper;
 
 	Table &root = *m_gui->layout;
-	root.setSize(3, 5);
-	root.col(0)->weight = 20; // left
-	root.col(2)->weight = 20; // right
-	root.row(4)->weight = 20; // bottom
+	root.setSize(1, 1);
+
+	/// Logo and lower part
+	Table &table_w1h2 = *root.add<Table>(0, 0);
+	table_w1h2.setSize(1, 2);
+	table_w1h2.margin = { 6, 3, 6, 4 };
+	table_w1h2.expand = { 3, 3 };
+	table_w1h2.row(1)->weight = 30;
 
 	auto gui = m_gui->guienv;
 	core::recti norect;
@@ -55,18 +61,23 @@ void SceneConnect::draw()
 		auto texture = gui->getVideoDriver()->getTexture("assets/logo.png");
 		auto dim = texture->getOriginalSize();
 
-		auto *i_img = gui->addImage(texture, nopos, false);
-		auto *g_img = root.add<WRAP>(1, 1, i_img);
+		auto *i_img = gui->addImage(texture, nopos, true);
+		auto *g_img = table_w1h2.add<WRAP>(0, 0, i_img);
 		g_img->margin = { 1, 1, 1, 1 };
 		g_img->expand = { 0, 0 };
 		g_img->min_size = { (s16)dim.Width, (s16)dim.Height };
 		//ge->fixed_aspect_ratio = true;
 	}
 
-	Table *table_prompt = root.add<Table>(1, 2);
-	table_prompt->setSize(3, 3);
-	table_prompt->col(1)->weight = 40;
-	table_prompt->col(2)->weight = 20;
+	/// Left (login), space and right (server list)
+	Table &table_LR = *table_w1h2.add<Table>(0, 1);
+	table_LR.setSize(3, 1);
+	table_LR.col(0)->weight = 30;
+
+	/// Input boxes and buttons
+	Table *table_prompt = table_LR.add<Table>(0, 0);
+	table_prompt->setSize(2, 7);
+	table_prompt->col(1)->weight = 15;
 
 	u16 column = 0;
 
@@ -78,9 +89,6 @@ void SceneConnect::draw()
 		auto *i_box = gui->addEditBox(
 			m_login.nickname.c_str(), norect, true, nullptr, ID_BoxNickname);
 		table_prompt->add<WRAP>(1, column, i_box);
-
-		auto *i_btn = gui->addButton(norect, nullptr, ID_BtnHost, L"Host");
-		table_prompt->add<WRAP>(2, column, i_btn);
 
 		column++;
 	}
@@ -98,8 +106,36 @@ void SceneConnect::draw()
 		column++;
 	}
 
+	if (0) {
+		// TODO
+		auto *i_chk = gui->addCheckBox(
+			true, norect, nullptr, ID_ChkRemember);
+		i_chk->setNotClipped(true);
+		i_chk->setDrawBackground(true);
+		i_chk->setDrawBorder(true);
+		table_prompt->add<WRAP>(1, column, i_chk);
+
+		auto *i_text = gui->addStaticText(L"Remember",
+			core::recti(40, 5, 200, 50), false, false, i_chk);
+		i_text->setNotClipped(true);
+		i_text->setOverrideColor(Gui::COLOR_ON_BG);
+
+		column++;
+	} else {
+		column++;
+	}
+
 	{
-		auto i_text = gui->addStaticText(L"Address", norect, false, false);
+
+		auto *i_btn = gui->addButton(norect, nullptr, ID_BtnHost, L"Host server");
+		table_prompt->add<WRAP>(1, column, i_btn);
+
+		column += 2;
+	}
+
+
+	{
+		auto i_text = gui->addStaticText(L"Server", norect, false, false);
 		i_text->setOverrideColor(Gui::COLOR_ON_BG);
 		table_prompt->add<WRAP>(0, column, i_text);
 
@@ -109,37 +145,46 @@ void SceneConnect::draw()
 			m_login.address.c_str(), norect, true, nullptr, ID_BoxAddress);
 		table_prompt->add<WRAP>(1, column, i_box);
 
+		column++;
+	}
+
+	{
 		auto *i_btn = gui->addButton(norect, nullptr, ID_BtnConnect, L"Connect");
-		table_prompt->add<WRAP>(2, column, i_btn);
+		table_prompt->add<WRAP>(1, column, i_btn);
 
 		column++;
 	}
 
-	// Server selector
-	root.row(3)->weight = 20;
-	Table *table_srv = root.add<Table>(1, 3);
-	table_srv->setSize(2, 1);
-	table_srv->col(1)->weight = 30; // listbox
+	for (size_t y = 0; y < column; ++y) {
+		if (auto &e = table_prompt->get(1, y)) {
+			e->margin[Element::DIR_LEFT] = 0;
+			e->margin[Element::DIR_RIGHT] = 0;
+		}
+	}
+
+	/// Server selector
+	Table *table_srv = table_LR.add<Table>(2, 0);
+	table_srv->setSize(1, 2);
+	table_srv->row(0)->weight = 0; /// table_head
 
 	{
-		FlexBox *box_left = table_srv->add<FlexBox>(0, 0);
-		box_left->box_axis = Element::SIZE_Y;
-		box_left->allow_wrap = false; // H center
+		Table *table_head = table_srv->add<Table>(0, 0);
+		table_head->setSize(2, 1);
 
 		// Server selector dropdown
 		auto i_text = gui->addStaticText(L"Servers", norect, false, false);
 		i_text->setOverrideColor(Gui::COLOR_ON_BG);
-		box_left->add<WRAP>(i_text);
+		table_head->add<WRAP>(0, 0, i_text);
 
 		auto *i_btn = gui->addButton(norect, nullptr, ID_BtnDelServer, L"Remove");
-		auto *g_btn = box_left->add<WRAP>(i_btn);
-
+		auto *g_btn = table_head->add<WRAP>(1, 0, i_btn);
 
 		auto *i_list = gui->addListBox(norect, nullptr, ID_ListServers, true);
-		auto *g_list = table_srv->add<WRAP>(1, 0, i_list);
+		auto *g_list = table_srv->add<WRAP>(0, 1, i_list);
 
-		g_btn->margin = { 0, 20, 1, 1 };
-		g_list->margin = { 1, 1, 1, 1 };
+		g_btn->margin = { 10, 10, 0, 10 };
+		g_btn->expand = { 1, 1 };
+		g_list->margin = { 0, 1, 0, 1 };
 		g_list->min_size = { 300, 100 };
 
 		updateServers();
