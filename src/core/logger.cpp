@@ -2,14 +2,16 @@
 
 #include "logger.h"
 #include "utils.h" // strsplit
-#include <bits/stdc++.h> // std::sort
+#include <algorithm> // std::sort
 #include <map>
+#include <stdexcept> // std::runtime_error
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h> // getenv
+#include <string.h> // strcmp
 #include <time.h>
 #ifndef _WIN32
-	#include <unistd.h>
+	#include <unistd.h> // isatty
 #endif
 
 static bool is_tty = false;
@@ -58,7 +60,7 @@ static void do_log_level_overrides()
 					return true; // move to front
 				if (!lhs)
 					return false;
-				return std::strcmp(lhs->getName(), rhs->getName()) < 0;
+				return strcmp(lhs->getName(), rhs->getName()) < 0;
 			}
 		);
 

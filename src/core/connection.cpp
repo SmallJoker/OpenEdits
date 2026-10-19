@@ -39,6 +39,8 @@ const uint16_t PROTOCOL_VERSION_MIN = 10;
 // for low data volumes should not be necessary.
 size_t CONNECTION_MTU;
 
+#define GET_THREAD() ((std::thread *&)(this->m_thread))
+
 static struct enet_init {
 	enet_init()
 	{
@@ -101,9 +103,9 @@ Connection::~Connection()
 		enet_peer_disconnect_later(&m_host->peers[i], 0);
 	enet_host_flush(m_host);
 
-	if (m_thread) {
-		m_thread->join();
-		delete m_thread;
+	if (auto thread = GET_THREAD()) {
+		thread->join();
+		delete thread;
 	}
 
 	// Apply force if needed
@@ -164,9 +166,12 @@ bool Connection::listenAsync(PacketProcessor &proc)
 	m_running = true;
 	m_processor = &proc;
 
-	m_thread = new std::thread(&recvAsync, this);
+	if (m_thread)
+		return true;
 
-	return m_running;
+	GET_THREAD() = new std::thread(&recvAsync, this);
+
+	return true;
 }
 
 void Connection::disconnect(peer_t peer_id)

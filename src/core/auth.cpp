@@ -1,4 +1,5 @@
 #include "auth.h"
+#include <stdlib.h> // rand, exit
 extern "C" {
 #include "sha3.h"
 }
