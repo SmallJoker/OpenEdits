@@ -49,6 +49,7 @@ public:
 	virtual Player *getMyPlayer() const = 0;
 
 protected:
+	void checkIsDuringLoad();
 	virtual void initSpecifics() {}
 	virtual void closeSpecifics() {}
 	virtual Environment *getEnv() { return nullptr; }

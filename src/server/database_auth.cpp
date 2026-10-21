@@ -4,7 +4,7 @@
 #include <stdexcept> // runtime_error
 #include <cstdint>
 
-constexpr int AUTH_DB_VERSION_LATEST = 1;
+constexpr int AUTH_DB_VERSION_LATEST = 2;
 
 
 DatabaseAuth::DatabaseAuth() : Database()
@@ -63,30 +63,22 @@ bool DatabaseAuth::tryOpen(const char *filepath)
 		"DELETE FROM `config` WHERE key = ?"
 	);
 
-	int version = 0;
+	upgradeCheckVersion(); // requires config read/write
+
 	if (!good)
 		return false;
-
-	{
-		AuthConfig cfg("db.version", "");
-		if (getConfig(&cfg)) {
-			version = strtol(cfg.second.c_str(), nullptr, 10);
-			if (version > AUTH_DB_VERSION_LATEST)
-				throw std::runtime_error("Database format is too new for this game version.");
-		} else {
-			version = AUTH_DB_VERSION_LATEST + 1; // to add the version index
-		}
-	}
 
 	good &= runCustomQuery("PRAGMA foreign_keys = ON;");
 
 	good &= ok("create_auth", sqlite3_exec(m_database,
 		"CREATE TABLE IF NOT EXISTS `auth` ("
-		"`name`       TEXT UNIQUE,"
-		"`password`   BLOB,"
-		"`last_login` INTEGER,"
-		"`level`      INTEGER,"
-		"`metadata`   BLOB,"
+		"`name`         TEXT UNIQUE,"
+		"`password`     BLOB,"
+		"`last_login`   INTEGER,"
+		"`level`        INTEGER,"
+		"`metadata`     BLOB,"
+		"`token_data`   BLOB,"
+		"`token_expiry` INTEGER,"
 		"PRIMARY KEY(`name`)"
 		")",
 		nullptr, nullptr, nullptr));
@@ -95,12 +87,14 @@ bool DatabaseAuth::tryOpen(const char *filepath)
 		"SELECT * FROM `auth` WHERE `name` = ? LIMIT 1"
 	);
 	PREPARE(STMT_AUTH_WRITE,
-		"INSERT INTO `auth` VALUES(?, ?, ?, ?, ?) "
+		"INSERT INTO `auth` VALUES(?, ?, ?, ?, ?, ?, ?) "
 		"ON CONFLICT(`name`) DO UPDATE SET "
 		"	password = excluded.password,"
 		"	last_login = excluded.last_login,"
 		"	level = excluded.level,"
-		"	metadata = excluded.metadata;"
+		"	metadata = excluded.metadata,"
+		"	token_data   = excluded.token_data,"
+		"	token_expiry = excluded.token_expiry;"
 	);
 	PREPARE(STMT_AUTH_SET_PW,
 		"UPDATE `auth` SET password = ? WHERE name = ?"
@@ -177,12 +171,38 @@ bool DatabaseAuth::tryOpen(const char *filepath)
 
 #undef PREPARE
 
-	if (good && version != AUTH_DB_VERSION_LATEST) {
-		// Assume upgraded
+	return good;
+}
+
+void DatabaseAuth::upgradeCheckVersion()
+{
+	int version = 0;
+	{
+		AuthConfig cfg("db.version", "");
+		if (getConfig(&cfg)) {
+			version = strtol(cfg.second.c_str(), nullptr, 10);
+			if (version > AUTH_DB_VERSION_LATEST)
+				throw std::runtime_error("Database format is too new for this game version.");
+		} else {
+			version = 9999; // assume newly created
+		}
+	}
+	if (0) printf("Auth DB version: %d\n", version);
+
+	if (version < 2) {
+		// Add columns "token_data" and "token_expiry"
+		ok("token columns", sqlite3_exec(m_database,
+			"ALTER TABLE `auth` ADD COLUMN"
+				"`token_data`   BLOB;"
+			"ALTER TABLE `auth` ADD COLUMN"
+				"`token_expiry` INTEGER;",
+			nullptr, nullptr, nullptr));
+	}
+
+	if (version != AUTH_DB_VERSION_LATEST) {
 		AuthConfig cfg("db.version", std::to_string(AUTH_DB_VERSION_LATEST));
 		setConfig(cfg);
 	}
-	return good;
 }
 
 void DatabaseAuth::close()
@@ -300,6 +320,9 @@ bool DatabaseAuth::load(const std::string &name, AuthAccount *auth)
 	auth->password       = custom_column_blob(s, i++);
 	auth->last_login     = sqlite3_column_int64(s, i++);
 	auth->level          = sqlite3_column_int(s, i++);
+	++i;
+	auth->token_data     = custom_column_blob(s, i++);
+	auth->token_expiry   = sqlite3_column_int64(s, i++);
 
 	bool good = ok("auth_read", sqlite3_step(s));
 	sqlite3_reset(s);
@@ -322,6 +345,8 @@ WRITE_ACTION({
 	sqlite3_bind_int64(s, i++, auth.last_login);
 	sqlite3_bind_int  (s, i++, auth.level);
 	custom_bind_blob  (s, i++, ""); // TODO: Use for per-user settings (Packet)
+	custom_bind_blob  (s, i++, auth.token_data);
+	sqlite3_bind_int64(s, i++, auth.token_expiry);
 
 	good = ok("auth_save_s", sqlite3_step(s));
 	ok("auth_save_r", sqlite3_reset(s));
@@ -346,7 +371,7 @@ const std::string &DatabaseAuth::getUniqueSalt()
 		// Create new salt
 		printf("DatabaseAuth: Initializing new server-wide password salt\n");
 
-		cfg.second = Auth::generateRandom();
+		cfg.second = Auth::generate_challenge();
 		if (!setConfig(cfg)) {
 			throw std::runtime_error("Failed to save unique salt!");
 		}

@@ -1,4 +1,5 @@
 #include "connect.h"
+#include "core/auth.h"
 #include "guilayout/guilayout_irrlicht.h"
 #include <IGUIButton.h>
 #include <IGUICheckBox.h>
@@ -27,14 +28,15 @@ SceneConnect::SceneConnect() :
 	SceneHandler(L"Connect")
 {
 	int num = (rand() % 899) + 100;
-	m_login.nickname = L"Guest" + std::to_wstring(num);
-	m_login.address = L"127.0.0.1";
+	m_inputs.nickname = "Guest" + std::to_string(num);
+	m_inputs.address = "127.0.0.1";
 }
 
 // -------------- Public members -------------
 
 void SceneConnect::OnClose()
 {
+	m_index_to_address.clear();
 }
 
 void SceneConnect::draw()
@@ -72,7 +74,7 @@ void SceneConnect::draw()
 	/// Left (login), space and right (server list)
 	Table &table_LR = *table_w1h2.add<Table>(0, 1);
 	table_LR.setSize(3, 1);
-	table_LR.col(0)->weight = 30;
+	table_LR.col(0)->weight = 40;
 
 	/// Input boxes and buttons
 	Table *table_prompt = table_LR.add<Table>(0, 0);
@@ -81,13 +83,19 @@ void SceneConnect::draw()
 
 	u16 column = 0;
 
+	auto to_wide = [](const std::string &str) {
+		std::wstring wstr;
+		utf8_to_wide(wstr, str.c_str());
+		return wstr;
+	};
+
 	{
 		auto *i_text = gui->addStaticText(L"Username", norect, false, false);
 		i_text->setOverrideColor(Gui::COLOR_ON_BG);
 		table_prompt->add<WRAP>(0, column, i_text);
 
 		auto *i_box = gui->addEditBox(
-			m_login.nickname.c_str(), norect, true, nullptr, ID_BoxNickname);
+			to_wide(m_inputs.nickname).c_str(), norect, true, nullptr, ID_BoxNickname);
 		table_prompt->add<WRAP>(1, column, i_box);
 
 		column++;
@@ -99,24 +107,24 @@ void SceneConnect::draw()
 		table_prompt->add<WRAP>(0, column, i_text);
 
 		auto *i_box = gui->addEditBox(
-			m_login.password.c_str(), norect, true, nullptr, ID_BoxPassword);
+			to_wide(m_inputs.password).c_str(), norect, true, nullptr, ID_BoxPassword);
 		i_box->setPasswordBox(true);
 		table_prompt->add<WRAP>(1, column, i_box);
 
 		column++;
 	}
 
-	if (0) {
-		// TODO
+	if (1) {
 		auto *i_chk = gui->addCheckBox(
 			true, norect, nullptr, ID_ChkRemember);
 		i_chk->setNotClipped(true);
 		i_chk->setDrawBackground(true);
 		i_chk->setDrawBorder(true);
+		i_chk->setToolTipText(L"Only supported by servers >= 1.8.0.");
 		table_prompt->add<WRAP>(1, column, i_chk);
 
 		auto *i_text = gui->addStaticText(L"Remember",
-			core::recti(40, 5, 200, 50), false, false, i_chk);
+			core::recti(40, 2, 200, 50), false, false, i_chk);
 		i_text->setNotClipped(true);
 		i_text->setOverrideColor(Gui::COLOR_ON_BG);
 
@@ -139,10 +147,8 @@ void SceneConnect::draw()
 		i_text->setOverrideColor(Gui::COLOR_ON_BG);
 		table_prompt->add<WRAP>(0, column, i_text);
 
-		core::stringw str;
-
 		auto *i_box = gui->addEditBox(
-			m_login.address.c_str(), norect, true, nullptr, ID_BoxAddress);
+			to_wide(m_inputs.address).c_str(), norect, true, nullptr, ID_BoxAddress);
 		table_prompt->add<WRAP>(1, column, i_box);
 
 		column++;
@@ -189,6 +195,8 @@ void SceneConnect::draw()
 
 		updateServers();
 	}
+
+	updatePasswordField(false);
 }
 
 void SceneConnect::step(float dtime)
@@ -199,7 +207,7 @@ void SceneConnect::step(float dtime)
 bool SceneConnect::OnEvent(const SEvent &e)
 {
 	if (e.EventType == EET_GUI_EVENT) {
-		s32 id = e.GUIEvent.Caller->getID();
+		const s32 id = e.GUIEvent.Caller->getID();
 		switch (e.GUIEvent.EventType) {
 			case gui::EGET_BUTTON_CLICKED:
 				{
@@ -229,14 +237,23 @@ bool SceneConnect::OnEvent(const SEvent &e)
 					}
 				}
 				break;
+			case gui::EGET_LISTBOX_SELECTED_AGAIN: // doubleclick
+				if (id == ID_ListServers) {
+					if (m_inputs.token.empty()) {
+						auto root = m_gui->guienv->getRootGUIElement();
+						m_gui->guienv->setFocus(root->getElementFromId(ID_BoxPassword));
+					} else {
+						onSubmit(0);
+					}
+					break;
+				}
+				break;
 			case gui::EGET_LISTBOX_CHANGED:
 				if (id == ID_ListServers) {
 					gui::IGUIListBox *listbox = (gui::IGUIListBox *)e.GUIEvent.Caller;
 
 					try {
-						auto info = m_index_to_address.at(listbox->getSelected());
-						m_login.address = info.address;
-						m_login.nickname = info.nickname;
+						m_inputs = m_index_to_address.at(listbox->getSelected());
 
 						m_gui->requestRenew();
 					} catch (std::exception &) {
@@ -246,15 +263,21 @@ bool SceneConnect::OnEvent(const SEvent &e)
 				break;
 			case gui::EGET_EDITBOX_ENTER:
 				if (id == ID_BoxPassword) {
-					std::string out;
-					wide_to_utf8(out, e.GUIEvent.Caller->getText());
-					out = strtrim(out);
-					// Try to guess whether to host a server or connect to one.
-					// Hosting falls back to client mode, which is not nice but works well enough.
-					if (out.empty() || out == "127.0.0.1" || out == "localhost")
-						onSubmit(ID_BtnHost);
-					else
-						onSubmit(ID_BtnConnect);
+					onSubmit(0);
+					break;
+				}
+				break;
+			case gui::EGET_EDITBOX_CHANGED:
+			case gui::EGET_ELEMENT_FOCUSED:
+				if (id == ID_BoxPassword) {
+					// Restore normal appearance
+					updatePasswordField(true);
+					break;
+				}
+				break;
+			case gui::EGET_ELEMENT_FOCUS_LOST:
+				if (id == ID_BoxPassword) {
+					updatePasswordField(false);
 					break;
 				}
 				break;
@@ -271,6 +294,15 @@ bool SceneConnect::OnEvent(GameEvent &e)
 
 void SceneConnect::recordLogin(ClientStartData data)
 {
+	if (1) {
+		printf("%s: addr=%s name=%s token=%d\n",
+			__func__, data.address.c_str(), data.nickname.c_str(),
+			(int)data.token.size()
+		);
+
+		Auth::dump_bytes("token", data.token);
+	}
+
 	for (char &c : data.address)
 		c = tolower(c);
 	to_player_name(data.nickname);
@@ -281,7 +313,6 @@ void SceneConnect::recordLogin(ClientStartData data)
 	std::ifstream is("client_servers.txt");
 	std::string line;
 	while (std::getline(is, line)) {
-		LoginInfo info;
 		std::string address_f = get_next_part(line);
 		std::string nickname_f =  get_next_part(line);
 		if (address_f == data.address && nickname_f == data.nickname)
@@ -297,46 +328,130 @@ void SceneConnect::recordLogin(ClientStartData data)
 	}
 }
 
-
-void SceneConnect::onSubmit(int elementid)
+void SceneConnect::backupInputs()
 {
 	auto root = m_gui->guienv->getRootGUIElement();
 
-	// To restore the input boxes on failure
-	m_login.nickname = root->getElementFromId(ID_BoxNickname)->getText();
-	m_login.password = root->getElementFromId(ID_BoxPassword)->getText();
-	m_login.address = root->getElementFromId(ID_BoxAddress)->getText();
+	auto convert = [root](std::string &out, int element_id, bool trim_spaces) {
+		wide_to_utf8(out, root->getElementFromId(element_id)->getText());
+		if (trim_spaces)
+			out = strtrim(out);
+	};
+	convert(m_inputs.nickname, ID_BoxNickname, true);
+	convert(m_inputs.password, ID_BoxPassword, false);
+	convert(m_inputs.address,  ID_BoxAddress, true);
 
-	// Send connection request
-	ClientStartData start_data;
+	auto cb = (gui::IGUICheckBox *)root->getElementFromId(ID_ChkRemember);
+	m_inputs.remember_password = cb && cb->isChecked();
+}
 
-	wide_to_utf8(start_data.nickname, m_login.nickname.c_str());
-	wide_to_utf8(start_data.password, m_login.password.c_str());
-	if (elementid != ID_BtnHost)
-		wide_to_utf8(start_data.address, m_login.address.c_str());
-	else
-		; // empty address == host local server
+std::string SceneConnect::getToken()
+{
+	// TODO
+
+	//m_config_db->getToken();
+	return "AA";
+}
+
+void SceneConnect::onSubmit(int elementid)
+{
+	backupInputs();
+
+	bool do_host = false;
+	switch (elementid) {
+	case 0:
+		{
+			// Autodetect
+
+			auto &addr = m_inputs.address;
+			// Try to guess whether to host a server or connect to one.
+			// Falls back to client mode when the port is occupied. Not nice but does work.
+			if (addr.empty() || addr == "127.0.0.1" || addr == "localhost") {
+				do_host = true;
+				addr = "127.0.0.1"; // reference
+			}
+		}
+
+		break;
+	case ID_BtnHost:    do_host = true;  break;
+	case ID_BtnConnect: do_host = false; break;
+	default: return;
+	}
+
+	ClientStartData start_data = m_inputs;
+
+	if (do_host)
+		start_data.address.clear(); // empty address == host local server
+
+	if (m_use_token) {
+		start_data.token = getToken();
+		start_data.password.clear();
+	} else {
+		start_data.token.clear();
+	}
 
 	m_gui->connect(start_data);
 }
 
+void SceneConnect::updatePasswordField(bool is_focused)
+{
+	auto root = m_gui->guienv->getRootGUIElement();
+	auto pb = (gui::IGUIEditBox *)root->getElementFromId(ID_BoxPassword);
+	if (!pb)
+		return;
+
+	auto cb = (gui::IGUICheckBox *)root->getElementFromId(ID_ChkRemember);
+
+	if (is_focused) {
+		if (m_use_token)
+			pb->setText(L"");
+		m_use_token = false;
+	} else {
+		if (pb->getText()[0] == L'\0') {
+			// Empty -> Try to use token if available
+			const bool have_token = !m_inputs.token.empty();
+			if (have_token) {
+				pb->setText(L"xxxxxxxxxxxx");
+				if (cb)
+					cb->setChecked(true);
+			}
+			m_use_token = have_token;
+		} else {
+			m_use_token = false;
+		}
+	}
+
+	pb->setOverrideColor(0xFF555555);
+	pb->enableOverrideColor(!is_focused && m_use_token);
+	pb->setWritable(is_focused || !m_use_token);
+
+	if (cb)
+		cb->setEnabled(!m_use_token);
+}
+
+
 static const std::string SERVERS_FILE = "client_servers.txt";
+
+static ClientStartData get_from_line(std::string &line)
+{
+	ClientStartData start_data;
+	start_data.address = get_next_part(line).c_str();
+	start_data.nickname = get_next_part(line).c_str();
+	return start_data;
+}
 
 void SceneConnect::removeServer(int index)
 {
-	const LoginInfo &ref = m_index_to_address.at(index);
+	const ClientStartData &ref = m_index_to_address.at(index);
 
 	// Read in the saved servers
 	std::ifstream is(SERVERS_FILE);
 	std::ofstream os(SERVERS_FILE + ".tmp", std::ios_base::trunc);
 	std::string line;
 	while (std::getline(is, line)) {
-		std::string original_line = line;
+		const std::string original_line = line;
 
-		LoginInfo info;
-		utf8_to_wide(info.address, get_next_part(line).c_str());
-		utf8_to_wide(info.nickname, get_next_part(line).c_str());
-
+		ClientStartData info = get_from_line(line);
 		if (info.address == ref.address && info.nickname == ref.nickname) {
 			// Skip
 			continue;
@@ -354,6 +469,8 @@ void SceneConnect::removeServer(int index)
 
 void SceneConnect::updateServers()
 {
+	m_index_to_address.clear();
+
 	auto root = m_gui->guienv->getRootGUIElement();
 	auto listbox = (gui::IGUIListBox *)root->getElementFromId(ID_ListServers);
 
@@ -361,30 +478,30 @@ void SceneConnect::updateServers()
 		return;
 
 	{
-		m_index_to_address.clear();
 
 		// Read in the saved servers
 		std::ifstream is("client_servers.txt");
 		std::string line;
 		while (std::getline(is, line)) {
-			LoginInfo info;
-			utf8_to_wide(info.address, get_next_part(line).c_str());
-			utf8_to_wide(info.nickname, get_next_part(line).c_str());
+			ClientStartData info = get_from_line(line);
 			if (info.nickname.empty())
 				continue;
 
-			m_index_to_address.push_back(info);
+			// TODO: Check for token availability (while already reading from the database)
+			info.token = false ? "Y" : "";
+			m_index_to_address.push_back(std::move(info));
 		}
 	}
 
 	// Add to the gui
 	listbox->clear();
-	for (auto &info : m_index_to_address) {
-		std::wstring label = info.nickname + L"  -  " + info.address;
+	for (auto &start_data : m_index_to_address) {
+		std::wstring label;
+		utf8_to_wide(label, (start_data.nickname + "  -  " + start_data.address).c_str());
 
 		auto i = listbox->addItem(label.c_str());
 		// TODO: "Invalid read of size 32" while doing string compare. Why?
-		if (info.address == m_login.address.c_str() && info.nickname == m_login.nickname.c_str())
+		if (start_data.address == m_inputs.address && start_data.nickname == m_inputs.nickname)
 			listbox->setSelected(i);
 	}
 }

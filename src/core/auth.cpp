@@ -19,9 +19,9 @@ constexpr unsigned int SHA3_VARIANT = 384;
 		https://en.wikipedia.org/wiki/Comparison_of_cryptography_libraries
 */
 
-std::string Auth::generateRandom()
+std::string Auth::generate_challenge()
 {
-	std::string random(40, '\0');
+	std::string random(CHALLENGE_LENGTH, '\0');
 	// Create new random (for server use)
 	for (char &c : random)
 		c = rand();
@@ -38,6 +38,26 @@ std::string Auth::generatePass()
 		c = PASS_CHARACTERS[rand() % sizeof(PASS_CHARACTERS)];
 	return random;
 }
+
+std::string Auth::time_to_string(time_t server_time)
+{
+	char buf[20];
+	snprintf(buf, sizeof(buf), "%llx", (long long)server_time);
+	return buf;
+}
+
+void Auth::dump_bytes(const char *context, const std::string &data)
+{
+	fprintf(stderr, "BYTE DUMP FOR %s:\n", context);
+
+	for (size_t i = 0; i < data.size(); ) {
+		fprintf(stderr, "  %3zu:", i);
+		for (size_t octet = 0; octet < 8 && i < data.size(); ++octet, ++i)
+			fprintf(stderr, " %02X", (uint8_t)data[i]);
+		fprintf(stderr, "\n");
+	}
+}
+
 
 void Auth::hash(const std::string &inp1, const std::string &inp2)
 {

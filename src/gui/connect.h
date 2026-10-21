@@ -15,22 +15,22 @@ public:
 	bool OnEvent(const SEvent &e) override;
 	bool OnEvent(GameEvent &e) override;
 
-	bool start_localhost = false;
-
-	struct LoginInfo {
-		std::wstring nickname,
-			password, // not saved.
-			address;
-	};
-
 	static void recordLogin(ClientStartData data);
 
 private:
+	void backupInputs();
+	std::string getToken();
+	/// elementid == 0 means autodetect connect or hosting
 	void onSubmit(int elementid);
+
+	void updatePasswordField(bool is_focused);
+	bool m_use_token = false;
 
 	void removeServer(int index);
 	void updateServers();
 
-	std::vector<LoginInfo> m_index_to_address;
-	LoginInfo m_login;
+	std::vector<ClientStartData> m_index_to_address;
+	/// To restore the input boxes on failure
+	/// `.token` is a presence placeholder empty/non-empty
+	ClientStartData m_inputs;
 };

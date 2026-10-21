@@ -177,6 +177,7 @@ int Script::l_register_event(lua_State *L)
 {
 	MESSY_CPP_EXCEPTIONS_START
 	Script *script = get_script(L);
+	script->checkIsDuringLoad();
 
 	int event_id_raw = luaL_checkinteger(L, 1);
 	uint16_t event_id = (uint16_t)event_id_raw;

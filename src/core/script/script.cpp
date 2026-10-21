@@ -361,6 +361,12 @@ bool Script::loadFromFile(const std::string &filename)
 	return status == 0;
 }
 
+void Script::checkIsDuringLoad()
+{
+	if (m_loading_complete)
+		luaL_error(m_lua, "disallowed after init");
+}
+
 void Script::onScriptsLoaded()
 {
 	m_emgr->onScriptsLoaded();
@@ -411,6 +417,7 @@ int Script::popErrorCount()
 int Script::l_require_asset(lua_State *L)
 {
 	Script *script = get_script(L);
+	script->checkIsDuringLoad();
 	const char *asset_name = luaL_checkstring(L, 1);
 
 	if (!script->m_media)
@@ -425,8 +432,7 @@ int Script::l_register_smileys(lua_State *L)
 {
 	MESSY_CPP_EXCEPTIONS_START
 	Script *script = get_script(L);
-	if (script->m_loading_complete)
-		luaL_error(L, "invalid usage");
+	script->checkIsDuringLoad();
 	if (!script->m_smileymgr)
 		luaL_error(L, "SmileyManager unavailable");
 

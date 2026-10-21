@@ -65,12 +65,10 @@ void SceneLoading::step(float dtime)
 
 				if ((int)client->getState() >= (int)ClientState::Connected) {
 					// Connected!
-					SceneConnect::recordLogin(m_gui->getClient()->getStartData());
 					m_gui->setSceneFromClientState();
 					break;
 				}
 			}
-
 			if (m_timer.step(dtime)) {
 				m_gui->showPopupText("Connection timed out: Server is not reachable.");
 				cancel();
@@ -98,6 +96,13 @@ bool SceneLoading::OnEvent(const SEvent &e)
 
 bool SceneLoading::OnEvent(GameEvent &e)
 {
+	switch (e.type_c2g) {
+	case GameEvent::C2G_SIGNED_IN:
+		SceneConnect::recordLogin(m_gui->getClient()->getStartData());
+		return true;
+	default:
+		break;
+	}
 	return false;
 }
 

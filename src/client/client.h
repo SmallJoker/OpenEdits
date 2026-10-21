@@ -37,8 +37,9 @@ enum class ClientState {
 struct ClientStartData {
 	std::string address;
 	std::string nickname;
-	std::string password;
+	std::string password, token;
 	std::string world_id;
+	bool remember_password = false;
 };
 
 // Abstract for inheritance

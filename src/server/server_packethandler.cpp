@@ -156,14 +156,20 @@ void Server::pkt_Hello(peer_t peer_id, Packet &pkt)
 	ok = m_auth_db->load(player->name, &info);
 	if (ok) {
 		player->auth.status = Auth::Status::Unauthenticated;
-		player->auth.salt_challenge = Auth::generateRandom();
+		player->auth.salt_challenge = Auth::generate_challenge();
+		const time_t server_time = time(nullptr);
 
 		Packet out;
 		out.write(Packet2Client::Auth);
 		out.writeStr16("login1");
 		out.writeStr16(m_auth_db->getUniqueSalt());
 		out.writeStr16(player->auth.salt_challenge); // challenge
+		out.write<s64>(server_time);
 		m_con->send(peer_id, 0, out);
+
+		// Replay
+		if (protocol_ver >= 13)
+			player->auth.salt_challenge.append(Auth::time_to_string(server_time));
 	} else {
 		player->auth.status = Auth::Status::Unregistered;
 
@@ -206,7 +212,7 @@ void Server::pkt_Auth(peer_t peer_id, Packet &pkt)
 	}
 
 	RemotePlayer *player = getPlayerNoLock(peer_id);
-	std::string action = pkt.readStr16();
+	const std::string action = pkt.readStr16();
 
 	if (player->auth.status == Auth::Status::Guest) {
 		sendMsg(peer_id, "Cannot perform auth actions for guests.");
@@ -236,15 +242,54 @@ void Server::pkt_Auth(peer_t peer_id, Packet &pkt)
 			return;
 		}
 
-		// Compare doubly-hashed passwords
-		player->auth.hash(info.password, player->auth.salt_challenge);
+		// Read packet data
+		LoginMethod method = LoginMethod::PasswordNoSave;
+		if (pkt.data_version >= 13)
+			method = (LoginMethod)std::min(pkt.read<u8>(), (u8)LoginMethod::INVALID);
+		const std::string challenge_result = pkt.readStr16();
 
-		const std::string hash = pkt.readStr16();
-		bool signed_in = player->auth.output == hash;
+
+		bool signed_in = false;
 		if (info.password.empty()) {
-			sendMsg(peer_id, "No password saved. Change your password with /setpass !");
+			sendMsg(peer_id, "No password saved. Change your password!");
 			signed_in = true;
+			method = LoginMethod::PasswordNoSave;
 		}
+
+		const std::string &challenge = player->auth.salt_challenge;
+
+		// See also: Client::pkt_Auth()
+		logger(LL_DEBUG, "%s: method=%d", action.c_str(), (int)method);
+		switch (method) {
+			case LoginMethod::PasswordNoSave:
+				player->auth.hash(info.password, challenge);
+				// --> (Unique Salt + Password) + Challenge
+				break;
+			case LoginMethod::PasswordNewToken:
+				player->auth.hash(info.password, challenge);
+				info.token_data = player->auth.output;
+				info.token_expiry = time(nullptr) + (60 * 60 * 24) * 90 /* days */;
+
+				player->auth.rehash(challenge);
+				// --> ((Unique Salt + Password) + Challenge) + Challenge
+				break;
+			case LoginMethod::Token:
+				player->auth.hash(info.token_data, challenge);
+
+				if (info.token_expiry < time(nullptr)
+						&& player->auth.output == challenge_result) {
+					sendMsg(peer_id, "Token expired. Please login by password.");
+					m_con->disconnect(peer_id);
+				}
+				break;
+			case LoginMethod::INVALID:
+				sendMsg(peer_id, "Invalid method");
+				m_con->disconnect(peer_id);
+				break;
+		}
+
+		if (player->auth.output == challenge_result)
+			signed_in = true;
 
 		if (!signed_in) {
 			{
@@ -302,6 +347,7 @@ void Server::pkt_Auth(peer_t peer_id, Packet &pkt)
 
 		m_auth_db->save(info);
 		sendMsg(peer_id, "Account registered. You may now login.");
+		logger(LL_PRINT, "Player %s registered", player->name.c_str());
 
 		{
 			AuthLogEntry log;
@@ -317,6 +363,15 @@ void Server::pkt_Auth(peer_t peer_id, Packet &pkt)
 			entry.expiry = time(nullptr) + 60;
 			m_auth_db->ban(entry);
 		}
+
+		// Fake signInPlayer(). Let the user perform a proper login sequence.
+		{
+			Packet out;
+			out.write(Packet2Client::Auth);
+			out.writeStr16("signed_in");
+			m_con->send(player->peer_id, 0, out);
+		}
+		m_con->disconnect(peer_id);
 		return;
 	}
 

@@ -2,10 +2,23 @@
 
 #include <string>
 
+/// NOTE: Sent over the network
+enum class LoginMethod {
+	PasswordNoSave = 0,
+	PasswordNewToken,
+	Token,
+	INVALID
+};
+
 class Auth {
 public:
-	static std::string generateRandom();
+	static constexpr size_t CHALLENGE_LENGTH = 40;
+	static std::string generate_challenge();
 	static std::string generatePass();
+
+	static std::string time_to_string(time_t server_time);
+	/// Similar to Packet::dump()
+	static void dump_bytes(const char *header, const std::string &data);
 
 	void hash(const std::string &inp1, const std::string &inp2);
 	void rehash(const std::string &inp2) { hash(output, inp2); }

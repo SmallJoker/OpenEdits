@@ -223,6 +223,8 @@ void Player::step(float dtime)
 		float v = vel.getLength();
 		float a = acc.getLength();
 		if (a > 0.1f) {
+			// TODO: One step at the peak of the parabola
+
 			// One step at fixed distance (approximation)
 			// 0 = (0.5 * a) * t² + (v) * t - max_d
 			// t = (-v ± sqrt(v² + 2*a*max_d)) / a

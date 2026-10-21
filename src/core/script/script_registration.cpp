@@ -56,10 +56,10 @@ static TileOverlayType read_tile_overlay_type(lua_State *L, int idx)
 
 int Script::l_include(lua_State *L)
 {
-	MESSY_CPP_EXCEPTIONS_START
 	Script *script = get_script(L);
+	script->checkIsDuringLoad();
 
-	std::string asset_name = luaL_checkstring(L, 1);
+	const char *asset_name = luaL_checkstring(L, 1);
 	bool is_public = true;
 	if (!lua_isnoneornil(L, 2)) {
 		std::string scope = luaL_checkstring(L, 2);
@@ -81,7 +81,6 @@ int Script::l_include(lua_State *L)
 	if (!ok)
 		luaL_error(L, "Failed to load script"); // provides backtrace
 
-	MESSY_CPP_EXCEPTIONS_END
 	return 0;
 }
 
@@ -89,6 +88,7 @@ int Script::l_register_pack(lua_State *L)
 {
 	MESSY_CPP_EXCEPTIONS_START
 	Script *script = get_script(L);
+	script->checkIsDuringLoad();
 	script->m_last_block_id = Block::ID_INVALID;
 
 	luaL_checktype(L, 1, LUA_TTABLE);
@@ -186,6 +186,7 @@ int Script::l_change_block(lua_State *L)
 {
 	MESSY_CPP_EXCEPTIONS_START
 	Script *script = get_script(L);
+	script->checkIsDuringLoad();
 
 	const BlockID id = pull_blockid(L, 1);
 	luaL_checktype(L, 2, LUA_TTABLE);

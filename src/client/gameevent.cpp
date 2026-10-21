@@ -18,6 +18,7 @@ GameEvent::~GameEvent()
 		// List of no-ops
 		case C::C2G_INVALID:
 		case C::C2G_DISCONNECT:
+		case C::C2G_SIGNED_IN:
 		case C::C2G_LOBBY_UPDATE:
 		case C::C2G_CHANGE_PASS:
 		case C::C2G_JOIN:

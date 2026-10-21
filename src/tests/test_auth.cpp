@@ -124,7 +124,7 @@ static void auth_database_test()
 
 void unittest_auth()
 {
-	const std::string unique_hash = Auth::generateRandom();
+	const std::string unique_hash = Auth::generate_challenge();
 	const char *my_salt_1 = "password 123";
 	const char *my_salt_2 = "passworb 123";
 	{
@@ -133,7 +133,7 @@ void unittest_auth()
 		auth_cli.hash(unique_hash, my_salt_1);
 		CHECK(auth_cli.output.size() > 20);
 
-		auto random = Auth::generateRandom();
+		auto random = Auth::generate_challenge();
 		auth_srv.hash(auth_cli.output, random);
 		CHECK(auth_srv.output.size() > 20);
 
@@ -147,7 +147,7 @@ void unittest_auth()
 		Auth auth_cli, auth_srv;
 		auth_cli.hash(unique_hash, my_salt_1);
 
-		auto random = Auth::generateRandom();
+		auto random = Auth::generate_challenge();
 		auth_srv.hash(auth_cli.output, random);
 
 		auth_cli.rehash(my_salt_1); // not the random bytes
@@ -163,7 +163,7 @@ void unittest_auth()
 
 		CHECK(auth_cli.output != auth_srv.output);
 
-		auto random = Auth::generateRandom();
+		auto random = Auth::generate_challenge();
 		auth_srv.rehash(random);
 		auth_cli.rehash(random);
 

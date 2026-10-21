@@ -82,30 +82,74 @@ void Client::pkt_Message(Packet &pkt)
 
 void Client::pkt_Auth(Packet &pkt)
 {
-	std::string action = pkt.readStr16();
+	const std::string action = pkt.readStr16();
 
 	if (action == "login1") {
 		// Confirm password
 
-		m_auth.salt_1_const = pkt.readStr16();
-		m_auth.hash(m_auth.salt_1_const, m_start_data.password);
-		m_start_data.password.clear();
+		LoginMethod method = LoginMethod::PasswordNoSave;
+		if (m_protocol_version >= 13) {
+			if (m_start_data.remember_password)
+				method = LoginMethod::PasswordNewToken;
+			if (!m_start_data.token.empty())
+				method = LoginMethod::Token;
+		}
 
+		const std::string db_salt = pkt.readStr16();
 		std::string challenge = pkt.readStr16();
-		if (challenge.size() < 30) {
-			disconnect("Login challenge is too short");
+
+		if (challenge.size() != Auth::CHALLENGE_LENGTH) {
+			disconnect("Invalid challenge length");
 			return;
 		}
 
-		m_auth.rehash(challenge);
+		if (m_protocol_version >= 13) {
+			const s64 server_time = pkt.read<s64>();
+			const s64 delta_time = time(nullptr) - server_time;
 
-		// Go ahead to the next step
+			// Replay
+			if (std::abs(delta_time) > 30) {
+				disconnect("Server - Client time is out of sync!");
+				return;
+			}
+
+			challenge.append(Auth::time_to_string(server_time));
+		}
+
+		m_auth.salt_1_const = db_salt;
+
+		// See also: Server::pkt_Auth()
+		logger(LL_DEBUG, "%s: method=%d", action.c_str(), (int)method);
+		switch (method) {
+			case LoginMethod::PasswordNoSave:
+				m_auth.hash(m_auth.salt_1_const, m_start_data.password);
+				m_start_data.password.clear();
+
+				m_auth.rehash(challenge);
+				// --> (Unique Salt + Password) + Challenge
+				break;
+			case LoginMethod::PasswordNewToken:
+				m_auth.hash(m_auth.salt_1_const, m_start_data.password);
+				m_start_data.password.clear();
+
+				m_auth.rehash(challenge);
+				m_start_data.token = m_auth.output;
+				m_auth.rehash(challenge);
+				// --> ((Unique Salt + Password) + Challenge) + Challenge
+				break;
+			case LoginMethod::Token:
+				m_auth.hash(m_start_data.token, challenge);
+				break;
+			case LoginMethod::INVALID: break;
+		}
+
 		Packet out;
 		out.write(Packet2Server::Auth);
 		out.writeStr16("login2");
+		if (m_protocol_version >= 13)
+			out.write((u8)method);
 		out.writeStr16(m_auth.output); // challenge result
 		m_con->send(0, 0, out);
-
 		return;
 	}
 
@@ -118,6 +162,9 @@ void Client::pkt_Auth(Packet &pkt)
 	}
 
 	if (action == "signed_in") {
+		GameEvent e(GameEvent::C2G_SIGNED_IN);
+		sendNewEvent(e);
+
 		m_state = ClientState::MediaDownload;
 		return;
 	}

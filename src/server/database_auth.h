@@ -18,6 +18,9 @@ struct AuthAccount {
 	};
 	int level = 0;
 
+	std::string token_data;
+	time_t token_expiry = 0;
+
 	//std::map<std::string, std::string> metadata;
 };
 
@@ -86,6 +89,8 @@ public:
 
 
 private:
+	void upgradeCheckVersion();
+
 	enum {
 		STMT_CFG_READ,
 		STMT_CFG_WRITE,
