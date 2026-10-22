@@ -1,5 +1,6 @@
 #include "connect.h"
 #include "core/auth.h"
+#include "core/systemglue.h"
 #include "guilayout/guilayout_irrlicht.h"
 #include <IGUIButton.h>
 #include <IGUICheckBox.h>
@@ -466,6 +467,12 @@ void SceneConnect::removeServer(int index)
 	std::rename((SERVERS_FILE + ".tmp").c_str(), SERVERS_FILE.c_str());
 }
 
+static std::string find_path()
+{
+	auto paths = get_user_paths(true);
+
+	// TODO: which format to use? SQLite3 (more LoC) or `Packet` (custom format)
+}
 
 void SceneConnect::updateServers()
 {

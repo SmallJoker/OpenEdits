@@ -4,6 +4,7 @@
 #include "core/logger.h"
 #include "core/network_enums.h"
 #include "core/packet.h"
+#include "core/systemglue.h"
 #include "core/utils.h" // to_player_name
 #include "server/database_auth.h" // AuthAccount
 #include "server/server.h"
@@ -354,6 +355,8 @@ int main(int argc, char *argv[])
 #endif
 
 	Logger::doLogStartup();
+
+	change_working_dir();
 
 	// Used by Gui, Client and Unittests but not Server.
 	g_blockmanager = new BlockManager();

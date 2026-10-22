@@ -263,6 +263,7 @@ void Server::pkt_Auth(peer_t peer_id, Packet &pkt)
 		switch (method) {
 			case LoginMethod::PasswordNoSave:
 				player->auth.hash(info.password, challenge);
+				info.token_expiry = 0;
 				// --> (Unique Salt + Password) + Challenge
 				break;
 			case LoginMethod::PasswordNewToken:
