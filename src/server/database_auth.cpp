@@ -1,11 +1,13 @@
 #include "database_auth.h"
 #include "core/auth.h"
+#include "core/logger.h"
 #include <sqlite3.h>
 #include <stdexcept> // runtime_error
 #include <cstdint>
 
 constexpr int AUTH_DB_VERSION_LATEST = 2;
 
+static Logger logger("DatabaseAuth", LL_INFO);
 
 DatabaseAuth::DatabaseAuth() : Database()
 {
@@ -25,7 +27,7 @@ bool DatabaseAuth::tryOpen(const char *filepath)
 		return false;
 
 	if (sqlite3_libversion_number() < 3024000) {
-		fprintf(stderr, "Auth DB requires sqlite3 >= 3.24.0 for UPSERT support");
+		logger(LL_ERROR, "Auth DB requires sqlite3 >= 3.24.0 for UPSERT support");
 		return false;
 	}
 
@@ -33,7 +35,7 @@ bool DatabaseAuth::tryOpen(const char *filepath)
 		if (!m_stmt[i])
 			continue;
 
-		fprintf(stderr, "sqlite statements were not freed properly!");
+		logger(LL_ERROR, "sqlite statements were not freed properly!");
 		return false;
 	}
 
@@ -187,7 +189,7 @@ void DatabaseAuth::upgradeCheckVersion()
 			version = 9999; // assume newly created
 		}
 	}
-	if (0) printf("Auth DB version: %d\n", version);
+	logger(LL_INFO, "version=%d", version);
 
 	if (version < 2) {
 		// Add columns "token_data" and "token_expiry"
@@ -238,7 +240,7 @@ static std::string custom_column_blob(sqlite3_stmt *s, int col)
 	return std::string((const char *)blob, len);
 }
 
-bool DatabaseAuth::getConfig(AuthConfig *entry)
+bool DatabaseAuth::getConfig(AuthConfig *entry) noexcept
 {
 	if (!m_database || !entry)
 		return false;
@@ -263,24 +265,14 @@ bool DatabaseAuth::getConfig(AuthConfig *entry)
 	return good;
 }
 
-#define WRITE_ACTION(code) \
-	sqlite3_step(m_stmt_begin); \
-	sqlite3_reset(m_stmt_begin); \
-	do \
-		code \
-	while (0); \
-	sqlite3_step(m_stmt_end); \
-	sqlite3_reset(m_stmt_end);
-
-
-bool DatabaseAuth::setConfig(const AuthConfig &entry)
+bool DatabaseAuth::setConfig(const AuthConfig &entry) noexcept
 {
 	if (!m_database)
 		return false;
 
 	bool good = false;
 
-WRITE_ACTION({
+DATABASE_WRITE({
 	sqlite3_stmt *s;
 	if (entry.second.empty()) {
 		// Remove
@@ -300,7 +292,7 @@ WRITE_ACTION({
 	return good;
 }
 
-bool DatabaseAuth::load(const std::string &name, AuthAccount *auth)
+bool DatabaseAuth::load(const std::string &name, AuthAccount *auth) noexcept
 {
 	if (!m_database || !auth)
 		return false;
@@ -330,14 +322,14 @@ bool DatabaseAuth::load(const std::string &name, AuthAccount *auth)
 	return good;
 }
 
-bool DatabaseAuth::save(const AuthAccount &auth)
+bool DatabaseAuth::save(const AuthAccount &auth) noexcept
 {
 	if (!m_database)
 		return false;
 
 	bool good = false;
 
-WRITE_ACTION({
+DATABASE_WRITE({
 	sqlite3_stmt *s = m_stmt[STMT_AUTH_WRITE];
 	int i = 1;
 	custom_bind_string(s, i++, auth.name);
@@ -352,9 +344,6 @@ WRITE_ACTION({
 	ok("auth_save_r", sqlite3_reset(s));
 
 	good = good && sqlite3_changes(m_database);
-
-	sqlite3_step(m_stmt_end);
-	sqlite3_reset(m_stmt_end);
 })
 
 	return good;
@@ -369,7 +358,7 @@ const std::string &DatabaseAuth::getUniqueSalt()
 	cfg.first = "auth.salt";
 	if (!getConfig(&cfg) || cfg.second.empty()) {
 		// Create new salt
-		printf("DatabaseAuth: Initializing new server-wide password salt\n");
+		logger(LL_INFO, "Initializing new server-wide password salt");
 
 		cfg.second = Auth::generate_challenge();
 		if (!setConfig(cfg)) {
@@ -382,14 +371,14 @@ const std::string &DatabaseAuth::getUniqueSalt()
 }
 
 
-bool DatabaseAuth::setPassword(const std::string &name, const std::string &hash)
+bool DatabaseAuth::setPassword(const std::string &name, const std::string &hash) noexcept
 {
 	if (!m_database)
 		return false;
 
 	bool good = false;
 
-WRITE_ACTION({
+DATABASE_WRITE({
 	auto s = m_stmt[STMT_AUTH_SET_PW];
 	int i = 1;
 	custom_bind_blob(s, i++, hash);
@@ -402,7 +391,7 @@ WRITE_ACTION({
 	return good;
 }
 
-bool DatabaseAuth::listFriends(const std::string &name, std::vector<AuthFriend> *friends)
+bool DatabaseAuth::listFriends(const std::string &name, std::vector<AuthFriend> *friends) noexcept
 {
 	if (!m_database || !friends)
 		return false;
@@ -435,7 +424,7 @@ bool DatabaseAuth::listFriends(const std::string &name, std::vector<AuthFriend> 
 	return good;
 }
 
-bool DatabaseAuth::setFriend(AuthFriend f)
+bool DatabaseAuth::setFriend(AuthFriend f) noexcept
 {
 	if (!m_database)
 		return false;
@@ -445,7 +434,7 @@ bool DatabaseAuth::setFriend(AuthFriend f)
 	if (f.p1.name > f.p2.name)
 		std::swap(f.p1, f.p2);
 
-WRITE_ACTION({
+DATABASE_WRITE({
 	sqlite3_stmt *s = m_stmt[STMT_FRIENDS_WRITE];
 	int i = 1;
 	custom_bind_string(s, i++, f.p1.name);
@@ -461,7 +450,7 @@ WRITE_ACTION({
 	return good;
 }
 
-bool DatabaseAuth::removeFriend(const std::string &name1, const std::string &name2)
+bool DatabaseAuth::removeFriend(const std::string &name1, const std::string &name2) noexcept
 {
 	if (!m_database)
 		return false;
@@ -470,7 +459,7 @@ bool DatabaseAuth::removeFriend(const std::string &name1, const std::string &nam
 
 	bool swap = name1 > name2;
 
-WRITE_ACTION({
+DATABASE_WRITE({
 	auto s = m_stmt[STMT_FRIENDS_REMOVE];
 	int i = 1;
 	custom_bind_string(s, i++, swap ? name2 : name1);
@@ -485,20 +474,20 @@ WRITE_ACTION({
 
 static_assert(sizeof(time_t) == 8, "Need 64-bit time_t");
 
-bool DatabaseAuth::ban(const AuthBanEntry &entry)
+bool DatabaseAuth::ban(const AuthBanEntry &entry) noexcept
 {
 	if (!m_database)
 		return false;
 
 	if (entry.expiry <= time(nullptr)) {
-		fprintf(stderr, "DatabaseAuth: Invalid expiry date for ban. affected='%s', context='%s'\n",
+		logger(LL_WARN, "Invalid expiry date for ban. affected='%s', context='%s'",
 			entry.affected.c_str(), entry.context.c_str());
 		return false;
 	}
 
-	sqlite3_step(m_stmt_begin);
-	sqlite3_reset(m_stmt_begin);
+	bool good;
 
+DATABASE_WRITE({
 	auto s = m_stmt[STMT_F2B_INSERT];
 	int i = 1;
 	sqlite3_bind_int64(s, i++, entry.expiry);
@@ -506,14 +495,12 @@ bool DatabaseAuth::ban(const AuthBanEntry &entry)
 	custom_bind_string(s, i++, entry.context);
 	custom_bind_string(s, i++, entry.comment);
 
-	bool good = ok("f2b_s", sqlite3_step(s));
+	good = ok("f2b_s", sqlite3_step(s));
 	ok("f2b_r", sqlite3_reset(s));
-
-	sqlite3_step(m_stmt_end);
-	sqlite3_reset(m_stmt_end);
+})
 
 	if (good) {
-		printf("Server: Banned %s (context='%s') until %llu\n",
+		logger(LL_INFO, "Banned %s (context='%s') until %llu",
 			entry.affected.c_str(), entry.context.c_str(), (unsigned long long)entry.expiry
 		);
 	}
@@ -521,7 +508,8 @@ bool DatabaseAuth::ban(const AuthBanEntry &entry)
 	return good;
 }
 
-bool DatabaseAuth::getBanRecord(const std::string &affected, const std::string &context, AuthBanEntry *entry)
+bool DatabaseAuth::getBanRecord(const std::string &affected,
+	const std::string &context, AuthBanEntry *entry) noexcept
 {
 	if (!m_database)
 		return false;
@@ -553,43 +541,40 @@ bool DatabaseAuth::getBanRecord(const std::string &affected, const std::string &
 	return good;
 }
 
-bool DatabaseAuth::cleanupBans()
+bool DatabaseAuth::cleanupBans() noexcept
 {
 	if (!m_database)
 		return false;
 
-	sqlite3_step(m_stmt_begin);
-	sqlite3_reset(m_stmt_begin);
+	bool good;
 
+DATABASE_WRITE({
 	auto s = m_stmt[STMT_F2B_CLEANUP];
 	int i = 1;
 	sqlite3_bind_int64(s, i++, time(nullptr));
 
-	bool good = ok("f2b_cleanup_s", sqlite3_step(s));
+	good = ok("f2b_cleanup_s", sqlite3_step(s));
 	ok("f2b_cleanup_r", sqlite3_reset(s));
+})
 
-	sqlite3_step(m_stmt_end);
-	sqlite3_reset(m_stmt_end);
 	return good;
 }
 
-bool DatabaseAuth::logNow(AuthLogEntry entry)
+bool DatabaseAuth::logNow(AuthLogEntry entry) noexcept
 {
 	entry.timestamp = time(nullptr);
+	bool good;
 
-	sqlite3_step(m_stmt_begin);
-	sqlite3_reset(m_stmt_begin);
-
+DATABASE_WRITE({
 	auto s = m_stmt[STMT_LOG_INSERT];
 	int i = 1;
 	sqlite3_bind_int64(s, i++, entry.timestamp);
 	custom_bind_string(s, i++, entry.subject);
 	custom_bind_string(s, i++, entry.text);
 
-	bool good = ok("log_s", sqlite3_step(s));
+	good = ok("log_s", sqlite3_step(s));
 	ok("log_r", sqlite3_reset(s));
+})
 
-	sqlite3_step(m_stmt_end);
-	sqlite3_reset(m_stmt_end);
 	return good;
 }

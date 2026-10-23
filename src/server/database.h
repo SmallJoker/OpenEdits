@@ -5,6 +5,15 @@
 struct sqlite3;
 struct sqlite3_stmt;
 
+#define DATABASE_WRITE(code) \
+	sqlite3_step(m_stmt_begin); \
+	sqlite3_reset(m_stmt_begin); \
+	do \
+		code \
+	while (0); \
+	sqlite3_step(m_stmt_end); \
+	sqlite3_reset(m_stmt_end);
+
 class Database {
 public:
 	virtual ~Database();

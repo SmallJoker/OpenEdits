@@ -63,29 +63,29 @@ public:
 	void close() override;
 
 	// Maybe change this to a Settings object?
-	bool getConfig(AuthConfig *entry);
-	bool setConfig(const AuthConfig &entry);
+	bool getConfig(AuthConfig *entry) noexcept;
+	bool setConfig(const AuthConfig &entry) noexcept;
 
 	/// Returns false on error or when `auth`==nullptr
-	bool load(const std::string &name, AuthAccount *auth);
-	bool save(const AuthAccount &auth);
+	bool load(const std::string &name, AuthAccount *auth) noexcept;
+	bool save(const AuthAccount &auth) noexcept;
 
 	const std::string &getUniqueSalt();
-	bool setPassword(const std::string &name, const std::string &hash);
+	bool setPassword(const std::string &name, const std::string &hash) noexcept;
 
 	/// AuthFriend::p1 is guaranteed to correspond to "name"
 	/// Returns false on error or when `friends`==nullptr
-	bool listFriends(const std::string &name, std::vector<AuthFriend> *friends);
+	bool listFriends(const std::string &name, std::vector<AuthFriend> *friends) noexcept;
 	/// Inserts or overwrites an existing friend record
-	bool setFriend(AuthFriend f);
-	bool removeFriend(const std::string &name1, const std::string &name2);
+	bool setFriend(AuthFriend f) noexcept;
+	bool removeFriend(const std::string &name1, const std::string &name2) noexcept;
 
-	bool ban(const AuthBanEntry &entry);
+	bool ban(const AuthBanEntry &entry) noexcept;
 	// returns whether an active ban was found
-	bool getBanRecord(const std::string &affected, const std::string &context, AuthBanEntry *entry);
-	bool cleanupBans();
+	bool getBanRecord(const std::string &affected, const std::string &context, AuthBanEntry *entry) noexcept;
+	bool cleanupBans() noexcept;
 
-	bool logNow(AuthLogEntry entry);
+	bool logNow(AuthLogEntry entry) noexcept;
 
 
 private:

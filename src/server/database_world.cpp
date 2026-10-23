@@ -85,7 +85,8 @@ bool DatabaseWorld::tryOpen(const char *filepath)
 		-1, &m_stmt_by_player, nullptr));
 	good &= ok("featured", sqlite3_prepare_v2(m_database,
 		"SELECT `id`, `width`, `height`, `title`, `plays`, `visibility`, `owner`, `data` "
-		"FROM `worlds` WHERE `visibility` >= 0 AND length(`data`) > 15 * sqrt(`width` * `height`)",
+		"FROM `worlds` WHERE `visibility` >= 0 "
+			"AND length(`data`) * length(`data`) > 12 * 12 * `width` * `height`",
 		-1, &m_stmt_featured, nullptr));
 
 	return good;
@@ -174,9 +175,9 @@ bool DatabaseWorld::save(const World *world)
 	SimpleLock lock(world->mutex);
 
 	// https://www.sqlite.org/lang_transaction.html
-	sqlite3_step(m_stmt_begin);
-	sqlite3_reset(m_stmt_begin);
+	bool good;
 
+DATABASE_WRITE({
 	const auto &meta = world->getMeta();
 
 	auto s = m_stmt_write;
@@ -199,11 +200,10 @@ bool DatabaseWorld::save(const World *world)
 	world->write(p_world, World::Method::Plain);
 	sqlite3_bind_blob(s, 9, p_world.data(), p_world.size(), nullptr);
 
-	bool good = ok("save_s", sqlite3_step(s));
+	good = ok("save_s", sqlite3_step(s));
 	ok("save_r", sqlite3_reset(s));
+})
 
-	sqlite3_step(m_stmt_end);
-	sqlite3_reset(m_stmt_end);
 	return good;
 }
 
@@ -260,6 +260,7 @@ std::vector<LobbyWorld> DatabaseWorld::getFeatured() const
 
 		meta.owner = (const char *)sqlite3_column_text(s, 6);
 		out.emplace_back(meta);
+		if (0) printf("%s: id=%s title='%s'\n", __func__, meta.id.c_str(), meta.title.c_str());
 	}
 
 	ok("featured", sqlite3_errcode(m_database));
