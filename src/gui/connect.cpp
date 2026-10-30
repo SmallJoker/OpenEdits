@@ -1,6 +1,6 @@
 #include "connect.h"
+#include "client/loginmanager.h"
 #include "core/auth.h"
-#include "core/systemglue.h"
 #include "guilayout/guilayout_irrlicht.h"
 #include <IGUIButton.h>
 #include <IGUICheckBox.h>
@@ -11,7 +11,7 @@
 #include <IGUIListBox.h>
 #include <IGUIStaticText.h>
 #include <IVideoDriver.h>
-#include <fstream>
+#include <fstream> // Servers text file
 #include <vector2d.h>
 
 enum ElementId : int {
@@ -35,9 +35,13 @@ SceneConnect::SceneConnect() :
 
 // -------------- Public members -------------
 
+void SceneConnect::OnOpen()
+{
+	m_loginmgr.load();
+}
+
 void SceneConnect::OnClose()
 {
-	m_index_to_address.clear();
 }
 
 void SceneConnect::draw()
@@ -107,8 +111,7 @@ void SceneConnect::draw()
 		i_text->setOverrideColor(Gui::COLOR_ON_BG);
 		table_prompt->add<WRAP>(0, column, i_text);
 
-		auto *i_box = gui->addEditBox(
-			to_wide(m_inputs.password).c_str(), norect, true, nullptr, ID_BoxPassword);
+		auto *i_box = gui->addEditBox(L"", norect, true, nullptr, ID_BoxPassword);
 		i_box->setPasswordBox(true);
 		table_prompt->add<WRAP>(1, column, i_box);
 
@@ -226,7 +229,7 @@ bool SceneConnect::OnEvent(const SEvent &e)
 						int index;
 						try {
 							index = listbox->getSelected();
-							(void)m_index_to_address.at(index); // valid?
+							(void)m_loginmgr.getEntries().at(index); // valid?
 						} catch (std::exception &) {
 							break;
 						}
@@ -254,7 +257,7 @@ bool SceneConnect::OnEvent(const SEvent &e)
 					gui::IGUIListBox *listbox = (gui::IGUIListBox *)e.GUIEvent.Caller;
 
 					try {
-						m_inputs = m_index_to_address.at(listbox->getSelected());
+						m_inputs = m_loginmgr.getEntries().at(listbox->getSelected());
 
 						m_gui->requestRenew();
 					} catch (std::exception &) {
@@ -295,7 +298,7 @@ bool SceneConnect::OnEvent(GameEvent &e)
 
 void SceneConnect::recordLogin(ClientStartData data)
 {
-	if (1) {
+	if (0) {
 		printf("%s: addr=%s name=%s token=%d\n",
 			__func__, data.address.c_str(), data.nickname.c_str(),
 			(int)data.token.size()
@@ -311,22 +314,8 @@ void SceneConnect::recordLogin(ClientStartData data)
 	if (data.nickname.rfind("GUEST", 0) == 0)
 		return;
 
-	std::ifstream is("client_servers.txt");
-	std::string line;
-	while (std::getline(is, line)) {
-		std::string address_f = get_next_part(line);
-		std::string nickname_f =  get_next_part(line);
-		if (address_f == data.address && nickname_f == data.nickname)
-			return;
-	}
-	is.close();
-
-	// Append to the end of the list
-	{
-		std::ofstream os("client_servers.txt", std::ios_base::app);
-		os << data.address << " " << data.nickname << std::endl;
-		os.close();
-	}
+	m_loginmgr.recordLogin(std::move(data));
+	m_loginmgr.save();
 }
 
 void SceneConnect::backupInputs()
@@ -344,14 +333,6 @@ void SceneConnect::backupInputs()
 
 	auto cb = (gui::IGUICheckBox *)root->getElementFromId(ID_ChkRemember);
 	m_inputs.remember_password = cb && cb->isChecked();
-}
-
-std::string SceneConnect::getToken()
-{
-	// TODO
-
-	//m_config_db->getToken();
-	return "AA";
 }
 
 void SceneConnect::onSubmit(int elementid)
@@ -385,7 +366,12 @@ void SceneConnect::onSubmit(int elementid)
 		start_data.address.clear(); // empty address == host local server
 
 	if (m_use_token) {
-		start_data.token = getToken();
+		const auto *saved = m_loginmgr.find(m_inputs.address, m_inputs.nickname);
+		if (saved)
+			start_data.token = saved->token;
+		else
+			fprintf(stderr, "Token for login not found!\n");
+
 		start_data.password.clear();
 	} else {
 		start_data.token.clear();
@@ -410,7 +396,8 @@ void SceneConnect::updatePasswordField(bool is_focused)
 	} else {
 		if (pb->getText()[0] == L'\0') {
 			// Empty -> Try to use token if available
-			const bool have_token = !m_inputs.token.empty();
+			const auto *saved = m_loginmgr.find(m_inputs.address, m_inputs.nickname);
+			const bool have_token = saved && !saved->token.empty();
 			if (have_token) {
 				pb->setText(L"xxxxxxxxxxxx");
 				if (cb)
@@ -422,7 +409,7 @@ void SceneConnect::updatePasswordField(bool is_focused)
 		}
 	}
 
-	pb->setOverrideColor(0xFF555555);
+	pb->setOverrideColor(0xFF000000);
 	pb->enableOverrideColor(!is_focused && m_use_token);
 	pb->setWritable(is_focused || !m_use_token);
 
@@ -430,79 +417,23 @@ void SceneConnect::updatePasswordField(bool is_focused)
 		cb->setEnabled(!m_use_token);
 }
 
-
-static const std::string SERVERS_FILE = "client_servers.txt";
-
-static ClientStartData get_from_line(std::string &line)
-{
-	ClientStartData start_data;
-	start_data.address = get_next_part(line).c_str();
-	start_data.nickname = get_next_part(line).c_str();
-	return start_data;
-}
-
 void SceneConnect::removeServer(int index)
 {
-	const ClientStartData &ref = m_index_to_address.at(index);
-
-	// Read in the saved servers
-	std::ifstream is(SERVERS_FILE);
-	std::ofstream os(SERVERS_FILE + ".tmp", std::ios_base::trunc);
-	std::string line;
-	while (std::getline(is, line)) {
-		const std::string original_line = line;
-
-		ClientStartData info = get_from_line(line);
-		if (info.address == ref.address && info.nickname == ref.nickname) {
-			// Skip
-			continue;
-		}
-		os << original_line << std::endl;
-	}
-
-	is.close();
-	os.close();
-
-	std::remove(SERVERS_FILE.c_str());
-	std::rename((SERVERS_FILE + ".tmp").c_str(), SERVERS_FILE.c_str());
-}
-
-static std::string find_path()
-{
-	auto paths = get_user_paths(true);
-
-	// TODO: which format to use? SQLite3 (more LoC) or `Packet` (custom format)
+	m_loginmgr.removeEntry(index);
+	m_loginmgr.save();
 }
 
 void SceneConnect::updateServers()
 {
-	m_index_to_address.clear();
-
 	auto root = m_gui->guienv->getRootGUIElement();
 	auto listbox = (gui::IGUIListBox *)root->getElementFromId(ID_ListServers);
 
 	if (!listbox)
 		return;
 
-	{
-
-		// Read in the saved servers
-		std::ifstream is("client_servers.txt");
-		std::string line;
-		while (std::getline(is, line)) {
-			ClientStartData info = get_from_line(line);
-			if (info.nickname.empty())
-				continue;
-
-			// TODO: Check for token availability (while already reading from the database)
-			info.token = false ? "Y" : "";
-			m_index_to_address.push_back(std::move(info));
-		}
-	}
-
 	// Add to the gui
 	listbox->clear();
-	for (auto &start_data : m_index_to_address) {
+	for (auto &start_data : m_loginmgr.getEntries()) {
 		std::wstring label;
 		utf8_to_wide(label, (start_data.nickname + "  -  " + start_data.address).c_str());
 

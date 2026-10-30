@@ -86,8 +86,6 @@ Gui::Gui()
 	m_scenetype = SceneHandlerType::Connect;
 	m_scenetype_next = SceneHandlerType::CTRL_RENEW;
 
-	setWindowTitle();
-
 	ASSERT_FORCED(g_blockmanager, "Missing BlockManager");
 
 	m_initialized = true;
@@ -113,6 +111,9 @@ Gui::~Gui()
 
 void Gui::run()
 {
+	setWindowTitle();
+	getHandler(m_scenetype)->OnOpen();
+
 	auto t_last = std::chrono::steady_clock::now();
 
 	constexpr float SERVER_TICK = 0.1f;
@@ -259,6 +260,13 @@ bool Gui::OnEvent(GameEvent &e)
 		case E::C2G_DISCONNECT:
 			disconnect();
 			showPopupText("Disconnected from the server");
+			return true;
+		case E::C2G_SIGNED_IN:
+			{
+				auto scene = (SceneConnect *)getHandler(SceneHandlerType::Connect);
+				if (scene)
+					scene->recordLogin(m_client->getStartData());
+			}
 			return true;
 		case E::C2G_CHANGE_PASS:
 			setNextScene(SceneHandlerType::Lobby);

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: LGPL-2.1-or-later
 
 #include "loading.h"
-#include "connect.h"
 #include "client/client.h"
 #include <IGUIButton.h>
 #include <IGUIEnvironment.h>
@@ -96,13 +95,6 @@ bool SceneLoading::OnEvent(const SEvent &e)
 
 bool SceneLoading::OnEvent(GameEvent &e)
 {
-	switch (e.type_c2g) {
-	case GameEvent::C2G_SIGNED_IN:
-		SceneConnect::recordLogin(m_gui->getClient()->getStartData());
-		return true;
-	default:
-		break;
-	}
 	return false;
 }
 

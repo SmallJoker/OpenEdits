@@ -35,8 +35,14 @@ void change_working_dir()
 	std::filesystem::current_path(path.parent_path());
 }
 
-std::vector<std::string> get_user_paths(bool create_if_needed)
+
+const std::vector<std::string> &get_user_paths(bool create_if_needed)
 {
+	static std::vector<std::string> USER_PATHS;
+
+	if (!USER_PATHS.empty())
+		return USER_PATHS;
+
 	const char *p_path = getenv(
 // TODO: MacOS, Haiku ?
 #if defined(__unix__)
@@ -48,10 +54,9 @@ std::vector<std::string> get_user_paths(bool create_if_needed)
 #endif
 	);
 
-	std::vector<std::string> ret;
 	if (p_path) {
 		// Main directory for settings and the like
-		ret.emplace_back(
+		USER_PATHS.emplace_back(
 			std::filesystem::absolute(p_path)
 				.append(APPLICATION_NAME)
 					.string()
@@ -60,12 +65,12 @@ std::vector<std::string> get_user_paths(bool create_if_needed)
 		fprintf(stderr, "-!- User path is not defined! Falling back to working directory.\n");
 	}
 
-	if (create_if_needed && !ret.empty())
-		std::filesystem::create_directories(ret[0]);
+	if (create_if_needed && !USER_PATHS.empty())
+		std::filesystem::create_directories(USER_PATHS[0]);
 
-	ret.emplace_back(std::filesystem::current_path().string());
-	for (const auto &str : ret)
+	USER_PATHS.emplace_back(std::filesystem::current_path().string());
+	for (const auto &str : USER_PATHS)
 		printf("User path: %s\n", str.c_str());
 
-	return ret;
+	return USER_PATHS;
 }

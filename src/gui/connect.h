@@ -1,6 +1,7 @@
 #pragma once
 
 #include "client/client.h"
+#include "client/loginmanager.h"
 #include "gui.h"
 #include <string>
 
@@ -8,6 +9,7 @@ class SceneConnect : public SceneHandler {
 public:
 	SceneConnect();
 
+	void OnOpen() override;
 	void OnClose() override;
 
 	void draw() override;
@@ -15,11 +17,10 @@ public:
 	bool OnEvent(const SEvent &e) override;
 	bool OnEvent(GameEvent &e) override;
 
-	static void recordLogin(ClientStartData data);
+	void recordLogin(ClientStartData data);
 
 private:
 	void backupInputs();
-	std::string getToken();
 	/// elementid == 0 means autodetect connect or hosting
 	void onSubmit(int elementid);
 
@@ -29,7 +30,7 @@ private:
 	void removeServer(int index);
 	void updateServers();
 
-	std::vector<ClientStartData> m_index_to_address;
+	LoginManager m_loginmgr;
 	/// To restore the input boxes on failure
 	/// `.token` is a presence placeholder empty/non-empty
 	ClientStartData m_inputs;
