@@ -5,6 +5,7 @@
 #include "core/compressor.h"
 #include "core/logger.h"
 #include "core/packet.h"
+#include "core/std_helpers.h" // packet_from_istream
 #include "core/world.h"
 #include "core/worldmeta.h"
 #include "version.h" // APPLICATION_NAME
@@ -16,7 +17,7 @@
 #if 0
 	#define DEBUGLOG(...) printf(__VA_ARGS__)
 #else
-	#define DEBUGLOG(...) do {} while (false)
+	#define DEBUGLOG(...) if (0) printf(__VA_ARGS__)
 #endif
 
 static Logger logger("EEOconverter", LL_INFO);
@@ -418,18 +419,11 @@ static void decompress_file(Packet &pkt, const std::string &filename)
 	if (!is.good())
 		throw std::runtime_error("Cannot read open file " + filename);
 
-	is.seekg(0, is.end);
-	size_t length = is.tellg();
-	is.seekg(0, is.beg);
-	Packet pkt_zlib(length);
+	DEBUGLOG("Decompress file '%s'\n", filename.c_str());
+	Packet pkt_zlib = packet_from_istream(is);
+	is.close();
 
-	DEBUGLOG("Decompress file '%s', len=%zu\n", filename.c_str(), length);
-	do {
-		is.read((char *)pkt_zlib.writePreallocStart(1000), 1000);
-		pkt_zlib.writePreallocEnd(is.gcount()); // already written
-	} while (is.good());
-
-	pkt.ensureCapacity((length * 10) / 2); // approx. decompressed size / 2
+	pkt.ensureCapacity((pkt.size() * 10) / 2); // approx. decompressed size / 2
 	Decompressor decomp(&pkt, pkt_zlib);
 	decomp.setBarebone();
 	decomp.decompress();
