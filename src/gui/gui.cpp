@@ -425,12 +425,18 @@ void Gui::leaveWorld()
 
 void Gui::setSceneLoggedIn(SceneHandlerType type)
 {
-	if (m_client->getState() != ClientState::LobbyIdle)
-		return;
+	switch (m_client->getState()) {
+		case ClientState::MediaDownload:
+		case ClientState::LobbyIdle:
+			break; // good
+		default:
+			return;
+	}
 
 	using T = SceneHandlerType;
 	switch (type) {
 		case T::Register:
+		case T::Loading:
 		case T::Lobby:
 			break;
 		default: return; // not accepted

@@ -156,12 +156,34 @@ void Client::pkt_Auth(Packet &pkt)
 	if (action == "register") {
 		// Requesting a signup
 		m_auth.salt_1_const = pkt.readStr16();
+		m_start_data.token.clear();
 
 		m_state = ClientState::Register;
 		return;
 	}
 
+	if (action == "registered") {
+		// Record successful login
+		GameEvent e(GameEvent::C2G_SIGNED_IN);
+		sendNewEvent(e);
+		return;
+	}
+
 	if (action == "signed_in") {
+		LoginMethod method = LoginMethod::PasswordNoSave;
+		if (pkt.data_version >= 14) {
+			method = (LoginMethod)pkt.read<u8>();
+			s64 token_expiry = pkt.read<s64>();
+
+			// Set to zero on token login (assume unchanged)
+			if (token_expiry)
+				m_start_data.token_expiry = token_expiry;
+		}
+
+		if (method == LoginMethod::PasswordNoSave) {
+			m_start_data.token.clear();
+		}
+
 		GameEvent e(GameEvent::C2G_SIGNED_IN);
 		sendNewEvent(e);
 

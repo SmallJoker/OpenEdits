@@ -6,6 +6,7 @@
 #include "core/timer.h"
 #include "core/types.h" // RefCnt
 
+enum class LoginMethod;
 enum class RemotePlayerState;
 
 class DatabaseAuth;
@@ -38,7 +39,7 @@ public:
 private:
 	void pkt_Quack(peer_t peer_id, Packet &pkt);
 	void pkt_Hello(peer_t peer_id, Packet &pkt);
-	void signInPlayer(RemotePlayer *player);
+	void signInPlayer(RemotePlayer *player, LoginMethod method, time_t token_expiry);
 	void pkt_Auth(peer_t peer_id, Packet &pkt);
 	void pkt_MediaRequest(peer_t peer_id, Packet &pkt);
 	void pkt_GetLobby(peer_t peer_id, Packet &pkt);

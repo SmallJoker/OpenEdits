@@ -39,6 +39,7 @@ struct ClientStartData {
 	std::string nickname;
 	std::string password, token;
 	std::string world_id;
+	time_t token_expiry = 0;
 	bool remember_password = false;
 };
 

@@ -114,9 +114,10 @@ void SceneRegister::draw()
 bool SceneRegister::OnEvent(const SEvent &e)
 {
 	if (e.EventType == EET_GUI_EVENT) {
+		const s32 id = e.GUIEvent.Caller->getID();
 		switch (e.GUIEvent.EventType) {
 			case gui::EGET_BUTTON_CLICKED:
-				if (e.GUIEvent.Caller->getID() == ID_BtnRegister) {
+				if (id == ID_BtnRegister) {
 					if (!m_pass_match) {
 						m_gui->showPopupText("Passwords do not match!");
 						break;
@@ -144,10 +145,11 @@ bool SceneRegister::OnEvent(const SEvent &e)
 
 						m_gui->sendNewEvent(ev);
 					}
+					e.GUIEvent.Caller->setEnabled(false);
 
 					return true;
 				}
-				if (e.GUIEvent.Caller->getID() == ID_BtnBack) {
+				if (id == ID_BtnBack) {
 					if (m_is_register)
 						m_gui->disconnect();
 					else
@@ -156,7 +158,7 @@ bool SceneRegister::OnEvent(const SEvent &e)
 				}
 				break;
 			case gui::EGET_EDITBOX_CHANGED:
-				if (e.GUIEvent.Caller->getID() == ID_BoxPassNew || e.GUIEvent.Caller->getID() == ID_BoxPassConfirm) {
+				if (id == ID_BoxPassNew || id == ID_BoxPassConfirm) {
 					auto root = m_gui->guienv->getRootGUIElement();
 					auto pass = root->getElementFromId(ID_BoxPassNew);
 					auto confirm = (gui::IGUIEditBox *)root->getElementFromId(ID_BoxPassConfirm);

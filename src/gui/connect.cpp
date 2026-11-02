@@ -272,6 +272,11 @@ bool SceneConnect::OnEvent(const SEvent &e)
 				}
 				break;
 			case gui::EGET_EDITBOX_CHANGED:
+				if (m_use_token && (id == ID_BoxNickname || id == ID_BoxAddress)) {
+					updatePasswordField(true);
+					break;
+				}
+				[[fallthrough]];
 			case gui::EGET_ELEMENT_FOCUSED:
 				if (id == ID_BoxPassword) {
 					// Restore normal appearance

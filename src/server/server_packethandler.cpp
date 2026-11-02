@@ -141,7 +141,7 @@ void Server::pkt_Hello(peer_t peer_id, Packet &pkt)
 		player->auth.status = Auth::Status::Guest;
 
 		// Log in instantly
-		signInPlayer(player);
+		signInPlayer(player, LoginMethod::PasswordNoSave, 0);
 		return;
 	}
 
@@ -181,16 +181,18 @@ void Server::pkt_Hello(peer_t peer_id, Packet &pkt)
 	}
 }
 
-void Server::signInPlayer(RemotePlayer *player)
+void Server::signInPlayer(RemotePlayer *player, LoginMethod method, time_t token_expiry)
 {
 	player->setScript(m_script);
 	player->state = RemotePlayerState::Idle;
-	logger(LL_PRINT, "Player %s logged in\n", player->name.c_str());
+	logger(LL_PRINT, "Player %s logged in. method=%d", player->name.c_str(), (int)method);
 
 	{
 		Packet out;
 		out.write(Packet2Client::Auth);
 		out.writeStr16("signed_in");
+		out.write<u8>((u8)method);
+		out.write<s64>(method == LoginMethod::PasswordNewToken ? token_expiry : 0);
 		m_con->send(player->peer_id, 0, out);
 	}
 
@@ -259,7 +261,7 @@ void Server::pkt_Auth(peer_t peer_id, Packet &pkt)
 		const std::string &challenge = player->auth.salt_challenge;
 
 		// See also: Client::pkt_Auth()
-		logger(LL_DEBUG, "%s: method=%d", action.c_str(), (int)method);
+		logger(LL_DEBUG, "Login check name=%s, method=%d", player->name.c_str(), (int)method);
 		switch (method) {
 			case LoginMethod::PasswordNoSave:
 				player->auth.hash(info.password, challenge);
@@ -308,7 +310,7 @@ void Server::pkt_Auth(peer_t peer_id, Packet &pkt)
 		player->auth.salt_challenge.clear(); // would allow to change the password directly
 		player->auth.status = Auth::Status::SignedIn;
 
-		signInPlayer(player);
+		signInPlayer(player, method, info.token_expiry);
 
 		// Update last login timestamp
 		info.last_login = time(nullptr);
@@ -365,13 +367,12 @@ void Server::pkt_Auth(peer_t peer_id, Packet &pkt)
 			m_auth_db->ban(entry);
 		}
 
-		// Fake signInPlayer(). Let the user perform a proper login sequence.
 		{
 			Packet out;
 			out.write(Packet2Client::Auth);
-			out.writeStr16("signed_in");
-			m_con->send(player->peer_id, 0, out);
+			out.writeStr16("registered");
 		}
+		// Require a clean login sequence
 		m_con->disconnect(peer_id);
 		return;
 	}

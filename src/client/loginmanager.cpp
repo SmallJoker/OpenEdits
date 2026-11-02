@@ -165,6 +165,7 @@ bool LoginManager::loadSerialized()
 		info.token = pkt.readStr16();
 		const u8 flags = pkt.read<u8>();
 		info.remember_password = flags & 0x01;
+		// TODO: Save token_expiry and display to client (tooltip?)
 	}
 	return true;
 }
