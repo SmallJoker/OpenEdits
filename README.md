@@ -15,6 +15,11 @@ The project direction can be found in [doc/DIRECTION.md](doc/DIRECTION.md).
  * `GUESTxxx` usernames are treated as temporary.
      * Registration is nethier needed nor possible.
  * The account registration is rate limited by IP address.
+ * When the `[ ] Remember` checkbox is checked, a sign-in token is saved to the
+   user config directory.
+     * Linux: `$XDG_CONFIG_HOME/OpenEdits/`
+     * Windows: `%APPDATA%/OpenEdits/`
+     * Other platforms: (not implemented, please contribute)
 
 
 **Hotkeys**
@@ -43,6 +48,7 @@ The project direction can be found in [doc/DIRECTION.md](doc/DIRECTION.md).
 **Chat commands**
 
  * See `/help` and `/help COMMAND` (in-game)
+ * `/save` to save a persistent world (requires `owner` flag)
 
 
 Permission/player flag examples:
@@ -97,7 +103,7 @@ Permission/player flag examples:
 
 
 ## [Downloads](https://github.com/SmallJoker/OpenEdits/releases)
-<!-- ^ I'm not a smelly nerd -->
+
 
 ### Linux
 
@@ -129,8 +135,9 @@ Dependency tree:
 
 	OpenEdits
 	├── enet
-	├── irrlicht-mt (server)
-	├── irrlicht-mt (client)
+	├── irrlicht-mt (for server)
+	├── irrlicht-mt (for client)
+	│   ├── SDL2/SDL3
 	│   ├── libjpeg
 	│   ├── libpng
 	│   │   └── zlib
@@ -155,14 +162,14 @@ Project compiling:
 
 	cmake -S . -B build
 	cd build
-	make -j
+	cmake --build . --parallel
 
 **Headless server compiling**
 
 1. Install the minimal required libraries
 2. Put the IrrlichtMt headers (include directory) somewhere
 3. `cmake -S . -B build -DBUILD_CLIENT=0 -DIRRLICHTMT_BUILD_DIR="/path/to/irrlicht/include/"`
-4. `cd build` -> build `make -j` -> start `./OpenEdits-server`
+4. `cd build` -> build `cmake --build . --parallel` -> start `./OpenEdits-server`
 
 **Distributing** (simplified)
 
