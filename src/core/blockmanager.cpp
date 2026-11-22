@@ -181,6 +181,29 @@ void BlockManager::sanityCheck()
 			tile.visual_override.enabled = false;
 		}
 	}
+
+	// Shader names
+	for (BlockProperties *prop : m_props) {
+		if (!prop || !m_media)
+			continue;
+
+		for (BlockTile &tile : prop->tiles) {
+			if (tile.shader_name.empty())
+				continue;
+
+			// See also: Gui::initializeShaders()
+			int count = 0;
+			count += m_media->requireAsset((tile.shader_name + ".vert").c_str(), false);
+			count += m_media->requireAsset((tile.shader_name + ".geom").c_str(), false);
+			count += m_media->requireAsset((tile.shader_name + ".frag").c_str(), false);
+			if (count == 0) {
+				logger(LL_ERROR, "Cannot find shader '%s'.* for block_id=%d, tile=%d",
+					tile.shader_name.c_str(), prop->id, (int)(&tile - prop->tiles.data())
+				);
+				tile.shader_name.clear();
+			}
+		}
+	}
 }
 
 void BlockManager::populateTextures()

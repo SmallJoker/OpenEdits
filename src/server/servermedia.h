@@ -10,7 +10,7 @@ public:
 	/// To call from the Lua registration functions
 	/// Compose a list of required media files for the clients
 	/// @return true if found
-	bool requireAsset(const char *name) override;
+	bool requireAsset(const char *name, bool notify_missing = true) override;
 
 	void writeMediaList(RemotePlayer *player, Packet &pkt);
 	void readMediaRequest(RemotePlayer *player, Packet &pkt);

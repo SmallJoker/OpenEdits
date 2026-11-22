@@ -65,7 +65,7 @@ struct Block {
 };
 
 // 4 bytes with GCC, 6 bytes with MSVC
-static_assert(sizeof(Block) <= 6, "Block size us unexpectedly large");
+static_assert(sizeof(Block) <= 6, "sizeof(Block) is unexpectedly large");
 
 
 // Automatic grab & drop for irr::IReferenceCounted classes

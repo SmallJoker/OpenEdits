@@ -180,6 +180,13 @@ static void read_tile(lua_State *L, BlockTile &tile, const BlockProperties *prop
 			tile.index = (s16)luaL_checkinteger(L, -1);
 		lua_pop(L, 1); // skop
 	}
+
+	{
+		lua_getfield(L, -1, "shader");
+		if (!lua_isnil(L, -1))
+			tile.shader_name = luaL_checkstring(L, -1);
+		lua_pop(L, 1); // skop
+	}
 }
 
 int Script::l_change_block(lua_State *L)

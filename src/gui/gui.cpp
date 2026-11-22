@@ -1,5 +1,6 @@
 #include "gui.h"
 #include "client/client.h"
+#include "client/clientmedia.h"
 #include "server/server.h"
 #include "core/blockmanager.h"
 #include "core/logger.h"
@@ -8,6 +9,8 @@
 #include "guilayout/guilayout_irrlicht.h"
 #include "guiscript.h"
 #include <chrono>
+#include <fstream>
+#include <optional>
 #include <assert.h>
 // Scene handlers
 #include "connect.h"
@@ -23,6 +26,11 @@
 #include <IGUISkin.h>
 #include <ISceneManager.h>
 #include <IVideoDriver.h>
+// Irrlicht, shader-specific
+#include <IGPUProgrammingServices.h>
+#include <IMaterialRendererServices.h>
+#include <IShaderConstantSetCallBack.h>
+#include <irrPtr.h>
 
 static Logger logger("Gui", LL_WARN);
 
@@ -33,7 +41,7 @@ Gui::Gui()
 	SIrrlichtCreationParameters params;
 	params.ApplicationName = APPLICATION_NAME;
 	params.DriverType = video::EDT_OPENGL;
-	params.OGLES2ShaderPath = "./shaders/"; // take from IrrlichtMt
+	params.OGLES2ShaderPath = "./irr-shaders/"; // take from IrrlichtMt
 	params.Vsync = true;
 	//params.AntiAlias = 32; -- only does something on Windows?
 	params.WindowSize = window_size;
@@ -141,11 +149,14 @@ void Gui::run()
 			delete g_blockmanager;
 			g_blockmanager = new BlockManager();
 
+			m_shader_time = 0;
 			m_pending_disconnect = false;
 		}
 
-		if (m_client)
+		if (m_client) {
+			m_shader_time += dtime;
 			m_client->step(dtime);
+		}
 		if (m_server) {
 			server_tick_bank += dtime;
 			if (server_tick_bank >= SERVER_TICK) {
@@ -260,6 +271,9 @@ bool Gui::OnEvent(GameEvent &e)
 		case E::C2G_DISCONNECT:
 			disconnect();
 			showPopupText("Disconnected from the server");
+			return true;
+		case E::C2G_INIT_SHADERS:
+			initializeShaders();
 			return true;
 		case E::C2G_SIGNED_IN:
 			{
@@ -619,4 +633,139 @@ void Gui::drawPopup(float dtime)
 
 	guienv->getSkin()->draw2DRectangle(nullptr, color_frame, rect);
 	font->draw(all_text.c_str(), rect, color, true, true);
+}
+
+namespace {
+
+class ShaderConstantCallback : public video::IShaderConstantSetCallBack
+{
+public:
+	ShaderConstantCallback(const float *time)
+	{
+		m_time = time;
+	}
+
+	//void OnSetMaterial(const video::SMaterial &material) override
+
+	void OnSetConstants(video::IMaterialRendererServices *services, s32 user_data) override
+	{
+		(void)user_data;
+
+		if (0) puts(__func__);
+
+		video::IVideoDriver *driver = services->getVideoDriver();
+
+#define SET_VERTEX_CONSTANT(STR, ARR, COUNT) \
+	services->setVertexShaderConstant(services->getVertexShaderConstantID(STR), ARR, COUNT);
+
+#define SET_PIXEL_CONSTANT(STR, ARR, COUNT) \
+	services->setPixelShaderConstant(services->getPixelShaderConstantID(STR), ARR, COUNT);
+
+		if (!m_initialized) {
+			m_initialized = true;
+
+			m_uTMatrix0  = services->getVertexShaderConstantID("uTMatrix0");
+			m_uWVPMatrix = services->getVertexShaderConstantID("uWVPMatrix");
+			m_uRelTime   = services->getVertexShaderConstantID("uRelTime");
+
+			s32 texture_unit = 0; // sampler2d ???
+			SET_PIXEL_CONSTANT("uTextureUnit0", &texture_unit, 1);
+		}
+
+#undef SET_PIXEL_CONSTANT
+#undef SET_VERTEX_CONSTANT
+
+		core::matrix4 matrix = driver->getTransform(video::ETS_TEXTURE_0);
+		services->setPixelShaderConstant(m_uTMatrix0, matrix.pointer(), 16);
+
+		const core::matrix4
+			&W = driver->getTransform(video::ETS_WORLD),
+			&V = driver->getTransform(video::ETS_VIEW),
+			&P = driver->getTransform(video::ETS_PROJECTION);
+
+		matrix = P * (V * W);
+		services->setPixelShaderConstant(m_uWVPMatrix, matrix.pointer(), 16);
+
+		services->setPixelShaderConstant(m_uRelTime, m_time, 1);
+	}
+
+private:
+	bool m_initialized = false;
+	s32 m_uTMatrix0;
+	s32 m_uWVPMatrix;
+	s32 m_uRelTime;
+	const float *m_time;
+};
+
+} // private namespace
+
+static std::optional<std::string> read_file(const char *path)
+{
+	if (!path)
+		return std::nullopt;
+
+	std::ifstream is(path);
+	if (!is.good())
+		return std::nullopt;
+
+	is.seekg(0, is.end);
+	const size_t length = is.tellg();
+	is.seekg(0, is.beg);
+
+	std::string ret;
+	ret.resize(length);
+	is.read((char *)ret.data(), length);
+	return ret;
+}
+
+void Gui::initializeShaders()
+{
+	ASSERT_FORCED(driver && m_client, "Missing driver or client");
+	ClientMedia *media = m_client->getMedia();
+	ASSERT_FORCED(media, "Missing media");
+
+	auto *gpu = driver->getGPUProgrammingServices();
+
+	for (auto &props : g_blockmanager->getPropsForModification()) {
+		if (!props)
+			continue;
+
+		for (BlockTile &tile : props->tiles) {
+			if (tile.shader_name.empty())
+				continue;
+
+			RcPointer<ShaderConstantCallback> cb(new ShaderConstantCallback(&m_shader_time));
+			// See also: BlockManager::sanityCheck()
+			#define LOAD_MAYBE(name) \
+				read_file(media->getAssetPath((name).c_str(), false));
+			auto vert = LOAD_MAYBE(tile.shader_name + ".vert");
+			auto geom = LOAD_MAYBE(tile.shader_name + ".geom");
+			auto frag = LOAD_MAYBE(tile.shader_name + ".frag");
+			#undef LOAD_MAYBE
+
+			s32 material = gpu->addHighLevelShaderMaterial(
+				vert ? vert->c_str() : nullptr,
+				frag ? frag->c_str() : nullptr,
+				geom ? geom->c_str() : nullptr,
+				tile.shader_name.c_str(),
+				scene::EPT_TRIANGLES, scene::EPT_TRIANGLES, 0,
+				cb.get(),
+				video::EMT_TRANSPARENT_ALPHA_CHANNEL_REF /* TODO */,
+				0
+			);
+
+			if (material == -1) {
+				logger(LL_ERROR, "Failed to load shader '%s' for block_id=%d. Removing it!",
+					tile.shader_name.c_str(), props->id
+				);
+				tile.shader_name.clear();
+				material = 0;
+			}
+
+			logger(LL_INFO, "Loaded shader '%s' for block_id=%d",
+				tile.shader_name.c_str(), props->id
+			);
+			tile.shader_material = material;
+		}
+	}
 }

@@ -20,6 +20,8 @@ MediaManager::AssetType MediaManager::File::getTypeFromFileName(const std::strin
 		return AssetType::Sound;
 	if (ext == ".lua")
 		return AssetType::Script;
+	if (ext == ".vert" || ext == ".geom" || ext == ".frag")
+		return AssetType::Shader;
 
 	return AssetType::Invalid;
 }
@@ -89,16 +91,16 @@ void MediaManager::indexAssets()
 	logger(LL_PRINT, "%zu media files indexed", m_media_available.size());
 }
 
-bool MediaManager::requireAsset(const char *name)
+bool MediaManager::requireAsset(const char *name, bool notify_missing)
 {
-	return getAssetPath(name) != nullptr;
+	return getAssetPath(name, notify_missing) != nullptr;
 }
 
-const char *MediaManager::getAssetPath(const char *name)
+const char *MediaManager::getAssetPath(const char *name, bool notify_missing)
 {
 	auto it = m_media_available.find(name);
 	if (it == m_media_available.end()) {
-		logger(LL_WARN, "Cannot find asset '%s'", name);
+		logger(notify_missing ? LL_WARN : LL_DEBUG, "Cannot find asset '%s'", name);
 		return nullptr;
 	}
 

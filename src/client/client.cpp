@@ -552,6 +552,12 @@ void Client::initScript()
 	if (!m_script->loadFromAsset("main.lua"))
 		goto error;
 
+	{
+		GameEvent e(GameEvent::C2G_INIT_SHADERS);
+		e.intval = -1;
+		sendNewEvent(e);
+	}
+
 	m_script->onScriptsLoaded();
 	m_script->setMyPlayer(getPlayerNoLock(m_my_peer_id));
 	m_smileymgr->populateTextures();

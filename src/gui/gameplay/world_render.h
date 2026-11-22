@@ -61,6 +61,7 @@ private:
 	CBulkSceneNode *drawBottomLeftText(video::ITexture *texture);
 	CBulkSceneNode *drawFullSizeText(video::ITexture *texture);
 
+	/// Returns `true` if fully solid
 	bool assignBlockTexture(const BlockTile &tile, scene::ISceneNode *node);
 	core::recti m_drawn_rect; // excess area, more drawn than needed
 

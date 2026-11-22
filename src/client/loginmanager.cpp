@@ -100,6 +100,11 @@ ClientStartData *LoginManager::find(const std::string &address, const std::strin
 
 void LoginManager::recordLogin(ClientStartData &&data)
 {
+	if (m_filename.empty()) {
+		puts("Loading login data before recording a new entry.");
+		load();
+	}
+
 	ClientStartData *entry = find(data.address, data.nickname);
 	if (entry)
 		*entry = std::move(data);

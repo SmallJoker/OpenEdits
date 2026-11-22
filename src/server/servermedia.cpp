@@ -14,7 +14,7 @@ static Logger logger("ServerMedia", LL_INFO);
 
 // -------------- ServerMedia --------------
 
-bool ServerMedia::requireAsset(const char *name)
+bool ServerMedia::requireAsset(const char *name, bool notify_missing)
 {
 	if (name[0] == '\0')
 		return false; // Not allowed
@@ -27,7 +27,7 @@ bool ServerMedia::requireAsset(const char *name)
 
 	auto it = m_media_available.find(name);
 	if (it == m_media_available.end()) {
-		logger(LL_ERROR, "Asset '%s' not found\n", name);
+		logger(notify_missing ? LL_ERROR : LL_DEBUG, "Cannot find asset '%s'", name);
 		return false;
 	}
 

@@ -14,7 +14,8 @@ public:
 		Invalid,
 		Script,
 		Sound,
-		Texture
+		Texture,
+		Shader
 	};
 
 	struct File {
@@ -49,10 +50,10 @@ public:
 	/// Indexes `ASSETS_DIR` to list all media in `m_media_available`
 	void indexAssets();
 
-	virtual bool requireAsset(const char *name);
+	virtual bool requireAsset(const char *name, bool notify_missing = true);
 
 	/// @return non-NULL on success
-	const char *getAssetPath(const char *name);
+	const char *getAssetPath(const char *name, bool notify_missing = true);
 
 	static const std::string ASSETS_DIR;
 

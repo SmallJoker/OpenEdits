@@ -9,7 +9,7 @@ worlds/imports/
 worlds/exports/
 
 # Binaries
-./OpenEdits
+OpenEdits
 *.sqlite
 
 # Development files

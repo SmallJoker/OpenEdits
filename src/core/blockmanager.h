@@ -60,6 +60,8 @@ struct BlockTile {
 	/// Solid+Background: no alpha, Action: alpha_ref, Decoration: alpha
 	BlockDrawType type = BlockDrawType::Invalid;
 	std::vector<video::ITexture *> textures; // >1 if animated
+	std::string shader_name; /// Non-empty if present.
+	s32 shader_material = 0; /// Non-zero if present.
 	bool is_known_tile = false; // true when registered by registerPack()
 	bool have_alpha = false; // false: use BlockDrawType
 	float animation_delay = 1.0f;

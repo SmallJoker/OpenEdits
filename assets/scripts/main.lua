@@ -120,6 +120,7 @@ local blocks_action = {
 	{
 		id = 0,
 		minimap_color = 0xFF000000,
+		--tiles = { { type = env.DRAW_TYPE_ACTION, shader = "demo_shader" } },
 		on_intersect = function()
 			player:set_acc(0, GRAVITY)
 		end,

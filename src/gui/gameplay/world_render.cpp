@@ -560,6 +560,11 @@ bool SceneWorldRender::assignBlockTexture(const BlockTile &tile, scene::ISceneNo
 	}
 	mat.setTexture(0, texture);
 
+	if (tile.shader_material) {
+		mat.MaterialType = (video::E_MATERIAL_TYPE)tile.shader_material;
+		return true; // TODO Maybe? We don't know.
+	}
+
 	switch (tile.type) {
 		case BlockDrawType::Solid:
 			if (tile.have_alpha)

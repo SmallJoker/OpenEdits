@@ -366,6 +366,9 @@ Block Definition - regular fields:
         * `animation_count` (optional, integer): count of animation frames.
         * `index` (optional, integer): where to continue indexing frames (zero-indexed).
           Intended to be used for backwards compatibility. Default: `-1` (disabled)
+        * `shader` (optional, string): name of the shader without
+          the `.vert`/`.geom`/`.frag` file extension.
+            * Given uniforms: `uRelTime`
     * Tile limit: 8 for `type != env.DRAW_TYPE_BACKGROUND`, otherwise 1.
  * `overlay` (optional, table)
     * Defines the appearance of the overlay value returned by `get_visuals`.

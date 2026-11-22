@@ -139,6 +139,9 @@ private:
 		std::wstring text;
 	};
 	std::list<PopupEntry> m_popup_entries;
+
+	void initializeShaders();
+	float m_shader_time = 0.0f;
 };
 
 class SceneHandler {

@@ -59,6 +59,7 @@ static void test_raii()
 	lua_pushcfunction(L, l_lua_c_fn_cpp_raii);
 	lua_pushboolean(L, true);
 	CHECK(lua_pcall(L, 1, 0, 0) != 0);
+	puts(lua_tostring(L, -1));
 	CHECK(instance_counter == 0);
 
 	lua_close(L);
