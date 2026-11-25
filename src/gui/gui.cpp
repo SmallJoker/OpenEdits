@@ -136,6 +136,8 @@ void Gui::run()
 		}
 
 		if (m_pending_disconnect) {
+			unloadShaders();
+
 			if (m_client) {
 				delete m_client;
 				m_client = nullptr;
@@ -149,7 +151,6 @@ void Gui::run()
 			delete g_blockmanager;
 			g_blockmanager = new BlockManager();
 
-			m_shader_time = 0;
 			m_pending_disconnect = false;
 		}
 
@@ -718,13 +719,71 @@ static std::optional<std::string> read_file(const char *path)
 	return ret;
 }
 
+static void preprocess_vertex_program(std::string &program, const std::string &static_prefix)
+{
+	static const std::string str_common(R"(
+#if LEGACY_OPENGL // video::EDT_OPENGL
+	#define inVertexPosition gl_Vertex.xyz
+	#define inVertexNormal gl_Normal
+	#define inVertexColor_raw gl_Color
+	#define inTexCoord0 gl_MultiTexCoord0
+
+#else // OpenGL3 and OpenGL ES
+	// Available attributes: see Irrlicht "sBuiltInVertexAttributeNames"
+	attribute vec3 inVertexPosition;
+	attribute vec3 inVertexNormal;
+	attribute vec4 inVertexColor_raw;
+	attribute vec2 inTexCoord0;
+#endif
+
+// Uniforms (from C++)
+uniform mat4 uWVPMatrix; // gl_ModelViewProjectionMatrix
+uniform mat4 uTMatrix0;
+uniform float uRelTime;
+)");
+
+	// Possible optimization: Split to parts on match, reassemble in the end.
+
+	const auto pos = program.find("#common vertex");
+	if (pos != std::string::npos) {
+		size_t lines_before = 0;
+		for (size_t i = 0; i < pos; ++i)
+			lines_before += program[i] == '\n';
+
+		char buf[20];
+		snprintf(buf, sizeof(buf), "#line %zu", lines_before);
+
+		program = program.substr(0, pos)
+			+ static_prefix + str_common + buf
+			+ program.substr(pos + 14);
+	}
+}
+
 void Gui::initializeShaders()
 {
 	ASSERT_FORCED(driver && m_client, "Missing driver or client");
 	ClientMedia *media = m_client->getMedia();
 	ASSERT_FORCED(media, "Missing media");
 
+	m_shader_time = 0.0f;
 	auto *gpu = driver->getGPUProgrammingServices();
+
+	std::string shared_prefix;
+
+	{
+		char buf[100];
+		snprintf(buf, sizeof(buf),
+			"#define API_VERSION %d\n"
+			"#define LEGACY_OPENGL %d\n",
+			Script::SCRIPT_API_VERSION,
+			driver->getDriverType() == video::EDT_OPENGL
+		);
+		shared_prefix.append(buf);
+	}
+
+	int count_failed = 0;
+
+	// TODO: build a sample shader for testing?
 
 	for (auto &props : g_blockmanager->getPropsForModification()) {
 		if (!props)
@@ -743,6 +802,15 @@ void Gui::initializeShaders()
 			auto frag = LOAD_MAYBE(tile.shader_name + ".frag");
 			#undef LOAD_MAYBE
 
+			if (!(vert || geom || frag)) {
+				// Missing files
+				tile.shader_name.clear();
+				continue;
+			}
+
+			if (vert)
+				preprocess_vertex_program(*vert, shared_prefix);
+
 			s32 material = gpu->addHighLevelShaderMaterial(
 				vert ? vert->c_str() : nullptr,
 				frag ? frag->c_str() : nullptr,
@@ -755,17 +823,41 @@ void Gui::initializeShaders()
 			);
 
 			if (material == -1) {
+				count_failed++;
 				logger(LL_ERROR, "Failed to load shader '%s' for block_id=%d. Removing it!",
 					tile.shader_name.c_str(), props->id
 				);
 				tile.shader_name.clear();
-				material = 0;
+				continue;
 			}
 
 			logger(LL_INFO, "Loaded shader '%s' for block_id=%d",
 				tile.shader_name.c_str(), props->id
 			);
 			tile.shader_material = material;
+		}
+	}
+	if (count_failed > 0) {
+		showPopupText("Shaders failed to compile.\nPlease check the terminal log output.");
+	}
+}
+
+void Gui::unloadShaders()
+{
+	ASSERT_FORCED(driver, "Missing driver");
+
+	auto *gpu = driver->getGPUProgrammingServices();
+
+	for (auto &props : g_blockmanager->getPropsForModification()) {
+		if (!props)
+			continue;
+
+		for (BlockTile &tile : props->tiles) {
+			if (!tile.shader_material)
+				continue;
+
+			gpu->deleteShaderMaterial(tile.shader_material);
+			tile.shader_material = 0;
 		}
 	}
 }

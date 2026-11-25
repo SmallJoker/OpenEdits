@@ -1,27 +1,6 @@
 #version 120
 
-// TODO: Move this header to C++ (template)
-
-#if 1 // video::EDT_OPENGL
-
-#define inVertexPosition gl_Vertex.xyz
-#define inVertexNormal gl_Normal
-#define inVertexColor_raw gl_Color
-#define inTexCoord0 gl_MultiTexCoord0
-
-#else // OpenGL3 and OpenGL ES
-
-// Available attributes: see Irrlicht "sBuiltInVertexAttributeNames"
-attribute vec3 inVertexPosition;
-attribute vec3 inVertexNormal;
-attribute vec4 inVertexColor_raw;
-attribute vec2 inTexCoord0;
-#endif
-
-// Uniforms (from C++)
-uniform mat4 uWVPMatrix; // gl_ModelViewProjectionMatrix
-uniform mat4 uTMatrix0;
-uniform float uRelTime;
+#common vertex
 
 // Stuff passed to the fragment shader
 varying vec2 vTextureCoord0;

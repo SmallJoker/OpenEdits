@@ -368,7 +368,8 @@ Block Definition - regular fields:
           Intended to be used for backwards compatibility. Default: `-1` (disabled)
         * `shader` (optional, string): name of the shader without
           the `.vert`/`.geom`/`.frag` file extension.
-            * Given uniforms: `uRelTime`
+            * Given macros: `API_VERSION`
+            * Vertex Shader uniforms: See `#common vertex` expansion.
     * Tile limit: 8 for `type != env.DRAW_TYPE_BACKGROUND`, otherwise 1.
  * `overlay` (optional, table)
     * Defines the appearance of the overlay value returned by `get_visuals`.

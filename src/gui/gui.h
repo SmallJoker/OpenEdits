@@ -141,6 +141,7 @@ private:
 	std::list<PopupEntry> m_popup_entries;
 
 	void initializeShaders();
+	void unloadShaders();
 	float m_shader_time = 0.0f;
 };
 
