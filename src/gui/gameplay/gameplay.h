@@ -15,6 +15,7 @@ namespace irr {
 	}
 }
 
+class BlockTile;
 class SceneBlockSelector;
 class SceneMinimap;
 class SceneSmileySelector;
@@ -23,6 +24,8 @@ class SoundPlayer;
 
 class SceneGameplay : public SceneHandler {
 public:
+	static s32 get_tile_material(const BlockTile &tile);
+
 	SceneGameplay();
 	~SceneGameplay();
 

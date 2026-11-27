@@ -151,7 +151,7 @@ local blocks_coins = {
 	{
 		id = 100,
 		tiles = {
-			{ alpha = true, animation_count = 2, animation_delay = 1.2 },
+			{ alpha = true, animation_count = 2, animation_delay = 1.2, shader = "coin_highlight" },
 			{ alpha = true }
 		},
 		on_intersect_once = function(tile)

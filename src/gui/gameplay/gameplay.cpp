@@ -33,6 +33,31 @@ enum ElementId : int {
 	ID_TextChatHistory,
 };
 
+s32 SceneGameplay::get_tile_material(const BlockTile &tile)
+{
+	if (tile.shader_material)
+		return tile.shader_material;
+
+	switch (tile.type) {
+		case BlockDrawType::Solid:
+			return tile.have_alpha
+				? video::EMT_TRANSPARENT_ALPHA_CHANNEL_REF
+				: video::EMT_SOLID;
+			break;
+		case BlockDrawType::Action:
+		case BlockDrawType::Decoration:
+			return tile.have_alpha
+				? video::EMT_TRANSPARENT_ALPHA_CHANNEL
+				: video::EMT_TRANSPARENT_ALPHA_CHANNEL_REF;
+		case BlockDrawType::Background:
+			return video::EMT_SOLID;
+		case BlockDrawType::Invalid:
+			break;
+	}
+	ASSERT_FORCED(false, "Unhandled BlockTIle");
+}
+
+
 SceneGameplay::SceneGameplay() :
 	SceneHandler(L"Gameplay"),
 	m_drag_draw_block(g_blockmanager)

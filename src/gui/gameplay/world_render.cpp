@@ -560,25 +560,7 @@ bool SceneWorldRender::assignBlockTexture(const BlockTile &tile, scene::ISceneNo
 	}
 	mat.setTexture(0, texture);
 
-	if (tile.shader_material) {
-		mat.MaterialType = (video::E_MATERIAL_TYPE)tile.shader_material;
-		return true; // TODO Maybe? We don't know.
-	}
-
-	switch (tile.type) {
-		case BlockDrawType::Solid:
-			if (tile.have_alpha)
-				mat.MaterialType = video::EMT_TRANSPARENT_ALPHA_CHANNEL_REF;
-			break;
-		case BlockDrawType::Action:
-		case BlockDrawType::Decoration:
-			mat.MaterialType = tile.have_alpha
-				? video::EMT_TRANSPARENT_ALPHA_CHANNEL
-				: video::EMT_TRANSPARENT_ALPHA_CHANNEL_REF;
-			break;
-		default: break;
-	}
-
+	mat.MaterialType = (video::E_MATERIAL_TYPE)SceneGameplay::get_tile_material(tile);
 	return mat.MaterialType == video::EMT_SOLID;
 }
 

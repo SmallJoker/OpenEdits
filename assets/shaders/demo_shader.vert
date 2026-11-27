@@ -20,4 +20,5 @@ void main(void)
 		fade = 4.0 - fade;
 
 	vVertexColor.r = fade;
+	vVertexColor.g = inVertexPosition.x * 0.005;
 }

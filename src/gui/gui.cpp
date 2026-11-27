@@ -811,14 +811,15 @@ void Gui::initializeShaders()
 			if (vert)
 				preprocess_vertex_program(*vert, shared_prefix);
 
-			s32 material = gpu->addHighLevelShaderMaterial(
+			s32 material = SceneGameplay::get_tile_material(tile);
+			material = gpu->addHighLevelShaderMaterial(
 				vert ? vert->c_str() : nullptr,
 				frag ? frag->c_str() : nullptr,
 				geom ? geom->c_str() : nullptr,
 				tile.shader_name.c_str(),
 				scene::EPT_TRIANGLES, scene::EPT_TRIANGLES, 0,
 				cb.get(),
-				video::EMT_TRANSPARENT_ALPHA_CHANNEL_REF /* TODO */,
+				(video::E_MATERIAL_TYPE)material,
 				0
 			);
 
